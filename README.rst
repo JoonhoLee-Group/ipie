@@ -4,7 +4,7 @@ PyQCQMC
 
 PyQCQMC is a collection of **P**\ ython implementations of **Q**\ uantum-**C**\ lassical
 hybrid
-or **Q**\ uantum **C**\ hemistry
+(or **Q**\ uantum **C**\ hemistry)
 **Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
 
 PyQCQMC inherits a lot of QMC features from PAUXY.
