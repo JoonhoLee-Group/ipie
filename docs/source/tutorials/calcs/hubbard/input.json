@@ -1,0 +1,36 @@
+{
+    "model": {
+        "name": "Hubbard",
+        "t": 1.0,
+        "U": 4,
+        "nx": 3,
+        "ny": 3,
+        "ktwist": [0.01, -0.02],
+        "nup": 3,
+        "ndown": 3
+    },
+    "qmc_options": {
+        "method": "CPMC",
+        "dt": 0.05,
+        "nsteps": 1000,
+        "nmeasure": 10,
+        "nwalkers": 30,
+        "npop_control": 10,
+        "rng_seed": 7
+    },
+    "trial_wavefunction": {
+        "name": "free_electron"
+    },
+    "propagator": {
+        "hubbard_stratonovich": "discrete"
+    },
+    "estimates": {
+        "back_propagated": {
+            "nback_prop": 40
+        },
+        "itcf": {
+            "stable": true,
+            "tmax": 2
+        }
+    }
+}

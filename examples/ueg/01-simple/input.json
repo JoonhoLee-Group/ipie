@@ -1,0 +1,20 @@
+{
+    "system": {
+        "name": "UEG",
+        "nup": 7,
+        "ndown": 7,
+        "rs": 1.0,
+        "ecut": 2.5
+    },
+    "qmc": {
+        "dt": 0.005,
+        "nwalkers": 100,
+        "blocks": 1000,
+        "nsteps": 10,
+        "pop_control_freq": 5
+    },
+    "trial": {
+        "name": "hartree_fock"
+    },
+    "estimators": {}
+}

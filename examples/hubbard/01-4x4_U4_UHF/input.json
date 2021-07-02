@@ -1,0 +1,24 @@
+{
+    "system": {
+        "name": "Hubbard",
+        "nx": 4,
+        "ny": 4,
+        "nup": 7,
+        "ndown": 7,
+        "U": 4
+    },
+    "qmc": {
+        "dt": 0.005,
+        "nwalkers": 50,
+        "blocks": 1000,
+        "nsteps": 10,
+        "pop_control_freq": 5
+    },
+    "trial": {
+        "name": "UHF"
+    },
+    "propagator": {
+        "hubbard_stratonovich": "discrete"
+    },
+    "estimators": {}
+}
