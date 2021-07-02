@@ -7,6 +7,8 @@ hybrid
 or **Q**\ uantum **C**\ hemistry
 **Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
 
+PyQCQMC inherits a lot of QMC features from PAUXY.
+
 .. image:: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc.svg?branch=master
     :target: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc
 
