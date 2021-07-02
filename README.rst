@@ -1,22 +1,24 @@
 =====
-PAUXY
+PyQCQMC
 =====
 
-PAUXY is a collection of **P**\ ython implementations of **AUX**\ illiar\ **Y** field
-quantum Monte Carlo algorithms with a focus on simplicity rather than speed.
+PyQCQMC is a collection of **P**\ ython implementations of **Q**\ uantum-**C**\ lassical
+hybrid
+or **Q**\ uantum **C**\ hemistry
+**Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
 
-.. image:: https://travis-ci.com/pauxy-qmc/pauxy.svg?branch=master
-    :target: https://travis-ci.com/pauxy-qmc/pauxy
+.. image:: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc.svg?branch=master
+    :target: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc
 
-.. image:: http://readthedocs.org/projects/pauxy/badge/?version=latest
-    :target: http://pauxy.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
+    :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
 
 .. image:: http://img.shields.io/badge/License-LGPL%20v2.1-blue.svg
-    :target: http://github.com/fdmalone/pauxy/blob/master/LICENSE
+    :target: http://github.com/fdmalone/pyqcqmc/blob/master/LICENSE
 
 Features
 --------
-PAUXY can currently:
+pyqcqmc can currently:
 
 - estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
 - perform phaseless and constrained path AFQMC.
@@ -31,9 +33,9 @@ Clone the repository
 
 ::
 
-    $ git clone https://github.com/pauxy-qmc/pauxy.git
+    $ git clone https://github.com/pyqcqmc-qmc/pyqcqmc.git
 
-and run the following in the top-level pauxy directory
+and run the following in the top-level pyqcqmc directory
 
 ::
 
@@ -62,7 +64,7 @@ To perform error analysis you will also need `pyblock <https://github.com/jsspen
 Running the Test Suite
 ----------------------
 
-Pauxy contains unit tests and some longer driver tests that can be run using pytest by
+pyqcqmc contains unit tests and some longer driver tests that can be run using pytest by
 running:
 
 ::
@@ -72,14 +74,14 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 travis.yml for more details.
 
-.. image:: https://travis-ci.com/pauxy-qmc/pauxy.svg?branch=master
-    :target: https://travis-ci.com/pauxy-qmc/pauxy
+.. image:: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc.svg?branch=master
+    :target: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc
 
 Documentation
 -------------
 
 Documentation and tutorials are available at
-`readthedocs <https://pauxy.readthedocs.org>`_.
+`readthedocs <https://pyqcqmc.readthedocs.org>`_.
 
-.. image:: http://readthedocs.org/projects/pauxy/badge/?version=latest
-    :target: http://pauxy.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
+    :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
