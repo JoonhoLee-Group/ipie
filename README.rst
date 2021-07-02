@@ -15,7 +15,7 @@ PyQCQMC inherits a lot of QMC features from PAUXY.
 .. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
     :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
 
-.. image:: http://img.shields.io/badge/License-LGPL%20v2.1-blue.svg
+.. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
     :target: http://github.com/fdmalone/pyqcqmc/blob/master/LICENSE
 
 Features
