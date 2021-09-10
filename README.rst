@@ -1,19 +1,19 @@
 =====
-PyQMC
+PyQuMC
 =====
 
-PyQMC is a collection of **P**\ ython implementations of **Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
+PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
 
-PyQMC inherits a lot of QMC features from PAUXY.
+PyQuMC inherits a lot of QMC features from PAUXY.
 
-.. image:: https://travis-ci.com/linusjoonho/pyqcqmc.svg?branch=master
-    :target: https://travis-ci.com/linusjoonho/pyqcqmc
+.. image:: https://travis-ci.com/linusjoonho/pyqumc.svg?branch=master
+    :target: https://travis-ci.com/linusjoonho/pyqumc
 
-.. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
-    :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pyqumc/badge/?version=latest
+    :target: http://pyqumc.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
-    :target: http://github.com/fdmalone/pyqcqmc/blob/master/LICENSE
+    :target: http://github.com/linusjoonho/pyqumc/blob/master/LICENSE
 
 Features
 --------
@@ -32,7 +32,7 @@ Clone the repository
 
 ::
 
-    $ git clone https://github.com/linusjoonho/pyqmc.git
+    $ git clone https://github.com/linusjoonho/pyqumc.git
 
 and run the following in the top-level pyqcqmc directory
 
@@ -73,14 +73,14 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 travis.yml for more details.
 
-.. image:: https://travis-ci.com/linusjoonho/pyqcqmc.svg?branch=master
-    :target: https://travis-ci.com/linusjoonho/pyqcqmc
+.. image:: https://travis-ci.com/linusjoonho/pyqumc.svg?branch=master
+    :target: https://travis-ci.com/linusjoonho/pyqumc
 
 Documentation
 -------------
 
 Documentation and tutorials are available at
-`readthedocs <https://pyqmc.readthedocs.org>`_.
+`readthedocs <https://pyqumc.readthedocs.org>`_.
 
-.. image:: http://readthedocs.org/projects/pyqmc/badge/?version=latest
-    :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pyqumc/badge/?version=latest
+    :target: http://pyqumc.readthedocs.io/en/latest/?badge=latest
