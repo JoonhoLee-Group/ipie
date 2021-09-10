@@ -1,16 +1,13 @@
 =====
-PyQCQMC
+PyQMC
 =====
 
-PyQCQMC is a collection of **P**\ ython implementations of **Q**\ uantum-**C**\ lassical
-hybrid
-(or **Q**\ uantum **C**\ hemistry)
-**Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
+PyQMC is a collection of **P**\ ython implementations of **Q**\ uantum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
 
-PyQCQMC inherits a lot of QMC features from PAUXY.
+PyQMC inherits a lot of QMC features from PAUXY.
 
-.. image:: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc.svg?branch=master
-    :target: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc
+.. image:: https://travis-ci.com/linusjoonho/pyqcqmc.svg?branch=master
+    :target: https://travis-ci.com/linusjoonho/pyqcqmc
 
 .. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
     :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
@@ -20,7 +17,7 @@ PyQCQMC inherits a lot of QMC features from PAUXY.
 
 Features
 --------
-pyqcqmc can currently:
+pyqmc can currently:
 
 - estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
 - perform phaseless and constrained path AFQMC.
@@ -35,7 +32,7 @@ Clone the repository
 
 ::
 
-    $ git clone https://github.com/pyqcqmc-qmc/pyqcqmc.git
+    $ git clone https://github.com/linusjoonho/pyqmc.git
 
 and run the following in the top-level pyqcqmc directory
 
@@ -76,14 +73,14 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 travis.yml for more details.
 
-.. image:: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc.svg?branch=master
-    :target: https://travis-ci.com/pyqcqmc-qmc/pyqcqmc
+.. image:: https://travis-ci.com/linusjoonho/pyqcqmc.svg?branch=master
+    :target: https://travis-ci.com/linusjoonho/pyqcqmc
 
 Documentation
 -------------
 
 Documentation and tutorials are available at
-`readthedocs <https://pyqcqmc.readthedocs.org>`_.
+`readthedocs <https://pyqmc.readthedocs.org>`_.
 
-.. image:: http://readthedocs.org/projects/pyqcqmc/badge/?version=latest
+.. image:: http://readthedocs.org/projects/pyqmc/badge/?version=latest
     :target: http://pyqcqmc.readthedocs.io/en/latest/?badge=latest
