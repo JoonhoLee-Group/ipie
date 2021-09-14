@@ -63,7 +63,7 @@ To perform error analysis you will also need `pyblock <https://github.com/jsspen
 Running the Test Suite
 ----------------------
 
-pyqcqmc contains unit tests and some longer driver tests that can be run using pytest by
+pyqumc contains unit tests and some longer driver tests that can be run using pytest by
 running:
 
 ::
