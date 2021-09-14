@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from pauxy.qmc.thermal_afqmc import ThermalAFQMC
+from pyqumc.qmc.thermal_afqmc import ThermalAFQMC
 import numpy
 
 comm = MPI.COMM_WORLD

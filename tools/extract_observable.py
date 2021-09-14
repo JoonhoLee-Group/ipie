@@ -10,9 +10,9 @@ import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
 import matplotlib.pyplot as plt
-# from pauxy.analysis.extraction import analysed_itcf
-# from pauxy.analysis.extraction import analysed_energies, extract_hdf5_simple
-from pauxy.analysis.extraction import (
+# from pyqumc.analysis.extraction import analysed_itcf
+# from pyqumc.analysis.extraction import analysed_energies, extract_hdf5_simple
+from pyqumc.analysis.extraction import (
         extract_mixed_estimates,
         get_metadata
         )

@@ -1,7 +1,7 @@
-pauxy
+pyqumc
 =====
 
 .. toctree::
    :maxdepth: 4
 
-   pauxy
+   pyqumc
