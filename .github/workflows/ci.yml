@@ -16,6 +16,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pyscf pytest
+          python -m pip install .
           git config --global user.name ${GITHUB_ACTOR}
       - name: Pytest check
         run: python -m pytest --actually-quiet
@@ -32,6 +33,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pyscf pytest
+          python -m pip install .
           git config --global user.name ${GITHUB_ACTOR}
       - name: Pytest check
         run: python -m pytest --actually-quiet
