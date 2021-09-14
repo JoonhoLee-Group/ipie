@@ -1,6 +1,6 @@
 import numpy
 import pandas as pd
-
+print("Hello tester")
 # Stolen from https://dfm.io/posts/autocorr/
 
 def next_pow_two(n):
