@@ -17,7 +17,7 @@ PyQuMC inherits a lot of QMC features from pyqumc.
 
 Features
 --------
-pyqmc can currently:
+pyqumc can currently:
 
 - estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
 - perform phaseless and constrained path AFQMC.
