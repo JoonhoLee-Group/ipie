@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pauxy.analysis import blocking
+from pyqumc.analysis import blocking
 import glob
 import sys
 import pandas as pd

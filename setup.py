@@ -10,8 +10,8 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-        Extension("pauxy.estimators.ueg_kernels",
-                  ["pauxy/estimators/ueg_kernels.pyx"],
+        Extension("pyqumc.estimators.ueg_kernels",
+                  ["pyqumc/estimators/ueg_kernels.pyx"],
 		  include_dirs=[numpy.get_include()])
         ]
 
@@ -23,12 +23,12 @@ def load_requirements(fname):
         return [str(ir.requirement) for ir in reqs]
 
 setup(
-    name='pauxy',
+    name='pyqumc',
     version=versioneer.get_version(),
-    author='PAUXY developers',
-    url='http://github.com/fdmalone/pauxy',
+    author='PYQUMC developers',
+    url='http://github.com/fdmalone/pyqumc',
     packages=find_packages(exclude=['examples', 'docs', 'tests', 'tools', 'setup.py']),
-    license='Lesser GPL v2.1',
+    license='Apache 2.0',
     description='Python Implementations of Auxilliary Field QMC algorithms',
     python_requires=">=3.6.0",
     install_requires=load_requirements("requirements.txt"),

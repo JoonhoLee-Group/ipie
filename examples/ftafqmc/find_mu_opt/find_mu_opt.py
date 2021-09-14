@@ -8,11 +8,11 @@ Usage: srun -n 144 -N 4 python find_chem_pot.py
 import numpy
 from mpi4py import MPI
 import sys
-from pauxy.qmc.thermal_afqmc import ThermalAFQMC
-from pauxy.systems.ueg import UEG
-from pauxy.qmc.options import QMCOpts
-from pauxy.trial_density_matrices.onebody import OneBody
-from pauxy.analysis.thermal import analyse_energy
+from pyqumc.qmc.thermal_afqmc import ThermalAFQMC
+from pyqumc.systems.ueg import UEG
+from pyqumc.qmc.options import QMCOpts
+from pyqumc.trial_density_matrices.onebody import OneBody
+from pyqumc.analysis.thermal import analyse_energy
 
 
 def determine_nav(comm, options, mu, target):

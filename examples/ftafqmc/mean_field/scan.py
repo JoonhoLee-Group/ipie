@@ -1,10 +1,10 @@
 from mpi4py import MPI
-from pauxy.qmc.thermal_afqmc import ThermalAFQMC
-from pauxy.systems.generic import Generic
-from pauxy.estimators.mixed import local_energy
-from pauxy.estimators.thermal import particle_number
-from pauxy.trial_density_matrices.onebody import OneBody
-from pauxy.trial_density_matrices.mean_field import MeanField
+from pyqumc.qmc.thermal_afqmc import ThermalAFQMC
+from pyqumc.systems.generic import Generic
+from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.thermal import particle_number
+from pyqumc.trial_density_matrices.onebody import OneBody
+from pyqumc.trial_density_matrices.mean_field import MeanField
 import numpy
 import pandas as pd
 import matplotlib.pyplot as pl

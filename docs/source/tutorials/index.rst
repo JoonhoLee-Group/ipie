@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-Here we'll outline how use pauxy to calculate the imaginary time correlation function
+Here we'll outline how use pyqumc to calculate the imaginary time correlation function
 (ITCF) as well as various ground state estimates of the 3x3 Hubbard model with periodic
 boundary conditions.
 
@@ -15,13 +15,13 @@ we're using a free-electron trial wavefunction and that to calculate the ITCF we
 to set the back propagation time to be sufficiently large so that the left handed
 wavefunction is close to the ground state.
 
-First we'll run pauxy as follows:
+First we'll run pyqumc as follows:
 
 .. code-block:: bash
 
-    $ python3 -u ~/path/to/pauxy/bin/pauxy input.json > 3x3.out
+    $ python3 -u ~/path/to/pyqumc/bin/pyqumc input.json > 3x3.out
 
-By default pauxy will print some basic information to stdout, including periodic estimates
+By default pyqumc will print some basic information to stdout, including periodic estimates
 for mixed estimates of the energy. All estimates will also be saved (by default) to the
 estimates.0.h5 file.
 
@@ -44,14 +44,14 @@ To be safe we'll discard data before :math:`\tau t=10` and analyse the data as f
 
 .. code-block:: bash
 
-    $ ~/path/to/pauxy/tools/reblock.py -s 10 -f estimates.0.h5
+    $ ~/path/to/pyqumc/tools/reblock.py -s 10 -f estimates.0.h5
 
 which will analyse all the estimates in estimates.0.h5 and dump the results to a second
 file called analysed_estimates.h5. We can extract then extract the estimates by doing
 
 .. code-block:: bash
 
-    $ ~/path/to/pauxy/tools/extract_observable.py -o 'energy' > basic.out
+    $ ~/path/to/pyqumc/tools/extract_observable.py -o 'energy' > basic.out
 
 
 .. literalinclude:: calcs/hubbard/basic.out
@@ -60,7 +60,7 @@ which will extract the mixed estimates. For the back propagated estimates we can
 
 .. code-block:: bash
 
-    $ ~/path/to/pauxy/tools/extract_observable.py -o 'back_propagated' > back_propagated.out
+    $ ~/path/to/pyqumc/tools/extract_observable.py -o 'back_propagated' > back_propagated.out
 
 to find
 
@@ -70,7 +70,7 @@ and finally the greater one-particle imaginary time green's function as
 
 .. code-block:: bash
 
-    $ ~/path/to/pauxy/tools/extract_observable.py -o 'itcf' -s up -t greater -e 0,0 -f analysed_observables.h5 > itcf.out
+    $ ~/path/to/pyqumc/tools/extract_observable.py -o 'itcf' -s up -t greater -e 0,0 -f analysed_observables.h5 > itcf.out
 
 which we can then plot
 

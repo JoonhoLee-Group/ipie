@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# PAUXY documentation build configuration file, created by
+# pyqumc documentation build configuration file, created by
 # sphinx-quickstart on Tue Nov 14 15:04:33 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -63,9 +63,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'PAUXY'
-copyright = '2017, Fionn Malone'
-author = 'Fionn Malone'
+project = 'pyqumc'
+copyright = '2021, Joonho Lee'
+author = 'Joonho Lee'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -132,7 +132,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'PAUXYdoc'
+htmlhelp_basename = 'pyqumcdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -159,8 +159,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'PAUXY.tex', 'PAUXY Documentation',
-     'Fionn Malone', 'manual'),
+    (master_doc, 'pyqumc.tex', 'pyqumc Documentation',
+     'Joonho Lee', 'manual'),
 ]
 
 
@@ -169,7 +169,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'pauxy', 'PAUXY Documentation',
+    (master_doc, 'pyqumc', 'pyqumc Documentation',
      [author], 1)
 ]
 
@@ -180,8 +180,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'PAUXY', 'PAUXY Documentation',
-     author, 'PAUXY', 'One line description of project.',
+    (master_doc, 'pyqumc', 'pyqumc Documentation',
+     author, 'pyqumc', 'One line description of project.',
      'Miscellaneous'),
 ]
 

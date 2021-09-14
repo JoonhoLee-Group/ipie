@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''Simple analysis of PAUXY QMC output files.
+'''Simple analysis of pyqumc QMC output files.
 By default data will be aggregated into a single output file with analysed_
 prefixed to input filename.
 '''
@@ -10,7 +10,7 @@ import pandas as pd
 import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pauxy.analysis.blocking_nopyblock import analyse_estimates
+from pyqumc.analysis.blocking_nopyblock import analyse_estimates
 import glob
 
 

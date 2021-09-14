@@ -1,2 +1,2 @@
 include versioneer.py
-include pauxy/_version.py
+include pyqumc/_version.py
