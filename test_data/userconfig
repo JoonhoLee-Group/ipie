@@ -1,4 +1,4 @@
-[pauxy]
+[pyqumc]
 inputs_args = ('*.json', '')
 vcs = git
 extract_fn = $HOME/pyqumc/bin/pyqumc pyqumc.analysis.extraction.extract_test_data_hdf5
