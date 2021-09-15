@@ -34,3 +34,11 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest pyqumc/walkers/tests/test_handler.py
+    - name: spencer-testcode
+      run: |
+        git clone git://github.com/jsspencer/testcode
+        python testcode/bin/testcode.py -v  -e bin/pyqumc run --user-option=pyqumc launch_parallel 'mpiexec -np tc.nprocs python -u'
+    - name: longer-examples
+      run: |
+        bash tools/run_examples.sh
+
