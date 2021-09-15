@@ -18,7 +18,7 @@ addons:
             - mpich
 
 before_install:
-    - pip install pandas matplotlib scipy numpy h5py mpi4py pyblock pyscf pytest
+    - pip install pandas matplotlib scipy numpy h5py mpi4py pyblock pyscf pytest Cython
     - cd
     # testcode
     - git clone git://github.com/jsspencer/testcode
