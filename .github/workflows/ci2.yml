@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -34,3 +34,11 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest pyqumc/walkers/tests/test_handler.py
+    - name: Test with testcode
+      run: |
+        git clone git://github.com/jsspencer/testcode
+        cd test_data
+        python ../testcode/bin/testcode.py -v  -e ../bin/pyqumc run --user-option=pyqumc launch_parallel 'mpiexec -np tc.nprocs python -u'
+        cd ..
+        ./tools/run_examples.sh
+
