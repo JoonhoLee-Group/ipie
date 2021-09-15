@@ -1,6 +1,3 @@
-on: [push, pull_request]
-
-sudo: required
 dist: trusty
 
 language: python
