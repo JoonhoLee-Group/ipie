@@ -1,9 +1,4 @@
-dist: xenial
-
 language: python
-
-cache:
-  pip: true
 
 python:
     - "3.6"      # current default Python on Travis CI
