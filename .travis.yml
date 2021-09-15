@@ -24,8 +24,7 @@ install:
     - cd -
     - pip install -r requirements.txt
     - pip install pyscf pytest
-    - python -m pip install .
-    - python -m pip install .
+    - python setup.py build_ext --inplace
 
 script:
     - cd tests
