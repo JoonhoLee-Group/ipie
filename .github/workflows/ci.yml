@@ -29,12 +29,12 @@ install:
 
 script:
     - cd tests
-    - export PYTHONPATH=$PYTHONPATH:$HOME/pauxy
+    - export PYTHONPATH=$PYTHONPATH:$HOME/pyqumc
     - python -c "import sys; print (sys.path)"
-    - python -c "import pauxy; import pauxy.analysis"
-    - python -c "import pauxy.qmc"
+    - python -c "import pyqumc; import pyqumc.analysis"
+    - python -c "import pyqumc.qmc"
     - $HOME/testcode/bin/testcode.py -vvv
-    - cd $HOME/pauxy
+    - cd $HOME/pyqumc
     - python -m pytest -v
 
 after_failure:
