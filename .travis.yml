@@ -30,9 +30,7 @@ script:
     
     # Temporary hack until pyqumc is pip-able
     - echo $PYTHONPATH
-    - export PYTHONPATH=$HOME/pyqumc:$PYTHONPATH
-    - export PYTHONPATH=$HOME/travis/build/linusjoonho/pyqumc:$PYTHONPATH
-    - export PATH=$HOME/pyqumc:$PATH
+    - export PYTHONPATH=$HOME/build/linusjoonho/pyqumc:$PYTHONPATH
     - echo $PYTHONPATH
     - cd test_data
     - python -c "import sys; print (sys.path)"
