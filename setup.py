@@ -26,7 +26,7 @@ setup(
     name='pyqumc',
     version=versioneer.get_version(),
     author='PYQUMC developers',
-    url='http://github.com/fdmalone/pyqumc',
+    url='http://github.com/linusjoonho/pyqumc',
     packages=find_packages(exclude=['examples', 'docs', 'tests', 'tools', 'setup.py']),
     license='Apache 2.0',
     description='Python Implementations of Auxilliary Field QMC algorithms',
