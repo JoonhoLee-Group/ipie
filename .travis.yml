@@ -2,6 +2,9 @@ dist: xenial
 
 language: python
 
+cache:
+  pip: true
+
 python:
     - "3.6"      # current default Python on Travis CI
     - "3.7"
@@ -15,26 +18,35 @@ addons:
             - mpich
 
 before_install:
-    #- pip install pandas matplotlib scipy numpy h5py mpi4py pyblock pyscf pytest Cython
-    - cd
+    - pip install -r requirements.txt
+    - pip install pyscf
     # testcode
+    - git clone https://github.com/pauxy-qmc/pauxy_test_data.git
     - git clone git://github.com/jsspencer/testcode
 
 install:
-    - cd -
-    - pip install -r requirements.txt
-    - pip install pyscf pytest
     - python setup.py build_ext --inplace
 
 script:
-    - cd tests
-    - export PYTHONPATH=$PYTHONPATH:$HOME/pyqumc
-    - python -c "import sys; print (sys.path)"
-    - python -c "import pyqumc; import pyqumc.analysis"
-    - python -c "import pyqumc.qmc"
-    - $HOME/testcode/bin/testcode.py -vvv
-    - cd $HOME/pyqumc
-    - python -m pytest -v
+    # - cd tests
+    # - export PYTHONPATH=$PYTHONPATH:$HOME/pyqumc
+    # - python -c "import sys; print (sys.path)"
+    # - python -c "import pyqumc; import pyqumc.analysis"
+    # - python -c "import pyqumc.qmc"
+    # - $HOME/testcode/bin/testcode.py -vvv
+    # - cd $HOME/pyqumc
+    # - python -m pytest -v
+    - pytest -v
+    # Temporary hack until pauxy is pip-able
+    - echo $PYTHONPATH
+    - export PYTHONPATH=$HOME/pyqumc:$PYTHONPATH
+    - cd pauxy_test_data
+    - mpiexec --version
+    # Longer parallel tests
+    - python ../testcode/bin/testcode.py -v  -e ../bin/pauxy run --user-option=pauxy launch_parallel 'mpiexec -np tc.nprocs python -u'
+    # Test examples
+    - cd ..
+    - ./tools/run_examples.sh
 
 after_failure:
     - cat */*.err*
