@@ -6,8 +6,8 @@ PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ o
 
 PyQuMC inherits a lot of QMC features from pyqumc.
 
-.. image:: https://travis-ci.com/linusjoonho/pyqumc.svg?branch=master
-    :target: https://travis-ci.com/linusjoonho/pyqumc
+.. image:: https://github.com/linusjoonho/pyqumc/actions/workflows/ci2.yml/badge.svg
+    :target: https://travis-ci.com/linusjoonho/pyqumc/actions/workflows/ci2.yml
 
 .. image:: http://readthedocs.org/projects/pyqumc/badge/?version=latest
     :target: http://pyqumc.readthedocs.io/en/latest/?badge=latest
@@ -71,10 +71,10 @@ running:
     $ pytest -v
 
 in the base of the repo. Some longer parallel tests are also run through the CI. See
-travis.yml for more details.
+`.github/workflows/ci2.yml` for more details.
 
-.. image:: https://travis-ci.com/linusjoonho/pyqumc.svg?branch=master
-    :target: https://travis-ci.com/linusjoonho/pyqumc
+.. image:: https://github.com/linusjoonho/pyqumc/actions/workflows/ci2.yml/badge.svg
+    :target: https://travis-ci.com/linusjoonho/pyqumc/actions/workflows/ci2.yml
 
 Documentation
 -------------
