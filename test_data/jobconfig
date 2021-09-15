@@ -1,0 +1,9 @@
+# tests are already neatly arranged into categories by the directory structure...
+[short/*]
+min_nprocs = 4
+max_nprocs = 4
+nprocs = 4
+# Form job categories.
+[categories]
+
+_default_ = short

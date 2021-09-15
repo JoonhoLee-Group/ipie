@@ -6,7 +6,7 @@ import json
 
 
 def main(input_file):
-    """Simple launcher for pauxy via input file.
+    """Simple launcher for pyqumc via input file.
 
     Parameters
     ----------

@@ -1,0 +1,29 @@
+{
+    "system": {
+        "name": "UEG",
+        "nup": 7,
+        "ndown": 7,
+        "rs": 1.0,
+        "mu": -1.0,
+        "ecut": 1.0
+    },
+    "qmc": {
+        "dt": 0.01,
+        "nwalkers": 32,
+        "blocks": 10,
+        "nsteps": 10,
+        "beta": 0.1,
+        "rng_seed": 7
+    },
+    "trial": {
+        "name": "one_body"
+    },
+    "walkers": {
+        "population_control": "pair_branch"
+    },
+    "estimators": {
+        "mixed": {
+            "one_rdm": true
+        }
+    }
+}

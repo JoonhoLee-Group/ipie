@@ -1,16 +1,16 @@
 try:
-    from pauxy.estimators.ueg_kernels  import  exchange_greens_function_per_qvec
+    from pyqumc.estimators.ueg_kernels  import  exchange_greens_function_per_qvec
 except ImportError:
     pass
 
 try:
-    from pauxy.estimators.ueg_kernels  import  exchange_greens_function_fft
+    from pyqumc.estimators.ueg_kernels  import  exchange_greens_function_fft
 except ImportError:
     pass
 
 import time
-from pauxy.estimators.ueg import coulomb_greens_function
-from pauxy.estimators.utils import convolve
+from pyqumc.estimators.ueg import coulomb_greens_function
+from pyqumc.estimators.utils import convolve
 import numpy
 import itertools
 import scipy.signal
@@ -43,7 +43,7 @@ def local_energy_pw_fft(system, G, Ghalf, trial, two_rdm=None):
     numpy.array(trial[:,nocca:],dtype=numpy.complex128).T.conj()])
 
     # ke = numpy.einsum('sij,sji->', system.H1, G) # Wrong convention (correct Joonho convention)
-    # ke = numpy.einsum('sij,sij->', system.H1, G) # Correct pauxy convention
+    # ke = numpy.einsum('sij,sij->', system.H1, G) # Correct pyqumc convention
     if (system.diagH1):
         ke = numpy.einsum('sii,sii->',system.H1,G)
     else:
@@ -136,7 +136,7 @@ def local_energy_pw_fft_no_cython(system, G, Ghalf, two_rdm=None):
     numpy.array(system.trial[:,system.nup:],dtype=numpy.complex128).T.conj()])
 
     # ke = numpy.einsum('sij,sji->', system.H1, G) # Wrong convention (correct Joonho convention)
-    ke = numpy.einsum('sij,sij->', system.H1, G) # Correct pauxy convention
+    ke = numpy.einsum('sij,sij->', system.H1, G) # Correct pyqumc convention
 
     ne = [system.nup, system.ndown]
     nq = numpy.shape(system.qvecs)[0]
@@ -235,14 +235,14 @@ def local_energy_pw_fft_no_cython(system, G, Ghalf, two_rdm=None):
 
 def unit_test():
     import cProfile
-    from pauxy.systems.pw_fft import PW_FFT
+    from pyqumc.systems.pw_fft import PW_FFT
     import numpy as np
-    from pauxy.estimators.greens_function import gab_mod
+    from pyqumc.estimators.greens_function import gab_mod
 
-    from pauxy.systems.ueg import UEG
-    from pauxy.estimators.ueg import local_energy_ueg
+    from pyqumc.systems.ueg import UEG
+    from pyqumc.estimators.ueg import local_energy_ueg
 
-    from pauxy.utils.testing import get_random_wavefunction
+    from pyqumc.utils.testing import get_random_wavefunction
 
     # ecuts = [128.0]
     # ecuts = [128.0]
