@@ -20,6 +20,7 @@ addons:
 before_install:
     - pip install -r requirements.txt
     - pip install pyscf
+    - pip install h5py==3.2.1
     - git clone git://github.com/jsspencer/testcode
 
 install:
