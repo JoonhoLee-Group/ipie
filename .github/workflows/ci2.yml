@@ -30,4 +30,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        mpiexec -n 2 python -m pytest
+        python -m pytest
+    - name: mpi test
+      run: |
+        mpiexec -n 2 python pyqumc/walkers/tests/test_handler.py
