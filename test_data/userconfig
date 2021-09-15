@@ -1,0 +1,10 @@
+[pauxy]
+inputs_args = ('*.json', '')
+vcs = git
+extract_fn = $HOME/pyqumc/bin/pyqumc pyqumc.analysis.extraction.extract_test_data_hdf5
+output = estimates.0.h5
+
+[user]
+diff = vimdiff
+benchmark = 618262b 0848b3a 5de52c9 055c47d
+tolerance = (1e-8, 1e-6, None, False)
