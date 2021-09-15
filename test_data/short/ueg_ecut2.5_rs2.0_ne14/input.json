@@ -1,0 +1,28 @@
+{
+    "system": {
+        "name": "UEG",
+        "nup": 7,
+        "ndown": 7,
+        "rs": 2.0,
+        "ecut": 2.5
+    },
+    "qmc": {
+        "dt": 0.01,
+        "nwalkers": 32,
+        "blocks": 10,
+        "nsteps": 10,
+        "rng_seed": 7
+    },
+    "trial": {
+        "name": "MultiSlater"
+    },
+    "walkers": {
+        "population_control": "pair_branch"
+    },
+    "estimators": {
+        "back_propagation": {
+            "one_rdm": true,
+            "tau_bp": 0.1
+        }
+    }
+}
