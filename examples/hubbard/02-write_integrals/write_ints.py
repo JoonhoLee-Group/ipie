@@ -1,8 +1,8 @@
 import numpy
-from pauxy.utils.linalg import modified_cholesky
-from pauxy.systems.hubbard import Hubbard
-from pauxy.trial_wavefunction.utils import get_trial_wavefunction
-from pauxy.utils.io import write_qmcpack_dense, write_qmcpack_wfn
+from pyqumc.utils.linalg import modified_cholesky
+from pyqumc.systems.hubbard import Hubbard
+from pyqumc.trial_wavefunction.utils import get_trial_wavefunction
+from pyqumc.utils.io import write_qmcpack_dense, write_qmcpack_wfn
 from afqmctools.utils.qmcpack_utils import write_xml_input
 from mpi4py import MPI
 
