@@ -2,9 +2,9 @@ import numpy
 import h5py
 import scipy.sparse
 from pyscf import gto, scf, mcscf, fci, ao2mo, lib
-from pauxy.systems.generic import Generic
-from pauxy.utils.from_pyscf import generate_integrals
-from pauxy.utils.io import (
+from pyqumc.systems.generic import Generic
+from pyqumc.utils.from_pyscf import generate_integrals
+from pyqumc.utils.io import (
         write_qmcpack_wfn,
         write_qmcpack_dense,
         write_input

@@ -21,7 +21,7 @@ before_install:
     - pip install -r requirements.txt
     - pip install pyscf
     # testcode
-    - git clone https://github.com/pauxy-qmc/pauxy_test_data.git
+    - git clone https://github.com/pauxy-qmc/pauxy_test_data.git pyqumc_test_data
     - git clone git://github.com/jsspencer/testcode
 
 install:
@@ -37,13 +37,13 @@ script:
     # - cd $HOME/pyqumc
     # - python -m pytest -v
     - pytest -v
-    # Temporary hack until pauxy is pip-able
+    # Temporary hack until pyqumc is pip-able
     - echo $PYTHONPATH
     - export PYTHONPATH=$HOME/pyqumc:$PYTHONPATH
-    - cd pauxy_test_data
+    - cd pyqumc_test_data
     - mpiexec --version
     # Longer parallel tests
-    - python ../testcode/bin/testcode.py -v  -e ../bin/pauxy run --user-option=pauxy launch_parallel 'mpiexec -np tc.nprocs python -u'
+    - python ../testcode/bin/testcode.py -v  -e ../bin/pyqumc run --user-option=pyqumc launch_parallel 'mpiexec -np tc.nprocs python -u'
     # Test examples
     - cd ..
     - ./tools/run_examples.sh
