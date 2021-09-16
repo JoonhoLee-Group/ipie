@@ -1,6 +1,6 @@
 import numpy
 import time
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.greens_function import gab, gab_mod
 from pyqumc.utils.io import read_qmcpack_wfn
 

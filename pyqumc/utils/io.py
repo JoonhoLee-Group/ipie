@@ -583,8 +583,9 @@ def write_input(filename, hamil, wfn, bp=False, options={}):
             },
         'qmc': {
             'dt': 0.005,
-            'nwalkers': 100,
-            'blocks': 1000
+            'nwalkers': 640,
+            'nsteps': 25,
+            'blocks': 50000
             },
         'trial': {
             'filename': wfn

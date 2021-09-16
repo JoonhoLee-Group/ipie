@@ -1,7 +1,7 @@
 import copy
 import numpy
 import scipy.linalg
-from pyqumc.estimators.mixed import local_energy_multi_det
+from pyqumc.estimators.local_energy import local_energy_multi_det
 from pyqumc.walkers.walker import Walker
 from pyqumc.utils.misc import get_numeric_names
 

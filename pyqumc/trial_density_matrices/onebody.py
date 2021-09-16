@@ -6,7 +6,7 @@ from pyqumc.estimators.thermal import (
         greens_function, particle_number, one_rdm,
         one_rdm_from_G, one_rdm_stable
         )
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.trial_density_matrices.chem_pot import (
         find_chemical_potential, compute_rho
         )

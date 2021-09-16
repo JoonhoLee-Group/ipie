@@ -2,7 +2,7 @@ import cmath
 import math
 import numpy
 import sys
-from pyqumc.propagation.operations import kinetic_real, kinetic_real_stochastic
+from pyqumc.propagation.operations import kinetic_real
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
 from pyqumc.propagation.generic import GenericContinuous
@@ -10,7 +10,7 @@ from pyqumc.propagation.generic import GenericContinuous
 class Continuous(object):
     """Propagation with continuous HS transformation.
     """
-    def __init__(self, system, trial, qmc, options={}, verbose=False):
+    def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
             print("# Parsing propagator input options.")
             print("# Using continuous Hubbard--Stratonovich transformations.")
@@ -21,12 +21,6 @@ class Continuous(object):
             print("# Using phaseless approximation: %r"%(not self.free_projection))
         self.force_bias = options.get('force_bias', True)
         
-        self.stochastic_ri = options.get('stochastic_ri', False)
-        if (self.stochastic_ri):
-            self.nsamples = options.get('nsamples', 20)
-            if (verbose):
-                print("# Stochastic RI approximation is used with {} samples".format(self.nsamples))
-
         if self.free_projection:
             if verbose:
                 print("# Setting force_bias to False with free projection.")
@@ -40,7 +34,7 @@ class Continuous(object):
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
         # Fix this!
-        self.propagator = get_continuous_propagator(system, trial, qmc,
+        self.propagator = get_continuous_propagator(system, hamiltonian, trial, qmc,
                                                     options=options,
                                                     verbose=verbose)
 
@@ -55,7 +49,9 @@ class Continuous(object):
         # Constant core contribution modified by mean field shift.
         mf_core = self.propagator.mf_core
         self.mf_const_fac = math.exp(-self.dt*mf_core.real)
-        self.propagator.construct_one_body_propagator(system, qmc.dt)
+        
+        # JOONHO - isn't this repeating the work? We will check this later
+        self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
         self.BT_BP = self.propagator.BH1
         self.nstblz = qmc.nstblz
         self.nfb_trig = 0
@@ -110,14 +106,14 @@ class Continuous(object):
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
 
-    def two_body_propagator(self, walker, system, trial):
+    def two_body_propagator(self, walker, system, hamiltonian, trial):
         """It appliese the two-body propagator
         Parameters
         ----------
         walker :
             walker class
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         fb : boolean
             wheter to use force bias
         Returns
@@ -130,14 +126,14 @@ class Continuous(object):
             shifited auxiliary field
         """
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, system.nfields)
+        xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields)
 
         # Optimal force bias.
-        xbar = numpy.zeros(system.nfields)
+        xbar = numpy.zeros(hamiltonian.nfields)
         if self.force_bias:
-            xbar = self.propagator.construct_force_bias(system, walker, trial)
+            xbar = self.propagator.construct_force_bias(hamiltonian, walker, trial)
 
-        for i in range(system.nfields):
+        for i in range(hamiltonian.nfields):
             if numpy.absolute(xbar[i]) > 1.0:
                 if self.nfb_trig < 1:
                     if self.verbose:
@@ -158,7 +154,7 @@ class Continuous(object):
         cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
 
         # Operator terms contributing to propagator.
-        VHS = self.propagator.construct_VHS(system, xshifted)
+        VHS = self.propagator.construct_VHS(hamiltonian, xshifted)
         if len(VHS.shape) == 3:
             # 2.b Apply two-body
             self.apply_exponential(walker.phi[:,:system.nup], VHS[0])
@@ -172,7 +168,7 @@ class Continuous(object):
 
         return (cmf, cfb, xshifted)
 
-    def propagate_walker_free(self, walker, system, trial, eshift):
+    def propagate_walker_free(self, walker, system, hamiltonian, trial, eshift):
         """Free projection propagator
         Parameters
         ----------
@@ -188,7 +184,7 @@ class Continuous(object):
         # 1. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2. Apply 2-body projector
-        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
         # 3. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         ovlp_new = walker.calc_overlap(trial)
@@ -229,7 +225,7 @@ class Continuous(object):
             eloc_bounded = eloc
         return eloc_bounded
 
-    def propagate_walker_phaseless(self, walker, system, trial, eshift):
+    def propagate_walker_phaseless(self, walker, system, hamiltonian, trial, eshift):
         """Phaseless propagator
         Parameters
         ----------
@@ -245,16 +241,10 @@ class Continuous(object):
         ovlp = walker.greens_function(trial)
         # 2. Update Slater matrix
         # 2.a Apply one-body
-        # if (self.stochastic_ri):
-        #     kinetic_real_stochastic(walker.phi, system, self.propagator.BH1, self.nsamples)
-        # else:
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2.b Apply two-body
-        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
         # 2.c Apply one-body
-        # if (self.stochastic_ri):
-        #     kinetic_real_stochastic(walker.phi, system, self.propagator.BH1, self.nsamples)
-        # else:
         kinetic_real(walker.phi, system, self.propagator.BH1)
 
         # Now apply phaseless approximation
@@ -317,7 +307,7 @@ class Continuous(object):
             walker.ot = ot_new
             walker.weight = 0.0
 
-def get_continuous_propagator(system, trial, qmc, options={}, verbose=False):
+def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbose=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -351,7 +341,7 @@ def get_continuous_propagator(system, trial, qmc, options={}, verbose=False):
                                                options=options,
                                                verbose=verbose)
     elif system.name == "Generic":
-        propagator = GenericContinuous(system, trial, qmc,
+        propagator = GenericContinuous(system, hamiltonian, trial, qmc,
                                        options=options,
                                        verbose=verbose)
     else:

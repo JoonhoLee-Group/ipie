@@ -9,7 +9,7 @@ from pyqumc.trial_wavefunction.multi_slater import MultiSlater
 from pyqumc.utils.io import read_qmcpack_wfn_hdf, get_input_value
 from pyqumc.estimators.greens_function import gab_spin
 
-def get_trial_wavefunction(system, options={}, mf=None,
+def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
                            comm=None, scomm=None, verbose=0):
     """Wrapper to select trial wavefunction class.
 
@@ -68,13 +68,13 @@ def get_trial_wavefunction(system, options={}, mf=None,
             wfn = numpy.zeros((1,system.nbasis,system.nup+system.ndown),
                               dtype=numpy.complex128)
             coeffs = numpy.array([1.0+0j])
-            I = numpy.identity(system.nbasis, dtype=numpy.complex128)
+            I = numpy.identity(hamiltonian.nbasis, dtype=numpy.complex128)
             wfn[0,:,:na] = I[:,:na]
             wfn[0,:,na:] = I[:,:nb]
             wfn = (coeffs, wfn)
-        trial = MultiSlater(system, wfn, init=psi0, options=options, verbose=verbose)
+        trial = MultiSlater(system, hamiltonian, wfn, init=psi0, options=options, verbose=verbose)
         if system.name == 'Generic':
-            trial.half_rotate(system, scomm)
+            trial.half_rotate(system, hamiltonian, scomm)
         rediag = options.get('recompute_ci', False)
         if rediag:
             if comm.rank == 0:
@@ -96,7 +96,7 @@ def get_trial_wavefunction(system, options={}, mf=None,
         psi = comm.bcast(psi)
         nmo = psi.shape[0]
         nel = psi.shape[1]
-        trial = MultiSlater(system, (numpy.array([1.0]), psi.reshape(1,nmo,nel)),
+        trial = MultiSlater(system, hamiltonian, (numpy.array([1.0]), psi.reshape(1,nmo,nel)),
                             options=options, verbose=verbose)
     elif wfn_type.lower() == 'uhf':
         if comm.rank == 0:

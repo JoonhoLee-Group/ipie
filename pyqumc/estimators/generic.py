@@ -153,17 +153,23 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-def local_energy_generic_cholesky_opt(system, G, Ghalf, rchol):
+def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    system : :class:`hubbard`
-        System information for the hubbard model.
+    system : :class:`Generic`
+        System information for Generic.
+    ham : :class:`Abinitio`
+        Contains necessary hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function"
+    rchol : :class:`numpy.ndarray`
+        trial's half-rotated choleksy vectors
 
     Returns
     -------
@@ -175,9 +181,9 @@ def local_energy_generic_cholesky_opt(system, G, Ghalf, rchol):
     #pr.enable()
 
     # Element wise multiplication.
-    e1b = numpy.sum(system.H1[0]*G[0]) + numpy.sum(system.H1[1]*G[1])
+    e1b = numpy.sum(ham.H1[0]*G[0]) + numpy.sum(ham.H1[1]*G[1])
     nalpha, nbeta = system.nup, system.ndown
-    nbasis = system.nbasis
+    nbasis = ham.nbasis
     if rchol is not None:
         naux = rchol.shape[1]
 
@@ -218,7 +224,8 @@ def local_energy_generic_cholesky_opt(system, G, Ghalf, rchol):
 
     #pr.disable()
     #pr.print_stats(sort='tottime')
-    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
+    # print(e1b, e2b, ham.ecore)
+    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
 # def local_energy_generic_cholesky_opt_stochastic(system, G, nsamples, Ghalf=None, rchol=None):
 #     r"""Calculate local for generic two-body hamiltonian.
@@ -290,7 +297,7 @@ def local_energy_generic_cholesky_opt(system, G, Ghalf, rchol):
 #     e2b = 0.5 * (ecoul - exx)
 
 #     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
-def local_energy_generic_cholesky_opt_stochastic(system, G, nsamples, Ghalf=None, rchol=None, C0=None,\
+def local_energy_generic_cholesky_opt_stochastic(system, G, nsamples, Ghalf, rchol=None, C0=None,\
 ecoul0 = None, exxa0 = None, exxb0 = None):
     r"""Calculate local for generic two-body hamiltonian.
     This uses the cholesky decomposed two-electron integrals.
@@ -395,15 +402,15 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-def local_energy_generic_cholesky(system, G, Ghalf=None):
+def local_energy_generic_cholesky(ham, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    system : :class:`hubbard`
-        System information for the hubbard model.
+    ham : :class:`hubbard`
+        ham information for the hubbard model.
     G : :class:`numpy.ndarray`
         Walker's "green's function"
 
@@ -413,25 +420,25 @@ def local_energy_generic_cholesky(system, G, Ghalf=None):
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(system.H1[0]*G[0]) + numpy.sum(system.H1[1]*G[1])
-    nalpha, nbeta = system.nup, system.ndown
-    nbasis = system.nbasis
+    e1b = numpy.sum(ham.H1[0]*G[0]) + numpy.sum(ham.H1[1]*G[1])
+    nalpha, nbeta = ham.nup, ham.ndown
+    nbasis = ham.nbasis
     Ga, Gb = G[0], G[1]
-    Xa = numpy.dot(system.chol_vecs.T, Ga.ravel())
-    Xb = numpy.dot(system.chol_vecs.T, Gb.ravel())
+    Xa = numpy.dot(ham.chol_vecs.T, Ga.ravel())
+    Xb = numpy.dot(ham.chol_vecs.T, Gb.ravel())
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
     ecoul += 2*numpy.dot(Xa,Xb)
     # T[l,k,n] = \sum_i L[i,k,n] G[i,l]
     # exx  = \sum_{nlk} T[l,k,n] T[k,l,n]
-    cv = system.chol_vecs.reshape((nbasis,nbasis,-1))
+    cv = ham.chol_vecs.reshape((nbasis,nbasis,-1))
     Ta = numpy.tensordot(Ga, cv, axes=((0),(0)))
     exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(1,0,2)))
     Tb = numpy.tensordot(Gb, cv, axes=((0),(0)))
     exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(1,0,2)))
     exx = exxa + exxb
     e2b = 0.5 * (ecoul - exx)
-    return (e1b+e2b+system.ecore, e1b+system.ecore, e2b)
+    return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
 
 def core_contribution(system, Gcore):
     hc_a = (numpy.einsum('pqrs,pq->rs', system.h2e, Gcore[0]) -

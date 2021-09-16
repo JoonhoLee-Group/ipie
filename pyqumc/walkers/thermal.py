@@ -3,7 +3,7 @@ import cmath
 import numpy
 import scipy.linalg
 from pyqumc.estimators.thermal import greens_function, one_rdm_from_G, particle_number
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.walkers.stack import PropagatorStack
 from pyqumc.walkers.walker import Walker
 from pyqumc.utils.linalg import regularise_matrix_inverse

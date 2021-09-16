@@ -1,7 +1,7 @@
 import copy
 import numpy
 import time
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.greens_function import gab
 from pyqumc.utils.linalg import diagonalise_sorted
 from pyqumc.systems.hubbard import decode_basis

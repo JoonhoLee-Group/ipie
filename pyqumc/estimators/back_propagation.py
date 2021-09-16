@@ -10,7 +10,7 @@ except ImportError:
 import sys
 from pyqumc.estimators.utils import H5EstimatorHelper
 from pyqumc.estimators.greens_function import gab
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.ekt import ekt_1p_fock_opt, ekt_1h_fock_opt
 from pyqumc.propagation.generic import back_propagate_generic
 from pyqumc.propagation.planewave import back_propagate_planewave

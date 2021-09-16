@@ -5,7 +5,7 @@ import pytest
 from pyqumc.systems.generic import Generic
 from pyqumc.trial_wavefunction.multi_slater import MultiSlater
 from pyqumc.estimators.ci import simple_fci
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.utils.misc import dotdict
 from pyqumc.utils.linalg import reortho
 from pyqumc.utils.testing import (

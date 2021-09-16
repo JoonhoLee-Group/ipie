@@ -3,7 +3,7 @@ import numpy
 import scipy.linalg
 import random
 from pyqumc.utils.linalg import sherman_morrison
-from pyqumc.estimators.mixed import local_energy_multi_det_hh
+from pyqumc.estimators.local_energy import local_energy_multi_det_hh
 from pyqumc.utils.misc import get_numeric_names
 from pyqumc.walkers.stack import PropagatorStack, FieldConfig
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator, HarmonicOscillatorMomentum

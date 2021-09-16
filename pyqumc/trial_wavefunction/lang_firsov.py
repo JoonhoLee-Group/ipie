@@ -19,7 +19,7 @@ from scipy.optimize import minimize
 import time
 from pyqumc.utils.io import read_fortran_complex_numbers
 from pyqumc.utils.linalg import diagonalise_sorted
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 
 try:
     from jax.config import config

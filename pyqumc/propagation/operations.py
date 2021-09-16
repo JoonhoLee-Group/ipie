@@ -51,44 +51,6 @@ def kinetic_real(phi, system, bt2, H1diag=False):
         phi[:,:nup] = bt2[0].dot(phi[:,:nup])
         phi[:,nup:] = bt2[1].dot(phi[:,nup:])
 
-def kinetic_real_stochastic(phi, system, bt2, nsamples, H1diag=False):
-    r"""Propagate by the kinetic term by direct matrix multiplication.
-
-    For use with the continuus algorithm and free propagation.
-
-    todo : this is the same a propagating by an arbitrary matrix, remove.
-
-    Parameters
-    ----------
-    walker : :class:`pyqumc.walker.Walker`
-        Walker object to be updated. on output we have acted on
-        :math:`|\phi_i\rangle` by :math:`B_{T/2}` and updated the weight
-        appropriately.  updates inplace.
-    state : :class:`pyqumc.state.State`
-        Simulation state.
-    """
-    nup = system.nup
-    if (H1diag): # if diagonal then it's done exactly
-        phi[:,:nup] = numpy.einsum("ii,ij->ij", bt2[0],phi[:,:nup])
-        phi[:,nup:] = numpy.einsum("ii,ij->ij", bt2[1],phi[:,nup:])
-    else:
-        nbasis = phi.shape[0]
-
-        theta = numpy.zeros((nbasis,nsamples), dtype=numpy.int64)
-        for i in range(nsamples):
-            theta[:,i] = (2*numpy.random.randint(0,2,size=(nbasis))-1)
-
-        # iden = theta.dot(theta.T) * (1./nsamples)
-        tmp = bt2[0].dot(theta)
-        tmp2 = theta.T.dot(phi[:,:nup])
-        phi[:,:nup] = tmp.dot(tmp2) * (1./nsamples)
-
-        tmp = bt2[1].dot(theta)
-        tmp2 = theta.T.dot(phi[:,nup:])
-        phi[:,nup:] = tmp.dot(tmp2) * (1./nsamples)
-
-
-
 def local_energy_bound(local_energy, mean, threshold):
     """Try to suppress rare population events by imposing local energy bound.
 

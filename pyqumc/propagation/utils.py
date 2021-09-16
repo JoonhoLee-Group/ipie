@@ -5,12 +5,12 @@ from pyqumc.propagation.hubbard import Hirsch
 from pyqumc.propagation.hubbard_holstein import HirschDMC
 
 # TODO: Fix for discrete transformation.
-def get_propagator_driver(system, trial, qmc, options={}, verbose=False):
+def get_propagator_driver(system, hamiltonian, trial, qmc, options={}, verbose=False):
     hs = options.get('hubbard_stratonovich', 'continuous')
     if 'discrete' in hs:
         return get_discrete_propagator(options, qmc, system, trial, verbose)
     else:
-        return Continuous(system, trial, qmc, options=options, verbose=verbose)
+        return Continuous(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
 
 def get_discrete_propagator(options, qmc, system, trial, verbose=False):
     """Wrapper to select propagator class.

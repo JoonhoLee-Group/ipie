@@ -3,7 +3,7 @@ import scipy.linalg
 from pyqumc.estimators.thermal import (
         one_rdm_stable, particle_number, entropy, greens_function
         )
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.fock import fock_matrix
 from pyqumc.trial_density_matrices.onebody import OneBody
 from pyqumc.trial_density_matrices.chem_pot import (

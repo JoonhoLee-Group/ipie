@@ -1,7 +1,7 @@
 import numpy
 import time
 import scipy.linalg
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.greens_function import gab, gab_multi_det_full, gab_mod
 from pyqumc.utils.linalg import diagonalise_sorted
 from pyqumc.utils.io import read_fortran_complex_numbers
