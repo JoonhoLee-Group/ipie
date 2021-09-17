@@ -4,8 +4,6 @@ from pyqumc.hamiltonians.ueg import UEG as HamUEG
 from pyqumc.systems.hubbard_holstein import HubbardHolstein
 from pyqumc.estimators.ci import simple_fci, simple_fci_bose_fermi
 
-from pauxy.systems.ueg import UEG as PauxyUEG
-
 @pytest.mark.unit
 def test_ueg():
     sys = UEG({'rs': 2, 'nup': 2, 'ndown': 2, 'ecut': 0.5})
