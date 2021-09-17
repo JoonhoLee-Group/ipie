@@ -84,7 +84,7 @@ class Walkers(object):
             self.walker_buffer = numpy.zeros(self.buff_size,
                                              dtype=numpy.complex128)
             stack_size = self.walkers[0].stack_size
-            if system.name == "Hubbard":
+            if hamiltonian.name == "Hubbard":
                 if stack_size % qmc.nstblz != 0 or qmc.nstblz < stack_size:
                     if verbose:
                         print("# Stabilisation frequency is not commensurate "
@@ -126,7 +126,7 @@ class Walkers(object):
                 self.buff_size += self.walkers[0].field_configs.buff_size
             self.walker_buffer = numpy.zeros(self.buff_size,
                                              dtype=numpy.complex128)
-        if system.name == "Generic" or system.name == "UEG":
+        if hamiltonian.name == "Generic" or system.name == "UEG":
             dtype = complex
         else:
             dtype = int
