@@ -27,7 +27,7 @@ class GenericContinuous(object):
         If true print out more information during setup.
     """
 
-    def __init__(self, system, trial, qmc, options={}, verbose=False):
+    def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
             print ("# Parsing continuous propagator input options.")
 
@@ -61,20 +61,20 @@ class GenericContinuous(object):
 
         P = one_rdm_from_G(trial.G)
         # Mean field shifts (2,nchol_vec).
-        self.mf_shift = self.construct_mean_field_shift(system, P)
+        self.mf_shift = self.construct_mean_field_shift(hamiltonian, P)
         if verbose:
             print("# Absolute value of maximum component of mean field shift: "
                   "{:13.8e}.".format(numpy.max(numpy.abs(self.mf_shift))))
 
 
         # Mean field shifted one-body propagator
-        self.mu = system.mu
+        self.mu = hamiltonian.mu
 
         self.BT = trial.dmat
         self.BTinv = trial.dmat_inv
 
         # Constant core contribution modified by mean field shift.
-        self.mf_core = system.ecore + 0.5*numpy.dot(self.mf_shift, self.mf_shift)
+        self.mf_core = hamiltonian.ecore + 0.5*numpy.dot(self.mf_shift, self.mf_shift)
         self.nstblz = qmc.nstblz
 
         self.ebound = (2.0/self.dt)**0.5
@@ -85,10 +85,10 @@ class GenericContinuous(object):
 
     def construct_mean_field_shift(self, system, P):
         if system.sparse:
-            mf_shift = 1j*P[0].ravel()*system.hs_pot
-            mf_shift += 1j*P[1].ravel()*system.hs_pot
+            mf_shift = 1j*P[0].ravel()*system.chol_vecs
+            mf_shift += 1j*P[1].ravel()*system.chol_vecs
         else:
-            mf_shift = 1j*numpy.einsum('lpq,spq->l', system.hs_pot, P)
+            mf_shift = 1j*numpy.einsum('lpq,spq->l', system.chol_vecs, P)
         return mf_shift
 
     def construct_one_body_propagator(self, system, dt):

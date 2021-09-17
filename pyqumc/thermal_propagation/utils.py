@@ -24,16 +24,16 @@ def get_propagator(options, qmc, system, hamiltonian, trial, verbose=False, lowr
     propagator : class or None
         Propagator object.
     """
-    if system.name == "Hubbard":
+    if hamiltonian.name == "Hubbard":
         hs_type = options.get('hubbard_stratonovich', 'discrete')
         if hs_type == "discrete":
-            propagator = ThermalDiscrete(system, hamiltonian, trial, qmc, options=options,
+            propagator = ThermalDiscrete(hamiltonian, trial, qmc, options=options,
                                          verbose=verbose, lowrank=lowrank)
         else:
             propagator = Continuous(options, qmc, system, hamiltonian, trial,
                                     verbose=verbose, lowrank=lowrank)
     else:
-        if system.name == "UEG":
+        if hamiltonian.name == "UEG":
             propagator = PlaneWave(system, hamiltonian, trial, qmc,
                                    options=options,
                                    verbose=verbose,

@@ -97,7 +97,7 @@ def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
         nel = psi.shape[1]
         trial = MultiSlater(system, hamiltonian, (numpy.array([1.0]), psi.reshape(1,nmo,nel)),
                             options=options, verbose=verbose)
-    elif wfn_type.lower() == 'hubbard_uhf':
+    elif wfn_type.lower() in ['hubbard_uhf', 'uhf']:
         if comm.rank == 0:
             wfn = HubbardUHF(system, hamiltonian, options, verbose)
             psi = wfn.psi

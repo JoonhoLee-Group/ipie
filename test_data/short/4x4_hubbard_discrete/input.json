@@ -1,9 +1,7 @@
 {
     "system": {
         "nup": 7,
-        "ndown": 7
-    },
-    "hamiltonian": {
+        "ndown": 7,
         "name": "Hubbard",
         "nx": 4,
         "ny": 4,

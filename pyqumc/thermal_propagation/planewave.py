@@ -443,7 +443,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless_full_rank(self, system, walker, trial, eshift=0):
+    def propagate_walker_phaseless_full_rank(self, hamiltonian, walker, trial, eshift=0):
         # """Phaseless propagator
         # Parameters
         # ----------

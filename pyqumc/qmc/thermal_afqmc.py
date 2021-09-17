@@ -129,6 +129,11 @@ class ThermalAFQMC(object):
             ham_opts = get_input_value(options, 'hamiltonian',
                                        default={},
                                        verbose=self.verbosity>1)
+            # backward compatibility with previous code (to be removed)
+            for item in sys_opts.items():
+                if item[0].lower() == 'name' and 'name' in ham_opts.keys():
+                    continue
+                ham_opts[item[0]] = item[1]
             self.hamiltonian = get_hamiltonian (self.system, ham_opts, verbose = verbose, comm=self.shared_comm)
 
         self.qmc = QMCOpts(qmc_opts, self.system, verbose)
