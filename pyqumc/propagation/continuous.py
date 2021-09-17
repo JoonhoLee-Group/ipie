@@ -49,10 +49,12 @@ class Continuous(object):
             self.update_weight = self.update_weight_local_energy
         # Constant core contribution modified by mean field shift.
         mf_core = self.propagator.mf_core
-        self.mf_const_fac = math.exp(-self.dt*mf_core.real)
+        
+        self.log_mf_const_fac = -self.dt*mf_core.real
         
         # JOONHO - isn't this repeating the work? We will check this later
         self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
+
         self.BT_BP = self.propagator.BH1
         self.nstblz = qmc.nstblz
         self.nfb_trig = 0
@@ -75,6 +77,18 @@ class Continuous(object):
                 print("# Using phaseless approximation.")
             self.propagate_walker = self.propagate_walker_phaseless
         self.verbose = verbose
+
+    @property
+    def mf_const_fac(self):
+        return math.exp(self.log_mf_const_fac)
+
+    @mf_const_fac.setter
+    def mf_const_fac(self, value):
+        self.mf_const_fac = value
+
+    @mf_const_fac.deleter
+    def mf_const_fac(self):
+        del self.mf_const_fac
 
     def apply_exponential(self, phi, VHS, debug=False):
         """Apply exponential propagator of the HS transformation
