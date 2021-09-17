@@ -576,9 +576,11 @@ def write_input(filename, hamil, wfn, bp=False, options={}):
     nb = int(dims[2])
     basic = {
         'system': {
-            'name': 'Generic',
             'nup': na,
             'ndown': nb,
+            },
+        'hamiltonian': {
+            'name': 'Generic',
             'integrals': hamil
             },
         'qmc': {

@@ -30,7 +30,7 @@ class Continuous(object):
         If true print out more information during setup.
     """
 
-    def __init__(self, options, qmc, system, trial, verbose=False, lowrank=False):
+    def __init__(self, options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False):
         if verbose:
             print("# Parsing continuous propagator input options.")
             print("# Using continuous Hubbar--Stratonovich transformations.")
@@ -47,12 +47,12 @@ class Continuous(object):
         self.nfb_trig = 0
         self.lowrank = lowrank
 
-        self.propagator = get_continuous_propagator(system, trial, qmc,
+        self.propagator = get_continuous_propagator(system, hamiltonian, trial, qmc,
                                                     options=options,
                                                     verbose=verbose)
         # Mean field shifted one-body propagator
         self.mu = system.mu
-        self.propagator.construct_one_body_propagator(system, qmc.dt)
+        self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
 
         self.BH1 = self.propagator.BH1
         self.BT = trial.dmat
@@ -256,7 +256,7 @@ class Continuous(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-def get_continuous_propagator(system, trial, qmc, options={}, verbose=False):
+def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbose=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -276,15 +276,15 @@ def get_continuous_propagator(system, trial, qmc, options={}, verbose=False):
         Propagator object.
     """
     if system.name == "UEG":
-        propagator = PlaneWave(system, trial, qmc,
+        propagator = PlaneWave(system, hamiltonian, trial, qmc,
                                options=options,
                                verbose=verbose)
     elif system.name == "Hubbard":
-        propagator = HubbardContinuous(system, trial, qmc,
+        propagator = HubbardContinuous(system, hamiltonian, trial, qmc,
                                        options=options,
                                        verbose=verbose)
     elif system.name == "Generic":
-        propagator = GenericContinuous(system, trial, qmc,
+        propagator = GenericContinuous(system, hamiltonian, trial, qmc,
                                        options=options,
                                        verbose=verbose)
     else:

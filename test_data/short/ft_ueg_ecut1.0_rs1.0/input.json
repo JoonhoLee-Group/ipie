@@ -7,10 +7,6 @@
         "mu": -1.0,
         "ecut": 1.0
     },
-    "hamiltonian": {
-        "name": "UEG",
-        "mu": -1.0,
-    },
     "qmc": {
         "dt": 0.01,
         "nwalkers": 32,

@@ -78,8 +78,6 @@ class Hirsch(object):
             self.aux_wfac = numpy.array([1.0, 1.0])
         self.auxf = self.auxf * numpy.exp(-0.5*qmc.dt*hamiltonian.U)
         self.delta = self.auxf - 1
-        print("delta = {}".format(self.delta))
-        print("hamiltonian.U = {}".format(hamiltonian.U))
         self.hybrid = False
         if self.free_projection:
             self.propagate_walker = self.propagate_walker_free

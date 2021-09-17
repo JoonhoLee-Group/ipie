@@ -99,6 +99,7 @@ class QMCOpts(object):
                                       default=10,
                                       alias=['nstabilise', 'reortho'],
                                       verbose=verbose)
+        print("WHY IS self.nstblz = 10 ????? {}".format(self.nstblz))
         self.npop_control = get_input_value(inputs, 'pop_control_freq',
                                             default=1,
                                             alias=['npop_control',
