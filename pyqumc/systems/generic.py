@@ -153,9 +153,6 @@ class Generic(object):
         self.vol = 1.0
         self.hs_pot = self.chol_vecs
 
-
-        u, s, vt = numpy.linalg.svd(self.hs_pot)
-
         self.nfields = self.nchol
         if verbose:
             print("# Number of Cholesky vectors: %d"%(self.nchol))
