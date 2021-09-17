@@ -1,6 +1,6 @@
 import numpy
 import scipy.linalg
-from pyqumc.estimators.mixed import local_energy, local_energy_hh
+# from pyqumc.estimators.mixed import local_energy, local_energy_hh
 from pyqumc.trial_wavefunction.free_electron import FreeElectron
 from pyqumc.utils.linalg import sherman_morrison
 from pyqumc.walkers.stack import FieldConfig
@@ -28,10 +28,11 @@ class SingleDetWalker(Walker):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, trial, walker_opts={}, index=0, nprop_tot=None, nbp=None):
-        Walker.__init__(self, system, trial,
+    def __init__(self, system, hamiltonian, trial, walker_opts={}, index=0, nprop_tot=None, nbp=None):
+        Walker.__init__(self, system, hamiltonian, trial,
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp)
+        self.name = "SingleDetWalker"
         self.inv_ovlp = [0.0, 0.0]
 
         self.phi_boson = None
@@ -66,30 +67,29 @@ class SingleDetWalker(Walker):
         self.le_oratio = 1.0
         self.ovlp = self.ot
 
-        self.G = numpy.zeros(shape=(2, system.nbasis, system.nbasis),
+        self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=trial.psi.dtype)
-        self.C0 = trial.psi.copy()
 
-        self.Gmod = [numpy.zeros(shape=(system.nup, system.nbasis),
+        self.Ghalf = [numpy.zeros(shape=(system.nup, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype),
-                     numpy.zeros(shape=(system.ndown, system.nbasis),
+                     numpy.zeros(shape=(system.ndown, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)]
         self.greens_function(trial)
         
-        if system.control_variate:
-            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, rchol=trial._rchol)
-        else:
-            self.ecoul0 = None
-            self.exxa0 = None
-            self.exxb0 = None
-
-        self.E_L, self.e1b0, self.e2b0 = local_energy(system, self.G, Ghalf=self.Gmod,
-                                                      rchol=trial._rchol, eri=trial._eri,
-                                                      C0 = self.C0, ecoul0 = self.ecoul0, 
-                                                      exxa0 = self.exxa0, exxb0 = self.exxb0, 
-                                                      UVT = trial._UVT
-                                                      )
-        self.E_L = self.E_L.real
+        # self.C0 = trial.psi.copy()
+        # if system.control_variate:
+        #     self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, rchol=trial._rchol)
+        # else:
+        #     self.ecoul0 = None
+        #     self.exxa0 = None
+        #     self.exxb0 = None
+        # self.E_L, self.e1b0, self.e2b0 = local_energy(system, self.G, Ghalf=self.Ghalf,
+        #                                               rchol=trial._rchol, eri=trial._eri,
+        #                                               C0 = self.C0, ecoul0 = self.ecoul0, 
+        #                                               exxa0 = self.exxa0, exxb0 = self.exxb0, 
+        #                                               UVT = trial._UVT
+        #                                               )
+        # self.E_L = self.E_L.real
 
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
@@ -308,15 +308,15 @@ class SingleDetWalker(Walker):
         ndown = self.ndown
 
         ovlp = numpy.dot(self.phi[:,:nup].T, trial.psi[:,:nup].conj())
-        self.Gmod[0] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[:,:nup].T)
-        self.G[0] = numpy.dot(trial.psi[:,:nup].conj(), self.Gmod[0])
+        self.Ghalf[0] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[:,:nup].T)
+        self.G[0] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalf[0])
         sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0:
             ovlp = numpy.dot(self.phi[:,nup:].T, trial.psi[:,nup:].conj())
             sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
-            self.Gmod[1] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[:,nup:].T)
-            self.G[1] = numpy.dot(trial.psi[:,nup:].conj(), self.Gmod[1])
+            self.Ghalf[1] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[:,nup:].T)
+            self.G[1] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalf[1])
         det = sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift)
         return det
 
@@ -332,36 +332,36 @@ class SingleDetWalker(Walker):
         """
         nup = self.nup
         ndown = self.ndown
-        self.Gmod[0] = self.phi[:,:nup].dot(self.inv_ovlp[0])
-        self.Gmod[1] = numpy.zeros(self.Gmod[0].shape)
+        self.Ghalf[0] = self.phi[:,:nup].dot(self.inv_ovlp[0])
+        self.Ghalf[1] = numpy.zeros(self.Ghalf[0].shape)
         if (ndown>0):
-            self.Gmod[1] = self.phi[:,nup:].dot(self.inv_ovlp[1])
+            self.Ghalf[1] = self.phi[:,nup:].dot(self.inv_ovlp[1])
 
-    def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
-        """Compute walkers local energy
+    # def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
+    #     """Compute walkers local energy
 
-        Parameters
-        ----------
-        system : object
-            System object.
+    #     Parameters
+    #     ----------
+    #     system : object
+    #         System object.
 
-        Returns
-        -------
-        (E, T, V) : tuple
-            Mixed estimates for walker's energy components.
-        """
-        if system.name == "HubbardHolstein":
-            return local_energy_hh(system, self.G, self.X, self.Lap, Ghalf=self.Gmod)
-        if system.control_variate:
-            return local_energy(system, self.G, Ghalf=self.Gmod,
-                                two_rdm=two_rdm,
-                                C0=self.C0,
-                                ecoul0=self.ecoul0,
-                                exxa0=self.exxa0,
-                                exxb0=self.exxb0, eri=eri, UVT=UVT)
-        else:
-            return local_energy(system, self.G, Ghalf=self.Gmod,
-                                two_rdm=two_rdm, rchol=rchol, eri=eri, UVT=UVT)
+    #     Returns
+    #     -------
+    #     (E, T, V) : tuple
+    #         Mixed estimates for walker's energy components.
+    #     """
+    #     if system.name == "HubbardHolstein":
+    #         return local_energy_hh(system, self.G, self.X, self.Lap, Ghalf=self.Ghalf)
+    #     if system.control_variate:
+    #         return local_energy(system, self.G, Ghalf=self.Ghalf,
+    #                             two_rdm=two_rdm,
+    #                             C0=self.C0,
+    #                             ecoul0=self.ecoul0,
+    #                             exxa0=self.exxa0,
+    #                             exxb0=self.exxb0, eri=eri, UVT=UVT)
+    #     else:
+    #         return local_energy(system, self.G, Ghalf=self.Ghalf,
+    #                             two_rdm=two_rdm, rchol=rchol, eri=eri, UVT=UVT)
 
     def local_energy_2body(self, system, rchol):
         """Compute walkers two-body local energy
@@ -382,7 +382,7 @@ class SingleDetWalker(Walker):
         if rchol is not None:
             naux = rchol.shape[1]
 
-        Ga, Gb = self.Gmod[0], self.Gmod[1]
+        Ga, Gb = self.Ghalf[0], self.Ghalf[1]
         Xa = rchol[:nalpha*nbasis].T.dot(Ga.ravel())
         Xb = rchol[nalpha*nbasis:].T.dot(Gb.ravel())
         ecoul = numpy.dot(Xa,Xa)

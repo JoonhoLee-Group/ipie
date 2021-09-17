@@ -5,7 +5,7 @@ from pyqumc.thermal_propagation.planewave import PlaneWave
 from pyqumc.thermal_propagation.hubbard import ThermalDiscrete
 
 
-def get_propagator(options, qmc, system, trial, verbose=False, lowrank=False):
+def get_propagator(options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -27,19 +27,19 @@ def get_propagator(options, qmc, system, trial, verbose=False, lowrank=False):
     if system.name == "Hubbard":
         hs_type = options.get('hubbard_stratonovich', 'discrete')
         if hs_type == "discrete":
-            propagator = ThermalDiscrete(system, trial, qmc, options=options,
+            propagator = ThermalDiscrete(system, hamiltonian, trial, qmc, options=options,
                                          verbose=verbose, lowrank=lowrank)
         else:
-            propagator = Continuous(options, qmc, system, trial,
+            propagator = Continuous(options, qmc, system, hamiltonian, trial,
                                     verbose=verbose, lowrank=lowrank)
     else:
         if system.name == "UEG":
-            propagator = PlaneWave(system, trial, qmc,
+            propagator = PlaneWave(system, hamiltonian, trial, qmc,
                                    options=options,
                                    verbose=verbose,
                                    lowrank=lowrank)
         else:
-            propagator = Continuous(options, qmc, system, trial,
+            propagator = Continuous(options, qmc, system, hamiltonian, trial,
                                     verbose=verbose,
                                     lowrank=lowrank)
 

@@ -1,8 +1,10 @@
 {
     "system": {
-        "name": "Generic",
         "nup": 5,
         "ndown": 5,
+    },
+    "hamiltonian": {
+        "name": "Generic",
         "integrals": "afqmc.h5"
     },
     "qmc": {

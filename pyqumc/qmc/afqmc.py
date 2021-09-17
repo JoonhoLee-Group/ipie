@@ -9,10 +9,12 @@ from math import exp
 import copy
 import h5py
 from pyqumc.estimators.handler import Estimators
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.propagation.utils import get_propagator_driver
 from pyqumc.qmc.options import QMCOpts
 from pyqumc.qmc.utils import set_rng_seed
 from pyqumc.systems.utils import get_system
+from pyqumc.hamiltonians.utils import get_hamiltonian
 from pyqumc.trial_wavefunction.utils import get_trial_wavefunction
 from pyqumc.utils.misc import (
         get_git_revision_hash,
@@ -79,7 +81,7 @@ class AFQMC(object):
         Walker handler. Stores the AFQMC wavefunction.
     """
 
-    def __init__(self, comm, options=None, system=None, trial=None,
+    def __init__(self, comm, options=None, system=None, hamiltonian=None, trial=None,
                  parallel=False, verbose=False):
         if verbose is not None:
             self.verbosity = verbose
@@ -112,12 +114,19 @@ class AFQMC(object):
         if system is not None:
             self.system = system
         else:
-            sys_opts = get_input_value(options, 'model',
+            sys_opts = get_input_value(options, 'system',
                                        default={},
-                                       alias=['system'],
+                                       alias=['model'],
                                        verbose=self.verbosity>1)
             self.system = get_system(sys_opts, verbose=verbose,
                                      comm=self.shared_comm)
+        if hamiltonian is not None:
+            self.hamiltonian = hamiltonian
+        else:
+            ham_opts = get_input_value(options, 'hamiltonian',
+                                       default={},
+                                       verbose=self.verbosity>1)
+            self.hamiltonian = get_hamiltonian (self.system, ham_opts, verbose = verbose, comm=self.shared_comm)
 
         qmc_opt = get_input_value(options, 'qmc', default={},
                                   alias=['qmc_options'],
@@ -125,8 +134,10 @@ class AFQMC(object):
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        
         self.cplx = self.determine_dtype(options.get('propagator', {}),
                                          self.system)
+
         twf_opt = get_input_value(options, 'trial', default={},
                                   alias=['trial_wavefunction'],
                                   verbose=self.verbosity>1)
@@ -134,7 +145,7 @@ class AFQMC(object):
             self.trial = trial
         else:
             self.trial = (
-                get_trial_wavefunction(self.system, options=twf_opt,
+                get_trial_wavefunction(self.system, self.hamiltonian, options=twf_opt,
                                        comm=comm,
                                        scomm=self.shared_comm,
                                        verbose=verbose)
@@ -143,10 +154,10 @@ class AFQMC(object):
                 # self.trial.half_rotate(self.system, self.shared_comm)
         mem = get_node_mem()
         if comm.rank == 0:
-            self.trial.calculate_energy(self.system)
+            self.trial.calculate_energy(self.system, self.hamiltonian)
         comm.barrier()
         prop_opt = options.get('propagator', {})
-        self.propagators = get_propagator_driver(self.system, self.trial,
+        self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
                                                  self.qmc, options=prop_opt,
                                                  verbose=verbose)
         self.tsetup = time.time() - self._init_time
@@ -158,7 +169,7 @@ class AFQMC(object):
                                    verbose=self.verbosity>1)
         est_opts['stack_size'] = wlk_opts.get('stack_size', 1)
         self.estimators = (
-            Estimators(est_opts, self.root, self.qmc, self.system,
+            Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
         # Reset number of walkers so they are evenly distributed across
@@ -174,7 +185,7 @@ class AFQMC(object):
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
-        self.psi = Walkers(self.system, self.trial,
+        self.psi = Walkers(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
                            nprop_tot=self.estimators.nprop_tot,
@@ -182,7 +193,7 @@ class AFQMC(object):
                            comm=comm)
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            factor = float(self.system.ne) / self.system.nbasis
+            factor = float(self.system.ne) / self.hamiltonian.nbasis
             mem = factor*self.trial._mem_required*self.shared_comm.size
             print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
             if mem > 0.5*mem_avail:
@@ -211,9 +222,10 @@ class AFQMC(object):
         self.setup_timers()
         w0 = self.psi.walkers[0]
         eshift = 0
-        (etot, e1b, e2b) = w0.local_energy(self.system, rchol=self.trial._rchol, eri=self.trial._eri, UVT=self.trial._UVT)
+        (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
+        # (etot, e1b, e2b) = w0.local_energy(self.system, rchol=self.trial._rchol, eri=self.trial._eri, UVT=self.trial._UVT)
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators['mixed'].update(self.system, self.qmc,
+        self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
                                                    self.trial, self.psi, 0,
                                                    self.propagators.free_projection)
         # Print out zeroth step for convenience.
@@ -230,7 +242,7 @@ class AFQMC(object):
             start = time.time()
             for w in self.psi.walkers:
                 if abs(w.weight) > 1e-8:
-                    self.propagators.propagate_walker(w, self.system,
+                    self.propagators.propagate_walker(w, self.system, self.hamiltonian,
                                                       self.trial, eshift)
                 if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
                     w.weight = w.total_weight * 0.10
@@ -241,7 +253,7 @@ class AFQMC(object):
                 self.tpopc += time.time() - start
             # calculate estimators
             start = time.time()
-            self.estimators.update(self.system, self.qmc,
+            self.estimators.update(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.psi, step,
                                    self.propagators.free_projection)
             self.testim += time.time() - start
@@ -287,7 +299,7 @@ class AFQMC(object):
         propagator : dict
             Propagator input options.
         system : object
-            System object.
+            system object.
         """
         hs_type = propagator.get('hubbard_stratonovich', 'discrete')
         continuous = 'continuous' in hs_type

@@ -7,7 +7,7 @@ from pyqumc.estimators.thermal import one_rdm_from_G
 
 class ThermalDiscrete(object):
 
-    def __init__(self, system, trial, qmc, options={}, verbose=False, lowrank=False):
+    def __init__(self, ham, trial, qmc, options={}, verbose=False, lowrank=False):
 
         if verbose:
             print("# Parsing discrete propagator input options.")
@@ -23,35 +23,35 @@ class ThermalDiscrete(object):
                 print("# Using spin decomposition.")
         # [field,spin]
         if self.charge_decomp:
-            self.gamma = numpy.arccosh(numpy.exp(-0.5*qmc.dt*system.U+0j))
+            self.gamma = numpy.arccosh(numpy.exp(-0.5*qmc.dt*ham.U+0j))
             self.auxf = numpy.array([[numpy.exp(self.gamma), numpy.exp(self.gamma)],
                                     [numpy.exp(-self.gamma), numpy.exp(-self.gamma)]])
             # e^{-gamma x}
-            self.aux_wfac = numpy.exp(0.5*qmc.dt*system.U) * numpy.array([numpy.exp(-self.gamma),
+            self.aux_wfac = numpy.exp(0.5*qmc.dt*ham.U) * numpy.array([numpy.exp(-self.gamma),
                                                                          numpy.exp(self.gamma)])
         else:
-            self.gamma = numpy.arccosh(numpy.exp(0.5*qmc.dt*system.U))
+            self.gamma = numpy.arccosh(numpy.exp(0.5*qmc.dt*ham.U))
             self.auxf = numpy.array([[numpy.exp(self.gamma), numpy.exp(-self.gamma)],
                                     [numpy.exp(-self.gamma), numpy.exp(self.gamma)]])
             self.aux_wfac = numpy.array([1.0, 1.0])
-        if not system.symmetric:
-            self.auxf = self.auxf * numpy.exp(-0.5*qmc.dt*system.U)
+        if not ham.symmetric:
+            self.auxf = self.auxf * numpy.exp(-0.5*qmc.dt*ham.U)
         # Account for potential shift in chemical potential
-        sign = 1 if system._alt_convention else -1
-        self.dmu = sign*(system.mu - trial.mu)
+        sign = 1 if ham._alt_convention else -1
+        self.dmu = sign*(ham.mu - trial.mu)
         self.auxf *= numpy.exp(-qmc.dt*(self.dmu))
         if abs(self.dmu) > 1e-16:
             self._mu = trial.mu
             if verbose:
                 print("# Chemical potential shift (mu_T-mu): {}".format(-sign*self.dmu))
         else:
-            self._mu = system.mu
+            self._mu = ham.mu
         self.delta = self.auxf - 1
         dt = qmc.dt
-        dmat_up = scipy.linalg.expm(-dt*(system.H1[0]))
-        dmat_down = scipy.linalg.expm(-dt*(system.H1[1]))
+        dmat_up = scipy.linalg.expm(-dt*(ham.H1[0]))
+        dmat_down = scipy.linalg.expm(-dt*(ham.H1[1]))
         dmat = numpy.array([dmat_up,dmat_down])
-        self.construct_one_body_propagator(system, self._mu, dt)
+        self.construct_one_body_propagator(ham, self._mu, dt)
         self.BT_BP = None
         self.BT = trial.dmat
         self.BT_inv = trial.dmat_inv
@@ -65,12 +65,12 @@ class ThermalDiscrete(object):
         else:
             self.propagate_walker = self.propagate_walker_constrained
 
-    def construct_one_body_propagator(self, system, mu, dt):
+    def construct_one_body_propagator(self, ham, mu, dt):
         """Construct the one-body propagator Exp(-dt/2 H0)
         Parameters
         ----------
-        system :
-            system class
+        ham :
+            ham class
         dt : float
             time-step
         Returns
@@ -78,10 +78,10 @@ class ThermalDiscrete(object):
         self.BH1 : numpy array
             Exp(-dt H0)
         """
-        H1 = system.H1
+        H1 = ham.H1
         I = numpy.identity(H1[0].shape[0], dtype=H1.dtype)
         # No spin dependence for the moment.
-        sign = 1 if system._alt_convention else -1
+        sign = 1 if ham._alt_convention else -1
         self.BH1 = numpy.array([scipy.linalg.expm(-dt*(H1[0]+sign*mu*I)),
                                 scipy.linalg.expm(-dt*(H1[1]+sign*mu*I))])
 

@@ -8,24 +8,11 @@ except ImportError:
 import scipy.linalg
 import time
 from pyqumc.estimators.utils import H5EstimatorHelper
-from pyqumc.estimators.ci import get_hmatel
 from pyqumc.estimators.thermal import particle_number, one_rdm_from_G
-try:
-    from pyqumc.estimators.ueg import local_energy_ueg
-    from pyqumc.estimators.pw_fft import local_energy_pw_fft
-except ImportError as e:
-    print(e)
-from pyqumc.estimators.hubbard import local_energy_hubbard, local_energy_hubbard_ghf,\
-                                     local_energy_hubbard_holstein
+from pyqumc.estimators.local_energy import local_energy
+
 from pyqumc.estimators.greens_function import gab_mod_ovlp, gab_mod
-from pyqumc.estimators.generic import (
-    local_energy_generic_opt,
-    local_energy_generic,
-    local_energy_generic_pno,
-    local_energy_generic_cholesky,
-    local_energy_generic_cholesky_opt,
-    local_energy_generic_cholesky_opt_stochastic
-)
+
 from pyqumc.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from pyqumc.utils.misc import dotdict
 
@@ -70,15 +57,15 @@ class Mixed(object):
         Class for outputting rdm data to HDF5 group.
     """
 
-    def __init__(self, mixed, system, root, filename, qmc, trial, dtype):
-        self.average_gf = mixed.get('average_gf', False)
-        self.eval_energy = mixed.get('evaluate_energy', True)
-        self.calc_one_rdm = mixed.get('one_rdm', False)
-        self.calc_two_rdm = mixed.get('two_rdm', None)
-        self.energy_eval_freq = mixed.get('energy_eval_freq', None)
+    def __init__(self, mixed_opts, system, hamiltonian, root, filename, qmc, trial, dtype):
+        self.average_gf = mixed_opts.get('average_gf', False)
+        self.eval_energy = mixed_opts.get('evaluate_energy', True)
+        self.calc_one_rdm = mixed_opts.get('one_rdm', False)
+        self.calc_two_rdm = mixed_opts.get('two_rdm', None)
+        self.energy_eval_freq = mixed_opts.get('energy_eval_freq', None)
         if self.energy_eval_freq is None:
             self.energy_eval_freq = qmc.nsteps
-        self.verbose = mixed.get('verbose', True)
+        self.verbose = mixed_opts.get('verbose', True)
         # number of steps per block
         self.nsteps = qmc.nsteps
         self.header = ['Iteration', 'WeightFactor', 'Weight', 'ENumer',
@@ -92,17 +79,18 @@ class Mixed(object):
         self.header.append('Time')
         self.nreg = len(self.header[1:])
         self.dtype = dtype
-        self.G = numpy.zeros((2,system.nbasis,system.nbasis), dtype)
+        self.G = numpy.zeros((2,hamiltonian.nbasis,hamiltonian.nbasis), dtype)
         if self.calc_one_rdm:
             dms_size = self.G.size
         else:
             dms_size = 0
         self.eshift = numpy.array([0,0])
         # Abuse of language for the moment. Only accumulates S(k) for UEG.
+        # This works only for finite temperature so temporarily disabled
         # TODO: Add functionality to accumulate 2RDM?
         if self.calc_two_rdm is not None:
             if self.calc_two_rdm == "structure_factor":
-                two_rdm_shape = (2,2,len(system.qvecs),)
+                two_rdm_shape = (2,2,len(hamiltonian.qvecs),)
             self.two_rdm = numpy.zeros(two_rdm_shape,
                                        dtype=numpy.complex128)
             dms_size += self.two_rdm.size
@@ -130,15 +118,17 @@ class Mixed(object):
         if root:
             self.setup_output(filename)
 
-    def update(self, system, qmc, trial, psi, step, free_projection=False):
+    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update mixed estimates for walkers.
 
         Parameters
         ----------
-        system : system object.
-            Container for model input options.
         qmc : :class:`pyqumc.state.QMCOpts` object.
             Container for qmc input options.
+        system : system object.
+            Container for model input options.
+        hamiltonian : hamiltonian object.
+            Container for hamiltonian input options.
         trial : :class:`pyqumc.trial_wavefunction.X' object
             Trial wavefunction class.
         psi : :class:`pyqumc.walkers.Walkers` object
@@ -156,9 +146,9 @@ class Mixed(object):
                     w.greens_function(trial)
                     if self.eval_energy:
                         if self.thermal:
-                            E, T, V = w.local_energy(system)
+                            E, T, V = local_energy(system, hamiltonian, w, trial)
                         else:
-                            E, T, V = w.local_energy(system, rchol=trial._rchol, eri=trial._eri)
+                            E, T, V = local_energy(system, hamiltonian, w, rchol=trial._rchol, eri=trial._eri)
                     else:
                         E, T, V = 0, 0, 0
                     self.estimates[self.names.enumer] += wfac * E
@@ -186,8 +176,7 @@ class Mixed(object):
                         nav = 0
                         for ts in range(w.stack_length):
                             w.greens_function(trial, slice_ix=ts*w.stack_size)
-                            E, T, V = w.local_energy(system,
-                                                     two_rdm=self.two_rdm)
+                            E, T, V = local_energy(system, hamiltonian, w, trial)
                             E_sum += E
                             T_sum += T
                             V_sum += V
@@ -199,7 +188,7 @@ class Mixed(object):
                         )
                     else:
                         w.greens_function(trial)
-                        E, T, V = w.local_energy(system, two_rdm=self.two_rdm)
+                        E, T, V = local_energy(system, hamiltonian, w, trial)
                         nav = particle_number(one_rdm_from_G(w.G))
                         self.estimates[self.names.nav] += w.weight * nav
                         self.estimates[self.names.enumer] += w.weight*E.real
@@ -211,7 +200,7 @@ class Mixed(object):
                     if step % self.energy_eval_freq == 0:
                         w.greens_function(trial)
                         if self.eval_energy:
-                            E, T, V = w.local_energy(system, rchol=trial._rchol, eri=trial._eri, UVT=trial._UVT)
+                            E, T, V = local_energy(system, hamiltonian, w, trial)
                         else:
                             E, T, V = 0, 0, 0
                         self.estimates[self.names.enumer] += w.weight*w.le_oratio*E.real
@@ -370,93 +359,6 @@ class Mixed(object):
             fh5['basic/headers'] = numpy.array(self.header).astype('S')
         self.output = H5EstimatorHelper(filename, 'basic')
 
-# Energy evaluation routines for the Hubbard-Holstein model.
-def local_energy_hh(system, G, X, Lap, Ghalf=None):
-    if system.name == "HubbardHolstein":
-        (e1, e2, e3) = local_energy_hubbard_holstein(system, G, X, Lap, Ghalf)
-        return (e1, e2, e3)
-    else:
-        print("SOMETHING IS VERY WRONG... WHY ARE YOU CALLING HUBBARD-HOSTEIN FUNCTION?")
-        exit()
-
-# Energy evaluation routines.
-def local_energy(system, G, Ghalf=None,
-                 two_rdm=None,
-                 rchol=None, eri=None, C0=None, ecoul0=None, exxa0=None, exxb0=None, UVT=None):
-    """Helper routine to compute local energy.
-
-    Parameters
-    ----------
-    system : system object
-        system object.
-    G : :class:`numpy.ndarray`
-        1RDM.
-    C0 : :class:`numpy.ndarray`
-        trial C.
-
-    Returns
-    -------
-    (E,T,V) : tuple
-        Total, one-body and two-body energy.
-    """
-    ghf = (G.shape[-1] == 2*system.nbasis)
-    # unfortunate interfacial problem for the HH model
-    if system.name == "Hubbard" or system.name == "HubbardHolstein":
-        if ghf:
-            return local_energy_ghf(system, G)
-        else:
-            return local_energy_hubbard(system, G)
-    elif system.name == "PW_FFT":
-            return local_energy_pw_fft(system, G, Ghalf, two_rdm=two_rdm)
-    elif system.name == "UEG":
-        return local_energy_ueg(system, G, two_rdm=two_rdm)
-    else:
-        if Ghalf is not None:
-            if system.stochastic_ri and system.control_variate:
-                return local_energy_generic_cholesky_opt_stochastic(system, G,
-                                     nsamples=system.nsamples,
-                                     Ghalf=Ghalf,
-                                     rchol=rchol, C0=C0, ecoul0=ecoul0,
-                                     exxa0=exxa0,
-                                     exxb0=exxb0)
-            elif system.stochastic_ri and not system.control_variate:
-                return local_energy_generic_cholesky_opt_stochastic(system, G,
-                                     nsamples=system.nsamples,
-                                     Ghalf=Ghalf,
-                                     rchol=rchol)
-            elif system.exact_eri and not system.pno:
-                return local_energy_generic_opt(system, G, Ghalf=Ghalf, eri=eri)
-            elif system.pno:
-                assert(system.exact_eri and system.control_variate)
-                return local_energy_generic_pno(system, G, Ghalf=Ghalf, eri=eri, C0=C0, ecoul0=ecoul0, exxa0=exxa0, exxb0=exxb0, UVT=UVT)
-            else:
-                return local_energy_generic_cholesky_opt(system, G,
-                                                         Ghalf=Ghalf,
-                                                         rchol=rchol)
-        else:
-            return local_energy_generic_cholesky(system, G)
-
-def local_energy_multi_det(system, Gi, weights, two_rdm=None, rchol=None):
-    weight = 0
-    energies = 0
-    denom = 0
-    for w, G in zip(weights, Gi):
-        # construct "local" green's functions for each component of A
-        energies += w * numpy.array(local_energy(system, G, rchol = rchol))
-        denom += w
-
-    return tuple(energies/denom)
-
-def local_energy_multi_det_hh(system, Gi, weights, X, Lapi, two_rdm=None):
-    weight = 0
-    energies = 0
-    denom = 0
-    for w, G, Lap in zip(weights, Gi, Lapi):
-        # construct "local" green's functions for each component of A
-        energies += w * numpy.array(local_energy_hubbard_holstein(system, G, X, Lap, Ghalf=None))
-        denom += w
-    return tuple(energies/denom)
-
 def get_estimator_enum(thermal=False):
     keys = ['uweight', 'weight', 'enumer', 'edenom',
             'eproj', 'e1b', 'e2b', 'ehyb', 'ovlp']
@@ -488,94 +390,3 @@ def eproj(estimates, enum):
     numerator = estimates[enum.enumer]
     denominator = estimates[enum.edenom]
     return (numerator/denominator).real
-
-def variational_energy(system, psi, coeffs, G=None, GH=None, rchol=None, eri=None, 
-                       C0 = None,ecoul0 =None,exxa0 = None,exxb0 = None,UVT=None):
-    if len(psi.shape) == 2:
-        return variational_energy_single_det(system, psi,
-                                             G=G, GH=GH,
-                                             rchol=rchol, eri=eri, 
-                                             C0 = C0, ecoul0 = ecoul0, 
-                                             exxa0 = exxa0, exxb0 = exxb0,
-                                             UVT=UVT)
-    elif len(psi) == 1:
-        return variational_energy_single_det(system, psi[0],
-                                             G=G, GH=GH,
-                                             rchol=rchol, eri=eri, 
-                                             C0 = C0, ecoul0 = ecoul0, 
-                                             exxa0 = exxa0, exxb0 = exxb0,
-                                             UVT=UVT)
-    else:
-        return variational_energy_multi_det(system, psi, coeffs)
-
-def variational_energy_multi_det(system, psi, coeffs, H=None, S=None):
-    weight = 0
-    energies = 0
-    denom = 0
-    nup = system.nup
-    ndet = len(coeffs)
-    if H is not None and S is not None:
-        store = True
-    else:
-        store = False
-    for i, (Bi, ci) in enumerate(zip(psi, coeffs)):
-        for j, (Aj, cj) in enumerate(zip(psi, coeffs)):
-            # construct "local" green's functions for each component of A
-            Gup, GHup, inv_O_up = gab_mod_ovlp(Bi[:,:nup], Aj[:,:nup])
-            Gdn, GHdn, inv_O_dn = gab_mod_ovlp(Bi[:,nup:], Aj[:,nup:])
-            ovlp = 1.0 / (scipy.linalg.det(inv_O_up)*scipy.linalg.det(inv_O_dn))
-            weight = (ci.conj()*cj) * ovlp
-            G = numpy.array([Gup, Gdn])
-            e = numpy.array(local_energy(system, G))
-            if store:
-                H[i,j] = ovlp*e[0]
-                S[i,j] = ovlp
-            energies += weight * e
-            denom += weight
-    return tuple(energies/denom)
-
-def variational_energy_ortho_det(system, occs, coeffs):
-    """Compute variational energy for CI-like multi-determinant expansion.
-
-    Parameters
-    ----------
-    system : :class:`pyqumc.system` object
-        System object.
-    occs : list of lists
-        list of determinants.
-    coeffs : :class:`numpy.ndarray`
-        Expansion coefficients.
-
-    Returns
-    -------
-    energy : tuple of float / complex
-        Total energies: (etot,e1b,e2b).
-    """
-    evar = 0.0
-    denom = 0.0
-    one_body = 0.0
-    two_body = 0.0
-    for i, (occi, ci) in enumerate(zip(occs, coeffs)):
-        denom += ci.conj()*ci
-        for j in range(0,i+1):
-            cj = coeffs[j]
-            occj = occs[j]
-            etot, e1b, e2b = ci.conj()*cj*get_hmatel(system, occi, occj)
-            evar += etot
-            one_body += e1b
-            two_body += e2b
-            if j < i:
-                # Use Hermiticity
-                evar += etot
-                one_body += e1b
-                two_body += e2b
-    return evar/denom, one_body/denom, two_body/denom
-
-def variational_energy_single_det(system, psi, G=None, GH=None, 
-    rchol=None, eri=None,
-    C0=None, 
-    ecoul0=None,
-    exxa0=None,
-    exxb0=None,  UVT=None):
-    assert len(psi.shape) == 2
-    return local_energy(system, G, Ghalf=GH, rchol=rchol, eri=eri, C0=C0, ecoul0=ecoul0, exxa0=exxa0, exxb0=exxb0, UVT=UVT)

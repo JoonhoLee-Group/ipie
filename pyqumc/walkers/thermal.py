@@ -3,7 +3,7 @@ import cmath
 import numpy
 import scipy.linalg
 from pyqumc.estimators.thermal import greens_function, one_rdm_from_G, particle_number
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy_G
 from pyqumc.walkers.stack import PropagatorStack
 from pyqumc.walkers.walker import Walker
 from pyqumc.utils.linalg import regularise_matrix_inverse
@@ -11,11 +11,13 @@ from pyqumc.utils.misc import update_stack, get_numeric_names
 
 class ThermalWalker(Walker):
 
-    def __init__(self, system, trial, walker_opts={}, verbose=False):
-        Walker.__init__(self, system, trial, walker_opts=walker_opts)
+    def __init__(self, system, hamiltonian, trial, walker_opts={}, verbose=False):
+        Walker.__init__(self, system, hamiltonian, trial, walker_opts=walker_opts)
+        self.name = "ThermalWalker"
         self.num_slices = trial.num_slices
         dtype = numpy.complex128
         self.G = numpy.zeros(trial.dmat.shape, dtype=dtype)
+        self.Ghalf = None
         self.nbasis = trial.dmat[0].shape[0]
         self.stack_size = walker_opts.get('stack_size', None)
         max_diff_diag = numpy.linalg.norm((numpy.diag(trial.dmat[0].diagonal())-trial.dmat[0]))
@@ -64,8 +66,8 @@ class ThermalWalker(Walker):
         self.stack.ovlp = numpy.array([1.0/self.M0[0], 1.0/self.M0[1]])
 
         # # temporary storage for stacks...
-        I = numpy.identity(system.nbasis, dtype=dtype)
-        One = numpy.ones(system.nbasis, dtype=dtype)
+        I = numpy.identity(hamiltonian.nbasis, dtype=dtype)
+        One = numpy.ones(hamiltonian.nbasis, dtype=dtype)
         self.Tl = numpy.array([I, I])
         self.Ql = numpy.array([I, I])
         self.Dl = numpy.array([One, One])
@@ -75,8 +77,9 @@ class ThermalWalker(Walker):
 
         self.hybrid_energy = 0.0
         if verbose:
-            eloc = self.local_energy(system)
+    # def local_energy(self, system, two_rdm=None):
             P = one_rdm_from_G(self.G)
+            eloc = local_energy_G(system, hamiltonian, self, P)
             nav = particle_number(P)
             print("# Initial walker energy: {} {} {}".format(*eloc))
             print("# Initial walker electron number: {}".format(nav))
@@ -542,9 +545,10 @@ class ThermalWalker(Walker):
                                     numpy.einsum('ii,ij->ij', Db, Q1.conj().T))
         return G
 
-    def local_energy(self, system, two_rdm=None):
-        rdm = one_rdm_from_G(self.G)
-        return local_energy(system, rdm, two_rdm=two_rdm)
+# def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
+    # def local_energy(self, system, two_rdm=None):
+    #     rdm = one_rdm_from_G(self.G)
+    #     return local_energy_G(system, hamiltonian, self, rdm)
 
 def unit_test():
     from pyqumc.systems.ueg import UEG
@@ -663,7 +667,7 @@ def unit_test():
     # print(R)
 
     # Test walker green's function.
-    from pyqumc.systems.hubbard import Hubbard
+    from pyqumc.hamiltonians.hubbard import Hubbard
     from pyqumc.estimators.thermal import greens_function, one_rdm_from_G
     from pyqumc.estimators.hubbard import local_energy_hubbard
 

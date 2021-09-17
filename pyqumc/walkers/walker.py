@@ -21,7 +21,7 @@ class Walker(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, trial, walker_opts={}, index=0, nprop_tot=None, nbp=None):
+    def __init__(self, system, hamiltonian, trial, walker_opts={}, index=0, nprop_tot=None, nbp=None):
         self.weight = walker_opts.get('weight', 1.0)
         self.unscaled_weight = self.weight
         self.phase = 1 + 0j
@@ -53,7 +53,7 @@ class Walker(object):
         # Number of propagators to store for back propagation / ITCF.
         num_propg = walker_opts.get('num_propg', 1)
         if nbp is not None:
-            self.field_configs = FieldConfig(system.nfields,
+            self.field_configs = FieldConfig(hamiltonian.nfields,
                                              nprop_tot, nbp,
                                              numpy.complex128)
         else:

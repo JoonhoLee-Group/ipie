@@ -53,7 +53,7 @@ class Estimators(object):
         True if calculating imaginary time correlation functions (ITCFs).
     """
 
-    def __init__(self, estimates, root, qmc, system, trial, BT2, verbose=False):
+    def __init__(self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False):
         if verbose:
             print ("# Setting up estimator object.")
         if root:
@@ -78,7 +78,7 @@ class Estimators(object):
         mixed = estimates.get('mixed', {})
         self.estimators = {}
         dtype = complex
-        self.estimators['mixed'] = Mixed(mixed, system, root, self.filename,
+        self.estimators['mixed'] = Mixed(mixed, system, hamiltonian, root, self.filename,
                                          qmc, trial, dtype)
         bp = get_input_value(estimates, 'back_propagation', default=None,
                               alias=['back_propagated'],
@@ -140,7 +140,7 @@ class Estimators(object):
         for k, e in self.estimators.items():
             e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
-    def update(self, system, qmc, trial, psi, step, free_projection=False):
+    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators
 
         Parameters
@@ -159,4 +159,4 @@ class Estimators(object):
             True if doing free projection.
         """
         for k, e in self.estimators.items():
-            e.update(system, qmc, trial, psi, step, free_projection)
+            e.update(qmc, system, hamiltonian, trial, psi, step, free_projection)

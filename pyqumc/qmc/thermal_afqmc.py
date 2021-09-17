@@ -9,14 +9,17 @@ from math import exp
 import copy
 import h5py
 from pyqumc.estimators.handler import Estimators
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.qmc.options import QMCOpts
 from pyqumc.qmc.utils import set_rng_seed
 from pyqumc.systems.utils import get_system
+from pyqumc.hamiltonians.utils import get_hamiltonian
 from pyqumc.thermal_propagation.utils import get_propagator
 from pyqumc.trial_density_matrices.utils import get_trial_density_matrix
 from pyqumc.utils.misc import get_git_revision_hash, get_sys_info
 from pyqumc.utils.io import to_json, get_input_value
 from pyqumc.walkers.handler import Walkers
+from pyqumc.utils.mpi import get_shared_comm
 
 class ThermalAFQMC(object):
     """AFQMC driver.
@@ -74,7 +77,7 @@ class ThermalAFQMC(object):
         Stores walkers which sample the partition function.
     """
 
-    def __init__(self, comm, options=None, system=None,
+    def __init__(self, comm, options=None, system=None, hamiltonian=None,
                  trial=None, parallel=False, verbose=None):
         if verbose is not None:
             self.verbosity = verbose
@@ -107,6 +110,8 @@ class ThermalAFQMC(object):
         self.rank = comm.rank
         self._init_time = time.time()
         self.run_time = time.asctime(),
+        self.shared_comm = get_shared_comm(comm, verbose=verbose)
+
         # 2. Calculation objects.
         sys_opts = options.get('system')
         if system is not None:
@@ -117,6 +122,15 @@ class ThermalAFQMC(object):
                                        verbose=self.verbosity>1)
             sys_opts['thermal'] = True
             self.system = get_system(sys_opts=sys_opts, verbose=verbose)
+
+        if hamiltonian is not None:
+            self.hamiltonian = hamiltonian
+        else:
+            ham_opts = get_input_value(options, 'hamiltonian',
+                                       default={},
+                                       verbose=self.verbosity>1)
+            self.hamiltonian = get_hamiltonian (self.system, ham_opts, verbose = verbose, comm=self.shared_comm)
+
         self.qmc = QMCOpts(qmc_opts, self.system, verbose)
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         self.qmc.ntime_slices = int(round(self.qmc.beta/self.qmc.dt))
@@ -135,6 +149,7 @@ class ThermalAFQMC(object):
                                          alias=['trial_density'],
                                          verbose=self.verbosity>1)
             self.trial = get_trial_density_matrix(self.system,
+                                                self.hamiltonian,
                                                   self.qmc.beta,
                                                   self.qmc.dt,
                                                   comm=comm,
@@ -157,13 +172,14 @@ class ThermalAFQMC(object):
         wlk_opts = get_input_value(options, 'walkers', default={},
                                    alias=['walker', 'walker_opts'],
                                    verbose=self.verbosity>1)
-        self.walk = Walkers(self.system, self.trial,
+        self.walk = Walkers(self.system, self.hamiltonian, self.trial,
                             self.qmc, walker_opts=wlk_opts, verbose=verbose)
         lowrank = self.walk.walkers[0].lowrank
         prop_opts = get_input_value(options, 'propagator', default={},
                                     alias=['prop', 'propagation'],
                                     verbose=self.verbosity>1)
         self.propagators = get_propagator(prop_opts, self.qmc, self.system,
+                                          self.hamiltonian,
                                           self.trial,
                                           verbose=verbose,
                                           lowrank=lowrank)
@@ -173,7 +189,7 @@ class ThermalAFQMC(object):
                                    alias=['estimates'],
                                    verbose=self.verbosity>1)
         self.estimators = (
-            Estimators(est_opts, self.root, self.qmc, self.system,
+            Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
         # stabilization frequency might be updated due to wrong user input
@@ -201,9 +217,11 @@ class ThermalAFQMC(object):
         if walk is not None:
             self.walk = walk
         self.setup_timers()
-        (E_T, ke, pe) = self.walk.walkers[0].local_energy(self.system)
+        # (E_T, ke, pe) = self.walk.walkers[0].local_energy(self.system)
+        (E_T, ke, pe) = local_energy(self.system, self.hamiltonian, self.walk.walkers[0], self.trial)
+        # (E_T, ke, pe) = self.walk.walkers[0].local_energy(self.system)
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators['mixed'].update(self.system, self.qmc,
+        self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
                                                    self.trial, self.walk, 0,
                                                    self.propagators.free_projection)
         # Print out zeroth step for convenience.
@@ -216,7 +234,7 @@ class ThermalAFQMC(object):
                     print(" # Timeslice %d of %d."%(ts, self.qmc.ntime_slices))
                 start = time.time()
                 for w in self.walk.walkers:
-                    self.propagators.propagate_walker(self.system, w, ts, 0)
+                    self.propagators.propagate_walker(self.hamiltonian, w, ts, 0)
                     if (abs(w.weight) > w.total_weight * 0.10) and ts > 0:
                         w.weight = w.total_weight * 0.10
                 self.tprop += time.time() - start
@@ -226,7 +244,7 @@ class ThermalAFQMC(object):
                 self.tpopc += time.time() - start
             self.tpath += time.time() - start_path
             start = time.time()
-            self.estimators.update(self.system, self.qmc,
+            self.estimators.update(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.walk, step,
                                    self.propagators.free_projection)
             self.testim += time.time() - start

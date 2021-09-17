@@ -33,7 +33,7 @@ class Walkers(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, trial, qmc, walker_opts={}, verbose=False,
+    def __init__(self, system, hamiltonian, trial, qmc, walker_opts={}, verbose=False,
                  comm=None, nprop_tot=None, nbp=None):
         self.nwalkers = qmc.nwalkers
         self.ntot_walkers = qmc.ntot_walkers
@@ -59,13 +59,13 @@ class Walkers(object):
                     print("# Usinge single det walker with msd wavefunction.")
                 self.walker_type = 'SD'
                 trial.psi = trial.psi[0]
-                self.walkers = [SingleDetWalker(system, trial, walker_opts=walker_opts,
+                self.walkers = [SingleDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                                 index=w, nprop_tot=nprop_tot,
                                                 nbp=nbp)
                                 for w in range(qmc.nwalkers)]
             else:
                 self.walkers = [
-                        MultiDetWalker(system, trial, walker_opts=walker_opts,
+                        MultiDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                        verbose=(verbose and w == 0))
                         for w in range(qmc.nwalkers)
                         ]
@@ -76,7 +76,7 @@ class Walkers(object):
                                              dtype=numpy.complex128)
         elif trial.name == 'thermal':
             self.walker_type = 'thermal'
-            self.walkers = [ThermalWalker(system, trial,
+            self.walkers = [ThermalWalker(system, hamiltonian, trial,
                                           walker_opts=walker_opts,
                                           verbose=(verbose and w==0))
                             for w in range(qmc.nwalkers)]
@@ -114,7 +114,7 @@ class Walkers(object):
                                              dtype=numpy.complex128)
         else:
             self.walker_type = 'SD'
-            self.walkers = [SingleDetWalker(system, trial, walker_opts=walker_opts,
+            self.walkers = [SingleDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                             index=w, nprop_tot=nprop_tot,
                                             nbp=nbp)
                             for w in range(qmc.nwalkers)]

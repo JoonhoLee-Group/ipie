@@ -1,16 +1,16 @@
 import copy
 import numpy
 import time
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.greens_function import gab
 from pyqumc.utils.linalg import diagonalise_sorted
-from pyqumc.systems.hubbard import decode_basis
+from pyqumc.hamiltonians.hubbard import decode_basis
 from pyqumc.utils.io import get_input_value
 
-class UHF(object):
-    r"""UHF trial wavefunction.
+class HubbardUHF(object):
+    r"""HubbardUHF trial wavefunction.
 
-    Search for UHF trial wavefunction by self consistenly solving the mean field
+    Search for HubbardUHF trial wavefunction by self consistenly solving the mean field
     Hamiltonian:
 
         .. math::
@@ -46,14 +46,14 @@ class UHF(object):
         Ground state mean field total energy of trial wavefunction.
     """
 
-    def __init__(self, system, trial={}, verbose=0):
-        assert "Hubbard" in system.name
+    def __init__(self, system, hamiltonian, trial={}, verbose=0):
+        assert "Hubbard" in hamiltonian.name
         if verbose:
-            print("# Constructing UHF trial wavefunction")
+            print("# Constructing HubbardUHF trial wavefunction")
         self.verbose = verbose
         init_time = time.time()
-        self.name = "UHF"
-        self.type = "UHF"
+        self.name = "HubbardUHF"
+        self.type = "HubbardUHF"
         self.initial_wavefunction = trial.get('initial_wavefunction',
                                               'trial')
         self.trial_type = complex
@@ -70,15 +70,16 @@ class UHF(object):
         self.alpha = get_input_value(trial, 'alpha', default=0.5,
                                      verbose=verbose)
         # For interface compatability
+        self.Ghalf = None
         self.coeffs = 1.0
-        self.type = 'UHF'
+        self.type = 'HubbardUHF'
         self.ndets = 1
         self.initial_guess = trial.get('initial', 'random')
         if self.initial_guess == 'random':
             if self.verbose:
-                print("# Solving UHF equations.")
+                print("# Solving HubbardUHF equations.")
             (self.psi, self.eigs, self.emin, self.error, self.nav) = (
-                self.find_uhf_wfn(system, self.ueff, self.ninitial,
+                self.find_uhf_wfn(system, hamiltonian, self.ueff, self.ninitial,
                                   self.nconv, self.alpha, self.deps, verbose)
             )
             if self.error:
@@ -87,7 +88,7 @@ class UHF(object):
         elif self.initial_guess == 'checkerboard':
             if self.verbose:
                 print("# Using checkerboard breakup.")
-            self.psi, unused = self.checkerboard(system.nbasis, system.nup, system.ndown)
+            self.psi, unused = self.checkerboard(hamiltonian.nbasis, system.nup, system.ndown)
         Gup = gab(self.psi[:,:system.nup], self.psi[:,:system.nup]).T
         if (system.ndown > 0):
             Gdown = gab(self.psi[:,system.nup:], self.psi[:,system.nup:]).T
@@ -95,24 +96,25 @@ class UHF(object):
             Gdown = numpy.zeros_like(Gup)
         self.le_oratio = 1.0
         self.G = numpy.array([Gup, Gdown])
-        self.etrial = local_energy(system, self.G)[0].real
+        self.etrial = local_energy(system, hamiltonian, self, self)[0].real
         self.bp_wfn = trial.get('bp_wfn', None)
         self.initialisation_time = time.time() - init_time
         self.init = self.psi
         self._mem_required = 0.0
         self._rchol = None
 
-    def find_uhf_wfn(self, system, ueff, ninit,
+    def find_uhf_wfn(self, system, hamiltonian, ueff, ninit,
                      nit_max, alpha, deps=1e-8, verbose=0):
         emin = 0
-        uold = system.U
-        system.U = ueff
+        # JOONHO superhacky way. it should be fixed.
+        uold = hamiltonian.U
+        hamiltonian.U = ueff
         minima = []  # Local minima
         nup = system.nup
         # Search over different random starting points.
         for attempt in range(0, ninit):
             # Set up initial (random) guess for the density.
-            (self.trial, eold) = self.initialise(system.nbasis, system.nup,
+            (self.trial, eold) = self.initialise(hamiltonian.nbasis, system.nup,
                                             system.ndown)
             niup = self.density(self.trial[:,:nup])
             nidown = self.density(self.trial[:,nup:])
@@ -120,15 +122,18 @@ class UHF(object):
             nidown_old = self.density(self.trial[:,nup:])
             for it in range(0, nit_max):
                 (niup, nidown, e_up, e_down) = (
-                    self.diagonalise_mean_field(system, ueff, niup, nidown)
+                    self.diagonalise_mean_field(system, hamiltonian, ueff, niup, nidown)
                 )
                 # Construct Green's function to compute the energy.
                 Gup = gab(self.trial[:,:nup], self.trial[:,:nup]).T
                 if (system.ndown>0):
                     Gdown = gab(self.trial[:,nup:], self.trial[:,nup:]).T
                 else:
-                    Gdown = numpy.zeros((system.nbasis, system.nbasis))
-                enew = local_energy(system, numpy.array([Gup, Gdown]))[0].real
+                    Gdown = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis))
+                
+                self.G = numpy.array([Gup, Gdown], dtype=Gup.dtype)
+                enew = local_energy(system, hamiltonian, self, self)[0].real
+                
                 if verbose > 1:
                     print("# %d %f %f" % (it, enew, eold))
                 sc = self.self_consistant(enew, eold, niup, niup_old, nidown,
@@ -153,10 +158,10 @@ class UHF(object):
                     nidown = mixdown
                     eold = enew
             if verbose > 1:
-                print("# SCF cycle: {:3d}. After {:4d} steps the minimum UHF"
+                print("# SCF cycle: {:3d}. After {:4d} steps the minimum HubbardUHF"
                       " energy found is: {: 8f}".format(attempt, it, eold))
 
-        system.U = uold
+        hamiltonian.U = uold
         if verbose:
             print("# Minimum energy found: {: 8f}".format(min(minima)))
             nocca = system.nup
@@ -169,7 +174,7 @@ class UHF(object):
         try:
             return (psi_accept, e_accept, min(minima), False, [niup, nidown])
         except UnboundLocalError:
-            warnings.warn("Warning: No UHF wavefunction found."
+            warnings.warn("Warning: No HubbardUHF wavefunction found."
                           "Delta E: %f" % (enew - emin))
             return (trial, numpy.append(e_up, e_down), None, True, None)
 
@@ -232,10 +237,10 @@ class UHF(object):
     def mix_density(self, new, old, alpha):
         return (1-alpha)*new + alpha*old
 
-    def diagonalise_mean_field(self, system, ueff, niup, nidown):
+    def diagonalise_mean_field(self, system, hamiltonian, ueff, niup, nidown):
         # mean field Hamiltonians.
-        HMFU = system.T[0] + numpy.diag(ueff*nidown)
-        HMFD = system.T[1] + numpy.diag(ueff*niup)
+        HMFU = hamiltonian.T[0] + numpy.diag(ueff*nidown)
+        HMFD = hamiltonian.T[1] + numpy.diag(ueff*niup)
         (e_up, ev_up) = diagonalise_sorted(HMFU)
         (e_down, ev_down) = diagonalise_sorted(HMFD)
         # Construct new wavefunction given new density.

@@ -1,8 +1,9 @@
 import numpy
 import scipy.linalg
 import time
-from pyqumc.estimators.mixed import (
-        variational_energy, variational_energy_ortho_det, local_energy
+from pyqumc.estimators.local_energy import local_energy
+from pyqumc.estimators.local_energy import (
+        variational_energy, variational_energy_ortho_det
         )
 from pyqumc.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
 from pyqumc.estimators.ci import get_hmatel, get_one_body_matel
@@ -14,7 +15,7 @@ from pyqumc.utils.mpi import get_shared_array
 
 class MultiSlater(object):
 
-    def __init__(self, system, wfn, nbasis=None, options={},
+    def __init__(self, system, hamiltonian, wfn, nbasis=None, options={},
                  init=None, verbose=False, orbs=None):
         self.verbose = verbose
         if verbose:
@@ -26,7 +27,7 @@ class MultiSlater(object):
         # This is for the overlap trial
         if len(wfn) == 3:
             # CI type expansion.
-            self.from_phmsd(system, wfn, orbs)
+            self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
             self.ortho_expansion = True
         else:
             self.psi = wfn[1]
@@ -59,11 +60,11 @@ class MultiSlater(object):
         self.ndets = len(self.coeffs)
         if self.ndets == 1:
             # self.psi = self.psi[0]
-            self.G, self.GH = gab_spin(self.psi[0], self.psi[0],
+            self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
                                        system.nup, system.ndown)
         else:
             self.G = None
-            self.GH = None
+            self.Ghalf = None
         if init is not None:
             if verbose:
                 print("# Using initial wavefunction from file.")
@@ -81,7 +82,7 @@ class MultiSlater(object):
         self._nalpha = system.nup
         self._nbeta = system.ndown
         self._nelec = system.nelec
-        self._nbasis = system.nbasis
+        self._nbasis = hamiltonian.nbasis
         self._rchol = None
         self._UVT = None
         self._eri = None
@@ -96,7 +97,7 @@ class MultiSlater(object):
         if verbose:
             print ("# Finished setting up trial wavefunction.")
 
-    def local_energy_2body(self, system):
+    def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
 
         Parameters
@@ -111,10 +112,10 @@ class MultiSlater(object):
         """
 
         nalpha, nbeta = system.nup, system.ndown
-        nbasis = system.nbasis
+        nbasis = hamiltonian.nbasis
         naux = self._rchol.shape[1]
 
-        Ga, Gb = self.GH[0], self.GH[1]
+        Ga, Gb = self.Ghalf[0], self.Ghalf[1]
         Xa = self._rchol[:nalpha*nbasis].T.dot(Ga.ravel())
         Xb = self._rchol[nalpha*nbasis:].T.dot(Gb.ravel())
         ecoul = numpy.dot(Xa,Xa)
@@ -142,53 +143,47 @@ class MultiSlater(object):
         return ecoul, exxa, exxb
 
 
-    def calculate_energy(self, system):
+    def calculate_energy(self, system, hamiltonian):
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
         # Cannot use usual energy evaluation routines if trial is orthogonal.
         if self.ortho_expansion:
             self.energy, self.e1b, self.e2b = (
-                    variational_energy_ortho_det(system,
+                    variational_energy_ortho_det(system, hamiltonian,
                                                  self.spin_occs,
                                                  self.coeffs)
                     )
         else:
             (self.energy, self.e1b, self.e2b) = (
-                    variational_energy(system, self.psi, self.coeffs,
-                                       G=self.G, GH=self.GH,
-                                       rchol=self._rchol, eri=self._eri, 
-                                       C0 = self.psi,
-                                       ecoul0 = self.ecoul0,
-                                       exxa0 = self.exxa0,
-                                       exxb0 = self.exxb0,
-                                       UVT=self._UVT)
+                    variational_energy(system, hamiltonian, self)
                     )
         if self.verbose:
             print("# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                    %(self.energy.real, self.e1b.real, self.e2b.real))
             print("# Time to evaluate local energy: %f s"%(time.time()-start))
 
-    def from_phmsd(self, system, wfn, orbs):
+    def from_phmsd(self, nup, ndown, nbasis, wfn, orbs):
         ndets = len(wfn[0])
-        self.psi = numpy.zeros((ndets,system.nbasis,system.ne),
+        ne = nup + ndown
+        self.psi = numpy.zeros((ndets,nbasis,ne),
                                 dtype=numpy.complex128)
         if self.verbose:
             print("# Creating trial wavefunction from CI-like expansion.")
         if orbs is None:
             if self.verbose:
                 print("# Assuming RHF reference.")
-            I = numpy.eye(system.nbasis, dtype=numpy.complex128)
+            I = numpy.eye(nbasis, dtype=numpy.complex128)
         # Store alpha electrons first followed by beta electrons.
-        nb = system.nbasis
+        nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]
         self.spin_occs = [numpy.sort(d) for d in dets]
         self.occa = wfn[1]
         self.occb = wfn[2]
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
-            self.psi[idet,:,:system.nup] = I[:,occa]
-            self.psi[idet,:,system.nup:] = I[:,occb]
+            self.psi[idet,:,:nup] = I[:,occa]
+            self.psi[idet,:,nup:] = I[:,occb]
 
     def recompute_ci_coeffs(self, system):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
@@ -264,22 +259,22 @@ class MultiSlater(object):
         write_qmcpack_wfn(filename, wfn, 'uhf', self._nelec, self._nbasis,
                           init=init)
 
-    def half_rotate(self, system, comm=None):
+    def half_rotate(self, system, hamiltonian, comm=None):
         # Half rotated cholesky vectors (by trial wavefunction).
-        M = system.nbasis
         na = system.nup
         nb = system.ndown
-        nchol = system.chol_vecs.shape[-1]
+        M = hamiltonian.nbasis
+        nchol = hamiltonian.chol_vecs.shape[-1]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
 
-        if isinstance(system.chol_vecs, numpy.ndarray):
-            chol = system.chol_vecs.reshape((M,M,nchol))
+        if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
+            chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
         else:
-            chol = system.chol_vecs.toarray().reshape((M,M,nchol))
+            chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
 
 
-        if (system.exact_eri):
+        if (hamiltonian.exact_eri):
             shape = (self.ndets,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
             self._mem_required = self._eri.nbytes / (1024.0**3.0)
@@ -292,16 +287,16 @@ class MultiSlater(object):
                 self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
                 self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
 
-                if (system.pno):
-                    thresh_pno = system.thresh_pno
+                if (hamiltonian.pno):
+                    thresh_pno = hamiltonian.thresh_pno
                     UVT_aa = []
                     UVT_bb = []
                     UVT_ab = []
 
                     nocca = system.nup
                     noccb = system.ndown
-                    nvira = system.nbasis - system.nup
-                    nvirb = system.nbasis - system.ndown
+                    nvira = hamiltonian.nbasis - system.nup
+                    nvirb = hamiltonian.nbasis - system.ndown
 
                     r_aa = []
                     for i in range(na):
@@ -311,7 +306,7 @@ class MultiSlater(object):
                             idx = s > thresh_pno
                             U = U[:,idx]
                             s = s[idx]
-                            r_aa += [s.shape[0] / float(system.nbasis)]
+                            r_aa += [s.shape[0] / float(hamiltonian.nbasis)]
                             VT = VT[idx,:]
                             U = U.dot(numpy.diag(numpy.sqrt(s)))
                             VT = numpy.diag(numpy.sqrt(s)).dot(VT)
@@ -328,7 +323,7 @@ class MultiSlater(object):
                             idx = s > thresh_pno
                             U = U[:,idx]
                             s = s[idx]
-                            r_bb += [s.shape[0] / float(system.nbasis)]
+                            r_bb += [s.shape[0] / float(hamiltonian.nbasis)]
                             VT = VT[idx,:]
                             U = U.dot(numpy.diag(numpy.sqrt(s)))
                             VT = numpy.diag(numpy.sqrt(s)).dot(VT)
@@ -346,7 +341,7 @@ class MultiSlater(object):
                             idx = s > thresh_pno
                             U = U[:,idx]
                             s = s[idx]
-                            r_ab += [s.shape[0] / float(system.nbasis)]
+                            r_ab += [s.shape[0] / float(hamiltonian.nbasis)]
                             VT = VT[idx,:]
                             U = U.dot(numpy.diag(numpy.sqrt(s)))
                             VT = numpy.diag(numpy.sqrt(s)).dot(VT)
@@ -415,9 +410,9 @@ class MultiSlater(object):
 
         if comm is not None:
             comm.barrier()
-        self._rot_hs_pot = self._rchol
-        if(system.control_variate):
-            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system)
+        # self._rot_hs_pot = self._rchol
+        if(hamiltonian.control_variate):
+            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
 
     def rot_chol(self, idet=0, spin=None):
         """Helper function"""
@@ -433,19 +428,19 @@ class MultiSlater(object):
                 beta = self._nbasis * self._nbeta
                 return self._rchol[idet*stride+alpha:idet*stride+alpha+beta]
 
-    def rot_hs_pot(self, idet=0, spin=None):
-        """Helper function"""
-        if spin is None:
-            stride = self._nbasis * (self._nalpha + self._nbeta)
-            return self._rot_hs_pot[idet*stride:(idet+1)*stride]
-        else:
-            stride = self._nbasis * (self._nalpha + self._nbeta)
-            alpha = self._nbasis * self._nalpha
-            if spin == 0:
-                return self._rot_hs_pot[idet*stride:idet*stride+alpha]
-            else:
-                beta = self._nbasis * self._nbeta
-                return self._rot_hs_pot[idet*stride+alpha:idet*stride+alpha+beta]
+    # def rot_hs_pot(self, idet=0, spin=None):
+    #     """Helper function"""
+    #     if spin is None:
+    #         stride = self._nbasis * (self._nalpha + self._nbeta)
+    #         return self._rot_hs_pot[idet*stride:(idet+1)*stride]
+    #     else:
+    #         stride = self._nbasis * (self._nalpha + self._nbeta)
+    #         alpha = self._nbasis * self._nalpha
+    #         if spin == 0:
+    #             return self._rot_hs_pot[idet*stride:idet*stride+alpha]
+    #         else:
+    #             beta = self._nbasis * self._nbeta
+    #             return self._rot_hs_pot[idet*stride+alpha:idet*stride+alpha+beta]
 
     # TODO: Implement
     # def half_rotate_cplx(self, system, comm=None):

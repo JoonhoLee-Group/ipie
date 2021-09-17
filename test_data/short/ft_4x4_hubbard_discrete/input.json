@@ -1,12 +1,14 @@
 {
     "system": {
+        "nup": 7,
+        "ndown": 7
+    },
+    "hamiltonian": {
         "name": "Hubbard",
         "nx": 4,
         "ny": 4,
-        "nup": 7,
-        "ndown": 7,
-        "mu": 0.1,
-        "U": 4
+        "U": 4,
+        "mu":0.1
     },
     "qmc": {
         "dt": 0.01,

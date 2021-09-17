@@ -1,6 +1,6 @@
 import itertools
 import cmath
-from pyqumc.systems.hubbard import Hubbard
+from pyqumc.hamiltonians.hubbard import Hubbard
 from pyqumc.trial_wavefunction.free_electron import FreeElectron
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from pyqumc.estimators.ci import simple_fci_bose_fermi, simple_fci
@@ -19,7 +19,7 @@ from scipy.optimize import minimize
 import time
 from pyqumc.utils.io import read_fortran_complex_numbers
 from pyqumc.utils.linalg import diagonalise_sorted
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 
 try:
     from jax.config import config

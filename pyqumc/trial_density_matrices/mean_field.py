@@ -3,7 +3,7 @@ import scipy.linalg
 from pyqumc.estimators.thermal import (
         one_rdm_stable, particle_number, entropy, greens_function
         )
-from pyqumc.estimators.mixed import local_energy
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.fock import fock_matrix
 from pyqumc.trial_density_matrices.onebody import OneBody
 from pyqumc.trial_density_matrices.chem_pot import (
@@ -13,8 +13,8 @@ from pyqumc.trial_density_matrices.chem_pot import (
 
 class MeanField(OneBody):
 
-    def __init__(self, system, beta, dt, options={}, H1=None, verbose=False):
-        OneBody.__init__(self, system, beta, dt,
+    def __init__(self, system, hamiltonian, beta, dt, options={}, H1=None, verbose=False):
+        OneBody.__init__(self, system, hamiltonian, beta, dt,
                          options=options, H1=H1, verbose=verbose)
         if verbose:
             print(" # Building THF density matrix.")
@@ -22,8 +22,8 @@ class MeanField(OneBody):
         self.max_scf_it = options.get('max_scf_it', self.max_it)
         self.max_macro_it = options.get('max_macro_it', self.max_it)
         self.find_mu = options.get('find_mu', True)
-        self.P, HMF, self.mu = self.thermal_hartree_fock(system, beta)
-        muN = self.mu * numpy.eye(system.nbasis, dtype=self.G.dtype)
+        self.P, HMF, self.mu = self.thermal_hartree_fock(hamiltonian, beta)
+        muN = self.mu * numpy.eye(hamiltonian.nbasis, dtype=self.G.dtype)
         self.dmat = numpy.array([scipy.linalg.expm(-dt*(HMF[0]-muN)),
                                  scipy.linalg.expm(-dt*(HMF[1]-muN))])
         self.dmat_inv = numpy.array([scipy.linalg.inv(self.dmat[0], check_finite=False),

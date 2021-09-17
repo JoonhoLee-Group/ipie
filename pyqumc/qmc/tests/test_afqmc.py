@@ -9,7 +9,9 @@ from pyqumc.analysis.extraction import (
 from pyqumc.qmc.calc import setup_calculation
 from pyqumc.qmc.afqmc import AFQMC
 from pyqumc.systems.generic import Generic
+from pyqumc.hamiltonians.generic import Generic as HamGeneric
 from pyqumc.systems.ueg import UEG
+from pyqumc.hamiltonians.ueg import UEG as HamUEG
 from pyqumc.utils.testing import generate_hamiltonian
 from pyqumc.trial_wavefunction.hartree_fock import HartreeFock
 
@@ -38,9 +40,10 @@ def test_constructor():
         'ndown': 7,
         }
     system = UEG(model)
-    trial = HartreeFock(system, {})
+    ham = HamUEG(system, model)
+    trial = HartreeFock(system, ham, {})
     comm = MPI.COMM_WORLD
-    afqmc = AFQMC(comm=comm, options=options, system=system, trial=trial)
+    afqmc = AFQMC(comm=comm, options=options, system=system, hamiltonian=ham, trial=trial)
     afqmc.finalise(verbose=0)
     assert afqmc.trial.energy.real == pytest.approx(1.7796083856572522)
 
@@ -57,13 +60,15 @@ def test_ueg():
                 'blocks': 5,
                 'rng_seed': 8,
             },
-            'model': {
+            'system': {
                 'name': "UEG",
                 'rs': 2.44,
-                # 'ecut': 4,
                 'ecut': 2,
                 'nup': 7,
                 'ndown': 7,
+            },
+            'hamiltonian': {
+                'name': "UEG",
             },
             'estimates': {
                 'mixed': {
@@ -79,7 +84,7 @@ def test_ueg():
     afqmc = AFQMC(comm=comm, options=options)
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators['mixed'].update(afqmc.system, afqmc.qmc,
+    afqmc.estimators.estimators['mixed'].update(afqmc.qmc, afqmc.system, afqmc.hamiltonian,
                                                 afqmc.trial, afqmc.psi, 0)
     enum = afqmc.estimators.estimators['mixed'].names
     numer = afqmc.estimators.estimators['mixed'].estimates[enum.enumer]
@@ -106,17 +111,21 @@ def test_hubbard():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
+                'nwalkers': 10
             },
-            'model': {
+            'system':{
+                'name': "Generic",
+                'nup': 7,
+                'ndown': 7,
+            },
+            'hamiltonian': {
                 'name': "Hubbard",
                 'nx': 4,
                 'ny': 4,
-                'nup': 7,
                 "U": 4,
-                'ndown': 7,
             },
             'trial': {
-                'name': 'UHF'
+                'name': 'hubbard_uhf'
             },
             'estimates': {
                 'mixed': {
@@ -131,7 +140,7 @@ def test_hubbard():
     afqmc = AFQMC(comm=comm, options=options)
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators['mixed'].update(afqmc.system, afqmc.qmc,
+    afqmc.estimators.estimators['mixed'].update(afqmc.qmc, afqmc.system, afqmc.hamiltonian,
                                                 afqmc.trial, afqmc.psi, 0)
     enum = afqmc.estimators.estimators['mixed'].names
     numer = afqmc.estimators.estimators['mixed'].estimates[enum.enumer]
@@ -153,16 +162,19 @@ def test_hubbard_complex():
                 'blocks': 10,
                 'rng_seed': 8,
             },
-            'model': {
+            'system':{
+                'name': 'Generic',
+                'nup': 7,
+                'ndown': 7,
+            },
+            'hamiltonian': {
                 'name': "Hubbard",
                 'nx': 4,
                 'ny': 4,
-                'nup': 7,
                 "U": 4,
-                'ndown': 7,
             },
             'trial': {
-                'name': 'UHF'
+                'name': 'hubbard_UHF'
             },
             'estimates': {
                 'mixed': {
@@ -177,7 +189,7 @@ def test_hubbard_complex():
     afqmc = AFQMC(comm=comm, options=options)
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators['mixed'].update(afqmc.system, afqmc.qmc,
+    afqmc.estimators.estimators['mixed'].update(afqmc.qmc, afqmc.system, afqmc.hamiltonian,
                                                 afqmc.trial, afqmc.psi, 0)
     enum = afqmc.estimators.estimators['mixed'].names
     numer = afqmc.estimators.estimators['mixed'].estimates[enum.enumer]
@@ -211,14 +223,15 @@ def test_generic():
         }
     numpy.random.seed(7)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec, h1e=numpy.array([h1e,h1e]),
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
     comm = MPI.COMM_WORLD
-    afqmc = AFQMC(comm=comm, system=sys, options=options)
+    afqmc = AFQMC(comm=comm, system=sys, hamiltonian = ham, options=options)
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators['mixed'].update(afqmc.system, afqmc.qmc,
+    afqmc.estimators.estimators['mixed'].update(afqmc.qmc, afqmc.system, afqmc.hamiltonian,
                                                 afqmc.trial, afqmc.psi, 0)
     enum = afqmc.estimators.estimators['mixed'].names
     numer = afqmc.estimators.estimators['mixed'].estimates[enum.enumer]
@@ -256,14 +269,15 @@ def test_generic_single_det():
     numpy.random.seed(7)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     sys_opts = {'sparse': True}
-    sys = Generic(nelec=nelec, h1e=numpy.array([h1e,h1e]),
+    sys = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
     comm = MPI.COMM_WORLD
-    afqmc = AFQMC(comm=comm, system=sys, options=options)
+    afqmc = AFQMC(comm=comm, system=sys, hamiltonian = ham, options=options)
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators['mixed'].update(afqmc.system, afqmc.qmc,
+    afqmc.estimators.estimators['mixed'].update(afqmc.qmc, afqmc.system, afqmc.hamiltonian,
                                                 afqmc.trial, afqmc.psi, 0)
     enum = afqmc.estimators.estimators['mixed'].names
     numer = afqmc.estimators.estimators['mixed'].estimates[enum.enumer]
