@@ -18,24 +18,24 @@ class Hirsch(object):
         Propagator input options.
     qmc : :class:`pyqumc.qmc.options.QMCOpts`
         QMC options.
-    system : :class:`pyqumc.system.System`
-        System object.
+    hamiltonian : :class:`pyqumc.hamiltonian.hubbard`
+        hamiltonian object.
     trial : :class:`pyqumc.trial_wavefunctioin.Trial`
         Trial wavefunction object.
     verbose : bool
         If true print out more information during setup.
     """
 
-    def __init__(self, system, trial, qmc, options={}, verbose=False):
+    def __init__(self, hamiltonian, trial, qmc, options={}, verbose=False):
 
         if verbose:
             print("# Parsing discrete propagator input options.")
             print("# Using discrete Hubbard--Stratonovich transformation.")
         if trial.type == 'GHF':
-            self.bt2 = scipy.linalg.expm(-0.5*qmc.dt*system.T[0])
+            self.bt2 = scipy.linalg.expm(-0.5*qmc.dt*hamiltonian.T[0])
         else:
-            self.bt2 = numpy.array([scipy.linalg.expm(-0.5*qmc.dt*system.T[0]),
-                                    scipy.linalg.expm(-0.5*qmc.dt*system.T[1])])
+            self.bt2 = numpy.array([scipy.linalg.expm(-0.5*qmc.dt*hamiltonian.T[0]),
+                                    scipy.linalg.expm(-0.5*qmc.dt*hamiltonian.T[1])])
         if trial.type == 'GHF' and trial.bp_wfn is not None:
             self.BT_BP = scipy.linalg.block_diag(self.bt2, self.bt2)
             self.back_propagate = back_propagate_ghf
@@ -43,7 +43,7 @@ class Hirsch(object):
             self.BT_BP = self.bt2
             self.back_propagate = back_propagate
         self.nstblz = qmc.nstblz
-        self.btk = numpy.exp(-0.5*qmc.dt*system.eks)
+        self.btk = numpy.exp(-0.5*qmc.dt*hamiltonian.eks)
         self.dt = qmc.dt
         self.ffts = options.get('ffts', False)
         single_site = options.get('single_site_update', True)
@@ -65,19 +65,21 @@ class Hirsch(object):
                 print("# Using spin decomposition.")
         # [field,spin]
         if self.charge_decomp:
-            self.gamma = numpy.arccosh(numpy.exp(-0.5*qmc.dt*system.U+0j))
+            self.gamma = numpy.arccosh(numpy.exp(-0.5*qmc.dt*hamiltonian.U+0j))
             self.auxf = numpy.array([[numpy.exp(self.gamma), numpy.exp(self.gamma)],
                                     [numpy.exp(-self.gamma), numpy.exp(-self.gamma)]])
             # e^{-gamma x}
-            self.aux_wfac = numpy.exp(0.5*qmc.dt*system.U) * numpy.array([numpy.exp(-self.gamma),
+            self.aux_wfac = numpy.exp(0.5*qmc.dt*hamiltonian.U) * numpy.array([numpy.exp(-self.gamma),
                                                                          numpy.exp(self.gamma)])
         else:
-            self.gamma = numpy.arccosh(numpy.exp(0.5*qmc.dt*system.U))
+            self.gamma = numpy.arccosh(numpy.exp(0.5*qmc.dt*hamiltonian.U))
             self.auxf = numpy.array([[numpy.exp(self.gamma), numpy.exp(-self.gamma)],
                                     [numpy.exp(-self.gamma), numpy.exp(self.gamma)]])
             self.aux_wfac = numpy.array([1.0, 1.0])
-        self.auxf = self.auxf * numpy.exp(-0.5*qmc.dt*system.U)
+        self.auxf = self.auxf * numpy.exp(-0.5*qmc.dt*hamiltonian.U)
         self.delta = self.auxf - 1
+        print("delta = {}".format(self.delta))
+        print("hamiltonian.U = {}".format(hamiltonian.U))
         self.hybrid = False
         if self.free_projection:
             self.propagate_walker = self.propagate_walker_free
@@ -169,7 +171,7 @@ class Hirsch(object):
         else:
             walker.weight = 0.0
 
-    def two_body_single_site(self, walker, system, trial):
+    def two_body_single_site(self, walker, system, hamiltonian, trial):
         r"""Propagate by potential term using discrete HS transform.
 
         Parameters
@@ -183,11 +185,12 @@ class Hirsch(object):
             Trial wavefunction object.
         """
         # Construct random auxilliary field.
+            # self.two_body(walker, system, hamiltonian, trial)
         delta = self.delta
         nup = system.nup
-        soffset = walker.phi.shape[0] - system.nbasis
+        soffset = walker.phi.shape[0] - hamiltonian.nbasis
         # walker.greens_function_fast(trial)
-        for i in range(0, system.nbasis):
+        for i in range(0, hamiltonian.nbasis):
             # Compute Gii here to avoid need to recompute GF after KE
             # propagation. We need Gii to include contributions from previous
             # steps wavefunction / overlap update.
@@ -274,7 +277,7 @@ class Hirsch(object):
             walker.weight = 0
             return
 
-    def propagate_walker_constrained(self, walker, system, trial, eshift):
+    def propagate_walker_constrained(self, walker, system, hamiltonian, trial, eshift):
         r"""Wrapper function for propagation using discrete transformation
 
         The discrete transformation allows us to split the application of the
@@ -295,12 +298,12 @@ class Hirsch(object):
         if abs(walker.weight) > 0:
             self.kinetic_importance_sampling(walker, system, trial)
         if abs(walker.weight) > 0:
-            self.two_body(walker, system, trial)
+            self.two_body(walker, system, hamiltonian, trial)
         if abs(walker.weight.real) > 0:
             self.kinetic_importance_sampling(walker, system, trial)
         walker.weight *= numpy.exp(self.dt*eshift)
 
-    def propagate_walker_free(self, walker, system, trial, eshift=0):
+    def propagate_walker_free(self, walker, system, hamiltonian, trial, eshift=0):
         r"""Propagate walker without imposing constraint.
 
         Uses single-site updates for potential term.
@@ -319,7 +322,7 @@ class Hirsch(object):
         delta = self.delta
         nup = system.nup
         wfac = 1.0
-        for i in range(0, system.nbasis):
+        for i in range(0, hamiltonian.nbasis):
             if abs(walker.weight) > 0:
                 r = numpy.random.random()
                 if r < 0.5:
@@ -352,15 +355,15 @@ class HubbardContinuous(object):
         Propagator input options.
     qmc : :class:`pyqumc.qmc.options.QMCOpts`
         QMC options.
-    system : :class:`pyqumc.system.System`
-        System object.
+    hamiltonian : :class:`pyqumc.hamiltonian.hamiltonian`
+        hamiltonian object.
     trial : :class:`pyqumc.trial_wavefunctioin.Trial`
         Trial wavefunction object.
     verbose : bool
         If true print out more information during setup.
     """
 
-    def __init__(self, system, trial, qmc, options={}, verbose=False):
+    def __init__(self, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
             print("# Parsing continuous propagator input options.")
             print("# Using Hubbard Continuous propagator.")
@@ -369,16 +372,16 @@ class HubbardContinuous(object):
         self.ffts = options.get('ffts', False)
         self.back_propagate = back_propagate
         self.nstblz = qmc.nstblz
-        self.btk = numpy.exp(-0.5*qmc.dt*system.eks)
-        model = system.__class__.__name__
+        self.btk = numpy.exp(-0.5*qmc.dt*hamiltonian.eks)
+        model = hamiltonian.__class__.__name__
         self.dt = qmc.dt
         # optimal mean-field shift for the hubbard model
-        self.iu_fac = 1j * system.U**0.5
-        self.mf_shift = self.construct_mean_field_shift(system, trial)
+        self.iu_fac = 1j * hamiltonian.U**0.5
+        self.mf_shift = self.construct_mean_field_shift(hamiltonian, trial)
         if verbose:
             print("# Absolute value of maximum component of mean field shift: "
                   "{:13.8e}.".format(numpy.max(numpy.abs(self.mf_shift))))
-        # self.ut_fac = self.dt*system.U
+        # self.ut_fac = self.dt*hamiltonian.U
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
         self.mf_core = 0.5 * numpy.dot(self.mf_shift, self.mf_shift)

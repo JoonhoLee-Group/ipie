@@ -27,7 +27,7 @@ class MultiSlater(object):
         # This is for the overlap trial
         if len(wfn) == 3:
             # CI type expansion.
-            self.from_phmsd(system, wfn, orbs)
+            self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
             self.ortho_expansion = True
         else:
             self.psi = wfn[1]
@@ -150,7 +150,7 @@ class MultiSlater(object):
         # Cannot use usual energy evaluation routines if trial is orthogonal.
         if self.ortho_expansion:
             self.energy, self.e1b, self.e2b = (
-                    variational_energy_ortho_det(system,
+                    variational_energy_ortho_det(system, hamiltonian,
                                                  self.spin_occs,
                                                  self.coeffs)
                     )
@@ -163,26 +163,27 @@ class MultiSlater(object):
                    %(self.energy.real, self.e1b.real, self.e2b.real))
             print("# Time to evaluate local energy: %f s"%(time.time()-start))
 
-    def from_phmsd(self, system, wfn, orbs):
+    def from_phmsd(self, nup, ndown, nbasis, wfn, orbs):
         ndets = len(wfn[0])
-        self.psi = numpy.zeros((ndets,system.nbasis,system.ne),
+        ne = nup + ndown
+        self.psi = numpy.zeros((ndets,nbasis,ne),
                                 dtype=numpy.complex128)
         if self.verbose:
             print("# Creating trial wavefunction from CI-like expansion.")
         if orbs is None:
             if self.verbose:
                 print("# Assuming RHF reference.")
-            I = numpy.eye(system.nbasis, dtype=numpy.complex128)
+            I = numpy.eye(nbasis, dtype=numpy.complex128)
         # Store alpha electrons first followed by beta electrons.
-        nb = system.nbasis
+        nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]
         self.spin_occs = [numpy.sort(d) for d in dets]
         self.occa = wfn[1]
         self.occb = wfn[2]
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
-            self.psi[idet,:,:system.nup] = I[:,occa]
-            self.psi[idet,:,system.nup:] = I[:,occb]
+            self.psi[idet,:,:nup] = I[:,occa]
+            self.psi[idet,:,nup:] = I[:,occb]
 
     def recompute_ci_coeffs(self, system):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)

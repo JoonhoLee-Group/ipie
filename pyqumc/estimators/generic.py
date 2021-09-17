@@ -402,15 +402,17 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-def local_energy_generic_cholesky(ham, G, Ghalf=None):
+def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    ham : :class:`hubbard`
-        ham information for the hubbard model.
+    system : :class:`Generic`
+        generic system information
+    ham : :class:`Generic`
+        ab-initio hamiltonian information 
     G : :class:`numpy.ndarray`
         Walker's "green's function"
 
@@ -421,7 +423,7 @@ def local_energy_generic_cholesky(ham, G, Ghalf=None):
     """
     # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0]*G[0]) + numpy.sum(ham.H1[1]*G[1])
-    nalpha, nbeta = ham.nup, ham.ndown
+    nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     Ga, Gb = G[0], G[1]
     Xa = numpy.dot(ham.chol_vecs.T, Ga.ravel())

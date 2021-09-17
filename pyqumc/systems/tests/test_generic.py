@@ -4,7 +4,8 @@ import numpy
 import pytest
 from mpi4py import MPI
 from pyqumc.systems.generic import Generic
-from pyqumc.systems.utils import get_generic_integrals
+from pyqumc.hamiltonians.generic import Generic as HamGeneric
+from pyqumc.hamiltonians.utils import get_generic_integrals
 from pyqumc.utils.testing import generate_hamiltonian
 
 
@@ -14,7 +15,8 @@ def test_real():
     nmo = 17
     nelec = (4,3)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec, h1e=numpy.array([h1e,h1e]),
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
     assert sys.nup == 4
@@ -28,12 +30,13 @@ def test_complex():
     nmo = 17
     nelec = (5,3)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-    sys = Generic(nelec=nelec, h1e=numpy.array([h1e,h1e]),
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
     assert sys.nup == 5
     assert sys.ndown == 3
-    assert sys.nbasis == 17
+    assert ham.nbasis == 17
 
 @pytest.mark.unit
 def test_write():
@@ -41,10 +44,11 @@ def test_write():
     nmo = 13
     nelec = (4,3)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-    sys = Generic(nelec=nelec, h1e=numpy.array([h1e,h1e]),
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
-    sys.write_integrals()
+    ham.write_integrals(nelec)
 
 @pytest.mark.unit
 def test_read():
@@ -63,14 +67,15 @@ def test_read():
     hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
                                                        comm=comm,
                                                        verbose=False)
-    system = Generic(h1e=hcore, chol=chol, ecore=enuc,
-                     h1e_mod=h1e_mod, nelec=nelec,
-                     verbose=False)
-    assert system.ecore == pytest.approx(0.4392816555570978)
-    assert system.chol_vecs.shape == chol_.shape
-    assert len(system.H1.shape) == 3
-    assert numpy.linalg.norm(system.H1[0]-h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(system.chol_vecs-chol_) == pytest.approx(0.0)
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=hcore,
+                  chol=chol,
+                  ecore=enuc)
+    assert ham.ecore == pytest.approx(0.4392816555570978)
+    assert ham.chol_vecs.shape == chol_.shape
+    assert len(ham.H1.shape) == 3
+    assert numpy.linalg.norm(ham.H1[0]-h1e_) == pytest.approx(0.0)
+    assert numpy.linalg.norm(ham.chol_vecs-chol_) == pytest.approx(0.0)
 
 @pytest.mark.unit
 def test_shmem():
@@ -91,14 +96,20 @@ def test_shmem():
     hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
                                                        comm=get_shared_comm,
                                                        verbose=False)
-    system = Generic(h1e=hcore, chol=chol, ecore=enuc,
-                     h1e_mod=h1e_mod, nelec=nelec,
-                     verbose=False)
-    assert system.ecore == pytest.approx(0.4392816555570978)
-    assert system.chol_vecs.shape == chol_.shape
-    assert len(system.H1.shape) == 3
-    assert numpy.linalg.norm(system.H1[0]-h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(system.chol_vecs-chol_) == pytest.approx(0.0)
+    # system = Generic(h1e=hcore, chol=chol, ecore=enuc,
+    #                  h1e_mod=h1e_mod, nelec=nelec,
+    #                  verbose=False)
+    print("hcore.shape = ", hcore.shape)
+    sys = Generic(nelec=nelec) 
+    ham = HamGeneric(h1e=hcore, h1e_mod = h1e_mod,
+                  chol=chol.copy(),
+                  ecore=enuc)
+    
+    assert ham.ecore == pytest.approx(0.4392816555570978)
+    assert ham.chol_vecs.shape == chol_.shape
+    assert len(ham.H1.shape) == 3
+    assert numpy.linalg.norm(ham.H1[0]-h1e_) == pytest.approx(0.0)
+    assert numpy.linalg.norm(ham.chol_vecs-chol_) == pytest.approx(0.0)
 
 def teardown_module():
     cwd = os.getcwd()

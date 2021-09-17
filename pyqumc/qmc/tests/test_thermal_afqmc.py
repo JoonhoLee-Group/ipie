@@ -27,8 +27,11 @@ def test_ueg():
                 'rs': 1.0,
                 'ecut': 4,
                 'nup': 1,
-                'mu': 0.245,
                 'ndown': 1,
+            },
+            'hamiltonian': {
+                'name': "UEG",
+                'mu': 0.245
             },
             'trial': {
                 'name': 'one_body'

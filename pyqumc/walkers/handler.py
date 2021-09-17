@@ -65,7 +65,7 @@ class Walkers(object):
                                 for w in range(qmc.nwalkers)]
             else:
                 self.walkers = [
-                        MultiDetWalker(system, trial, walker_opts=walker_opts,
+                        MultiDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                        verbose=(verbose and w == 0))
                         for w in range(qmc.nwalkers)
                         ]
@@ -76,7 +76,7 @@ class Walkers(object):
                                              dtype=numpy.complex128)
         elif trial.name == 'thermal':
             self.walker_type = 'thermal'
-            self.walkers = [ThermalWalker(system, trial,
+            self.walkers = [ThermalWalker(system, hamiltonian, trial,
                                           walker_opts=walker_opts,
                                           verbose=(verbose and w==0))
                             for w in range(qmc.nwalkers)]
@@ -114,7 +114,7 @@ class Walkers(object):
                                              dtype=numpy.complex128)
         else:
             self.walker_type = 'SD'
-            self.walkers = [SingleDetWalker(system, trial, walker_opts=walker_opts,
+            self.walkers = [SingleDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                             index=w, nprop_tot=nprop_tot,
                                             nbp=nbp)
                             for w in range(qmc.nwalkers)]

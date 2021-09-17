@@ -16,17 +16,11 @@ class Hubbard(object):
 
     Parameters
     ----------
-    inputs : dict
+    options : dict
         dictionary of system input options.
 
     Attributes
     ----------
-    nup : int
-        Number of up electrons.
-    ndown : int
-        Number of down electrons.
-    ne : int
-        Number of electrons.
     t : float
         Hopping parameter.
     U : float
@@ -43,20 +37,17 @@ class Hubbard(object):
         Super matrix (not currently implemented).
     """
 
-    def __init__(self, inputs, verbose=False):
+    def __init__(self, options, verbose=False):
         if verbose:
             print("# Parsing input options.")
-        self.nup = inputs.get('nup')
-        self.ndown = inputs.get('ndown')
-        self.ne = self.nup + self.ndown
-        self.nelec = (self.nup, self.ndown)
-        self.t = inputs.get('t', 1.0)
-        self.U = inputs['U']
-        self.nx = inputs['nx']
-        self.ny = inputs['ny']
-        self.ktwist = numpy.array(inputs.get('ktwist'))
+        self.t = options.get('t', 1.0)
+        self.U = options['U']
+        self.nx = options['nx']
+        self.ny = options['ny']
+        self.ktwist = numpy.array(options.get('ktwist'))
         self.control_variate = False
-        self.symmetric = inputs.get('symmetric', False)
+        self.symmetric = options.get('symmetric', False)
+        self.sparse = False
         if self.symmetric:
             # An unusual convention for the sign of the chemical potential is
             # used in Phys. Rev. B 99, 045108 (2018)
@@ -67,15 +58,15 @@ class Hubbard(object):
         else:
             self._alt_convention = False
         
-        self.ypbc = inputs.get('ypbc', True)
-        self.xpbc = inputs.get('xpbc', True)
+        self.ypbc = options.get('ypbc', True)
+        self.xpbc = options.get('xpbc', True)
 
         self.nbasis = self.nx * self.ny
         self.nactive = self.nbasis
         self.nfv = 0
         self.ncore = 0
         (self.kpoints, self.kc, self.eks) = kpoints(self.t, self.nx, self.ny)
-        self.pinning = inputs.get('pinning_fields', False)
+        self.pinning = options.get('pinning_fields', False)
         self._opt = True
         if verbose:
             print("# Setting up one-body operator.")
@@ -90,7 +81,7 @@ class Hubbard(object):
         self.Text = scipy.linalg.block_diag(self.T[0], self.T[1])
         self.P = transform_matrix(self.nbasis, self.kpoints,
                                   self.kc, self.nx, self.ny)
-        self.mu = inputs.get('mu', None)
+        self.mu = options.get('mu', None)
         # For interface consistency.
         self.ecore = 0.0
         # Number of field configurations per walker.
@@ -103,7 +94,7 @@ class Hubbard(object):
         self.construct_h1e_mod()
         self.control_variate = False
 
-    def fcidump(self, to_string=False):
+    def fcidump(self, nup, ndown, to_string=False):
         """Dump 1- and 2-electron integrals to file.
 
         Parameters
@@ -111,7 +102,7 @@ class Hubbard(object):
         to_string : bool
             Return fcidump as string. Default print to stdout.
         """
-        header = fcidump_header(self.ne, self.nbasis, self.nup-self.ndown)
+        header = fcidump_header(nup+ndown, self.nbasis, nup-ndown)
         for i in range(1, self.nbasis+1):
             if self.T.dtype == complex:
                 fmt = "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
@@ -160,8 +151,6 @@ class Hubbard(object):
             return self.U
         else:
             return 0.0
-
-
 
 def transform_matrix(nbasis, kpoints, kc, nx, ny):
     U = numpy.zeros(shape=(nbasis, nbasis), dtype=complex)

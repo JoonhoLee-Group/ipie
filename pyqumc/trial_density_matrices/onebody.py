@@ -14,14 +14,14 @@ from pyqumc.utils.misc import update_stack
 
 class OneBody(object):
 
-    def __init__(self, system, beta, dt, options={}, nav=None, H1=None, verbose=False):
+    def __init__(self, system, hamiltonian, beta, dt, options={}, nav=None, H1=None, verbose=False):
         self.name = 'thermal'
         self.verbose = verbose
         if H1 is None:
             try:
-                self.H1 = system.H1
+                self.H1 = hamiltonian.H1
             except AttributeError:
-                self.H1 = system.h1e
+                self.H1 = hamiltonian.h1e
         else:
             self.H1 = H1
 
@@ -78,7 +78,7 @@ class OneBody(object):
             print("# Number of stacks: {}".format(self.num_bins))
 
         sign = 1
-        if system._alt_convention:
+        if hamiltonian._alt_convention:
             if verbose:
                 print("# Using alternate sign convention for chemical potential.")
             sign = -1
@@ -88,7 +88,7 @@ class OneBody(object):
         if self.mu is None:
             self.rho = numpy.array([scipy.linalg.expm(-dtau*(self.H1[0])),
                                     scipy.linalg.expm(-dtau*(self.H1[1]))])
-            self.mu = find_chemical_potential(system, self.rho,
+            self.mu = find_chemical_potential(hamiltonian._alt_convention, self.rho,
                                          dtau, self.num_bins, self.nav,
                                          deps=self.deps, max_it=self.max_it,
                                          verbose=verbose)

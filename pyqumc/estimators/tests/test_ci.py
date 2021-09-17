@@ -1,14 +1,17 @@
 import pytest
 from pyqumc.systems.ueg import UEG
+from pyqumc.hamiltonians.ueg import UEG as HamUEG
 from pyqumc.systems.hubbard_holstein import HubbardHolstein
 from pyqumc.estimators.ci import simple_fci, simple_fci_bose_fermi
 
+from pauxy.systems.ueg import UEG as PauxyUEG
 
 @pytest.mark.unit
 def test_ueg():
     sys = UEG({'rs': 2, 'nup': 2, 'ndown': 2, 'ecut': 0.5})
-    sys.ecore = 0
-    eig, evec = simple_fci(sys)
+    ham = HamUEG(sys, {'rs': 2, 'nup': 2, 'ndown': 2, 'ecut': 0.5})
+    ham.ecore = 0
+    eig, evec = simple_fci(sys, ham)
     assert len(eig) == 441
     assert eig[0] == pytest.approx(1.327088181107)
     assert eig[231] == pytest.approx(2.883365264420)
@@ -31,7 +34,8 @@ def test_hubbard_holstein():
 	    "ypbc" :True
     }
     system = HubbardHolstein (options, verbose=True)
-    (eig, evec), H = simple_fci_bose_fermi(system, nboson_max=20, hamil=True)
+    ham = HubbardHolstein (options, verbose=True)
+    (eig, evec), H = simple_fci_bose_fermi(system, ham, nboson_max=20, hamil=True)
     assert eig[0] == pytest.approx(-6.232530237466693)
     
     options = {
@@ -48,7 +52,8 @@ def test_hubbard_holstein():
 	    "ypbc" :True
     }
     system = HubbardHolstein (options, verbose=True)
-    (eig, evec), H = simple_fci_bose_fermi(system, nboson_max=20, hamil=True)
+    ham = HubbardHolstein (options, verbose=True)
+    (eig, evec), H = simple_fci_bose_fermi(system, ham, nboson_max=20, hamil=True)
     assert eig[0] == pytest.approx(-4.642361166625703)
 
 

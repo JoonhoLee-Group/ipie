@@ -140,7 +140,7 @@ class Estimators(object):
         for k, e in self.estimators.items():
             e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
-    def update(self, system, hamiltonian, qmc, trial, psi, step, free_projection=False):
+    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators
 
         Parameters
@@ -159,4 +159,4 @@ class Estimators(object):
             True if doing free projection.
         """
         for k, e in self.estimators.items():
-            e.update(system, hamiltonian, qmc, trial, psi, step, free_projection)
+            e.update(qmc, system, hamiltonian, trial, psi, step, free_projection)

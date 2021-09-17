@@ -15,7 +15,7 @@ from pyqumc.walkers.single_det import SingleDetWalker
 class PlaneWave(object):
     """PlaneWave class
     """
-    def __init__(self, system, trial, qmc, options={},
+    def __init__(self, system, hamiltonian, trial, qmc, options={},
                  verbose=False, lowrank=False):
         self.verbose = verbose
         if verbose:
@@ -32,21 +32,21 @@ class PlaneWave(object):
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
-        self.num_vplus = system.nfields // 2
-        self.mf_shift = self.construct_mf_shift(system, trial)
+        self.num_vplus = hamiltonian.nfields // 2
+        self.mf_shift = self.construct_mf_shift(hamiltonian, trial)
         if verbose:
             print("# Absolute value of maximum component of mean field shift: "
                   "{:13.8e}.".format(numpy.max(numpy.abs(self.mf_shift))))
         if verbose:
-            print("# Number of fields = %i"%system.nfields)
+            print("# Number of fields = %i"%hamiltonian.nfields)
             print("# Using lowrank propagation: {}".format(self.lowrank))
 
-        self.vbias = numpy.zeros(system.nfields, dtype=numpy.complex128)
+        self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
 
         # Constant core contribution modified by mean field shift.
-        mf_core = system.ecore
+        mf_core = hamiltonian.ecore
 
-        self.construct_one_body_propagator(system, qmc.dt)
+        self.construct_one_body_propagator(hamiltonian, qmc.dt)
 
         self.BT = trial.dmat
         self.BTinv = trial.dmat_inv
@@ -80,20 +80,20 @@ class PlaneWave(object):
             print ("# Finished setting up propagator.")
         self.nfb_trig = False
 
-    def construct_mf_shift(self, system, trial):
+    def construct_mf_shift(self, hamiltonian, trial):
         P = one_rdm_from_G(trial.G)
-        P = P.reshape(2, system.nbasis*system.nbasis)
-        mf_shift = numpy.zeros(system.nfields, numpy.complex128)
-        mf_shift[:self.num_vplus] = P[0].T*system.iA + P[1].T*system.iA
-        mf_shift[self.num_vplus:] = P[0].T*system.iB + P[1].T*system.iB
+        P = P.reshape(2, hamiltonian.nbasis*hamiltonian.nbasis)
+        mf_shift = numpy.zeros(hamiltonian.nfields, numpy.complex128)
+        mf_shift[:self.num_vplus] = P[0].T*hamiltonian.iA + P[1].T*hamiltonian.iA
+        mf_shift[self.num_vplus:] = P[0].T*hamiltonian.iB + P[1].T*hamiltonian.iB
         return mf_shift
 
-    def construct_one_body_propagator(self, system, dt):
+    def construct_one_body_propagator(self, hamiltonian, dt):
         """Construct the one-body propagator Exp(-dt/2 H0)
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         dt : float
             time-step
         Returns
@@ -101,18 +101,19 @@ class PlaneWave(object):
         self.BH1 : numpy array
             Exp(-dt/2 H0)
         """
-        H1 = system.h1e_mod
+        H1 = hamiltonian.h1e_mod
         I = numpy.identity(H1[0].shape[0], dtype=H1.dtype)
+        print("hamiltonian.mu = {}".format(hamiltonian.mu))
         # No spin dependence for the moment.
-        self.BH1 = numpy.array([scipy.linalg.expm(-0.5*dt*H1[0]+0.5*dt*system.mu*I),
-                                scipy.linalg.expm(-0.5*dt*H1[1]+0.5*dt*system.mu*I)])
+        self.BH1 = numpy.array([scipy.linalg.expm(-0.5*dt*H1[0]+0.5*dt*hamiltonian.mu*I),
+                                scipy.linalg.expm(-0.5*dt*H1[1]+0.5*dt*hamiltonian.mu*I)])
 
-    def two_body_potentials(self, system, iq):
+    def two_body_potentials(self, hamiltonian, iq):
         """Calculatate A and B of Eq.(13) of PRB(75)245123 for a given plane-wave vector q
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         q : float
             a plane-wave vector
         Returns
@@ -122,11 +123,11 @@ class PlaneWave(object):
         iB : numpy array
             Eq.(13b)
         """
-        rho_q = system.density_operator(iq)
-        qscaled = system.kfac * system.qvecs[iq]
+        rho_q = hamiltonian.density_operator(iq)
+        qscaled = hamiltonian.kfac * hamiltonian.qvecs[iq]
 
         # Due to the HS transformation, we have to do pi / 2*vol as opposed to 2*pi / vol
-        piovol = math.pi / (system.vol)
+        piovol = math.pi / (hamiltonian.vol)
         factor = (piovol/numpy.dot(qscaled,qscaled))**0.5
 
         # JOONHO: include a factor of 1j
@@ -134,12 +135,12 @@ class PlaneWave(object):
         iB = - factor * (rho_q - rho_q.getH())
         return (iA, iB)
 
-    def construct_force_bias(self, system, G):
+    def construct_force_bias(self, hamiltonian, G):
         """Compute the force bias term as in Eq.(33) of DOI:10.1002/wcms.1364
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         G : numpy array
             Green's function
         Returns
@@ -147,19 +148,19 @@ class PlaneWave(object):
         force bias : numpy array
             -sqrt(dt) * vbias
         """
-        for (i, qi) in enumerate(system.qvecs):
-            (iA, iB) = self.two_body_potentials(system, i)
+        for (i, qi) in enumerate(hamiltonian.qvecs):
+            (iA, iB) = self.two_body_potentials(hamiltonian, i)
             # Deal with spin more gracefully
             self.vbias[i] = iA.dot(G[0]).diagonal().sum() + iA.dot(G[1]).diagonal().sum()
             self.vbias[i+self.num_vplus] = iB.dot(G[0]).diagonal().sum() + iB.dot(G[1]).diagonal().sum()
         return - self.sqrt_dt * self.vbias
 
-    def construct_VHS_outofcore(self, system, xshifted):
+    def construct_VHS_outofcore(self, hamiltonian, xshifted):
         """Construct the one body potential from the HS transformation
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         xshifted : numpy array
             shifited auxiliary field
         Returns
@@ -167,20 +168,20 @@ class PlaneWave(object):
         VHS : numpy array
             the HS potential
         """
-        VHS = numpy.zeros((system.nbasis, system.nbasis), dtype=numpy.complex128 )
+        VHS = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128 )
 
-        for (i, qi) in enumerate(system.qvecs):
-            (iA, iB) = self.two_body_potentials(system, i)
+        for (i, qi) in enumerate(hamiltonian.qvecs):
+            (iA, iB) = self.two_body_potentials(hamiltonian, i)
             VHS = VHS + (xshifted[i] * iA).todense()
             VHS = VHS + (xshifted[i+self.num_vplus] * iB).todense()
         return  VHS * self.sqrt_dt
 
-    def construct_VHS_incore(self, system, xshifted):
+    def construct_VHS_incore(self, hamiltonian, xshifted):
         """Construct the one body potential from the HS transformation
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         xshifted : numpy array
             shifited auxiliary field
         Returns
@@ -188,17 +189,17 @@ class PlaneWave(object):
         VHS : numpy array
             the HS potential
         """
-        VHS = numpy.zeros((system.nbasis, system.nbasis), dtype=numpy.complex128 )
-        VHS = system.iA * xshifted[:self.num_vplus] + system.iB * xshifted[self.num_vplus:]
-        VHS = VHS.reshape(system.nbasis, system.nbasis)
+        VHS = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128 )
+        VHS = hamiltonian.iA * xshifted[:self.num_vplus] + hamiltonian.iB * xshifted[self.num_vplus:]
+        VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
         return  VHS * self.sqrt_dt
 
-    def construct_force_bias_incore(self, system, G):
+    def construct_force_bias_incore(self, hamiltonian, G):
         """Compute the force bias term as in Eq.(33) of DOI:10.1002/wcms.1364
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         G : numpy array
             Green's function
         Returns
@@ -206,9 +207,9 @@ class PlaneWave(object):
         force bias : numpy array
             -sqrt(dt) * vbias
         """
-        Gvec = G.reshape(2, system.nbasis*system.nbasis)
-        self.vbias[:self.num_vplus] = Gvec[0].T*system.iA + Gvec[1].T*system.iA
-        self.vbias[self.num_vplus:] = Gvec[0].T*system.iB + Gvec[1].T*system.iB
+        Gvec = G.reshape(2, hamiltonian.nbasis*hamiltonian.nbasis)
+        self.vbias[:self.num_vplus] = Gvec[0].T*hamiltonian.iA + Gvec[1].T*hamiltonian.iA
+        self.vbias[self.num_vplus:] = Gvec[0].T*hamiltonian.iB + Gvec[1].T*hamiltonian.iB
         return - self.sqrt_dt * self.vbias
 
     def propagate_greens_function(self, walker, B, Binv):
@@ -216,14 +217,14 @@ class PlaneWave(object):
             walker.G[0] = B[0].dot(walker.G[0]).dot(Binv[0])
             walker.G[1] = B[1].dot(walker.G[1]).dot(Binv[1])
 
-    def two_body_propagator(self, walker, system, force_bias=True):
+    def two_body_propagator(self, walker, hamiltonian, force_bias=True):
         """It appliese the two-body propagator
         Parameters
         ----------
         walker :
             walker class
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         fb : boolean
             wheter to use force bias
         Returns
@@ -237,15 +238,15 @@ class PlaneWave(object):
         """
 
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, system.nfields)
+        xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields)
 
         # Optimal force bias.
-        xbar = numpy.zeros(system.nfields)
+        xbar = numpy.zeros(hamiltonian.nfields)
         if force_bias:
             rdm = one_rdm_from_G(walker.G)
-            xbar = self.construct_force_bias_incore(system, rdm)
+            xbar = self.construct_force_bias_incore(hamiltonian, rdm)
 
-        for i in range(system.nfields):
+        for i in range(hamiltonian.nfields):
             if numpy.absolute(xbar[i]) > self.fb_bound:
                 if not self.nfb_trig and self.verbose:
                     print("# Rescaling force bias is triggered.")
@@ -271,7 +272,7 @@ class PlaneWave(object):
         # print(xbar.dot(xbar))
 
         # Operator terms contributing to propagator.
-        VHS = self.construct_VHS_incore(system, xshifted)
+        VHS = self.construct_VHS_incore(hamiltonian, xshifted)
 
         return (cmf, cfb, xshifted, VHS)
 
@@ -310,7 +311,7 @@ class PlaneWave(object):
     def estimate_eshift(self, walker):
         return 0.0
 
-    def propagate_walker_free_full_rank(self, system, walker, trial, eshift=0, force_bias=False):
+    def propagate_walker_free_full_rank(self, system, hamiltonian, walker, trial, eshift=0, force_bias=False):
         """Free projection propagator
         Parameters
         ----------
@@ -324,7 +325,7 @@ class PlaneWave(object):
         -------
         """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system,
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian,
                                                            force_bias=force_bias)
         BV = self.exponentiate(VHS) # could use a power-series method to build this
 
@@ -391,7 +392,7 @@ class PlaneWave(object):
         -------
         """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system,
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian,
                                                            force_bias=force_bias)
         BV = self.exponentiate(VHS) # could use a power-series method to build this
 
@@ -456,7 +457,7 @@ class PlaneWave(object):
         # -------
         # """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, True)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True)
         BV = self.exponentiate(VHS) # could use a power-series method to build this
 
         B = numpy.array([
@@ -516,7 +517,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless_low_rank(self, system, walker, trial, eshift=0):
+    def propagate_walker_phaseless_low_rank(self, hamiltonian, walker, trial, eshift=0):
         # """Phaseless propagator
         # Parameters
         # ----------
@@ -529,7 +530,7 @@ class PlaneWave(object):
         # Returns
         # -------
         # """
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, True)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True)
         BV = self.exponentiate(VHS) # could use a power-series method to build this
 
         B = numpy.array([

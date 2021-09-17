@@ -1,6 +1,6 @@
 import itertools
 import cmath
-from pyqumc.systems.hubbard import Hubbard
+from pyqumc.hamiltonians.hubbard import Hubbard
 from pyqumc.trial_wavefunction.free_electron import FreeElectron
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from pyqumc.estimators.ci import simple_fci_bose_fermi, simple_fci

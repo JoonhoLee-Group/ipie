@@ -54,3 +54,4 @@ class Generic(object):
         self.nelec = nelec
         self.ne = self.nup + self.ndown
 
+        self.ktwist = numpy.array([None])

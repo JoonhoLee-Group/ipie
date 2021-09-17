@@ -24,11 +24,12 @@ class MultiDetWalker(Walker):
         Initial wavefunction.
     """
 
-    def __init__(self, system, trial, walker_opts={}, index=0,
+    def __init__(self, system, hamiltonian, trial, walker_opts={}, index=0,
                  weights='zeros', verbose=False, nprop_tot=None, nbp=None):
         if verbose:
             print("# Setting up MultiDetWalker object.")
-        Walker.__init__(self, system, trial, walker_opts, index, nprop_tot, nbp)
+        Walker.__init__(self, system, hamiltonian, trial, walker_opts, index, nprop_tot, nbp)
+        self.name = "MultiDetWalker"
         self.ndets = trial.psi.shape[0]
         dtype = numpy.complex128
         # This stores an array of overlap matrices with the various elements of
@@ -53,15 +54,15 @@ class MultiDetWalker(Walker):
             print("# Initial overlap of walker with trial wavefunction: {:13.8e}"
                   .format(self.ot.real))
         # Green's functions for various elements of the trial wavefunction.
-        self.Gi = numpy.zeros(shape=(self.ndets, 2, system.nbasis,
-                                     system.nbasis), dtype=dtype)
+        self.Gi = numpy.zeros(shape=(self.ndets, 2, hamiltonian.nbasis,
+                                     hamiltonian.nbasis), dtype=dtype)
         
         self.split_trial_local_energy = trial.split_trial_local_energy
 
         if(trial.split_trial_local_energy):
             self.le_ndets = trial.le_psi.shape[0]
-            self.le_Gi = numpy.zeros(shape=(self.le_ndets, 2, system.nbasis,
-                                         system.nbasis), dtype=dtype)
+            self.le_Gi = numpy.zeros(shape=(self.le_ndets, 2, hamiltonian.nbasis,
+                                         hamiltonian.nbasis), dtype=dtype)
             if weights == 'zeros':
                 self.le_weights = numpy.zeros(self.le_ndets, dtype=dtype)
             else:
@@ -69,11 +70,11 @@ class MultiDetWalker(Walker):
 
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
-        self.G = numpy.zeros(shape=(2, system.nbasis, system.nbasis),
+        self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=dtype)
         # Contains overlaps of the current walker with the trial wavefunction.
         self.greens_function(trial)
-        self.nb = system.nbasis
+        self.nb = hamiltonian.nbasis
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
         self.le_oratio = 1.0
@@ -256,29 +257,29 @@ class MultiDetWalker(Walker):
             self.le_oratio = tot_ovlp_energy / tot_ovlp
         return tot_ovlp
 
-    def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
-        """Compute walkers local energy
+    # def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
+    #     """Compute walkers local energy
 
-        Parameters
-        ----------
-        system : object
-            System object.
+    #     Parameters
+    #     ----------
+    #     system : object
+    #         System object.
 
-        Returns
-        -------
-        (E, T, V) : tuple
-            Mixed estimates for walker's energy components.
-        """
-        if (self.split_trial_local_energy):
-            return local_energy_multi_det(system, self.le_Gi,
-                                          self.le_weights,
-                                          two_rdm=None,
-                                          rchol=None)
-        else:
-            return local_energy_multi_det(system, self.Gi,
-                                          self.weights,
-                                          two_rdm=None,
-                                          rchol=None)
+    #     Returns
+    #     -------
+    #     (E, T, V) : tuple
+    #         Mixed estimates for walker's energy components.
+    #     """
+    #     if (self.split_trial_local_energy):
+    #         return local_energy_multi_det(system, self.le_Gi,
+    #                                       self.le_weights,
+    #                                       two_rdm=None,
+    #                                       rchol=None)
+    #     else:
+    #         return local_energy_multi_det(system, self.Gi,
+    #                                       self.weights,
+    #                                       two_rdm=None,
+    #                                       rchol=None)
 
     def contract_one_body(self, ints, trial):
         numer = 0.0

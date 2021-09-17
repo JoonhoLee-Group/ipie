@@ -29,9 +29,10 @@ class SingleDetWalker(Walker):
     """
 
     def __init__(self, system, hamiltonian, trial, walker_opts={}, index=0, nprop_tot=None, nbp=None):
-        Walker.__init__(self, system, trial,
+        Walker.__init__(self, system, hamiltonian, trial,
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp)
+        self.name = "SingleDetWalker"
         self.inv_ovlp = [0.0, 0.0]
 
         self.phi_boson = None

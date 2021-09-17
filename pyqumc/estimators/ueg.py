@@ -24,12 +24,14 @@ def coulomb_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gkpq, Gpmq, G):
         for (idxpmq,i) in zip(pmq[iq],pmq_i[iq]):
             Gpmq[iq] += G[i,idxpmq]
 
-def local_energy_ueg(system, G, Ghalf=None, two_rdm=None):
+def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None):
     """Local energy computation for uniform electron gas
     Parameters
     ----------
     system :
         system class
+    ham :
+        hamiltonian class
     G :
         Green's function
     Returns
@@ -41,46 +43,46 @@ def local_energy_ueg(system, G, Ghalf=None, two_rdm=None):
     pe : float
         potential energy
     """
-    if (system.diagH1):
-        ke = numpy.einsum('sii,sii->',system.H1,G)
+    if (ham.diagH1):
+        ke = numpy.einsum('sii,sii->',ham.H1,G)
     else:
-        ke = numpy.einsum('sij,sij->',system.H1,G)
+        ke = numpy.einsum('sij,sij->',ham.H1,G)
 
-    Gkpq =  numpy.zeros((2,len(system.qvecs)), dtype=numpy.complex128)
-    Gpmq =  numpy.zeros((2,len(system.qvecs)), dtype=numpy.complex128)
-    Gprod = numpy.zeros((2,len(system.qvecs)), dtype=numpy.complex128)
+    Gkpq =  numpy.zeros((2,len(ham.qvecs)), dtype=numpy.complex128)
+    Gpmq =  numpy.zeros((2,len(ham.qvecs)), dtype=numpy.complex128)
+    Gprod = numpy.zeros((2,len(ham.qvecs)), dtype=numpy.complex128)
 
     ne = [system.nup, system.ndown]
-    nq = numpy.shape(system.qvecs)[0]
+    nq = numpy.shape(ham.qvecs)[0]
 
     for s in [0, 1]:
-        # exchange_greens_function(nq, system.ikpq_i, system.ikpq_kpq, system.ipmq_i,system.ipmq_pmq, Gprod[s],G[s])
-        # coulomb_greens_function(nq, system.ikpq_i, system.ikpq_kpq,  system.ipmq_i, system.ipmq_pmq,Gkpq[s], Gpmq[s],G[s])
+        # exchange_greens_function(nq, ham.ikpq_i, ham.ikpq_kpq, ham.ipmq_i,ham.ipmq_pmq, Gprod[s],G[s])
+        # coulomb_greens_function(nq, ham.ikpq_i, ham.ikpq_kpq,  ham.ipmq_i, ham.ipmq_pmq,Gkpq[s], Gpmq[s],G[s])
         for iq in range(nq):
-            Gkpq[s,iq], Gpmq[s,iq] = coulomb_greens_function_per_qvec(system.ikpq_i[iq],
-                                                                    system.ikpq_kpq[iq],
-                                                                    system.ipmq_i[iq],
-                                                                    system.ipmq_pmq[iq],
+            Gkpq[s,iq], Gpmq[s,iq] = coulomb_greens_function_per_qvec(ham.ikpq_i[iq],
+                                                                    ham.ikpq_kpq[iq],
+                                                                    ham.ipmq_i[iq],
+                                                                    ham.ipmq_pmq[iq],
                                                                     G[s])
-            Gprod[s,iq] = exchange_greens_function_per_qvec(system.ikpq_i[iq],
-                                                            system.ikpq_kpq[iq],
-                                                            system.ipmq_i[iq],
-                                                            system.ipmq_pmq[iq],
+            Gprod[s,iq] = exchange_greens_function_per_qvec(ham.ikpq_i[iq],
+                                                            ham.ikpq_kpq[iq],
+                                                            ham.ipmq_i[iq],
+                                                            ham.ipmq_pmq[iq],
                                                             G[s])
 
     if two_rdm is None:
-        two_rdm = numpy.zeros((2,2,len(system.qvecs)), dtype=numpy.complex128)
+        two_rdm = numpy.zeros((2,2,len(ham.qvecs)), dtype=numpy.complex128)
     two_rdm[0,0] = numpy.multiply(Gkpq[0],Gpmq[0]) - Gprod[0]
-    essa = (1.0/(2.0*system.vol))*system.vqvec.dot(two_rdm[0,0])
+    essa = (1.0/(2.0*ham.vol))*ham.vqvec.dot(two_rdm[0,0])
 
     two_rdm[1,1] = numpy.multiply(Gkpq[1],Gpmq[1]) - Gprod[1]
-    essb = (1.0/(2.0*system.vol))*system.vqvec.dot(two_rdm[1,1])
+    essb = (1.0/(2.0*ham.vol))*ham.vqvec.dot(two_rdm[1,1])
 
     two_rdm[0,1] = numpy.multiply(Gkpq[0],Gpmq[1])
     two_rdm[1,0] = numpy.multiply(Gkpq[1],Gpmq[0])
     eos = (
-        (1.0/(2.0*system.vol))*system.vqvec.dot(two_rdm[0,1])
-        + (1.0/(2.0*system.vol))*system.vqvec.dot(two_rdm[1,0])
+        (1.0/(2.0*ham.vol))*ham.vqvec.dot(two_rdm[0,1])
+        + (1.0/(2.0*ham.vol))*ham.vqvec.dot(two_rdm[1,0])
     )
 
     pe = essa + essb + eos
@@ -127,13 +129,13 @@ def build_K(system, G):
     return K
 
 
-def fock_ueg(sys, G):
+def fock_ueg(ham, G):
     """Fock matrix computation for uniform electron gas
 
     Parameters
     ----------
-    sys : :class`pyqumc.systems.ueg.UEG`
-        UEG system class.
+    ham : :class`pyqumc.hamiltonians.UEG`
+        UEG hamiltonian class.
     G : :class:`numpy.ndarray`
         Green's function.
     Returns
@@ -141,29 +143,29 @@ def fock_ueg(sys, G):
     F : :class:`numpy.ndarray`
         Fock matrix (2, nbasis, nbasis).
     """
-    nbsf = sys.nbasis
-    nq = len(sys.qvecs)
-    assert nq == len(sys.vqvec)
+    nbsf = ham.nbasis
+    nq = len(ham.qvecs)
+    assert nq == len(ham.vqvec)
 
     Fock = numpy.zeros((2, nbsf, nbsf), dtype=numpy.complex128)
     Gkpq =  numpy.zeros((2, nq), dtype=numpy.complex128)
     Gpmq =  numpy.zeros((2, nq), dtype=numpy.complex128)
 
     for s in [0, 1]:
-        coulomb_greens_function(nq, sys.ikpq_i, sys.ikpq_kpq,
-                                sys.ipmq_i, sys.ipmq_pmq,
+        coulomb_greens_function(nq, ham.ikpq_i, ham.ikpq_kpq,
+                                ham.ipmq_i, ham.ipmq_pmq,
                                 Gkpq[s], Gpmq[s], G[s])
 
-    J = build_J_opt(nq, sys.vqvec, sys.vol, sys.nbasis,
-                     sys.ikpq_i, sys.ikpq_kpq, sys.ipmq_i, sys.ipmq_pmq,
+    J = build_J_opt(nq, ham.vqvec, ham.vol, ham.nbasis,
+                     ham.ikpq_i, ham.ikpq_kpq, ham.ipmq_i, ham.ipmq_pmq,
                      Gkpq, Gpmq)
 
-    K = build_K_opt(nq, sys.vqvec, sys.vol, sys.nbasis,
-                    sys.ikpq_i, sys.ikpq_kpq, sys.ipmq_i, sys.ipmq_pmq,
+    K = build_K_opt(nq, ham.vqvec, ham.vol, ham.nbasis,
+                    ham.ikpq_i, ham.ikpq_kpq, ham.ipmq_i, ham.ipmq_pmq,
                     G)
 
     for s in [0, 1]:
-        Fock[s] = sys.H1[s] + J[s] + K[s]
+        Fock[s] = ham.H1[s] + J[s] + K[s]
 
     return Fock
 

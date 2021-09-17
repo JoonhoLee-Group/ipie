@@ -28,30 +28,30 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
     enuc = numpy.random.rand()
     return h1e, chol, enuc, eri
 
-def get_random_nomsd(system, ndet=10, cplx=True):
-    a = numpy.random.rand(ndet*system.nbasis*(system.nup+system.ndown))
-    b = numpy.random.rand(ndet*system.nbasis*(system.nup+system.ndown))
+def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
+    a = numpy.random.rand(ndet*nbasis*(nup+ndown))
+    b = numpy.random.rand(ndet*nbasis*(nup+ndown))
     if cplx:
-        wfn = (a + 1j*b).reshape((ndet,system.nbasis,system.nup+system.ndown))
+        wfn = (a + 1j*b).reshape((ndet,nbasis,nup+ndown))
         coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
     else:
-        wfn = a.reshape((ndet,system.nbasis,system.nup+system.ndown))
+        wfn = a.reshape((ndet,nbasis,nup+ndown))
         coeffs = numpy.random.rand(ndet)
     return (coeffs,wfn)
 
-def get_random_phmsd(system, ndet=10, init=False):
-    orbs = numpy.arange(system.nbasis)
-    oa = [c for c in itertools.combinations(orbs, system.nup)]
-    ob = [c for c in itertools.combinations(orbs, system.ndown)]
+def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False):
+    orbs = numpy.arange(nbasis)
+    oa = [c for c in itertools.combinations(orbs, nup)]
+    ob = [c for c in itertools.combinations(orbs, ndown)]
     oa, ob = zip(*itertools.product(oa,ob))
     oa = oa[:ndet]
     ob = ob[:ndet]
     coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
     wfn = (coeffs,oa,ob)
     if init:
-        a = numpy.random.rand(system.nbasis*(system.nup+system.ndown))
-        b = numpy.random.rand(system.nbasis*(system.nup+system.ndown))
-        init_wfn = (a + 1j*b).reshape((system.nbasis,system.nup+system.ndown))
+        a = numpy.random.rand(nbasis*(nup+ndown))
+        b = numpy.random.rand(nbasis*(nup+ndown))
+        init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
     return wfn, init_wfn
 
 def get_random_wavefunction(nelec, nbasis):

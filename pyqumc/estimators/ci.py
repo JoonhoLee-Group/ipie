@@ -5,7 +5,7 @@ import scipy.linalg
 import scipy.sparse.linalg
 import itertools
 
-def simple_fci_bose_fermi(system, nboson_max = 1, gen_dets=False, occs=None, hamil=False, verbose = False):
+def simple_fci_bose_fermi(system, ham, nboson_max = 1, gen_dets=False, occs=None, hamil=False, verbose = False):
     """Very dumb FCI routine."""
     orbs = numpy.arange(system.nbasis)
 
@@ -44,9 +44,10 @@ def simple_fci_bose_fermi(system, nboson_max = 1, gen_dets=False, occs=None, ham
     Ib = scipy.sparse.eye(nperms)
 
     hel = scipy.sparse.csr_matrix((ndets,ndets))
+    nel = system.nup+system.ndown
     for i in range(ndets):
         for j in range(i,ndets):
-            hel[i,j] = get_hmatel(system, dets[i], dets[j])[0]
+            hel[i,j] = get_hmatel(system, nel, dets[i], dets[j])[0]
             hel[j,i] = hel[i,j]
 
     print("# finshed forming hel")
@@ -156,9 +157,9 @@ def simple_fci_bose_fermi(system, nboson_max = 1, gen_dets=False, occs=None, ham
         return (eigval, eigvec)
 
 
-def simple_fci(system, gen_dets=False, occs=None, hamil=False):
+def simple_fci(system, ham, gen_dets=False, occs=None, hamil=False):
     """Very dumb FCI routine."""
-    orbs = numpy.arange(system.nbasis)
+    orbs = numpy.arange(ham.nbasis)
     if occs is None:
         oa = [c for c in itertools.combinations(orbs, system.nup)]
         ob = [c for c in itertools.combinations(orbs, system.ndown)]
@@ -166,13 +167,14 @@ def simple_fci(system, gen_dets=False, occs=None, hamil=False):
     else:
         oa, ob = occs
     # convert to spin orbitals
-    dets = [[j for j in a] + [i+system.nbasis for i in c] for (a,c) in zip(oa,ob)]
+    dets = [[j for j in a] + [i+ham.nbasis for i in c] for (a,c) in zip(oa,ob)]
     dets = [numpy.sort(d) for d in dets]
     ndets = len(dets)
     H = numpy.zeros((ndets,ndets))
+    nel = system.nup+system.ndown
     for i in range(ndets):
         for j in range(i,ndets):
-            H[i,j] = get_hmatel(system, dets[i], dets[j])[0]
+            H[i,j] = get_hmatel(ham, nel, dets[i], dets[j])[0]
     if gen_dets:
         return scipy.linalg.eigh(H, lower=False), (dets,numpy.array(oa),numpy.array(ob))
     elif hamil:
@@ -181,7 +183,7 @@ def simple_fci(system, gen_dets=False, occs=None, hamil=False):
         return scipy.linalg.eigh(H, lower=False)
 
 
-def get_hmatel(system, di, dj):
+def get_hmatel(ham, nel, di, dj):
     from_orb = list(set(dj)-set(di))
     to_orb = list(set(di)-set(dj))
     from_orb.sort()
@@ -189,18 +191,18 @@ def get_hmatel(system, di, dj):
     nex = len(from_orb)
     perm = get_perm(from_orb, to_orb, di, dj)
     if nex == 0:
-        hmatel, e1b, e2b = slater_condon0(system, di)
+        hmatel, e1b, e2b = slater_condon0(ham, di)
     elif nex == 1:
-        i, si = map_orb(from_orb[0], system.nbasis)
-        a, sa = map_orb(to_orb[0], system.nbasis)
-        hmatel, e1b, e2b = slater_condon1(system, (i,si), (a,sa), di, perm)
+        i, si = map_orb(from_orb[0], ham.nbasis)
+        a, sa = map_orb(to_orb[0], ham.nbasis)
+        hmatel, e1b, e2b = slater_condon1(ham, nel, (i,si), (a,sa), di, perm)
     elif nex == 2:
         # < ij | ab > or < ij | ba >
-        i, si = map_orb(from_orb[0], system.nbasis)
-        j, sj = map_orb(from_orb[1], system.nbasis)
-        a, sa = map_orb(to_orb[0], system.nbasis)
-        b, sb = map_orb(to_orb[1], system.nbasis)
-        hmatel = slater_condon2(system, (i,si), (j,sj), (a,sa), (b,sb), perm)
+        i, si = map_orb(from_orb[0], ham.nbasis)
+        j, sj = map_orb(from_orb[1], ham.nbasis)
+        a, sa = map_orb(to_orb[0], ham.nbasis)
+        b, sb = map_orb(to_orb[1], ham.nbasis)
+        hmatel = slater_condon2(ham, (i,si), (j,sj), (a,sa), (b,sb), perm)
         e1b = 0
         e2b = hmatel
     else:
@@ -243,20 +245,19 @@ def slater_condon0(system, occs):
     hmatel = e1b + e2b
     return hmatel, e1b, e2b
 
-def slater_condon1(system, i, a, occs, perm):
+def slater_condon1(ham, nel, i, a, occs, perm):
     ii, si = i
     aa, sa = a
-    e1b = system.H1[0,ii,aa]
-    nel = system.nup + system.ndown
+    e1b = ham.H1[0,ii,aa]
     e2b = 0
     for j in range(nel):
         # \sum_j <ij|aj> - <ij|ja>
         oj = occs[j]
-        oj, soj = map_orb(oj, system.nbasis)
+        oj, soj = map_orb(oj, ham.nbasis)
         if 2*oj+soj != 2*ii+si:
-            e2b += system.hijkl(ii,oj,aa,oj)
+            e2b += ham.hijkl(ii,oj,aa,oj)
             if soj == si:
-                e2b -= system.hijkl(ii,oj,oj,aa)
+                e2b -= ham.hijkl(ii,oj,oj,aa)
     hmatel = e1b + e2b
     if perm:
         return -hmatel, -e1b, -e2b

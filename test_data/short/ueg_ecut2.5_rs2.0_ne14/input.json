@@ -6,6 +6,9 @@
         "rs": 2.0,
         "ecut": 2.5
     },
+    "hamiltonian": {
+        "name": "UEG",
+    },
     "qmc": {
         "dt": 0.01,
         "nwalkers": 32,

@@ -4,14 +4,14 @@ from pyqumc.utils.io import (
         format_fixed_width_strings, format_fixed_width_floats
         )
 
-def find_chemical_potential(system, rho, beta, num_bins, target,
+def find_chemical_potential(alt_convention, rho, beta, num_bins, target,
                             deps=1e-6, max_it=1000, verbose=False):
     # Todo: some sort of generic starting point independent of
     # system/temperature
     dmu1 = dmu2 = 1
     mu1 = -1
     mu2 = 1
-    sign = -1 if system._alt_convention else 1
+    sign = -1 if alt_convention else 1
     if verbose:
         print("# Finding chemical potential to match <N> = {:13.8e}"
               .format(target))

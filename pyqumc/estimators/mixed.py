@@ -8,7 +8,6 @@ except ImportError:
 import scipy.linalg
 import time
 from pyqumc.estimators.utils import H5EstimatorHelper
-from pyqumc.estimators.ci import get_hmatel
 from pyqumc.estimators.thermal import particle_number, one_rdm_from_G
 from pyqumc.estimators.local_energy import local_energy
 

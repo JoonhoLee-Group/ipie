@@ -1,9 +1,9 @@
 import itertools
 import cmath
 import h5py
-from pyqumc.systems.hubbard import Hubbard
+from pyqumc.hamiltonians.hubbard import Hubbard
 from pyqumc.trial_wavefunction.free_electron import FreeElectron
-from pyqumc.trial_wavefunction.uhf import UHF
+from pyqumc.trial_wavefunction.hubbard_uhf import HubbardUHF
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from pyqumc.estimators.ci import simple_fci_bose_fermi, simple_fci
 from pyqumc.estimators.hubbard import local_energy_hubbard_holstein, local_energy_hubbard

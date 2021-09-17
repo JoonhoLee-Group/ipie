@@ -180,15 +180,15 @@ class GenericContinuous(object):
         VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
         return  self.isqrt_dt * VHS
 
-def construct_propagator_matrix_generic(system, BT2, config, dt, conjt=False):
+def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=False):
     """Construct the full projector from a configuration of auxiliary fields.
 
-    For use with generic system object.
+    For use with generic hamiltonian object.
 
     Parameters
     ----------
-    system : class
-        System class.
+    hamiltonian : class
+        hamiltonian class.
     BT2 : :class:`numpy.ndarray`
         One body propagator.
     config : numpy array
@@ -201,8 +201,8 @@ def construct_propagator_matrix_generic(system, BT2, config, dt, conjt=False):
     B : :class:`numpy.ndarray`
         Full propagator matrix.
     """
-    nbsf = system.nbasis
-    VHS = 1j*dt**0.5*system.chol_vecs.dot(config).reshape(nbsf, nbsf)
+    nbsf = hamiltonian.nbasis
+    VHS = 1j*dt**0.5*hamiltonian.chol_vecs.dot(config).reshape(nbsf, nbsf)
     EXP_VHS = exponentiate_matrix(VHS)
     Bup = BT2[0].dot(EXP_VHS).dot(BT2[0])
     Bdown = BT2[1].dot(EXP_VHS).dot(BT2[1])
@@ -252,7 +252,7 @@ def construct_propagator_matrix_generic(system, BT2, config, dt, conjt=False):
                 # psi_bp[iw].reortho(trial)
     # return psi_bp
 
-def back_propagate_generic(phi, configs, system, nstblz, BT2, dt, store=False):
+def back_propagate_generic(phi, configs, system, hamiltonian, nstblz, BT2, dt, store=False):
     r"""Perform back propagation for RHF/UHF style wavefunction.
 
     For use with generic system hamiltonian.
@@ -280,7 +280,7 @@ def back_propagate_generic(phi, configs, system, nstblz, BT2, dt, store=False):
     nup = system.nup
     psi_store = []
     for (i, c) in enumerate(configs.get_block()[0][::-1]):
-        B = construct_propagator_matrix_generic(system, BT2, c, dt, False)
+        B = construct_propagator_matrix_generic(hamiltonian, BT2, c, dt, False)
         phi[:,:nup] = numpy.dot(B[0].conj().T, phi[:,:nup])
         phi[:,nup:] = numpy.dot(B[1].conj().T, phi[:,nup:])
         if i != 0 and i % nstblz == 0:
@@ -294,7 +294,7 @@ def back_propagate_generic(phi, configs, system, nstblz, BT2, dt, store=False):
 def back_propagate_generic_bmat(system, psi, trial, nstblz):
     r"""Perform back propagation for RHF/UHF style wavefunction.
     """
-    psi_bp = [SingleDetWalker({}, system, trial, index=w) for w in range(len(psi))]
+    psi_bp = [SingleDetWalker({}, system, hamiltonian, trial, index=w) for w in range(len(psi))]
     nup = system.nup
     for (iw, w) in enumerate(psi):
         # propagators should be applied in reverse order

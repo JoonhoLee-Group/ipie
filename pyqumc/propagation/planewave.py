@@ -11,7 +11,7 @@ from pyqumc.walkers.single_det import SingleDetWalker
 class PlaneWave(object):
     """PlaneWave class
     """
-    def __init__(self, system, trial, qmc, options={}, verbose=False):
+    def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
             print ("# Parsing plane wave propagator input options.")
         # Derived Attributes
@@ -19,10 +19,10 @@ class PlaneWave(object):
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
         self.mf_core = 0
-        self.num_vplus = system.nfields // 2
-        self.vbias = numpy.zeros(system.nfields, dtype=numpy.complex128)
+        self.num_vplus = hamiltonian.nfields // 2
+        self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
         # Mean-field shift is zero for UEG.
-        self.mf_shift = numpy.zeros(system.nfields, dtype=numpy.complex128)
+        self.mf_shift = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
         optimised = options.get('optimised', True)
         if optimised:
             self.construct_force_bias = self.construct_force_bias_incore
@@ -36,12 +36,12 @@ class PlaneWave(object):
         if verbose:
             print ("# Finished setting up plane wave propagator.")
 
-    def construct_one_body_propagator(self, system, dt):
+    def construct_one_body_propagator(self, hamiltonian, dt):
         """Construct the one-body propagator Exp(-dt/2 H0)
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         dt : float
             time-step
         Returns
@@ -49,17 +49,17 @@ class PlaneWave(object):
         self.BH1 : numpy array
             Exp(-dt/2 H0)
         """
-        H1 = system.h1e_mod
+        H1 = hamiltonian.h1e_mod
         # No spin dependence for the moment.
         self.BH1 = numpy.array([scipy.linalg.expm(-0.5*dt*H1[0]),
                                 scipy.linalg.expm(-0.5*dt*H1[1])])
 
-    def construct_force_bias_incore(self, system, walker, trial):
+    def construct_force_bias_incore(self, hamiltonian, walker, trial):
         """Compute the force bias term as in Eq.(33) of DOI:10.1002/wcms.1364
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         G : numpy array
             Green's function
         Returns
@@ -68,19 +68,19 @@ class PlaneWave(object):
             -sqrt(dt) * vbias
         """
         G = walker.G
-        Gvec = G.reshape(2, system.nbasis*system.nbasis)
-        self.vbias[:self.num_vplus] = Gvec[0].T*system.iA + Gvec[1].T*system.iA
-        self.vbias[self.num_vplus:] = Gvec[0].T*system.iB + Gvec[1].T*system.iB
+        Gvec = G.reshape(2, hamiltonian.nbasis*hamiltonian.nbasis)
+        self.vbias[:self.num_vplus] = Gvec[0].T*hamiltonian.iA + Gvec[1].T*hamiltonian.iA
+        self.vbias[self.num_vplus:] = Gvec[0].T*hamiltonian.iB + Gvec[1].T*hamiltonian.iB
         # print(-self.sqrt_dt*self.vbias)
         # sys.exit()
         return - self.sqrt_dt * self.vbias
 
-    def construct_VHS_incore(self, system, xshifted):
+    def construct_VHS_incore(self, hamiltonian, xshifted):
         """Construct the one body potential from the HS transformation
         Parameters
         ----------
-        system :
-            system class
+        hamiltonian :
+            hamiltonian class
         xshifted : numpy array
             shifited auxiliary field
         Returns
@@ -88,15 +88,15 @@ class PlaneWave(object):
         VHS : numpy array
             the HS potential
         """
-        return construct_VHS_incore(system, xshifted, self.sqrt_dt)
+        return construct_VHS_incore(hamiltonian, xshifted, self.sqrt_dt)
 
 
-def construct_VHS_incore(system, xshifted, sqrt_dt):
+def construct_VHS_incore(hamiltonian, xshifted, sqrt_dt):
     """Construct the one body potential from the HS transformation
     Parameters
     ----------
-    system :
-        system class
+    hamiltonian :
+        hamiltonian class
     xshifted : numpy array
         shifited auxiliary field
     Returns
@@ -104,22 +104,22 @@ def construct_VHS_incore(system, xshifted, sqrt_dt):
     VHS : numpy array
         the HS potential
     """
-    VHS = numpy.zeros((system.nbasis, system.nbasis),
+    VHS = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis),
                       dtype=numpy.complex128)
-    VHS = (system.iA * xshifted[:system.nchol] +
-           system.iB * xshifted[system.nchol:])
-    VHS = VHS.reshape(system.nbasis, system.nbasis)
+    VHS = (hamiltonian.iA * xshifted[:hamiltonian.nchol] +
+           hamiltonian.iB * xshifted[hamiltonian.nchol:])
+    VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
     return  sqrt_dt * VHS
 
-def construct_propagator_matrix_planewave(system, BT2, config, dt):
+def construct_propagator_matrix_planewave(hamiltonian, BT2, config, dt):
     """Construct the full projector from a configuration of auxiliary fields.
 
-    For use with generic system object.
+    For use with generic hamiltonian object.
 
     Parameters
     ----------
-    system : class
-        System class.
+    hamiltonian : class
+        hamiltonian class.
     BT2 : :class:`numpy.ndarray`
         One body propagator.
     config : numpy array
@@ -132,13 +132,13 @@ def construct_propagator_matrix_planewave(system, BT2, config, dt):
     B : :class:`numpy.ndarray`
         Full propagator matrix.
     """
-    VHS = construct_VHS_incore(system, config, dt**0.5)
+    VHS = construct_VHS_incore(hamiltonian, config, dt**0.5)
     EXP_VHS = exponentiate_matrix(VHS)
     Bup = BT2[0].dot(EXP_VHS).dot(BT2[0])
     Bdown = BT2[1].dot(EXP_VHS).dot(BT2[1])
     return numpy.array([Bup, Bdown])
 
-def back_propagate_planewave(phi, stack, system, nstblz, BT2, dt, store=False):
+def back_propagate_planewave(phi, stack, system, hamiltonian, nstblz, BT2, dt, store=False):
     r"""Perform back propagation for RHF/UHF style wavefunction.
 
     For use with generic system hamiltonian.
@@ -166,7 +166,7 @@ def back_propagate_planewave(phi, stack, system, nstblz, BT2, dt, store=False):
     nup = system.nup
     psi_store = []
     for (i, c) in enumerate(stack.get_block()[0][::-1]):
-        B = construct_propagator_matrix_planewave(system, BT2, c, dt)
+        B = construct_propagator_matrix_planewave(hamiltonian, BT2, c, dt)
         phi[:,:nup] = numpy.dot(B[0].conj().T, phi[:,:nup])
         phi[:,nup:] = numpy.dot(B[1].conj().T, phi[:,nup:])
         if i != 0 and i % nstblz == 0:

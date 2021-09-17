@@ -126,7 +126,7 @@ class AFQMC(object):
             ham_opts = get_input_value(options, 'hamiltonian',
                                        default={},
                                        verbose=self.verbosity>1)
-            self.hamiltonian = get_hamiltonian (ham_opts, verbose = verbose, comm=self.shared_comm)
+            self.hamiltonian = get_hamiltonian (self.system, ham_opts, verbose = verbose, comm=self.shared_comm)
 
         qmc_opt = get_input_value(options, 'qmc', default={},
                                   alias=['qmc_options'],
@@ -136,7 +136,7 @@ class AFQMC(object):
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
-                                         self.hamiltonian)
+                                         self.system)
 
         twf_opt = get_input_value(options, 'trial', default={},
                                   alias=['trial_wavefunction'],
@@ -291,19 +291,19 @@ class AFQMC(object):
                 print("# - Population control: {:.6f} s".format(self.tpopc/npcon))
 
 
-    def determine_dtype(self, propagator, hamiltonian):
+    def determine_dtype(self, propagator, system):
         """Determine dtype for trial wavefunction and walkers.
 
         Parameters
         ----------
         propagator : dict
             Propagator input options.
-        hamiltonian : object
-            hamiltonian object.
+        system : object
+            system object.
         """
         hs_type = propagator.get('hubbard_stratonovich', 'discrete')
         continuous = 'continuous' in hs_type
-        twist = hamiltonian.ktwist.all() is not None
+        twist = system.ktwist.all() is not None
         return continuous or twist
 
     def get_energy(self, skip=0):

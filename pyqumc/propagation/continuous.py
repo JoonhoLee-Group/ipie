@@ -2,6 +2,7 @@ import cmath
 import math
 import numpy
 import sys
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.propagation.operations import kinetic_real
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
@@ -249,9 +250,9 @@ class Continuous(object):
 
         # Now apply phaseless approximation
         ovlp_new = walker.calc_overlap(trial)
-        self.update_weight(system, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
+        self.update_weight(system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
 
-    def update_weight_hybrid(self, system, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+    def update_weight_hybrid(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
         ovlp_ratio = ovlp_new / ovlp
         hybrid_energy = -(cmath.log(ovlp_ratio) + cfb + cmf)/self.dt
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
@@ -281,9 +282,9 @@ class Continuous(object):
             walker.ot = ot_new
             walker.weight = 0.0
 
-    def update_weight_local_energy(self, system, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+    def update_weight_local_energy(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
         ovlp_ratio = ovlp_new / ovlp
-        eloc = walker.local_energy(system)[0]
+        eloc = local_energy(system, hamiltonian, walker, trial)[0]
         re_eloc = self.apply_bound_local_energy(eloc, eshift)
         magn = numpy.exp(-0.5*self.dt*(re_eloc+walker.eloc-eshift).real)
         # for back propagation
@@ -326,21 +327,21 @@ def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbo
     propagator : class or None
         Propagator object.
     """
-    if system.name == "UEG":
-        propagator = PlaneWave(system, trial, qmc,
+    if hamiltonian.name == "UEG":
+        propagator = PlaneWave(system, hamiltonian, trial, qmc,
                                options=options,
                                verbose=verbose)
-    elif system.name == "Hubbard":
+    elif hamiltonian.name == "Hubbard":
         charge = options.get('charge_decomposition', True)
         if charge:
-            propagator = HubbardContinuous(system, trial, qmc,
+            propagator = HubbardContinuous(hamiltonian, trial, qmc,
                                            options=options,
                                            verbose=verbose)
         else:
-            propagator = HubbardContinuousSpin(system, trial, qmc,
+            propagator = HubbardContinuousSpin(hamiltonian, trial, qmc,
                                                options=options,
                                                verbose=verbose)
-    elif system.name == "Generic":
+    elif hamiltonian.name == "Generic":
         propagator = GenericContinuous(system, hamiltonian, trial, qmc,
                                        options=options,
                                        verbose=verbose)

@@ -1,12 +1,12 @@
 import numpy
 import sys
-from pyqumc.systems.hubbard import Hubbard
+from pyqumc.hamiltonians.hubbard import Hubbard
 from pyqumc.systems.hubbard_holstein import HubbardHolstein
 from pyqumc.systems.generic import Generic
 from pyqumc.systems.ueg import UEG
 from pyqumc.utils.mpi import get_shared_array, have_shared_mem
 
-def get_system(sys_opts=None, verbose=0, chol_cut=1e-5, comm=None):
+def get_system(sys_opts=None, verbose=0, comm=None):
     """Wrapper to select system class
 
     Parameters
@@ -21,11 +21,12 @@ def get_system(sys_opts=None, verbose=0, chol_cut=1e-5, comm=None):
     system : object
         System class.
     """
-    if sys_opts['name'] == 'Hubbard':
-        system = Hubbard(sys_opts, verbose)
-    elif sys_opts['name'] == 'HubbardHolstein':
-        system = HubbardHolstein(sys_opts, verbose)
-    elif sys_opts['name'] == 'Generic':
+    if not('name' in sys_opts):
+        sys_opts['name'] = 'Generic'
+
+    if sys_opts['name'] == 'UEG':
+        system = UEG(sys_opts, verbose)
+    elif sys_opts['name'] == 'Hubbard'or sys_opts['name'] == 'HubbardHolstein' or sys_opts['name'] == 'Generic':
         nup, ndown = sys_opts.get('nup'), sys_opts.get('ndown')
         if nup is None or ndown is None:
             if comm.rank == 0:
@@ -33,12 +34,9 @@ def get_system(sys_opts=None, verbose=0, chol_cut=1e-5, comm=None):
                 sys.exit()
         nelec = (nup, ndown)
         system = Generic(nelec, sys_opts, verbose)
-    elif sys_opts['name'] == 'UEG':
-        system = UEG(sys_opts, verbose)
     else:
         if comm.rank == 0:
             print("# Error: unrecognized system name {}.".format(sys_opts['name']))
             sys.exit()
-        # system = None
 
     return system

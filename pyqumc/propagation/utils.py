@@ -8,11 +8,11 @@ from pyqumc.propagation.hubbard_holstein import HirschDMC
 def get_propagator_driver(system, hamiltonian, trial, qmc, options={}, verbose=False):
     hs = options.get('hubbard_stratonovich', 'continuous')
     if 'discrete' in hs:
-        return get_discrete_propagator(options, qmc, system, trial, verbose)
+        return get_discrete_propagator(options, qmc, system, hamiltonian, trial, verbose)
     else:
         return Continuous(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
 
-def get_discrete_propagator(options, qmc, system, trial, verbose=False):
+def get_discrete_propagator(options, qmc, system, hamiltonian, trial, verbose=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -21,8 +21,8 @@ def get_discrete_propagator(options, qmc, system, trial, verbose=False):
         Propagator input options.
     qmc : :class:`pyqumc.qmc.QMCOpts` class
         Trial wavefunction input options.
-    system : class
-        System class.
+    hamiltonian : class
+        hamiltonian class.
     trial : class
         Trial wavefunction object.
 
@@ -32,14 +32,14 @@ def get_discrete_propagator(options, qmc, system, trial, verbose=False):
         Propagator object.
     """
     hs_type = options.get('hubbard_stratonovich', 'discrete')
-    if system.name == "Hubbard":
-        propagator = Hirsch(system, trial, qmc,
+    if hamiltonian.name == "Hubbard":
+        propagator = Hirsch(hamiltonian, trial, qmc,
                                 options=options, verbose=verbose)
-    elif system.name == "HubbardHolstein":
-        propagator = HirschDMC(system, trial, qmc,
+    elif hamiltonian.name == "HubbardHolstein":
+        propagator = HirschDMC(hamiltonian, trial, qmc,
                                 options=options, verbose=verbose)
     else:
-        print("No suitable discrete propagator exists for {}. Check your input.".format(system.name))
+        print("No suitable discrete propagator exists for {}. Check your input.".format(hamiltonian.name))
         sys.exit()
 
     return propagator

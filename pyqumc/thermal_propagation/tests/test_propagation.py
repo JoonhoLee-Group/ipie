@@ -1,7 +1,9 @@
 import numpy
 import pytest
-from pyqumc.systems.hubbard import Hubbard
+from pyqumc.hamiltonians.hubbard import Hubbard
+from pyqumc.systems.generic import Generic
 from pyqumc.estimators.thermal import greens_function, one_rdm_from_G, particle_number
+from pyqumc.estimators.local_energy import local_energy
 from pyqumc.trial_density_matrices.onebody import OneBody
 from pyqumc.trial_density_matrices.mean_field import MeanField
 from pyqumc.thermal_propagation.hubbard import ThermalDiscrete
@@ -11,27 +13,28 @@ from pyqumc.utils.misc import dotdict, update_stack
 @pytest.mark.unit
 def test_hubbard():
     options = {'nx': 4, 'ny': 4, 'U': 4, 'mu': 1.0, 'nup': 7, 'ndown': 7}
-    system = Hubbard(options, verbose=False)
+    system = Generic((7,7), verbose=False)
+    ham = Hubbard(options, verbose=False)
     beta = 2.0
     dt = 0.05
     nslice = int(round(beta/dt))
-    trial = OneBody(system, beta, dt)
+    trial = OneBody(system, ham, beta, dt)
     numpy.random.seed(7)
     qmc = dotdict({'dt': dt, 'nstblz': 10})
-    prop = ThermalDiscrete(system, trial, qmc, verbose=False)
-    walker1 = ThermalWalker(system, trial,
+    prop = ThermalDiscrete(ham, trial, qmc, verbose=False)
+    walker1 = ThermalWalker(system, ham, trial,
                             walker_opts={'stack_size': 1, 'low_rank': False},
                             verbose=False)
     for ts in range(0,nslice):
-        prop.propagate_walker(system, walker1, ts, 0)
+        prop.propagate_walker(ham, walker1, ts, 0)
         walker1.weight /= 1.0e6
     numpy.random.seed(7)
-    walker2 = ThermalWalker(system, trial,
+    walker2 = ThermalWalker(system, ham, trial,
                             walker_opts={'stack_size': 10, 'low_rank': False},
                             verbose=False)
     energies = []
     for ts in range(0,nslice):
-        prop.propagate_walker(system, walker2, ts, 0)
+        prop.propagate_walker(ham, walker2, ts, 0)
         walker2.weight /= 1.0e6
         # if ts % 10 == 0:
             # energies.append(walker2.local_energy(system)[0])
@@ -40,38 +43,39 @@ def test_hubbard():
     # pl.show()
     assert walker1.weight == pytest.approx(walker2.weight)
     assert numpy.linalg.norm(walker1.G-walker2.G) == pytest.approx(0)
-    assert walker1.local_energy(system)[0] == pytest.approx(walker2.local_energy(system)[0])
+    assert local_energy(system, ham, walker1, trial)[0] == pytest.approx(local_energy(system, ham, walker2, trial)[0])
 
 @pytest.mark.unit
 def test_propagate_walker():
     options = {'nx': 4, 'ny': 4, 'U': 4, 'mu': 1.0, 'nup': 7, 'ndown': 7}
-    system = Hubbard(options, verbose=False)
+    system = Generic((7,7), verbose=False)
+    ham = Hubbard(options, verbose=False)
     beta = 2.0
     dt = 0.05
     nslice = int(round(beta/dt))
-    trial = OneBody(system, beta, dt)
+    trial = OneBody(system, ham, beta, dt)
     numpy.random.seed(7)
     qmc = dotdict({'dt': dt, 'nstblz': 1})
-    prop = ThermalDiscrete(system, trial, qmc, verbose=False)
-    walker1 = ThermalWalker(system, trial,
+    prop = ThermalDiscrete(ham, trial, qmc, verbose=False)
+    walker1 = ThermalWalker(system, ham, trial,
                             walker_opts={'stack_size': 1, 'low_rank': False},
                             verbose=False)
-    walker2 = ThermalWalker(system, trial,
+    walker2 = ThermalWalker(system, ham, trial,
                             walker_opts={'stack_size': 1, 'low_rank': False},
                             verbose=False)
-    rands = numpy.random.random(system.nbasis)
-    I = numpy.eye(system.nbasis)
-    BV = numpy.zeros((2,system.nbasis))
+    rands = numpy.random.random(ham.nbasis)
+    I = numpy.eye(ham.nbasis)
+    BV = numpy.zeros((2,ham.nbasis))
     BV[0] = 1.0
     BV[1] = 1.0
     walker2.greens_function(trial, slice_ix=0)
     walker1.greens_function(trial, slice_ix=0)
     for it in range(0,nslice):
-        rands = numpy.random.random(system.nbasis)
-        BV = numpy.zeros((2,system.nbasis))
+        rands = numpy.random.random(ham.nbasis)
+        BV = numpy.zeros((2,ham.nbasis))
         BV[0] = 1.0
         BV[1] = 1.0
-        for i in range(system.nbasis):
+        for i in range(ham.nbasis):
             if rands[i] > 0.5:
                 xi = 0
             else:
@@ -103,47 +107,50 @@ def test_propagate_walker():
 @pytest.mark.unit
 def test_propagate_walker_free():
     options = {'nx': 4, 'ny': 4, 'U': 4, 'mu': 1.0, 'nup': 8, 'ndown': 8}
-    system = Hubbard(options, verbose=False)
+    system = Generic((8,8), verbose=False)
+    ham = Hubbard(options, verbose=False)
+
     beta = 0.5
     dt = 0.05
     nslice = int(round(beta/dt))
-    trial = MeanField(system, beta, dt, verbose=False)
+    trial = MeanField(system, ham, beta, dt, verbose=False)
     numpy.random.seed(7)
     qmc = dotdict({'dt': dt, 'nstblz': 1})
-    prop = ThermalDiscrete(system, trial, qmc, {'charge_decomposition': False, 'free_projection': True}, verbose=False)
-    walker = ThermalWalker(system, trial,
+    prop = ThermalDiscrete(ham, trial, qmc, {'charge_decomposition': False, 'free_projection': True}, verbose=False)
+    walker = ThermalWalker(system, ham, trial,
                            walker_opts={'stack_size': 1, 'low_rank': False},
                            verbose=True)
     for ts in range(0,nslice):
-        prop.propagate_walker(system, walker, ts, 0)
+        prop.propagate_walker(ham, walker, ts, 0)
         walker.greens_function(None)
         rdm = one_rdm_from_G(walker.G)
 
 @pytest.mark.unit
 def test_update_gf():
     options = {'nx': 4, 'ny': 4, 'U': 4, 'mu': 1.0, 'nup': 8, 'ndown': 8}
-    system = Hubbard(options, verbose=False)
+    system = Generic((8,8), verbose=False)
+    ham = Hubbard(options, verbose=False)
     beta = 2.0
     dt = 0.05
     nslice = int(round(beta/dt))
-    trial = OneBody(system, beta, dt)
+    trial = OneBody(system, ham, beta, dt)
     numpy.random.seed(7)
     qmc = dotdict({'dt': dt, 'nstblz': 1})
-    prop = ThermalDiscrete(system, trial, qmc, verbose=False)
-    walker = ThermalWalker(system, trial,
+    prop = ThermalDiscrete(ham, trial, qmc, verbose=False)
+    walker = ThermalWalker(system, ham, trial,
                             walker_opts={'stack_size': 1, 'low_rank': False},
                             verbose=False)
-    rands = numpy.random.random(system.nbasis)
-    I = numpy.eye(system.nbasis)
-    BV = numpy.zeros((2,system.nbasis))
+    rands = numpy.random.random(ham.nbasis)
+    I = numpy.eye(ham.nbasis)
+    BV = numpy.zeros((2,ham.nbasis))
     BV[0] = 1.0
     BV[1] = 1.0
     walker.greens_function(trial, slice_ix=0)
-    rands = numpy.random.random(system.nbasis)
-    BV = numpy.zeros((2,system.nbasis))
+    rands = numpy.random.random(ham.nbasis)
+    BV = numpy.zeros((2,ham.nbasis))
     BV[0] = 1.0
     BV[1] = 1.0
-    for i in range(system.nbasis):
+    for i in range(ham.nbasis):
         if rands[i] > 0.5:
             xi = 0
         else:

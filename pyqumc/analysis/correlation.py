@@ -1,4 +1,4 @@
-from pyqumc.systems.hubbard import get_strip
+from pyqumc.hamiltonians.hubbard import get_strip
 
 def correlation_function(filename, name, iy):
     data = h5py.File(filename, 'r')
