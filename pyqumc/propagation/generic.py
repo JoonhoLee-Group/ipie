@@ -176,7 +176,10 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        VHS = hamiltonian.chol_vecs.dot(xshifted)
+        if numpy.isrealobj(hamiltonian.chol_vecs):
+            VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag)
+        else:
+            VHS = hamiltonian.chol_vecs.dot(xshifted)
         VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
         return  self.isqrt_dt * VHS
 
