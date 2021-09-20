@@ -176,7 +176,7 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if (hamiltonian.chol_vecs.dtype == numpy.float64):
+        if numpy.isrealobj(hamiltonian.chol_vecs):
             VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag)
         else:
             VHS = hamiltonian.chol_vecs.dot(xshifted)
