@@ -74,8 +74,6 @@ class Generic(object):
         self.mu = options.get("chemical_potential", 0.0)
         self._alt_convention = False # chemical potential sign convention
 
-        # self.ktwist = numpy.array(options.get('ktwist', [0,0,0])).reshape(3)
-
         self.ecore = ecore
         self.chol_vecs = chol
 

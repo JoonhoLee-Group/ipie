@@ -61,7 +61,6 @@ class SingleDetWalker(Walker):
             self.Lap = tmptrial.laplacian(self.X)
             self.phi_boson = tmptrial.value(self.X)
 
-
         self.inverse_overlap(trial)
         self.ot = self.calc_overlap(trial)
         self.le_oratio = 1.0
@@ -75,22 +74,6 @@ class SingleDetWalker(Walker):
                      numpy.zeros(shape=(system.ndown, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)]
         self.greens_function(trial)
-        
-        # self.C0 = trial.psi.copy()
-        # if system.control_variate:
-        #     self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, rchol=trial._rchol)
-        # else:
-        #     self.ecoul0 = None
-        #     self.exxa0 = None
-        #     self.exxb0 = None
-        # self.E_L, self.e1b0, self.e2b0 = local_energy(system, self.G, Ghalf=self.Ghalf,
-        #                                               rchol=trial._rchol, eri=trial._eri,
-        #                                               C0 = self.C0, ecoul0 = self.ecoul0, 
-        #                                               exxa0 = self.exxa0, exxb0 = self.exxb0, 
-        #                                               UVT = trial._UVT
-        #                                               )
-        # self.E_L = self.E_L.real
-
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
     def inverse_overlap(self, trial):
@@ -188,7 +171,7 @@ class SingleDetWalker(Walker):
         if nb > 0:
             Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[:,na:])
             sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
-        
+
         ot = sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift)
 
         if (self.phi_boson is not None):
