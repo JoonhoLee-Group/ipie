@@ -2,7 +2,7 @@
 PyQuMC
 =====
 
-PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ onte **C**\ arlo algorithms with a focus on simplicity rather than speed.
+PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ onte **C**\ arlo algorithms with a focus on simplicity and speed.
 
 PyQuMC inherits a lot of QMC features from pauxy.
 
