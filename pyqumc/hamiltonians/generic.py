@@ -70,7 +70,9 @@ class Generic(object):
         self.pno = options.get("pno", False)
         self.thresh_pno = options.get("thresh_pno", 1e-6)
         self.exact_eri = options.get("exact_eri", False)
-        self.control_variate = options.get("control_variate", True)
+        self.control_variate = options.get("control_variate", False)
+        if (self.stochastic_ri):
+            self.control_variate = False
         self.mu = options.get("chemical_potential", 0.0)
         self._alt_convention = False # chemical potential sign convention
 

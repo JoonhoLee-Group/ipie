@@ -61,7 +61,7 @@ def test_local_energy_cholesky_opt():
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = MultiSlater(system, ham, wfn)
     trial.half_rotate(system, ham)
-    e = local_energy_generic_cholesky_opt(system, ham, trial.G, trial.Ghalf, trial.rot_chol())
+    e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
