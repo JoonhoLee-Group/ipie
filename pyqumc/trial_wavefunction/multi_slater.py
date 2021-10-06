@@ -84,6 +84,8 @@ class MultiSlater(object):
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
         self._rchol = None
+        self._rchol_a = None
+        self._rchol_b = None
         self._UVT = None
         self._eri = None
         self._mem_required = 0.0
@@ -96,7 +98,7 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial wavefunction.")
-
+    
     def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
 
@@ -273,7 +275,6 @@ class MultiSlater(object):
         else:
             chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
 
-
         if (hamiltonian.exact_eri):
             shape = (self.ndets,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
@@ -407,6 +408,19 @@ class MultiSlater(object):
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half rotate {} seconds.".format(time.time()-start_time))
+
+        # now we want to provide access to rchol through rchol_a, rchol_b
+        if self._rchol_a is None:  # skip if already allocated and not None
+            # check if we have a numpy array and not another distributed memory array of some type
+            if isinstance(self._rchol, numpy.ndarray):
+                if self.verbose:
+                    self._mem_required = self._rchol.nbytes / (1024.0 ** 3.0)
+                    print("# double Memory required by half-rotated integrals rchol, rchol_a, rchol_b: "
+                          " {:.4f} GB.".format(2 * self._mem_required))
+                # reshape each half rotated cholesky vector into naxu, nocc, nbasis
+                naux = self._rchol.shape[1]
+                self._rchol_a = self._rchol[:na * M].T.reshape((naux, na, M))
+                self._rchol_b = self._rchol[na * M:].T.reshape((naux, nb, M))
 
         if comm is not None:
             comm.barrier()
