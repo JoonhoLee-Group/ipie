@@ -146,11 +146,11 @@ class GenericContinuous(object):
         """
         G = walker.Ghalf
         if hamiltonian.sparse:
-            self.vbias = G[0].ravel() * trial.rot_chol(spin=0)
-            self.vbias += G[1].ravel() * trial.rot_chol(spin=0)
+            self.vbias = G[0].ravel() * trial.rot_chol(spin=0).T
+            self.vbias += G[1].ravel() * trial.rot_chol(spin=0).T
         else:
-            self.vbias = numpy.dot(trial.rot_chol(spin=0).T, G[0].ravel())
-            self.vbias += numpy.dot(trial.rot_chol(spin=1).T, G[1].ravel())
+            self.vbias = numpy.dot(trial.rot_chol(spin=0), G[0].ravel())
+            self.vbias += numpy.dot(trial.rot_chol(spin=1), G[1].ravel())
         return - self.sqrt_dt * (1j*self.vbias-self.mf_shift)
 
     def construct_force_bias_multi_det(self, hamiltonian, walker, trial):

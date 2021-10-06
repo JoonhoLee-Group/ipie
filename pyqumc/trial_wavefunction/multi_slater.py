@@ -84,6 +84,8 @@ class MultiSlater(object):
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
         self._rchol = None
+        self._rchol_a = None
+        self._rchol_b = None
         self._UVT = None
         self._eri = None
         self._mem_required = 0.0
@@ -96,7 +98,7 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial wavefunction.")
-
+    
     def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
 
@@ -273,7 +275,6 @@ class MultiSlater(object):
         else:
             chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
 
-
         if (hamiltonian.exact_eri):
             shape = (self.ndets,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
@@ -362,14 +363,20 @@ class MultiSlater(object):
             if comm is not None:
                 comm.barrier()
         # else:
-        shape = (self.ndets*(M*(na+nb)), nchol)
-        self._rchol = get_shared_array(comm, shape, numpy.complex128)
+        # shape = (self.ndets*(M*(na+nb)), nchol)
+        # self._rchol = get_shared_array(comm, shape, numpy.complex128)
+        shape_a = (nchol, self.ndets*(M*(na)))
+        shape_b = (nchol, self.ndets*(M*(nb)))
+        self._rchola = get_shared_array(comm, shape_a, numpy.complex128)
+        self._rcholb = get_shared_array(comm, shape_b, numpy.complex128)
         for i, psi in enumerate(self.psi):
             start_time = time.time()
             if self.verbose:
                 print("# Rotating Cholesky for determinant {} of "
                       "{}.".format(i+1,self.ndets))
-            start = i*M*(na+nb)
+            # start = i*M*(na+nb)
+            start_a = i*M*na # determinant loops
+            start_b = i*M*nb # determinant loops
             compute = True
             # Distribute amongst MPI tasks on this node.
             if comm is not None:
@@ -381,7 +388,7 @@ class MultiSlater(object):
                         # Just run on root processor if problem too small.
                         compute = False
                 else:
-                    start_n = comm.rank * nwork_per_thread
+                    start_n = comm.rank * nwork_per_thread # Cholesky work split
                     end_n = (comm.rank+1) * nwork_per_thread
                     if comm.rank == comm.size - 1:
                         end_n = nchol
@@ -396,17 +403,35 @@ class MultiSlater(object):
             if compute:
                 rup = numpy.tensordot(psi[:,:na].conj(),
                                       chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((na*M,nchol_loc))
-                self._rchol[start:start+M*na,start_n:end_n] = rup[:]
+                                      axes=((0),(0))).reshape((na*M,nchol_loc)).T.copy()
+                self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 rdn = numpy.tensordot(psi[:,na:].conj(),
                                       chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((nb*M,nchol_loc))
-                self._rchol[start+M*na:start+M*(na+nb),start_n:end_n] = rdn[:]
-            self._mem_required = self._rchol.nbytes / (1024.0**3.0)
+                                      axes=((0),(0))).reshape((nb*M,nchol_loc)).T.copy()
+                self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
+
+                # self._rchol[start:start+M*na,start_n:end_n] = rup[:]
+                # self._rchol[start+M*na:start+M*(na+nb),start_n:end_n] = rdn[:]
+
+            # self._mem_required = self._rchol.nbytes / (1024.0**3.0)
+            self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half rotate {} seconds.".format(time.time()-start_time))
+
+        # # now we want to provide access to rchol through rchol_a, rchol_b
+        # if self._rchol_a is None:  # skip if already allocated and not None
+        #     # check if we have a numpy array and not another distributed memory array of some type
+        #     if isinstance(self._rchol, numpy.ndarray):
+        #         if self.verbose:
+        #             self._mem_required = self._rchol.nbytes / (1024.0 ** 3.0)
+        #             print("# double Memory required by half-rotated integrals rchol, rchol_a, rchol_b: "
+        #                   " {:.4f} GB.".format(2 * self._mem_required))
+        #         # reshape each half rotated cholesky vector into naxu, nocc, nbasis
+        #         naux = self._rchol.shape[1]
+        #         self._rchol_a = self._rchol[:na * M].T.reshape((naux, na, M))
+        #         self._rchol_b = self._rchol[na * M:].T.reshape((naux, nb, M))
 
         if comm is not None:
             comm.barrier()
@@ -417,16 +442,21 @@ class MultiSlater(object):
     def rot_chol(self, idet=0, spin=None):
         """Helper function"""
         if spin is None:
+            print("# rot_chol no longer supported without spin ")
+            exit()
             stride = self._nbasis * (self._nalpha + self._nbeta)
             return self._rchol[idet*stride:(idet+1)*stride]
         else:
-            stride = self._nbasis * (self._nalpha + self._nbeta)
-            alpha = self._nbasis * self._nalpha
+            # stride = self._nbasis * (self._nalpha + self._nbeta)
             if spin == 0:
-                return self._rchol[idet*stride:idet*stride+alpha]
+                alpha = self._nbasis * self._nalpha
+                stride = self._nbasis * self._nalpha
+                return self._rchola[:, idet*stride:idet*stride+alpha]
             else:
                 beta = self._nbasis * self._nbeta
-                return self._rchol[idet*stride+alpha:idet*stride+alpha+beta]
+                stride = self._nbasis * self._nbeta
+                # return self._rchol[idet*stride+alpha:idet*stride+alpha+beta]
+                return self._rcholb[:, idet*stride:idet*stride+beta]
 
     # def rot_hs_pot(self, idet=0, spin=None):
     #     """Helper function"""

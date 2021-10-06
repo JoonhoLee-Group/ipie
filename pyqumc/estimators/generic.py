@@ -153,7 +153,7 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
+def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -176,127 +176,38 @@ def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
     (E, T, V): tuple
         Local, kinetic and potential energies.
     """
-    #import cProfile
-    #pr = cProfile.Profile()
-    #pr.enable()
-
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0]*G[0]) + numpy.sum(ham.H1[1]*G[1])
+    e1b = numpy.sum(ham.H1[0]*Ga) + numpy.sum(ham.H1[1]*Gb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
-    if rchol is not None:
-        naux = rchol.shape[1]
+    if rchola is not None:
+        naux = rchola.shape[0]
 
-    Ga, Gb = Ghalf[0], Ghalf[1]
-    Xa = rchol[:nalpha*nbasis].T.dot(Ga.ravel())
-    Xb = rchol[nalpha*nbasis:].T.dot(Gb.ravel())
+    Xa = rchola.dot(Ghalfa.ravel())
+    Xb = rcholb.dot(Ghalfb.ravel())
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
     ecoul += 2*numpy.dot(Xa,Xb)
-    rchol_a, rchol_b = rchol[:nalpha*nbasis], rchol[nalpha*nbasis:]
 
-    # T_{abn} = \sum_k Theta_{ak} LL_{ak,n}
-    # LL_{ak,n} = \sum_i L_{ik,n} A^*_{ia}
-    # rchol_a = rchol_a.reshape((nalpha,nbasis, naux))
-    # rchol_b = rchol_b.reshape((nbeta,nbasis, naux))
+    GhalfaT = Ghalfa.T.copy()
+    GhalfbT = Ghalfb.T.copy()
+    
+    Ta = numpy.zeros((nalpha,nalpha), dtype=numpy.complex128)
+    Tb = numpy.zeros((nbeta,nbeta), dtype=numpy.complex128)
 
-    # Ta = numpy.tensordot(Ga, rchol_a, axes=((1),(1)))
-    # exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(1,0,2)))
-    # Tb = numpy.tensordot(Gb, rchol_b, axes=((1),(1)))
-    # exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(1,0,2)))
+    exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    for x in range(naux):  # write a cython function that calls blas for this.
+        rmi_a = rchola[x].reshape((nalpha,nbasis))
+        Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+        exx += numpy.trace(Ta.dot(Ta))
+        rmi_b = rcholb[x].reshape((nbeta,nbasis))
+        Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
+        exx += numpy.trace(Tb.dot(Tb))
 
-    rchol_a = rchol_a.T
-    rchol_b = rchol_b.T
-    Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchol_a.dtype)
-    Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rchol_b.dtype)
-    GaT = Ga.T
-    GbT = Gb.T
-    for x in range(naux):
-        rmi_a = rchol_a[x].reshape((nalpha,nbasis))
-        Ta[x] = rmi_a.dot(GaT)
-        rmi_b = rchol_b[x].reshape((nbeta,nbasis))
-        Tb[x] = rmi_b.dot(GbT)
-    exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
-    exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
-
-    exx = exxa + exxb
     e2b = 0.5 * (ecoul - exx)
 
-    #pr.disable()
-    #pr.print_stats(sort='tottime')
-    # print(e1b, e2b, ham.ecore)
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
-# def local_energy_generic_cholesky_opt_stochastic(system, G, nsamples, Ghalf=None, rchol=None):
-#     r"""Calculate local for generic two-body hamiltonian.
-
-#     This uses the cholesky decomposed two-electron integrals.
-
-#     Parameters
-#     ----------
-#     system : :class:`hubbard`
-#         System information for the hubbard model.
-#     G : :class:`numpy.ndarray`
-#         Walker's "green's function"
-
-#     Returns
-#     -------
-#     (E, T, V): tuple
-#         Local, kinetic and potential energies.
-#     """
-    
-#     # Element wise multiplication.
-#     e1b = numpy.sum(system.H1[0]*G[0]) + numpy.sum(system.H1[1]*G[1])
-    
-#     if rchol is None:
-#         rchol = system.rchol_vecs
-
-#     nalpha, nbeta= system.nup, system.ndown
-#     nbasis = system.nbasis
-    
-#     Ga, Gb = Ghalf[0], Ghalf[1]
-#     Xa = rchol[0].T.dot(Ga.ravel())
-#     Xb = rchol[1].T.dot(Gb.ravel())
-#     ecoul = numpy.dot(Xa,Xa)
-#     ecoul += numpy.dot(Xb,Xb)
-#     ecoul += 2*numpy.dot(Xa,Xb)
-
-#     # O(ON s)
-#     # Xa = numpy.tensordot(ra, Ga, axes=((0,1),(0,1)))
-#     # Xb = numpy.tensordot(rb, Gb, axes=((0,1),(0,1)))
-#     # ecoul = numpy.dot(Xa,Xa)
-#     # ecoul += numpy.dot(Xb,Xb)
-#     # ecoul += 2*numpy.dot(Xa,Xb)
-
-#     naux = rchol[0].shape[-1]
-#     theta = numpy.zeros((naux,nsamples), dtype=numpy.int64)
-#     for i in range(nsamples):
-#         theta[:,i] = (2*numpy.random.randint(0,2,size=(naux))-1)
-
-#     if system.sparse:
-#         rchol_a, rchol_b = [rchol[0].toarray(), rchol[1].toarray()]
-#     else:
-#         rchol_a, rchol_b = rchol[0], rchol[1]
-    
-#     rchol_a = rchol_a.reshape((nalpha,nbasis, naux))
-#     rchol_b = rchol_b.reshape((nbeta,nbasis, naux))
-
-#     # ra = numpy.tensordot(rchol_a, theta, axes=((2),(0))) * numpy.sqrt(1.0/nsamples)
-#     # rb = numpy.tensordot(rchol_b, theta, axes=((2),(0))) * numpy.sqrt(1.0/nsamples)
-#     ra = numpy.einsum("ipX,Xs->ips",rchol_a, theta, optimize=True) * numpy.sqrt(1.0/nsamples)
-#     rb = numpy.einsum("ipX,Xs->ips",rchol_b, theta, optimize=True) * numpy.sqrt(1.0/nsamples)
-#     Gra = numpy.einsum("kq,lqx->lkx", Ga, ra, optimize=True)    
-#     Grb = numpy.einsum("kq,lqx->lkx", Gb, rb, optimize=True)    
-
-#     # Gra = numpy.tensordot(Ga, ra, axes=((1),(1))).transpose(1,0,2)
-#     # Grb = numpy.tensordot(Gb, rb, axes=((1),(1))).transpose(1,0,2)
-#     exxa = numpy.tensordot(Gra, Gra, axes=((0,1,2),(1,0,2)))
-#     exxb = numpy.tensordot(Grb, Grb, axes=((0,1,2),(1,0,2)))
-
-#     exx = exxa + exxb
-#     e2b = 0.5 * (ecoul - exx)
-
-#     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 def local_energy_generic_cholesky_opt_stochastic(system, G, nsamples, Ghalf, rchol=None, C0=None,\
 ecoul0 = None, exxa0 = None, exxb0 = None):
     r"""Calculate local for generic two-body hamiltonian.
