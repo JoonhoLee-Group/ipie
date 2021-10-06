@@ -209,7 +209,7 @@ def local_energy_generic_cholesky_opt_ncr(system, ham, G, Ghalf, rchol, rchol_a,
 
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
-def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
+def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -220,8 +220,6 @@ def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
         System information for Generic.
     ham : :class:`Abinitio`
         Contains necessary hamiltonian information
-    G : :class:`numpy.ndarray`
-        Walker's "green's function"
     Ghalf : :class:`numpy.ndarray`
         Walker's half-rotated "green's function"
     rchol : :class:`numpy.ndarray`
@@ -233,33 +231,30 @@ def local_energy_generic_cholesky_opt(system, ham, G, Ghalf, rchol):
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0]*G[0]) + numpy.sum(ham.H1[1]*G[1])
+    e1b = numpy.sum(ham.H1[0]*Ga) + numpy.sum(ham.H1[1]*Gb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
-    if rchol is not None:
-        naux = rchol.shape[1]
+    if rchola is not None:
+        naux = rchola.shape[0]
 
-    Ga, Gb = Ghalf[0], Ghalf[1]
-    Xa = rchol[:nalpha*nbasis].T.dot(Ga.ravel())
-    Xb = rchol[nalpha*nbasis:].T.dot(Gb.ravel())
+    Ghalfa, Ghalfb = Ghalfa, Ghalfb
+    Xa = rchola.dot(Ghalfa.ravel())
+    Xb = rcholb.dot(Ghalfb.ravel())
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
     ecoul += 2*numpy.dot(Xa,Xb)
-    rchol_a, rchol_b = rchol[:nalpha*nbasis], rchol[nalpha*nbasis:]
 
-    rchol_a = rchol_a.T
-    rchol_b = rchol_b.T
-    Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchol_a.dtype)
-    Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rchol_b.dtype)
-    GaT = Ga.T
-    GbT = Gb.T
+    Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchola.dtype)
+    Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rcholb.dtype)
+    GhalfaT = Ghalfa.T.copy()
+    GhalfbT = Ghalfb.T.copy()
 
     exx_a_temp, exx_b_temp = 0., 0.  # we will iterate over cholesky index to update Ex energy for alpha and beta
     for x in range(naux):
-        rmi_a = rchol_a[x].reshape((nalpha,nbasis))
-        Ta[x] = rmi_a.dot(GaT)  # this is a (nalpha, nalpha)
-        rmi_b = rchol_b[x].reshape((nbeta,nbasis))
-        Tb[x] = rmi_b.dot(GbT)  # this is (nbeta, nbeta)
+        rmi_a = rchola[x].reshape((nalpha,nbasis))
+        Ta[x] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+        rmi_b = rcholb[x].reshape((nbeta,nbasis))
+        Tb[x] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
     exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
     exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
    

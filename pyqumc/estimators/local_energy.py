@@ -52,9 +52,9 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
                 return local_energy_generic_pno(system, G, Ghalf=Ghalf,\
                     eri=trial._eri, C0=trial.C0, ecoul0=trial.ecoul0, exxa0=trial.exxa0, exxb0=trial.exxb0, UVT=trial.UVT)
             else:
-                return local_energy_generic_cholesky_opt(system, hamiltonian, G,
-                                                         Ghalf=Ghalf,
-                                                         rchol=trial._rchol)
+                return local_energy_generic_cholesky_opt(system, hamiltonian, Ga = G[0], Gb= G[1],
+                                                         Ghalfa=Ghalf[0],Ghalfb=Ghalf[1],
+                                                         rchola=trial._rchola, rcholb=trial._rcholb)
         else:
             return local_energy_generic_cholesky(system, hamiltonian, G)
 
