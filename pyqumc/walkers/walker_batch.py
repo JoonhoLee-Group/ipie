@@ -21,29 +21,28 @@ class WalkerBatch(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, hamiltonian, trial, qmc, walker_opts={}, index=0, nprop_tot=None, nbp=None):
-        self.nwalkers = qmc.nwalkers
+    def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0, nprop_tot=None, nbp=None):
+        self.nwalkers = nwalkers
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0
 
-        self.weight = [walker_opts.get('weight', 1.0) for iw in range(self.nwalkers)]
-        self.unscaled_weight = [self.weight for iw in range(self.nwalkers)]
-        self.phase = [1 + 0j for iw in range(self.nwalkers)]
-        self.alive = [1 for iw in range(self.nwalkers)]
-        self.phi = [trial.init.copy() for iw in range(self.nwalkers)]
+        self.weight = numpy.array([walker_opts.get('weight', 1.0) for iw in range(self.nwalkers)])
+        self.unscaled_weight = numpy.array([self.weight for iw in range(self.nwalkers)])
+        self.phase = numpy.array([1. + 0.j for iw in range(self.nwalkers)])
+        self.alive = numpy.array([1 for iw in range(self.nwalkers)])
+        self.phi = numpy.array([trial.init.copy() for iw in range(self.nwalkers)])
 
-        self.ot = [1.0 for iw in range(self.nwalkers)]
-        self.ovlp = [1.0 for iw in range(self.nwalkers)]
-        # self.E_L = local_energy(system, self.G, self.Gmod, trail._rchol)[0].real
-        self.E_L = [0.0 for iw in range(self.nwalkers)]
-        self.eloc = [0.0 for iw in range(self.nwalkers)]
+        self.ot = numpy.array([1.0 for iw in range(self.nwalkers)])
+        self.ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
+        self.E_L = numpy.array([0.0 for iw in range(self.nwalkers)])
+        self.eloc = numpy.array([0.0 for iw in range(self.nwalkers)])
         # walkers overlap at time tau before backpropagation occurs
-        self.ot_bp = [1.0 for iw in range(self.nwalkers)]
+        self.ot_bp = numpy.array([1.0 for iw in range(self.nwalkers)])
         # walkers weight at time tau before backpropagation occurs
         self.weight_bp = self.weight
         # Historic wavefunction for back propagation.
-        self.phi_old = [self.phi.copy() for iw in range(self.nwalkers)]
+        self.phi_old = numpy.array([self.phi.copy() for iw in range(self.nwalkers)])
         self.hybrid_energy = [0.0 for iw in range(self.nwalkers)]
         # Historic wavefunction for ITCF.
         self.phi_right = [self.phi.copy() for iw in range(self.nwalkers)]

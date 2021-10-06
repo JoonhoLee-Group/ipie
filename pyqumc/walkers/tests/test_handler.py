@@ -75,6 +75,12 @@ def test_pair_branch():
     for r in reqs:
         r.wait()
     if comm.rank == 0:
+        # print(buff)
+        # print(buff[0])
+        # print(buff[1])
         assert len(buff) == 2
         assert sum(buff[0]) == 2
         assert sum(buff[1]) == 0
+
+if __name__=="__main__":
+    test_pair_branch()

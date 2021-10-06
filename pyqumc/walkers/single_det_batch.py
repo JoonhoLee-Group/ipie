@@ -1,6 +1,5 @@
 import numpy
 import scipy.linalg
-# from pyqumc.estimators.mixed import local_energy, local_energy_hh
 from pyqumc.trial_wavefunction.free_electron import FreeElectron
 from pyqumc.utils.linalg import sherman_morrison
 from pyqumc.walkers.stack import FieldConfig
@@ -28,8 +27,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, hamiltonian, trial, qmc, walker_opts={}, index=0, nprop_tot=None, nbp=None):
-        WalkerBatch.__init__(self, system, hamiltonian, trial, qmc, 
+    def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0, nprop_tot=None, nbp=None):
+        WalkerBatch.__init__(self, system, hamiltonian, trial, nwalkers, 
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp)
         self.name = "SingleDetWalkerBatch"
@@ -40,13 +39,11 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.le_oratio = 1.0
         self.ovlp = self.ot
 
-        self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis),
+        self.G = numpy.zeros(shape=(nwalkers, 2, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=trial.psi.dtype)
 
-        self.Ghalf = [numpy.zeros(shape=(system.nup, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype),
-                     numpy.zeros(shape=(system.ndown, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype)]
+        self.Ghalf = numpy.zeros(shape=(nwalkers, 2, system.nup, hamiltonian.nbasis),
+                                 dtype=trial.psi.dtype)
         self.greens_function(trial)
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
@@ -139,14 +136,14 @@ class SingleDetWalkerBatch(WalkerBatch):
         nb = self.ndown
         ot = []
         for iw in range(self.nwalkers):
-            Oalpha = numpy.dot(trial.psi[:,:na].conj().T, self.phi[:,:na])
+            Oalpha = numpy.dot(trial.psi[:,:na].conj().T, self.phi[iw][:,:na])
             sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
             logdet_b, sign_b = 0.0, 1.0
             if nb > 0:
-                Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[:,na:])
+                Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[iw][:,na:])
                 sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
-            ot += [sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift)]
+            ot += [sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift[iw])]
 
         return ot
 
@@ -211,6 +208,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         ndown = self.ndown
 
         det = []
+
         for iw in range(self.nwalkers):
             ovlp = numpy.dot(self.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
             self.Ghalf[iw][0] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
@@ -222,7 +220,7 @@ class SingleDetWalkerBatch(WalkerBatch):
                 sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
                 self.Ghalf[iw][1] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
                 self.G[iw][1] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalf[iw][1])
-            det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift)]
+            det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
 
         return det
 
@@ -238,8 +236,9 @@ class SingleDetWalkerBatch(WalkerBatch):
         """
         nup = self.nup
         ndown = self.ndown
-        self.Ghalf[0] = self.phi[:,:nup].dot(self.inv_ovlp[0])
-        self.Ghalf[1] = numpy.zeros(self.Ghalf[0].shape)
-        if (ndown>0):
-            self.Ghalf[1] = self.phi[:,nup:].dot(self.inv_ovlp[1])
+        for iw in range(self.nwalkers):
+            self.Ghalf[iw][0] = self.phi[iw][:,:nup].dot(self.inv_ovlp[iw][0])
+            self.Ghalf[iw][1] = numpy.zeros(self.Ghalf[iw][0].shape)
+            if (ndown>0):
+                self.Ghalf[iw][1] = self.phi[iw][:,nup:].dot(self.inv_ovlp[iw][1])
 

@@ -6,11 +6,7 @@ import numpy
 import scipy.linalg
 import sys
 import time
-from pyqumc.walkers.multi_ghf import MultiGHFWalker
-from pyqumc.walkers.single_det import SingleDetWalker
-from pyqumc.walkers.multi_det import MultiDetWalker
-from pyqumc.walkers.multi_coherent import MultiCoherentWalker
-from pyqumc.walkers.thermal import ThermalWalker
+from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.stack import FieldConfig
 from pyqumc.utils.io import get_input_value
 from pyqumc.utils.misc import update_stack
@@ -42,8 +38,6 @@ class WalkersBatch(object):
             print("# ntot_walkers = {}".format(self.ntot_walkers))
         self.write_freq = walker_opts.get('write_freq', 0)
         self.write_file = walker_opts.get('write_file', 'restart.h5')
-        self.use_log_shift = walker_opts.get('use_log_shift', False)
-        self.shift_counter = 1
         self.read_file = walker_opts.get('read_file', None)
         if comm is None:
             rank = 0
@@ -51,38 +45,25 @@ class WalkersBatch(object):
             rank = comm.rank
         if verbose:
             print("# Setting up wavefunction object.")
-        if trial.name == 'MultiSlater':
-            self.walker_type = 'MSD'
-            # TODO: FDM FIXTHIS
-            if trial.ndets == 1:
-                if verbose:
-                    print("# Using single det walker with msd wavefunction.")
-                self.walker_type = 'SD'
-                trial.psi = trial.psi[0]
-                self.walkers = [SingleDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
-                                                index=w, nprop_tot=nprop_tot,
-                                                nbp=nbp)
-                                for w in range(qmc.nwalkers)]
-            else:
-                print("Features not yet implemented")
-                exit()
+        assert(trial.name == 'MultiSlater' and trial.ndets == 1)
+        if verbose:
+            print("# Using single det walker with msd wavefunction.")
+        self.walker_type = 'SD'
+        trial.psi = trial.psi[0]
+        self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, nwalkers = nwalkers, walker_opts=walker_opts,
+                                        index=w, nprop_tot=nprop_tot,nbp=nbp)
 
-            self.buff_size = self.walkers[0].buff_size
-            if nbp is not None:
-                if verbose:
-                    print("# Performing back propagation.")
-                    print("# Number of steps in imaginary time: {:}.".format(nbp))
-                self.buff_size += self.walkers[0].field_configs.buff_size
-            self.walker_buffer = numpy.zeros(self.buff_size,
-                                             dtype=numpy.complex128)
-        elif:
-            print("Features not yet implemented")
-            exit()
+        self.buff_size = self.walkers_batch.buff_size
 
-        if hamiltonian.name == "Generic" or system.name == "UEG":
-            self.dtype = complex
-        else:
-            self.dtype = int
+        assert (nbp == None)
+        # if nbp is not None:
+        #     if verbose:
+        #         print("# Performing back propagation.")
+        #         print("# Number of steps in imaginary time: {:}.".format(nbp))
+        #     self.buff_size += self.walkers[0].field_configs.buff_size
+
+        self.walker_buffer = numpy.zeros(self.buff_size,
+                                         dtype=numpy.complex128)
 
         self.pcont_method = get_input_value(walker_opts, 'population_control',
                                             default='comb')
@@ -100,14 +81,13 @@ class WalkersBatch(object):
                       "issues.")
         
         if not self.walker_type == "thermal":
-            walker_size = 3 + self.walkers[0].phi.size
+            walker_batch_size = 3 * nwalkers + self.walkers_batch.phi.size
         if self.write_freq > 0:
             self.write_restart = True
             self.dsets = []
             with h5py.File(self.write_file,'w',driver='mpio',comm=comm) as fh5:
-                for i in range(self.ntot_walkers):
-                    fh5.create_dataset('walker_%d'%i, (walker_size,),
-                                       dtype=numpy.complex128)
+                fh5.create_dataset('walker_batch_%d'%mpi.rank, (walker_batch_size,),
+                                   dtype=numpy.complex128)
         else:
             self.write_restart = False
         if self.read_file is not None:
@@ -119,7 +99,6 @@ class WalkersBatch(object):
         self.nw = qmc.nwalkers
         self.set_total_weight(qmc.ntot_walkers)
         
-
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
 
@@ -130,12 +109,12 @@ class WalkersBatch(object):
         free_projection : bool
             True if doing free projection.
         """
-        for w in self.walkers:
-            detR = w.reortho(trial)
-            if free_projection:
-                (magn, dtheta) = cmath.polar(detR)
-                w.weight *= magn
-                w.phase *= cmath.exp(1j*dtheta)
+        # for w in self.walkers:
+        detR = self.walkers_batch.reortho(trial)
+        if free_projection:
+            (magn, dtheta) = cmath.polar(self.walkers_batch.detR)
+            self.walkers_batch.weight *= magn
+            self.walkers_batch.phase *= cmath.exp(1j*dtheta)
 
     def add_field_config(self, nprop_tot, nbp, system, dtype):
         """Add FieldConfig object to walker object.
@@ -151,8 +130,8 @@ class WalkersBatch(object):
         dtype : type
             Field configuration type.
         """
-        for w in self.walkers:
-            w.field_configs = FieldConfig(system.nfields, nprop_tot, nbp, dtype)
+        for fc in self.walkers_batch.field_configs:
+            fc = FieldConfig(system.nfields, nprop_tot, nbp, dtype)
 
     def copy_historic_wfn(self):
         """Copy current wavefunction to psi_n for next back propagation step."""
@@ -170,21 +149,11 @@ class WalkersBatch(object):
         for (i, (w,wbp)) in enumerate(zip(self.walkers, phi_bp)):
             numpy.copyto(self.walkers[i].phi_bp, wbp.phi)
 
-    def copy_init_wfn(self):
-        """Copy current wavefunction to initial wavefunction.
-
-        The definition of the initial wavefunction depends on whether we are
-        calculating an ITCF or not.
-        """
-        for (i,w) in enumerate(self.walkers):
-            numpy.copyto(self.walkers[i].phi_right, self.walkers[i].phi)
-
     def pop_control(self, comm):
         if self.ntot_walkers == 1:
             return
-        if self.use_log_shift:
-           self.update_log_ovlp(comm)
-        weights = numpy.array([abs(w.weight) for w in self.walkers])
+        # weights = numpy.array([abs(w.weight) for w in self.walkers])
+        weights = numpy.abs(self.walkers_batch.weight)
         global_weights = numpy.empty(len(weights)*comm.size)
         comm.Allgather(weights, global_weights)
         total_weight = sum(global_weights)
@@ -198,9 +167,11 @@ class WalkersBatch(object):
             sys.exit()
         self.set_total_weight(total_weight)
         # Todo: Just standardise information we want to send between routines.
-        for w in self.walkers:
-            w.unscaled_weight = w.weight
-            w.weight = w.weight / scale
+        self.walkers_batch.unscaled_weight = self.walkers_batch.weight
+        self.walkers_batch.weight = self.walkers_batch.weight / scale
+        # for w in self.walkers:
+            # w.unscaled_weight = w.weight
+            # w.weight = w.weight / scale
         if self.pcont_method == "comb":
             global_weights = global_weights / scale
             self.comb(comm, global_weights)
@@ -368,75 +339,35 @@ class WalkersBatch(object):
         for r in reqs:
             r.wait()
 
-
-    def recompute_greens_function(self, trial, time_slice=None):
-        for w in self.walkers:
-            w.greens_function(trial, time_slice)
-
     def set_total_weight(self, total_weight):
-        for w in self.walkers:
-            w.total_weight = total_weight
-            w.old_total_weight = w.total_weight
+        self.walkers_batch.total_weight = total_weight
 
-    def reset(self, trial):
-        for w in self.walkers:
-            w.stack.reset()
-            w.stack.set_all(trial.dmat)
-            w.greens_function(trial)
-            w.weight = 1.0
-            w.phase = 1.0 + 0.0j
-
-    def get_write_buffer(self, i):
-        w = self.walkers[i]
-        buff = numpy.concatenate([[w.weight], [w.phase], [w.ot], w.phi.ravel()])
+    def get_write_buffer(self):
+        buff = numpy.concatenate([[self.walkers_batch.weight], [self.walkers_batch.phase], [self.walkers_batch.ot], self.walkers_batch.phi.ravel()])
         return buff
 
-    def set_walker_from_buffer(self, i, buff):
-        w = self.walkers[i]
-        w.weight = buff[0]
-        w.phase = buff[1]
-        w.ot = buff[2]
-        w.phi = buff[3:].reshape(self.walkers[i].phi.shape)
+    def set_walkers_batch_from_buffer(self, buff):
+        self.walkers_batch.weight = buff[0:self.nwalkers]
+        self.walkers_batch.phase = buff[self.nwalkers:self.nwalkers*2]
+        self.walkers_batch.ot = buff[self.nwalkers*2:self.nwalkers*3]
+        self.walkers_batch.phi = buff[self.nwalkers*3:].reshape(self.walkers_batch.phi.shape)
 
-    def write_walkers(self, comm):
+    def write_walkers_batch(self, comm):
         start = time.time()
         with h5py.File(self.write_file,'r+',driver='mpio',comm=comm) as fh5:
-            for (i,w) in enumerate(self.walkers):
-                ix = i + self.nwalkers*comm.rank
-                buff = self.get_write_buffer(i)
-                fh5['walker_%d'%ix][:] = self.get_write_buffer(i)
+            # for (i,w) in enumerate(self.walkers):
+                # ix = i + self.nwalkers*comm.rank
+            buff = self.get_write_buffer()
+            fh5['walker_%d'%comm.rank][:] = self.get_write_buffer()
         if comm.rank == 0:
             print(" # Writing walkers to file.")
             print(" # Time to write restart: {:13.8e} s"
                   .format(time.time()-start))
 
-    def update_log_ovlp(self, comm):
-        send = numpy.zeros(3, dtype=numpy.complex128)
-        # Overlap log factor
-        send[0] = sum(abs(w.ot) for w in self.walkers)
-        # Det R log factor
-        send[1] = sum(abs(w.detR) for w in self.walkers)
-        send[2] = sum(abs(w.log_detR) for w in self.walkers)
-        global_av = numpy.zeros(3, dtype=numpy.complex128)
-        comm.Allreduce(send, global_av)
-        log_shift = numpy.log(global_av[0]/self.ntot_walkers)
-        detR_shift = numpy.log(global_av[1]/self.ntot_walkers)
-        log_detR_shift = global_av[2]/self.ntot_walkers
-        # w.log_shift = -0.5
-        n = self.shift_counter
-        nm1 = self.shift_counter - 1
-        for w in self.walkers:
-            w.log_shift = (w.log_shift*nm1 + log_shift)/n
-            w.log_detR_shift = (w.log_detR_shift*nm1 + log_detR_shift)/n
-            w.detR_shift = (w.detR_shift*nm1 + detR_shift)/n
-        self.shift_counter += 1
-
-    def read_walkers(self, comm):
+    def read_walkers_batch(self, comm):
         with h5py.File(self.read_file, 'r') as fh5:
-            for (i,w) in enumerate(self.walkers):
-                try:
-                    ix = i + self.nwalkers*comm.rank
-                    self.set_walker_from_buffer(i, fh5['walker_%d'%ix][:])
-                except KeyError:
-                    print(" # Could not read walker data from:"
-                          " %s"%(self.read_file))
+            try:
+                self.set_walkers_batch_from_buffer(fh5['walker_%d'%comm.rank][:])
+            except KeyError:
+                print(" # Could not read walker data from:"
+                      " %s"%(self.read_file))
