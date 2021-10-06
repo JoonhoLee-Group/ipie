@@ -147,7 +147,7 @@ class GenericContinuous(object):
         G = walker.Ghalf
         if hamiltonian.sparse:
             self.vbias = G[0].ravel() * trial.rot_chol(spin=0)
-            self.vbias += G[1].ravel() * trial.rot_chol(spin=0)
+            self.vbias += G[1].ravel() * trial.rot_chol(spin=1)
         else:
             self.vbias = numpy.dot(trial.rot_chol(spin=0).T, G[0].ravel())
             self.vbias += numpy.dot(trial.rot_chol(spin=1).T, G[1].ravel())

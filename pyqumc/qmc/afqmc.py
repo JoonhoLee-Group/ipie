@@ -228,7 +228,6 @@ class AFQMC(object):
         w0 = self.psi.walkers[0]
         eshift = 0
         (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
-        # (etot, e1b, e2b) = w0.local_energy(self.system, rchol=self.trial._rchol, eri=self.trial._eri, UVT=self.trial._UVT)
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
                                                    self.trial, self.psi, 0,
