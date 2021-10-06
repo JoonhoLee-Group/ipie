@@ -153,9 +153,7 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-
-def local_energy_generic_cholesky_opt_ncr(system, ham, G, Ghalf, rchol, rchol_a,
-                                          rchol_b):
+def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -179,86 +177,33 @@ def local_energy_generic_cholesky_opt_ncr(system, ham, G, Ghalf, rchol, rchol_a,
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nalpha, nbeta = system.nup, system.ndown
-    nbasis = ham.nbasis
-    if rchol is not None:
-        naux = rchol.shape[1]
-
-    Ga, Gb = Ghalf[0], Ghalf[1]
-    if rchol is not None:  # this is faster since it is mat-vec dot
-        Xa = rchol[:nalpha * nbasis].T.dot(Ga.ravel())
-        Xb = rchol[nalpha * nbasis:].T.dot(Gb.ravel())
-    else:  # this is slower since it requires a reshape to get a mat-vec dot
-        Xa = numpy.einsum('ijk,jk->i', rchol_a, Ga)
-        Xb = numpy.einsum('ijk,jk->i', rchol_b, Ga)
-    ecoul = numpy.dot(Xa, Xa)
-    ecoul += numpy.dot(Xb, Xb)
-    ecoul += 2 * numpy.dot(Xa, Xb)
-
-    GaT = Ga.T
-    GbT = Gb.T
-    exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    for x in range(naux):  # write a cython function that calls blas for this.
-        Ta = rchol_a[x].dot(GaT)  # this is a (nalpha, nalpha)
-        exx += numpy.trace(Ta.dot(Ta))
-        Tb = rchol_b[x].dot(GbT)  # this is (nbeta, nbeta)
-        exx += numpy.trace(Tb.dot(Tb))
-    
-    e2b = 0.5 * (ecoul - exx)
-
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
-
-def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
-    r"""Calculate local for generic two-body hamiltonian.
-
-    This uses the cholesky decomposed two-electron integrals.
-
-    Parameters
-    ----------
-    system : :class:`Generic`
-        System information for Generic.
-    ham : :class:`Abinitio`
-        Contains necessary hamiltonian information
-    Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function"
-    rchol : :class:`numpy.ndarray`
-        trial's half-rotated choleksy vectors
-
-    Returns
-    -------
-    (E, T, V): tuple
-        Local, kinetic and potential energies.
-    """
-    # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0]*Ga) + numpy.sum(ham.H1[1]*Gb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     if rchola is not None:
         naux = rchola.shape[0]
 
-    Ghalfa, Ghalfb = Ghalfa, Ghalfb
     Xa = rchola.dot(Ghalfa.ravel())
     Xb = rcholb.dot(Ghalfb.ravel())
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
     ecoul += 2*numpy.dot(Xa,Xb)
 
-    Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchola.dtype)
-    Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rcholb.dtype)
     GhalfaT = Ghalfa.T.copy()
     GhalfbT = Ghalfb.T.copy()
+    
+    Ta = numpy.zeros((nalpha,nalpha), dtype=numpy.complex128)
+    Tb = numpy.zeros((nbeta,nbeta), dtype=numpy.complex128)
 
-    exx_a_temp, exx_b_temp = 0., 0.  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    for x in range(naux):
+    exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    for x in range(naux):  # write a cython function that calls blas for this.
         rmi_a = rchola[x].reshape((nalpha,nbasis))
-        Ta[x] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+        Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+        exx += numpy.trace(Ta.dot(Ta))
         rmi_b = rcholb[x].reshape((nbeta,nbasis))
-        Tb[x] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
-    exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
-    exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
-   
-    exx = exxa + exxb
+        Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
+        exx += numpy.trace(Tb.dot(Tb))
+
     e2b = 0.5 * (ecoul - exx)
 
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
