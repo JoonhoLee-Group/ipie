@@ -1,5 +1,4 @@
 import numpy
-import numpy as np
 from numpy import ndarray
 import sys
 
@@ -174,7 +173,7 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
         beta-spin half-rotated Greens function of size (nbasis, nbeta * nwalker)
     Returns
     -------
-    exx: np.ndarary 
+    exx: numpy.ndarary 
         vector of exchange contributions for each walker
     """
     naux = rchol_a.shape[0]
@@ -182,8 +181,8 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     nalpha = GaT_stacked.shape[1] // lwalker
     nbeta = GbT_stacked.shape[1] // lwalker
 
-    exx_vec_a = np.zeros(lwalker, dtype=np.complex128)
-    exx_vec_b = np.zeros(lwalker, dtype=np.complex128)
+    exx_vec_a = numpy.zeros(lwalker, dtype=numpy.complex128)
+    exx_vec_b = numpy.zeros(lwalker, dtype=numpy.complex128)
 
     Ta = numpy.zeros((nalpha, nalpha), dtype=numpy.complex128)
     Tb = numpy.zeros((nbeta, nbeta), dtype=numpy.complex128)
@@ -196,8 +195,8 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
         Tb = rmi_b.dot(GbT_stacked) # (nb, nb x nwalker)
         Ta = Ta.reshape((nalpha, lwalker, nalpha))  # reshape into 3-tensor for tdot
         Tb = Tb.reshape((nbeta, lwalker, nbeta))
-        exx_vec_a += np.einsum('ikj,jki->k', Ta, Ta, optimize=True)
-        exx_vec_b += np.einsum('ikj,jki->k', Tb, Tb, optimize=True)
+        exx_vec_a += numpy.einsum('ikj,jki->k', Ta, Ta, optimize=True)
+        exx_vec_b += numpy.einsum('ikj,jki->k', Tb, Tb, optimize=True)
     return exx_vec_b + exx_vec_a
 
 
@@ -238,8 +237,8 @@ def local_energy_generic_cholesky_opt_batched(system, ham, Ga_batch: ndarray,
     """
     # Element wise multiplication.
     nwalker = Ga_batch.shape[0]
-    e1_vec = np.zeros(nwalker, dtype=np.complex128)
-    ecoul_vec = np.zeros(nwalker, dtype=np.complex128)
+    e1_vec = numpy.zeros(nwalker, dtype=numpy.complex128)
+    ecoul_vec = numpy.zeros(nwalker, dtype=numpy.complex128)
     # simple loop because this part isn't the slow bit
     for widx in range(nwalker):
         e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(ham.H1[1] * Gb_batch[widx])
@@ -257,8 +256,8 @@ def local_energy_generic_cholesky_opt_batched(system, ham, Ga_batch: ndarray,
         ecoul_vec[widx] = ecoul
 
     # transpose batch of walkers as exx prep
-    GhalfaT_stacked = np.hstack([*Ghalfa_batch.transpose((0, 2, 1)).copy()])
-    GhalfbT_stacked = np.hstack([*Ghalfb_batch.transpose((0, 2, 1)).copy()])
+    GhalfaT_stacked = numpy.hstack([*Ghalfa_batch.transpose((0, 2, 1)).copy()])
+    GhalfbT_stacked = numpy.hstack([*Ghalfb_batch.transpose((0, 2, 1)).copy()])
     # call batched exx computation
     exx_vec = _exx_compute_batch(rchol_a=rchola, rchol_b=rcholb,
                                  GaT_stacked=GhalfaT_stacked,
