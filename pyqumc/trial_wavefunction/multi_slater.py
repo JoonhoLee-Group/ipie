@@ -404,10 +404,10 @@ class MultiSlater(object):
                 rup = numpy.tensordot(psi[:,:na].conj(),
                                       chol[:,:,start_n:end_n],
                                       axes=((0),(0))).reshape((na*M,nchol_loc)).T.copy()
-                self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 rdn = numpy.tensordot(psi[:,na:].conj(),
                                       chol[:,:,start_n:end_n],
                                       axes=((0),(0))).reshape((nb*M,nchol_loc)).T.copy()
+                self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
 
                 # self._rchol[start:start+M*na,start_n:end_n] = rup[:]
@@ -419,19 +419,6 @@ class MultiSlater(object):
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half rotate {} seconds.".format(time.time()-start_time))
-
-        # # now we want to provide access to rchol through rchol_a, rchol_b
-        # if self._rchol_a is None:  # skip if already allocated and not None
-        #     # check if we have a numpy array and not another distributed memory array of some type
-        #     if isinstance(self._rchol, numpy.ndarray):
-        #         if self.verbose:
-        #             self._mem_required = self._rchol.nbytes / (1024.0 ** 3.0)
-        #             print("# double Memory required by half-rotated integrals rchol, rchol_a, rchol_b: "
-        #                   " {:.4f} GB.".format(2 * self._mem_required))
-        #         # reshape each half rotated cholesky vector into naxu, nocc, nbasis
-        #         naux = self._rchol.shape[1]
-        #         self._rchol_a = self._rchol[:na * M].T.reshape((naux, na, M))
-        #         self._rchol_b = self._rchol[na * M:].T.reshape((naux, nb, M))
 
         if comm is not None:
             comm.barrier()
@@ -457,55 +444,3 @@ class MultiSlater(object):
                 stride = self._nbasis * self._nbeta
                 # return self._rchol[idet*stride+alpha:idet*stride+alpha+beta]
                 return self._rcholb[:, idet*stride:idet*stride+beta]
-
-    # def rot_hs_pot(self, idet=0, spin=None):
-    #     """Helper function"""
-    #     if spin is None:
-    #         stride = self._nbasis * (self._nalpha + self._nbeta)
-    #         return self._rot_hs_pot[idet*stride:(idet+1)*stride]
-    #     else:
-    #         stride = self._nbasis * (self._nalpha + self._nbeta)
-    #         alpha = self._nbasis * self._nalpha
-    #         if spin == 0:
-    #             return self._rot_hs_pot[idet*stride:idet*stride+alpha]
-    #         else:
-    #             beta = self._nbasis * self._nbeta
-    #             return self._rot_hs_pot[idet*stride+alpha:idet*stride+alpha+beta]
-
-    # TODO: Implement
-    # def half_rotate_cplx(self, system, comm=None):
-        # # Half rotated cholesky vectors (by trial wavefunction).
-        # M = system.nbasis
-        # na = system.nup
-        # nb = system.ndown
-        # nchol = system.chol_vecs.shape[-1]
-        # if self.verbose:
-            # print("# Constructing half rotated Cholesky vectors.")
-
-        # if isinstance(system.chol_vecs, numpy.ndarray):
-            # chol = system.chol_vecs.reshape((M,M,-1))
-        # else:
-            # chol = system.chol_vecs.toarray().reshape((M,M,-1))
-        # if comm is None or comm.rank == 0:
-            # shape = (self.ndets*(M*(na+nb)), nchol)
-        # else:
-            # shape = None
-        # self.rchol = get_shared_array(comm, shape, numpy.complex128)
-        # if comm is None or comm.rank == 0:
-            # for i, psi in enumerate(self.psi):
-                # start_time = time.time()
-                # if self.verbose:
-                    # print("# Rotating Cholesky for determinant {} of "
-                          # "{}.".format(i+1,self.ndets))
-                # start = i*M*(na+nb)
-                # rup = numpy.tensordot(psi[:,:na].conj(),
-                                      # chol,
-                                      # axes=((0),(0)))
-                # self.rchol[start:start+M*na] = rup[:].reshape((-1,nchol))
-                # rdn = numpy.tensordot(psi[:,na:].conj(),
-                                      # chol,
-                                      # axes=((0),(0)))
-                # self.rchol[start+M*na:start+M*(na+nb)] = rdn[:].reshape((-1,nchol))
-                # if self.verbose:
-                    # print("# Time to half rotate {} seconds.".format(time.time()-start_time))
-            # self.rot_hs_pot = self.rchol

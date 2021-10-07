@@ -8,6 +8,8 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
 # def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
     nwalkers = walker_batch.nwalkers
     for iw in range(nwalkers):
-        energy += [local_energy_G(system, hamiltonian, trial, walker_batch.G[iw], walker_batch.Ghalf[iw])]
+        G = numpy.array([walker_batch.G[0,iw],walker_batch.G[1,iw]], dtype=walker_batch.G.dtype)
+        Ghalf = numpy.array([walker_batch.Ghalf[0,iw],walker_batch.Ghalf[1,iw]], dtype=walker_batch.G.dtype)
+        energy += [local_energy_G(system, hamiltonian, trial, G, Ghalf)]
     return energy
     

@@ -39,13 +39,14 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.le_oratio = 1.0
         self.ovlp = self.ot
 
-        self.G = numpy.zeros(shape=(nwalkers, 2, hamiltonian.nbasis, hamiltonian.nbasis),
+        self.G = numpy.zeros(shape=(2, nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=trial.psi.dtype)
 
-        self.Ghalf = numpy.zeros(shape=(nwalkers, 2, system.nup, hamiltonian.nbasis),
+        self.Ghalf = numpy.zeros(shape=(2, nwalkers, system.nup, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)
         self.greens_function(trial)
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
+        self.buff_size /= float(self.nwalkers)
 
     def inverse_overlap(self, trial):
         """Compute inverse overlap matrix from scratch.
@@ -92,32 +93,6 @@ class SingleDetWalkerBatch(WalkerBatch):
             self.inv_ovlp[iw][1] = (
                 sherman_morrison(self.inv_ovlp[iw][1], trial.psi[i,nup:].conj(), vtdown[iw])
             )
-#   Hubbard model specific function
-    # def calc_otrial(self, trial):
-    #     """Caculate overlap with trial wavefunction.
-
-    #     Parameters
-    #     ----------
-    #     trial : object
-    #         Trial wavefunction object.
-
-    #     Returns
-    #     -------
-    #     ot : float / complex
-    #         Overlap.
-    #     """
-
-    #     ot = []
-    #     for iw in range(self.nwalkers):
-    #         sign_a, logdet_a = numpy.linalg.slogdet(self.inv_ovlp[iw][0])
-    #         nbeta = self.ndown
-    #         sign_b, logdet_b = 1.0, 0.0
-    #         if nbeta > 0:
-    #             sign_b, logdet_b = numpy.linalg.slogdet(self.inv_ovlp[iw][1])
-    #         det = sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift)
-    #         ot += [1.0/det]
-
-    #     return ot
 
     def calc_overlap(self, trial):
         """Caculate overlap with trial wavefunction.
@@ -211,15 +186,15 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         for iw in range(self.nwalkers):
             ovlp = numpy.dot(self.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
-            self.Ghalf[iw][0] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
-            self.G[iw][0] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalf[iw][0])
+            self.Ghalf[0][iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
+            self.G[0][iw] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalf[0][iw])
             sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
             sign_b, log_ovlp_b = 1.0, 0.0
             if ndown > 0:
                 ovlp = numpy.dot(self.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
                 sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
-                self.Ghalf[iw][1] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
-                self.G[iw][1] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalf[iw][1])
+                self.Ghalf[1][iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
+                self.G[1][iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalf[1][iw])
             det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
 
         return det
@@ -237,8 +212,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         nup = self.nup
         ndown = self.ndown
         for iw in range(self.nwalkers):
-            self.Ghalf[iw][0] = self.phi[iw][:,:nup].dot(self.inv_ovlp[iw][0])
-            self.Ghalf[iw][1] = numpy.zeros(self.Ghalf[iw][0].shape)
+            self.Ghalf[0][iw] = self.phi[iw][:,:nup].dot(self.inv_ovlp[0][iw])
+            self.Ghalf[1][iw] = numpy.zeros(self.Ghalf[0][iw].shape)
             if (ndown>0):
-                self.Ghalf[iw][1] = self.phi[iw][:,nup:].dot(self.inv_ovlp[iw][1])
+                self.Ghalf[1][iw] = self.phi[iw][:,nup:].dot(self.inv_ovlp[1][iw])
 

@@ -56,11 +56,6 @@ class WalkersBatch(object):
         self.buff_size = self.walkers_batch.buff_size
 
         assert (nbp == None)
-        # if nbp is not None:
-        #     if verbose:
-        #         print("# Performing back propagation.")
-        #         print("# Number of steps in imaginary time: {:}.".format(nbp))
-        #     self.buff_size += self.walkers[0].field_configs.buff_size
 
         self.walker_buffer = numpy.zeros(self.buff_size,
                                          dtype=numpy.complex128)
@@ -96,7 +91,7 @@ class WalkersBatch(object):
             self.read_walkers(comm)
 
         self.target_weight = qmc.ntot_walkers
-        self.nw = qmc.nwalkers
+        # self.nw = qmc.nwalkers
         self.set_total_weight(qmc.ntot_walkers)
         
     def orthogonalise(self, trial, free_projection):
@@ -109,7 +104,6 @@ class WalkersBatch(object):
         free_projection : bool
             True if doing free projection.
         """
-        # for w in self.walkers:
         detR = self.walkers_batch.reortho(trial)
         if free_projection:
             (magn, dtheta) = cmath.polar(self.walkers_batch.detR)
@@ -152,7 +146,6 @@ class WalkersBatch(object):
     def pop_control(self, comm):
         if self.ntot_walkers == 1:
             return
-        # weights = numpy.array([abs(w.weight) for w in self.walkers])
         weights = numpy.abs(self.walkers_batch.weight)
         global_weights = numpy.empty(len(weights)*comm.size)
         comm.Allgather(weights, global_weights)
@@ -228,25 +221,25 @@ class WalkersBatch(object):
         comm.barrier()
         for i, (c, k) in enumerate(zip(clone, kill)):
             # Sending from current processor?
-            if c // self.nw == comm.rank:
+            if c // self.nwalkers == comm.rank:
                 # Location of walker to clone in local list.
-                clone_pos = c % self.nw
+                clone_pos = c % self.nwalkers
                 # copying walker data to intermediate buffer to avoid issues
                 # with accessing walker data during send. Might not be
                 # necessary.
-                dest_proc = k // self.nw
+                dest_proc = k // self.nwalkers
                 # with h5py.File('before_{}.h5'.format(comm.rank), 'a') as fh5:
                     # fh5['walker_{}_{}_{}'.format(c,k,dest_proc)] = self.walkers[clone_pos].get_buffer()
-                buff = self.walkers[clone_pos].get_buffer()
+                buff = self.walkers_batch.get_buffer(clone_pos)
                 reqs.append(comm.Isend(buff, dest=dest_proc, tag=i))
         # Now receive walkers on processors where walkers are to be killed.
         for i, (c, k) in enumerate(zip(clone, kill)):
             # Receiving to current processor?
-            if k // self.nw == comm.rank:
+            if k // self.nwalkers == comm.rank:
                 # Processor we are receiving from.
-                source_proc = c // self.nw
+                source_proc = c // self.nwalkers
                 # Location of walker to kill in local list of walkers.
-                kill_pos = k % self.nw
+                kill_pos = k % self.nwalkers
                 comm.Recv(self.walker_buffer, source=source_proc, tag=i)
                 # with h5py.File('walkers_recv.h5', 'w') as fh5:
                     # fh5['walk_{}'.format(k)] = self.walker_buffer.copy()
@@ -262,8 +255,9 @@ class WalkersBatch(object):
         comm.Barrier()
         # Reset walker weight.
         # TODO: check this.
-        for w in self.walkers:
-            w.weight = 1.0
+        # for w in self.walkers:
+            # w.weight = 1.0
+        self.walkers_batch.weight.fill(1.0)
 
     def pair_branch(self, comm):
         walker_info = [[abs(w.weight),1,comm.rank,comm.rank] for w in self.walkers]

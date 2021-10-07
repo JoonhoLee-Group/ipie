@@ -61,8 +61,10 @@ def test_overlap():
         ovlp = numpy.dot(trial.psi[:,:nup].conj().T, walkers_batch.phi[iw][:,:nup])
         id_exp = numpy.dot(walkers_batch.inv_ovlp[iw][0], ovlp)
         numpy.testing.assert_allclose(id_exp, numpy.eye(nup), atol=1e-12)
-        numpy.testing.assert_allclose(walkers[iw].Ghalf, walkers_batch.Ghalf[iw], atol=1e-12)
-        numpy.testing.assert_allclose(walkers[iw].G, walkers_batch.G[iw], atol=1e-12)
+        numpy.testing.assert_allclose(walkers[iw].Ghalf[0], walkers_batch.Ghalf[0,iw], atol=1e-12)
+        numpy.testing.assert_allclose(walkers[iw].Ghalf[1], walkers_batch.Ghalf[1,iw], atol=1e-12)
+        numpy.testing.assert_allclose(walkers[iw].G[0], walkers_batch.G[0,iw], atol=1e-12)
+        numpy.testing.assert_allclose(walkers[iw].G[1], walkers_batch.G[1,iw], atol=1e-12)
 
 
 @pytest.mark.unit
