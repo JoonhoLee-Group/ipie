@@ -63,7 +63,7 @@ class GenericContinuous(object):
                 self.construct_force_bias = self.construct_force_bias_fast
                 self.construct_VHS = self.construct_VHS_fast
         else:
-            assert(qmc.batched == False)
+            assert(qmc.batched == False or qmc.batched == None)
             if trial.ndets > 1:
                 self.construct_force_bias = self.construct_force_bias_multi_det
             else:

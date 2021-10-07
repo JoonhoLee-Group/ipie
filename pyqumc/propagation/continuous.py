@@ -47,7 +47,7 @@ class Continuous(object):
             else:
                 self.update_weight = self.update_weight_hybrid
         else:
-            assert(qmc.batched==False)
+            assert(qmc.batched==False or qmc.batched == None)
             if verbose:
                 print("# Using local energy weight update.")
             self.update_weight = self.update_weight_local_energy
@@ -75,7 +75,7 @@ class Continuous(object):
         if self.free_projection:
             if verbose:
                 print("# Using free projection.")
-            assert(qmc.batched == False)
+            assert(qmc.batched == False or qmc.batched == None)
             self.propagate_walker = self.propagate_walker_free
         else:
             if verbose:

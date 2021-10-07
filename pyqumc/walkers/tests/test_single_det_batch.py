@@ -117,7 +117,7 @@ def test_reortho():
     eloc_new = local_energy(system, ham, walker, trial)
 
     eloc_batch = local_energy_batch(system, ham, walkers_batch, trial)
-    detR_batch = walkers_batch.reortho(trial)
+    detR_batch = walkers_batch.reortho()
     eloc_new_batch = local_energy_batch(system, ham, walkers_batch, trial)
 
     assert eloc == pytest.approx(eloc_new)
