@@ -15,6 +15,7 @@ try:
 except ImportError:
     parallel = False
 from pyqumc.qmc.afqmc import AFQMC
+from pyqumc.qmc.afqmc_batch import AFQMCBatch
 from pyqumc.qmc.thermal_afqmc import ThermalAFQMC
 from pyqumc.estimators.handler import Estimators
 from pyqumc.utils.io import  to_json, get_input_value
@@ -43,15 +44,21 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
+    batched = get_input_value(qmc_opts, 'batched', default=False)
     verbosity = options.get('verbosity', 1)
     if beta is not None:
         afqmc = ThermalAFQMC(comm, options=options,
                              parallel=comm.size>1,
                              verbose=verbosity)
     else:
-        afqmc = AFQMC(comm, options=options,
-                      parallel=comm.size>1,
-                      verbose=verbosity)
+        if batched:
+            afqmc = AFQMCBatch(comm, options=options,
+                          parallel=comm.size>1,
+                          verbose=verbosity)
+        else:
+            afqmc = AFQMC(comm, options=options,
+                          parallel=comm.size>1,
+                          verbose=verbosity)
     return afqmc
 
 def read_input(input_file, comm, verbose=False):

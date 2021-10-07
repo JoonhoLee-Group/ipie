@@ -243,7 +243,7 @@ class WalkersBatch(object):
                 comm.Recv(self.walker_buffer, source=source_proc, tag=i)
                 # with h5py.File('walkers_recv.h5', 'w') as fh5:
                     # fh5['walk_{}'.format(k)] = self.walker_buffer.copy()
-                self.walkers[kill_pos].set_buffer(self.walker_buffer)
+                self.walkers_batch.set_buffer(kill_pos, self.walker_buffer)
                 # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
                     # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = self.walkers[kill_pos].get_buffer()
         # Complete non-blocking send.
@@ -260,7 +260,8 @@ class WalkersBatch(object):
         self.walkers_batch.weight.fill(1.0)
 
     def pair_branch(self, comm):
-        walker_info = [[abs(w.weight),1,comm.rank,comm.rank] for w in self.walkers]
+        # walker_info = [[abs(w.weight),1,comm.rank,comm.rank] for w in self.walkers]
+        walker_info = [[abs(self.walkers_batch.weight[w]),1,comm.rank,comm.rank] for w in range(self.walkers_batch.nwalkers)]
         glob_inf = comm.gather(walker_info, root=0)
         # Want same random number seed used on all processors
         if comm.rank == 0:
@@ -318,8 +319,8 @@ class WalkersBatch(object):
         for iw, walker in enumerate(data):
             if walker[1] > 1:
                 tag = comm.rank*len(walker_info) + walker[3]
-                self.walkers[iw].weight = walker[0]
-                buff = self.walkers[iw].get_buffer()
+                self.walkers_batch.weight[iw] = walker[0]
+                buff = self.walkers_batch.get_buffer(iw)
                 reqs.append(comm.Isend(buff,
                                        dest=int(round(walker[3])),
                                        tag=tag))
@@ -329,7 +330,7 @@ class WalkersBatch(object):
                 comm.Recv(self.walker_buffer,
                           source=int(round(walker[3])),
                           tag=tag)
-                self.walkers[iw].set_buffer(self.walker_buffer)
+                self.walkers.set_buffer(iw, self.walker_buffer)
         for r in reqs:
             r.wait()
 

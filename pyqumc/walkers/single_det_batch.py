@@ -39,14 +39,48 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.le_oratio = 1.0
         self.ovlp = self.ot
 
-        self.G = numpy.zeros(shape=(2, nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+        self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+                             dtype=trial.psi.dtype)
+        self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=trial.psi.dtype)
 
-        self.Ghalf = numpy.zeros(shape=(2, nwalkers, system.nup, hamiltonian.nbasis),
+        self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
+                                 dtype=trial.psi.dtype)
+        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)
         self.greens_function(trial)
-        self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
-        self.buff_size /= float(self.nwalkers)
+        # self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
+        # self.buff_size /= float(self.nwalkers)
+
+        # Grab objects that are walker specific
+        # WARNING!! One has to add names to the list here if new objects are added
+        self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
+                           "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
+                           "hybrid_energy", "phi_right", "weights", "inv_ovlp", "G", "Ghalf"]
+        self.buff_size = self.set_buff_size_single_walker()/float(self.nwalkers)
+
+
+    def set_buff_size_single_walker(self):
+        names = []
+        size = 0
+        for k, v in self.__dict__.items():
+            if (not (k in self.buff_names)):
+                continue
+            if isinstance(v, (numpy.ndarray)):
+                names.append(k)
+                size += v.size
+            elif isinstance(v, (int, float, complex)):
+                names.append(k)
+                size += 1
+            elif isinstance(v, list):
+                names.append(k)
+                for l in v:
+                    if isinstance(l, (numpy.ndarray)):
+                        size += l.size
+                    elif isinstance(l, (int, float, complex)):
+                        size += 1
+        return size
+
 
     def inverse_overlap(self, trial):
         """Compute inverse overlap matrix from scratch.
@@ -186,15 +220,15 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         for iw in range(self.nwalkers):
             ovlp = numpy.dot(self.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
-            self.Ghalf[0][iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
-            self.G[0][iw] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalf[0][iw])
+            self.Ghalfa[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
+            self.Ga[iw] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalfa[iw])
             sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
             sign_b, log_ovlp_b = 1.0, 0.0
             if ndown > 0:
                 ovlp = numpy.dot(self.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
                 sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
-                self.Ghalf[1][iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
-                self.G[1][iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalf[1][iw])
+                self.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
+                self.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalfb[iw])
             det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
 
         return det
@@ -212,8 +246,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         nup = self.nup
         ndown = self.ndown
         for iw in range(self.nwalkers):
-            self.Ghalf[0][iw] = self.phi[iw][:,:nup].dot(self.inv_ovlp[0][iw])
-            self.Ghalf[1][iw] = numpy.zeros(self.Ghalf[0][iw].shape)
+            self.Ghalfa[iw] = self.phi[iw][:,:nup].dot(self.inv_ovlp[iw][0])
+            self.Ghalfb[iw] = numpy.zeros(self.Ghalfa[iw].shape)
             if (ndown>0):
-                self.Ghalf[1][iw] = self.phi[iw][:,nup:].dot(self.inv_ovlp[1][iw])
+                self.Ghalfb[iw] = self.phi[iw][:,nup:].dot(self.inv_ovlp[iw][1])
 
