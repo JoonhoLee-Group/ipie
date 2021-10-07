@@ -1,4 +1,6 @@
 import numpy
+import numpy as np
+from numpy import ndarray
 import sys
 
 def local_energy_generic(h1e, eri, G, ecore=0.0, Ghalf=None):
@@ -153,6 +155,120 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
+
+def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
+    """
+    Internal function for computing exchange two-electron integral energy 
+    of batched walkers. The stacked batching ends up being about 30% faster
+    than simple loop over walkers.
+    
+    Parameters
+    ----------
+    rchol_a: :class:`numpy.ndarray`
+        alpha-spin half-rotated cholesky vectors that are (naux, nalpha, nbasis)
+    rchol_b: :class:`numpy.ndarray`
+        beta-spin half-rotated cholesky vectors that are (naux, nbeta, nbasis)
+    GaT_stacked: :class:`numpy.ndarray`
+        alpha-spin half-rotated Greens function of size (nbasis, nalpha * nwalker)
+    GbT_stacked: :class:`numpy.ndarray`
+        beta-spin half-rotated Greens function of size (nbasis, nbeta * nwalker)
+    Returns
+    -------
+    exx: np.ndarary 
+        vector of exchange contributions for each walker
+    """
+    naux = rchol_a.shape[0]
+    nbasis = GaT_stacked.shape[0]
+    nalpha = GaT_stacked.shape[1] // lwalker
+    nbeta = GbT_stacked.shape[1] // lwalker
+
+    exx_vec_a = np.zeros(lwalker, dtype=np.complex128)
+    exx_vec_b = np.zeros(lwalker, dtype=np.complex128)
+
+    Ta = numpy.zeros((nalpha, nalpha), dtype=numpy.complex128)
+    Tb = numpy.zeros((nbeta, nbeta), dtype=numpy.complex128)
+
+    # Writing this way so in the future we can vmap of naux index of rchol_a
+    for x in range(naux):
+        rmi_a = rchol_a[x].reshape((nalpha, nbasis)) # can we get rid of this?
+        Ta = rmi_a.dot(GaT_stacked) # (na, na x nwalker)
+        rmi_b = rchol_b[x].reshape((nbeta, nbasis))
+        Tb = rmi_b.dot(GbT_stacked) # (nb, nb x nwalker)
+        Ta = Ta.reshape((nalpha, lwalker, nalpha))  # reshape into 3-tensor for tdot
+        Tb = Tb.reshape((nbeta, lwalker, nbeta))
+        exx_vec_a += np.einsum('ikj,jki->k', Ta, Ta, optimize=True)
+        exx_vec_b += np.einsum('ikj,jki->k', Tb, Tb, optimize=True)
+    return exx_vec_b + exx_vec_a
+
+
+def local_energy_generic_cholesky_opt_batched(system, ham, Ga_batch: ndarray,
+                                              Gb_batch: ndarray,
+                                              Ghalfa_batch: ndarray,
+                                              Ghalfb_batch: ndarray,
+                                              rchola: ndarray, rcholb: ndarray):
+    r"""Calculate local for generic two-body hamiltonian.
+
+    This uses the cholesky decomposed two-electron integrals. and batched
+    walkers.  The intended use is CPU batching where walker G functions are
+    stacked so we can use gemm on bigger arrays.
+
+    Parameters
+    ----------
+    system : :class:`Generic`
+        System information for Generic.
+    ham : :class:`Abinitio`
+        Contains necessary hamiltonian information
+    Ga_batched : :class:`numpy.ndarray`
+        alpha-spin Walker's "green's function" 3-tensor (nwalker, nbasis, nbasis)
+    Gb_batched : :class:`numpy.ndarray`
+        beta-spin Walker's "green's function" 3-tensor (nwalker, nbasis, nbasis)
+    Ghalfa_batched : :class:`numpy.ndarray`
+        alpha-spin Walker's half-rotated "green's function" 3-tensor (nwalker, nalpha, nbasis)
+    Ghalfb_batched : :class:`numpy.ndarray`
+        beta-spin Walker's half-rotated "green's function" 3-tensor (nwalker, nbeta, nbasis)
+    rchola : :class:`numpy.ndarray`
+        alpha-spin trial's half-rotated choleksy vectors (naux, nalpha * nbasis)
+    rcholb : :class:`numpy.ndarray`
+        beta-spin trial's half-rotated choleksy vectors (naux, nbeta * nbasis)
+
+    Returns
+    -------
+    (E, T, V): tuple of vectors
+        vectors of Local, kinetic and potential energies for each walker
+    """
+    # Element wise multiplication.
+    nwalker = Ga_batch.shape[0]
+    e1_vec = np.zeros(nwalker, dtype=np.complex128)
+    ecoul_vec = np.zeros(nwalker, dtype=np.complex128)
+    # simple loop because this part isn't the slow bit
+    for widx in range(nwalker):
+        e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(ham.H1[1] * Gb_batch[widx])
+        e1_vec[widx] = e1b
+        nalpha, nbeta = system.nup, system.ndown
+        nbasis = ham.nbasis
+        if rchola is not None:
+            naux = rchola.shape[0]
+
+        Xa = rchola.dot(Ghalfa_batch[widx].ravel())
+        Xb = rcholb.dot(Ghalfb_batch[widx].ravel())
+        ecoul = numpy.dot(Xa, Xa)
+        ecoul += numpy.dot(Xb, Xb)
+        ecoul += 2 * numpy.dot(Xa, Xb)
+        ecoul_vec[widx] = ecoul
+
+    # transpose batch of walkers as exx prep
+    GhalfaT_stacked = np.hstack([*Ghalfa_batch.transpose((0, 2, 1)).copy()])
+    GhalfbT_stacked = np.hstack([*Ghalfb_batch.transpose((0, 2, 1)).copy()])
+    # call batched exx computation
+    exx_vec = _exx_compute_batch(rchol_a=rchola, rchol_b=rcholb,
+                                 GaT_stacked=GhalfaT_stacked,
+                                 GbT_stacked=GhalfbT_stacked,
+                                 lwalker=nwalker)
+    e2b_vec = 0.5 * (ecoul_vec - exx_vec)
+
+    return (e1_vec + e2b_vec + ham.ecore, e1_vec + ham.ecore, e2b_vec)
+
+
 def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
@@ -196,12 +312,12 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     Tb = numpy.zeros((nbeta,nbeta), dtype=numpy.complex128)
 
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    for x in range(naux):  # write a cython function that calls blas for this.
+    for x in range(naux):  
         rmi_a = rchola[x].reshape((nalpha,nbasis))
-        Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+        Ta[:, :] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
         exx += numpy.trace(Ta.dot(Ta))
         rmi_b = rcholb[x].reshape((nbeta,nbasis))
-        Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
+        Tb[:, :] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
         exx += numpy.trace(Tb.dot(Tb))
 
     e2b = 0.5 * (ecoul - exx)
