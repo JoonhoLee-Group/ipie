@@ -50,11 +50,20 @@ class GenericContinuous(object):
         # Constant core contribution modified by mean field shift.
         self.mf_core = hamiltonian.ecore + 0.5*numpy.dot(self.mf_shift, self.mf_shift)
         self.nstblz = qmc.nstblz
-        self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
-        if optimised:
-            self.construct_force_bias = self.construct_force_bias_fast
-            self.construct_VHS = self.construct_VHS_fast
+        if (qmc.batched):
+            self.vbias_batch = numpy.zeros((qmc.nwalkers, hamiltonian.nfields), dtype=numpy.complex128)
         else:
+            self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
+        if optimised:
+            if (qmc.batched):
+                self.nwalkers = qmc.nwalkers
+                self.construct_force_bias_batch = self.construct_force_bias_batch
+                self.construct_VHS_batch = self.construct_VHS_batch
+            else:
+                self.construct_force_bias = self.construct_force_bias_fast
+                self.construct_VHS = self.construct_VHS_fast
+        else:
+            assert(qmc.batched == False)
             if trial.ndets > 1:
                 self.construct_force_bias = self.construct_force_bias_multi_det
             else:
@@ -128,6 +137,28 @@ class GenericContinuous(object):
         vbias = numpy.dot(hamiltonian.chol_vecs.T, walker.G[0].ravel())
         vbias += numpy.dot(hamiltonian.chol_vecs.T, walker.G[1].ravel())
         return - self.sqrt_dt * (1j*vbias-self.mf_shift)
+    
+    def construct_force_bias_batch(self, hamiltonian, walker_batch, trial):
+        """Compute optimal force bias.
+
+        Uses rotated Green's function.
+
+        Parameters
+        ----------
+        Ghalf : :class:`numpy.ndarray`
+            Half-rotated walker's Green's function.
+
+        Returns
+        -------
+        xbar : :class:`numpy.ndarray`
+            Force bias.
+        """
+        Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
+        Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
+        self.vbias_batch = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
+        self.vbias_batch = self.vbias_batch.T.copy()
+
+        return - self.sqrt_dt * (1j*self.vbias_batch-self.mf_shift)
 
     def construct_force_bias_fast(self, hamiltonian, walker, trial):
         """Compute optimal force bias.
@@ -181,6 +212,26 @@ class GenericContinuous(object):
         else:
             VHS = hamiltonian.chol_vecs.dot(xshifted)
         VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
+        return  self.isqrt_dt * VHS
+
+    def construct_VHS_batch(self, hamiltonian, xshifted):
+        """Construct the one body potential from the HS transformation
+        Parameters
+        ----------
+        hamiltonian :
+            hamiltonian class
+        xshifted : numpy array
+            shifited auxiliary field
+        Returns
+        -------
+        VHS : numpy array
+            the HS potential
+        """
+        if numpy.isrealobj(hamiltonian.chol_vecs):
+            VHS = hamiltonian.chol_vecs.dot(xshifted.real.T) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag.T)
+        else:
+            VHS = hamiltonian.chol_vecs.dot(xshifted.T)
+        VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
         return  self.isqrt_dt * VHS
 
 def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=False):

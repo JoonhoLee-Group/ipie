@@ -1,38 +1,47 @@
-import numpy as np
+import numpy
 import time
 # import cProfile, pstats, io
 # from pstats import SortKey
 
-divide = 1
+divide = 5
 
 nao = 1000 // divide
-nocc = 200  // divide
 naux = 4000  // divide
 nwalkers = 20
 
-chol = np.random.rand(naux, nao, nao)
-chol2 = np.random.rand(nao, nao, naux)
-chol3 = np.random.rand(naux,nao*nao)
-x = np.random.rand(nwalkers, naux)
+chol = numpy.random.rand(naux, nao, nao)
+chol = chol + chol.transpose(0,2,1)
+chol3 = chol.reshape(naux,nao*nao).copy()
+chol2 = chol.T.reshape(nao,nao,naux).copy() #numpy.random.rand(nao, nao, naux)
+x = numpy.random.rand(nwalkers, naux)
 
 """1"""
 t0 = time.time()
-VHS = []
+VHS1 = []
 for i in range(nwalkers):
-    VHS += [chol2.dot(x[i])]
+    VHS1 += [chol2.dot(x[i])]
 t1 = time.time()
-print("forming VHS naive = {}".format(t1 - t0))
+VHS1 = numpy.array(VHS1)
+print("forming VHS1 naive = {}".format(t1 - t0))
+
+print(VHS1.shape)
+# print(VHS1)
 
 """2"""
 t0 = time.time()
-VHS = np.einsum("wX,Xmn->wmn", x, chol, optimize=True)
+VHS2 = numpy.einsum("wX,Xu->wu", x, chol3, optimize=True)
+VHS2 = VHS2.reshape((nwalkers, nao, nao))
 t1 = time.time()
-print("forming VHS combined = {}".format(t1 - t0))
+print("forming VHS2 combined = {}".format(t1 - t0))
+print(VHS2.shape)
+# print(VHS2)
 #
 """3"""
 t0 = time.time()
-VHS = x.dot(chol3)
-VHS = VHS.reshape((nwalkers, nao, nao))
+VHS3 = x.dot(chol3)
+VHS3 = VHS3.reshape((nwalkers, nao, nao))
 t1 = time.time()
-print("forming VHS combined 3 = {}".format(t1 - t0))
+print("forming VHS3 combined 3 = {}".format(t1 - t0))
 #
+assert numpy.allclose(VHS1, VHS2)
+assert numpy.allclose(VHS2, VHS3)

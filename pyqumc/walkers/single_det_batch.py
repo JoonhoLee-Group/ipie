@@ -143,7 +143,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         """
         na = self.ndown
         nb = self.ndown
-        ot = []
+        ot = numpy.zeros(self.nwalkers, dtype=numpy.complex128)
         for iw in range(self.nwalkers):
             Oalpha = numpy.dot(trial.psi[:,:na].conj().T, self.phi[iw][:,:na])
             sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
@@ -152,17 +152,16 @@ class SingleDetWalkerBatch(WalkerBatch):
                 Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[iw][:,na:])
                 sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
-            ot += [sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift[iw])]
+            ot[iw] = sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift[iw])
+
 
         return ot
 
-    def reortho(self, trial):
-        """reorthogonalise walker.
+    def reortho(self):
+        """reorthogonalise walkers.
 
         parameters
         ----------
-        trial : object
-            trial wavefunction object. for interface consistency.
         """
         nup = self.nup
         ndown = self.ndown
@@ -194,10 +193,11 @@ class SingleDetWalkerBatch(WalkerBatch):
             log_det = numpy.sum(numpy.log(numpy.abs(Rup_diag)))
             if ndown > 0:
                 log_det += numpy.sum(numpy.log(numpy.abs(Rdn_diag)))
-            detR += [numpy.exp(log_det-self.detR_shift)]
-            self.log_detR[iw] += numpy.log(detR)
-            self.detR[iw] = detR
-            self.ot[iw] = self.ot[iw] / detR
+            detR += [numpy.exp(log_det-self.detR_shift[iw])]
+            self.log_detR[iw] += numpy.log(detR[iw])
+            self.detR[iw] = detR[iw]
+            # print(self.ot[iw], detR[iw])
+            self.ot[iw] = self.ot[iw] / detR[iw]
             self.ovlp[iw] = self.ot[iw]
         return detR
 
@@ -230,6 +230,8 @@ class SingleDetWalkerBatch(WalkerBatch):
                 self.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
                 self.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalfb[iw])
             det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
+
+        det = numpy.array(det, dtype=numpy.complex128)
 
         return det
 

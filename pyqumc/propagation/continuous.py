@@ -42,8 +42,12 @@ class Continuous(object):
         if self.hybrid:
             if verbose:
                 print("# Using hybrid weight update.")
-            self.update_weight = self.update_weight_hybrid
+            if (qmc.batched):
+                self.update_weight_batch = self.update_weight_hybrid_batch
+            else:
+                self.update_weight = self.update_weight_hybrid
         else:
+            assert(qmc.batched==False)
             if verbose:
                 print("# Using local energy weight update.")
             self.update_weight = self.update_weight_local_energy
@@ -71,11 +75,15 @@ class Continuous(object):
         if self.free_projection:
             if verbose:
                 print("# Using free projection.")
+            assert(qmc.batched == False)
             self.propagate_walker = self.propagate_walker_free
         else:
             if verbose:
                 print("# Using phaseless approximation.")
-            self.propagate_walker = self.propagate_walker_phaseless
+            if qmc.batched:
+                self.propagate_walker_batch = self.propagate_walker_phaseless_batch
+            else:
+                self.propagate_walker = self.propagate_walker_phaseless
         self.verbose = verbose
 
     @property
@@ -227,6 +235,24 @@ class Continuous(object):
             self.nhe_trig += 1
         return ehyb
 
+    def apply_bound_hybrid_batch(self, ehyb, eshift): # shift is a number but ehyb is not
+        # For initial steps until first estimator communication eshift will be
+        # zero and hybrid energy can be incorrect. So just avoid capping for
+        # first block until reasonable estimate of eshift can be computed.
+        if abs(eshift) < 1e-10:
+            return ehyb
+        idx = ehyb.real > eshift.real + self.ebound
+        ehyb[idx] = eshift.real+self.ebound+1j*ehyb[idx].imag
+        idx = ehyb.real < eshift.real - self.ebound
+        ehyb[idx] = eshift.real-self.ebound+1j*ehyb[idx].imag
+        # if ehyb.real > eshift.real + self.ebound:
+        #     ehyb = eshift.real+self.ebound+1j*ehyb.imag
+        #     self.nhe_trig += 1
+        # elif ehyb.real < eshift.real - self.ebound:
+        #     ehyb = eshift.real-self.ebound+1j*ehyb.imag
+        #     self.nhe_trig += 1
+        return ehyb
+
     def apply_bound_local_energy(self, eloc, eshift):
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
@@ -242,6 +268,125 @@ class Continuous(object):
         else:
             eloc_bounded = eloc
         return eloc_bounded
+    
+    def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
+        """It applies the two-body propagator to a batch of walkers
+        Parameters
+        ----------
+        walker batch :
+            walker_batch class
+        hamiltonian :
+            hamiltonian class
+        fb : boolean
+            wheter to use force bias
+        Returns
+        -------
+        cxf : float
+            the constant factor arises from mean-field shift (hard-coded for UEG for now)
+        cfb : float
+            the constant factor arises from the force-bias
+        xshifted : numpy array
+            shifited auxiliary field
+        """
+        # Optimal force bias.
+        xbar = numpy.zeros((walker_batch.nwalkers, hamiltonian.nfields))
+        if self.force_bias:
+            xbar = self.propagator.construct_force_bias_batch(hamiltonian, walker_batch, trial)
+
+        rescaled_xbar = xbar > 1.0
+        xbar_rescaled = xbar / numpy.absolute(xbar)
+        xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
+
+        # Normally distrubted auxiliary fields.
+        xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)
+        xshifted = xi - xbar
+        
+        # Constant factor arising from force bias and mean field shift
+        cmf = -self.sqrt_dt * numpy.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
+        # cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
+        # Constant factor arising from shifting the propability distribution.
+        # cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
+        cfb = numpy.einsum("wx,wx->w",xi,xbar) - 0.5*numpy.einsum("wx,wx->w",xbar,xbar)
+
+        # Operator terms contributing to propagator.
+        VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted)
+        assert(len(VHS.shape) == 3)
+
+        for iw in range (walker_batch.nwalkers):
+            # 2.b Apply two-body
+            self.apply_exponential(walker_batch.phi[iw][:,:system.nup], VHS[iw])
+            if system.ndown > 0:
+                self.apply_exponential(walker_batch.phi[iw][:,system.nup:], VHS[iw])
+
+        return (cmf, cfb, xshifted)
+
+    def propagate_walker_phaseless_batch(self, walker_batch, system, hamiltonian, trial, eshift):
+        """Phaseless propagator
+        Parameters
+        ----------
+        walker :
+            walker class
+        system :
+            system class
+        trial :
+            trial wavefunction class
+        eshift :
+            constant energy shift
+        Returns
+        -------
+        """
+        ovlp = walker_batch.greens_function(trial)
+        # 2. Update Slater matrix
+        # 2.a Apply one-body
+        for iw in range(walker_batch.nwalkers):
+            kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+        # 2.b Apply two-body
+        (cmf, cfb, xmxbar) = self.two_body_propagator_batch(walker_batch, system, hamiltonian, trial)
+        # 2.c Apply one-body
+        for iw in range(walker_batch.nwalkers):
+            kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+
+        # Now apply phaseless approximation
+        ovlp_new = walker_batch.calc_overlap(trial)
+        self.update_weight_batch(system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
+    
+    def update_weight_hybrid_batch(self, system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+        ovlp_ratio = ovlp_new / ovlp
+        # print("ovlp_ratio = {}".format(ovlp_ratio))
+        hybrid_energy = -(numpy.log(ovlp_ratio) + cfb + cmf)/self.dt
+        hybrid_energy = self.apply_bound_hybrid_batch(hybrid_energy, eshift)
+        importance_function = (
+                numpy.exp(-self.dt*(0.5*(hybrid_energy+walker_batch.hybrid_energy)-eshift))
+        )
+        # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
+        magn = numpy.abs(importance_function)
+        phase = numpy.angle(importance_function)
+        # (magn, phase) = cmath.polar(importance_function)
+        walker_batch.hybrid_energy = hybrid_energy
+
+        tobeinstantlykilled = numpy.isinf(magn)
+        tosurvive = numpy.isfinite(magn)
+        
+        # print(ovlp_new.shape, walker_batch.ot.shape)
+        walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
+        walker_batch.weight[tobeinstantlykilled].fill(0.0)
+
+        dtheta = (-self.dt * hybrid_energy - cfb).imag
+        cosine_fac = numpy.cos(dtheta)
+        cosine_fac[cosine_fac < 0.0] = 0.0
+        walker_batch.weight[tosurvive] = walker_batch.weight[tosurvive] * magn[tosurvive] * cosine_fac[tosurvive]
+        walker_batch.ot[tosurvive] = ovlp_new[tosurvive]
+        walker_batch.ovlp[tosurvive] = ovlp_new[tosurvive]
+
+#       TODO: make it a proper walker batching algorithm when we add back propagation
+        if walker_batch.field_configs is not None:
+            for iw in range(walker_batch.nwalkers):
+                if tosurvive[iw]:
+                    if magn > 1e-16:
+                        wfac = numpy.array([importance_function[iw]/magn[iw], cosine_fac[iw]])
+                    else:
+                        wfac = numpy.array([0,0])
+                    walker_batch.field_configs[iw].update(xmxbar, wfac)
 
     def propagate_walker_phaseless(self, walker, system, hamiltonian, trial, eshift):
         """Phaseless propagator
@@ -296,7 +441,7 @@ class Continuous(object):
             if walker.field_configs is not None:
                 walker.field_configs.update(xmxbar, wfac)
         else:
-            walker.ot = ot_new
+            walker.ot = ovlp_new
             walker.weight = 0.0
 
     def update_weight_local_energy(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):

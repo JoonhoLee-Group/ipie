@@ -5,7 +5,7 @@ from pyqumc.estimators.local_energy import local_energy_G
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...
 def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
     energy = []
-    if (iw = None):
+    if (iw == None):
         nwalkers = walker_batch.nwalkers
         for idx in range(nwalkers):
             G = numpy.array([walker_batch.Ga[idx],walker_batch.Gb[idx]], dtype=walker_batch.Ga.dtype)

@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-divide = 2
+divide = 5
 
 nao = 1000 // divide
 nocc = 200  // divide
@@ -23,7 +23,8 @@ print("forming vfb naive = {}".format(t1 - t0))
 t0 = time.time()
 walkers_batch_Ghalf = walkers_batch_Ghalf.reshape(2, nwalkers, nao*nocc)
 vfb2 = rchol.dot(walkers_batch_Ghalf[0].T) + rchol.dot(walkers_batch_Ghalf[1].T)
+vfb2 = vfb2.T.copy()
 t1 = time.time()
 print("forming vfb combined = {}".format(t1 - t0))
 
-assert np.allclose(vfb2, vfb.T)
+assert np.allclose(vfb2, vfb)

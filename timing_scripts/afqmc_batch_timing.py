@@ -1,4 +1,4 @@
-from pyqumc.qmc.afqmc import AFQMC
+from pyqumc.qmc.afqmc_batch import AFQMCBatch
 import numpy
 from pyqumc.qmc.options import QMCOpts
 from pyqumc.propagation.utils import get_propagator_driver
@@ -8,6 +8,7 @@ from pyqumc.estimators.local_energy import local_energy
 from pyqumc.systems.generic import Generic
 from pyqumc.utils.mpi import get_shared_comm
 from pyqumc.utils.io import  get_input_value
+from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
 
 import mpi4py
@@ -17,10 +18,13 @@ from mpi4py import MPI
 import cProfile
 
 nelec = (5,5)
+nwalkers = 10
+nsteps = 10
+
 options = {
     "system": {
-        "nup": 5,
-        "ndown": 5,
+        "nup": nelec[0],
+        "ndown": nelec[1],
     },
     "hamiltonian": {
         "name": "Generic",
@@ -28,14 +32,17 @@ options = {
     },
     "qmc": {
         "dt": 0.01,
-        "nwalkers": 1,
-        "blocks": 1
+        "nsteps": nsteps,
+        "nwalkers": nwalkers,
+        "blocks": 1,
+        "batched": True
     },
     "trial": {
         "filename": "afqmc.h5"
     },
     "estimators": {}
 }
+
 numpy.random.seed(7)
 sys = Generic(nelec=nelec)
 comm = MPI.COMM_WORLD
@@ -66,24 +73,61 @@ trial.calculate_energy(sys, ham) # this is to get the energy shift
 
 prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
 
-walker = SingleDetWalker(sys, ham, trial)
-
-nsteps = 2
-
-# pr = cProfile.Profile()
-# pr.enable()
-
+walker_batch = SingleDetWalkerBatch(sys, ham, trial, nwalkers)
 for i in range (nsteps):
-    prop.propagate_walker(walker, sys, ham, trial, trial.energy)
-    detR = walker.reortho(trial) # reorthogonalizing to stablize
+    prop.propagate_walker_batch(walker_batch, sys, ham, trial, trial.energy)
+    walker_batch.reortho()
 
-# pr.disable()
-# pr.print_stats(sort='cumtime')
+options = {
+    "system": {
+        "nup": nelec[0],
+        "ndown": nelec[1],
+    },
+    "hamiltonian": {
+        "name": "Generic",
+        "integrals": "afqmc.h5"
+    },
+    "qmc": {
+        "dt": 0.01,
+        "nsteps": nsteps,
+        "nwalkers": nwalkers,
+        "blocks": 1,
+        "batched": False
+    },
+    "trial": {
+        "filename": "afqmc.h5"
+    },
+    "estimators": {}
+}
 
-walker.greens_function(trial) # Green's function gets updated
-etot = local_energy(sys, ham, walker, trial)[0]
+numpy.random.seed(7)
+sys = Generic(nelec=nelec)
+comm = MPI.COMM_WORLD
+verbose = True
+shared_comm = get_shared_comm(comm, verbose=verbose)
 
-print("a sample of local_energy = {}".format(etot))
-# a sample of local_energy = (-2244.6424862764557+0.00047855044660360946j)
+qmc_opts = get_input_value(options, 'qmc',
+                           default={},
+                           verbose=verbose)
+ham_opts = get_input_value(options, 'hamiltonian',
+                           default={},
+                           verbose=verbose)
+twf_opts = get_input_value(options, 'trial',
+                           default={},
+                           verbose=verbose)
+prop_opts = get_input_value(options, 'propoagator',
+                           default={},
+                           verbose=verbose)
+qmc = QMCOpts(qmc_opts, sys,verbose=True)
+prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
+walkers = [SingleDetWalker(sys, ham, trial) for iw in range(nwalkers)]
+for i in range (nsteps):
+    for walker in walkers:
+        prop.propagate_walker(walker, sys, ham, trial, trial.energy)
+        detR = walker.reortho(trial) # reorthogonalizing to stablize
+
+for iw in range(nwalkers):
+    assert numpy.allclose(walker_batch.phi[iw], walkers[iw].phi)
+
 
 
