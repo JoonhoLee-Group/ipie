@@ -47,7 +47,7 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)
-        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
+        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
                                  dtype=trial.psi.dtype)
         self.greens_function(trial)
         # self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
@@ -102,7 +102,6 @@ class SingleDetWalkerBatch(WalkerBatch):
             self.inv_ovlpa[iw] = (
                 scipy.linalg.inv((trial.psi[:,:nup].conj()).T.dot(self.phi[iw][:,:nup]))
             )
-            self.inv_ovlpb[iw] = numpy.zeros(self.inv_ovlpa[iw].shape)
             if (ndown>0):
                 self.inv_ovlpb[iw] = (
                     scipy.linalg.inv((trial.psi[:,nup:].conj()).T.dot(self.phi[iw][:,nup:]))

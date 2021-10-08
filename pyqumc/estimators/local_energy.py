@@ -18,7 +18,8 @@ from pyqumc.estimators.ci import get_hmatel
 from pyqumc.estimators.thermal import particle_number, one_rdm_from_G
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
-    ghf = (G.shape[-1] == 2*hamiltonian.nbasis)
+    assert len(G) == 2
+    ghf = (G[0].shape[-1] == 2*hamiltonian.nbasis)
     # unfortunate interfacial problem for the HH model
     if hamiltonian.name == "Hubbard":
         if ghf:
