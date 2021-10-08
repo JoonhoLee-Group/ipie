@@ -9,7 +9,7 @@ from math import exp
 import copy
 import h5py
 from pyqumc.estimators.handler import Estimators
-from pyqumc.estimators.local_energy import local_energy
+from pyqumc.estimators.local_energy_batch import local_energy_batch
 from pyqumc.propagation.utils import get_propagator_driver
 from pyqumc.qmc.options import QMCOpts
 from pyqumc.qmc.utils import set_rng_seed
@@ -23,7 +23,7 @@ from pyqumc.utils.misc import (
         )
 from pyqumc.utils.io import  to_json, serialise, get_input_value
 from pyqumc.utils.mpi import get_shared_comm
-from pyqumc.walkers.handler import Walkers
+from pyqumc.walkers.handler_batch import WalkersBatch
 
 
 class AFQMCBatch(object):
@@ -188,12 +188,13 @@ class AFQMCBatch(object):
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
-        self.psi = Walkers(self.system, self.hamiltonian, self.trial,
+        self.psi = WalkersBatch(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
                            nprop_tot=self.estimators.nprop_tot,
                            nbp=self.estimators.nbp,
                            comm=comm)
+
         if comm.rank == 0:
             mem_avail = get_node_mem()
             factor = float(self.system.ne) / self.hamiltonian.nbasis
@@ -223,13 +224,15 @@ class AFQMCBatch(object):
         if psi is not None:
             self.psi = psi
         self.setup_timers()
-        w0 = self.psi.walkers[0]
+        # w0 = self.psi.walkers[0]
         eshift = 0
-        (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
+        energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
+
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
-                                                   self.trial, self.psi, 0,
+        self.estimators.estimators['mixed'].update_batch(self.qmc, self.system, self.hamiltonian,
+                                                   self.trial, self.psi.walkers_batch, 0,
                                                    self.propagators.free_projection)
+
         # Print out zeroth step for convenience.
         if verbose:
             self.estimators.estimators['mixed'].print_step(comm, comm.size, 0, 1)
@@ -238,16 +241,16 @@ class AFQMCBatch(object):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
-                self.psi.orthogonalise(self.trial,
-                                       self.propagators.free_projection)
+                self.psi.orthogonalise(self.trial, self.propagators.free_projection)
                 self.tortho += time.time() - start
             start = time.time()
-            for w in self.psi.walkers:
-                if abs(w.weight) > 1e-8:
-                    self.propagators.propagate_walker(w, self.system, self.hamiltonian,
-                                                      self.trial, eshift)
-                if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
-                    w.weight = w.total_weight * 0.10
+
+            self.propagators.propagate_walker_batch(self.psi.walkers_batch, self.system, self.hamiltonian, self.trial, eshift)
+
+            rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
+            if step > 1:
+                self.psi.walkers_batch.weight[rescale_idx].fill(self.psi.walkers_batch.total_weight * 0.10)
+
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
@@ -255,13 +258,13 @@ class AFQMCBatch(object):
                 self.tpopc += time.time() - start
             # calculate estimators
             start = time.time()
-            self.estimators.update(self.qmc, self.system, self.hamiltonian,
-                                   self.trial, self.psi, step,
+            self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
+                                   self.trial, self.psi.walkers_batch, step,
                                    self.propagators.free_projection)
             self.testim += time.time() - start
             self.estimators.print_step(comm, comm.size, step)
             if self.psi.write_restart and step % self.psi.write_freq == 0:
-                self.psi.write_walkers(comm)
+                self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
                 eshift = self.estimators.estimators['mixed'].get_shift(self.propagators.hybrid)
             else:

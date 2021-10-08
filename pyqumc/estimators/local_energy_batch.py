@@ -10,11 +10,14 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
         for idx in range(nwalkers):
             G = numpy.array([walker_batch.Ga[idx],walker_batch.Gb[idx]], dtype=walker_batch.Ga.dtype)
             Ghalf = numpy.array([walker_batch.Ghalfa[idx],walker_batch.Ghalfb[idx]], dtype=walker_batch.Ghalfa.dtype)
-            energy += [local_energy_G(system, hamiltonian, trial, G, Ghalf)]
+            energy += [list(local_energy_G(system, hamiltonian, trial, G, Ghalf))]
+
+        energy = numpy.array(energy, dtype=numpy.complex128)
         return energy
     else:
         G = numpy.array([walker_batch.Ga[iw],walker_batch.Gb[iw]], dtype=walker_batch.Ga.dtype)
         Ghalf = numpy.array([walker_batch.Ghalfa[iw],walker_batch.Ghalfb[iw]], dtype=walker_batch.Ghalfa.dtype)
-        energy += [local_energy_G(system, hamiltonian, trial, G, Ghalf)]
+        energy += [list(local_energy_G(system, hamiltonian, trial, G, Ghalf))]
+        energy = numpy.array(energy, dtype=numpy.complex128)
         return energy
     

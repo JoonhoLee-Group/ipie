@@ -106,7 +106,7 @@ class WalkersBatch(object):
         free_projection : bool
             True if doing free projection.
         """
-        detR = self.walkers_batch.reortho(trial)
+        detR = self.walkers_batch.reortho()
         if free_projection:
             (magn, dtheta) = cmath.polar(self.walkers_batch.detR)
             self.walkers_batch.weight *= magn

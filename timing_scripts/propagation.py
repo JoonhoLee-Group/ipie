@@ -1,9 +1,7 @@
 import numpy as np
 import time
-import cProfile, pstats, io
-from pstats import SortKey
 
-divide = 5
+divide = 1
 
 nao = 1000 // divide
 nocc = 200  // divide

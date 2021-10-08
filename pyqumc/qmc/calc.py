@@ -52,10 +52,14 @@ def get_driver(options, comm):
                              verbose=verbosity)
     else:
         if batched:
+            if (comm.rank == 0):
+                print("# Batched AFQMC driver is used")
             afqmc = AFQMCBatch(comm, options=options,
                           parallel=comm.size>1,
                           verbose=verbosity)
         else:
+            if (comm.rank == 0):
+                print("# Non-batched AFQMC driver is used")
             afqmc = AFQMC(comm, options=options,
                           parallel=comm.size>1,
                           verbose=verbosity)
