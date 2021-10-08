@@ -19,7 +19,7 @@ def test_hybrid():
     nmo = 10
     nelec = (5,5)
     nwalkers = 10
-    nsteps = 10
+    nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),

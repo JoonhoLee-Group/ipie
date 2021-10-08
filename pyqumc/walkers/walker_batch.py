@@ -43,10 +43,12 @@ class WalkerBatch(object):
         # walkers weight at time tau before backpropagation occurs
         self.weight_bp = self.weight
         # Historic wavefunction for back propagation.
-        self.phi_old = numpy.array([self.phi.copy() for iw in range(self.nwalkers)])
+        self.phi_old = self.phi.copy()
         self.hybrid_energy = [0.0 for iw in range(self.nwalkers)]
         # Historic wavefunction for ITCF.
-        self.weights = [numpy.array([1.0]) for iw in range(self.nwalkers)] # This is going to be for MSD trial... (should be named a lot better than this)
+        # self.weights = [numpy.array([1.0]) for iw in range(self.nwalkers)] # This is going to be for MSD trial... (should be named a lot better than this)
+        self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
+        self.weights.fill(1.0)
         self.detR = [1.0 for iw in range(self.nwalkers)]
         self.detR_shift = [0.0 for iw in range(self.nwalkers)]
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
@@ -85,13 +87,11 @@ class WalkerBatch(object):
                     if isinstance(l, (numpy.ndarray)):
                         buff[s:s+l.size] = l.ravel()
                         s += l.size
-                    elif isinstance(l, (int, float, complex)):
+                    elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
                         buff[s:s+1] = l
                         s += 1
             else:
-                print("This should never be the case!")
-                sys.exit()
-                buff[s:s+1] = data
+                buff[s:s+1] = data[iw]
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
@@ -115,7 +115,7 @@ class WalkerBatch(object):
             data = self.__dict__[d]
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
             if isinstance(data[iw], numpy.ndarray):
-                self.__dict__[d][iw] = buff[s:s+data.size].reshape(data[iw].shape).copy()
+                self.__dict__[d][iw] = buff[s:s+data[iw].size].reshape(data[iw].shape).copy()
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
@@ -126,14 +126,12 @@ class WalkerBatch(object):
                         self.__dict__[d][iw][ix] = buff[s]
                         s += 1
             else:
-                print("This should never be the case!")
-                sys.exit()
-                if isinstance(self.__dict__[d], int):
-                    self.__dict__[d] = int(buff[s].real)
-                elif isinstance(self.__dict__[d], float):
-                    self.__dict__[d] = buff[s].real
+                if isinstance(self.__dict__[d][iw], (int, numpy.int64)):
+                    self.__dict__[d][iw] = int(buff[s].real)
+                elif isinstance(self.__dict__[d][iw], (float, numpy.float64)):
+                    self.__dict__[d][iw] = buff[s].real
                 else:
-                    self.__dict__[d] = buff[s]
+                    self.__dict__[d][iw] = buff[s]
                 s += 1
         if self.field_configs is not None:
             self.field_configs.set_buffer(buff[self.buff_size:])

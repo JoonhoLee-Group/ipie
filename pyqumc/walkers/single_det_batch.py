@@ -32,7 +32,8 @@ class SingleDetWalkerBatch(WalkerBatch):
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp)
         self.name = "SingleDetWalkerBatch"
-        self.inv_ovlp = [[0.0, 0.0] for iw in range(self.nwalkers)]
+        self.inv_ovlpa = numpy.zeros((self.nwalkers, system.nup, system.nup), dtype=numpy.complex128)
+        self.inv_ovlpb = numpy.zeros((self.nwalkers, system.ndown, system.ndown), dtype=numpy.complex128)
 
         self.inverse_overlap(trial)
         self.ot = self.calc_overlap(trial)
@@ -56,14 +57,18 @@ class SingleDetWalkerBatch(WalkerBatch):
         # WARNING!! One has to add names to the list here if new objects are added
         self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
                            "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
-                           "hybrid_energy", "phi_right", "weights", "inv_ovlp", "G", "Ghalf"]
-        self.buff_size = self.set_buff_size_single_walker()/float(self.nwalkers)
+                           "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
+        self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
 
     def set_buff_size_single_walker(self):
         names = []
         size = 0
         for k, v in self.__dict__.items():
+            # try:
+            #     print(k, v.size)
+            # except AttributeError:
+            #     print("failed", k, v)
             if (not (k in self.buff_names)):
                 continue
             if isinstance(v, (numpy.ndarray)):
@@ -94,12 +99,12 @@ class SingleDetWalkerBatch(WalkerBatch):
         ndown = self.ndown
 
         for iw in range(self.nwalkers):
-            self.inv_ovlp[iw][0] = (
+            self.inv_ovlpa[iw] = (
                 scipy.linalg.inv((trial.psi[:,:nup].conj()).T.dot(self.phi[iw][:,:nup]))
             )
-            self.inv_ovlp[iw][1] = numpy.zeros(self.inv_ovlp[iw][0].shape)
+            self.inv_ovlpb[iw] = numpy.zeros(self.inv_ovlpa[iw].shape)
             if (ndown>0):
-                self.inv_ovlp[iw][1] = (
+                self.inv_ovlpb[iw] = (
                     scipy.linalg.inv((trial.psi[:,nup:].conj()).T.dot(self.phi[iw][:,nup:]))
                 )
 
@@ -121,10 +126,10 @@ class SingleDetWalkerBatch(WalkerBatch):
         ndown = self.ndown
 
         for iw in range(self.nwalkers):
-            self.inv_ovlp[iw][0] = (
+            self.inv_ovlpa[iw] = (
                 sherman_morrison(self.inv_ovlp[iw][0], trial.psi[i,:nup].conj(), vtup[iw])
             )
-            self.inv_ovlp[iw][1] = (
+            self.inv_ovlpb[iw] = (
                 sherman_morrison(self.inv_ovlp[iw][1], trial.psi[i,nup:].conj(), vtdown[iw])
             )
 

@@ -56,7 +56,7 @@ def test_overlap():
     walkers_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
     for iw in range(nwalkers):
         ovlp = numpy.dot(trial.psi[:,:nup].conj().T, walkers_batch.phi[iw][:,:nup])
-        id_exp = numpy.dot(walkers_batch.inv_ovlp[iw][0], ovlp)
+        id_exp = numpy.dot(walkers_batch.inv_ovlpa[iw], ovlp)
         numpy.testing.assert_allclose(id_exp, numpy.eye(nup), atol=1e-12)
         numpy.testing.assert_allclose(walkers[iw].Ghalf[0], walkers_batch.Ghalfa[iw], atol=1e-12)
         numpy.testing.assert_allclose(walkers[iw].Ghalf[1], walkers_batch.Ghalfb[iw], atol=1e-12)

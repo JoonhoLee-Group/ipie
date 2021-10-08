@@ -155,8 +155,6 @@ class AFQMCBatch(object):
                                        scomm=self.shared_comm,
                                        verbose=verbose)
             )
-            # if self.system.name == 'Generic':
-                # self.trial.half_rotate(self.system, self.shared_comm)
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)

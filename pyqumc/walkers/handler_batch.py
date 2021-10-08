@@ -49,9 +49,11 @@ class WalkersBatch(object):
         if verbose:
             print("# Using single det walker with msd wavefunction.")
         self.walker_type = 'SD'
-        trial.psi = trial.psi[0]
-        self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, nwalkers = nwalkers, walker_opts=walker_opts,
-                                        index=w, nprop_tot=nprop_tot,nbp=nbp)
+        if (len(trial.psi.shape) == 3):
+            trial.psi = trial.psi[0]
+        self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, 
+                            nwalkers = self.nwalkers, walker_opts=walker_opts,
+                            index=0, nprop_tot=nprop_tot,nbp=nbp)
 
         self.buff_size = self.walkers_batch.buff_size
 
@@ -76,7 +78,7 @@ class WalkersBatch(object):
                       "issues.")
         
         if not self.walker_type == "thermal":
-            walker_batch_size = 3 * nwalkers + self.walkers_batch.phi.size
+            walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phi.size
         if self.write_freq > 0:
             self.write_restart = True
             self.dsets = []
@@ -330,7 +332,7 @@ class WalkersBatch(object):
                 comm.Recv(self.walker_buffer,
                           source=int(round(walker[3])),
                           tag=tag)
-                self.walkers.set_buffer(iw, self.walker_buffer)
+                self.walkers_batch.set_buffer(iw, self.walker_buffer)
         for r in reqs:
             r.wait()
 

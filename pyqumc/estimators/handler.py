@@ -160,3 +160,24 @@ class Estimators(object):
         """
         for k, e in self.estimators.items():
             e.update(qmc, system, hamiltonian, trial, psi, step, free_projection)
+
+    def update_batch(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
+        """Update estimators with bached psi
+
+        Parameters
+        ----------
+        system : system object in general.
+            Container for model input options.
+        qmc : :class:`pyqumc.state.QMCOpts` object.
+            Container for qmc input options.
+        trial : :class:`pyqumc.trial_wavefunction.X' object
+            Trial wavefunction class.
+        psi : :class:`pyqumc.walkers.WalkersBatch` object
+            CPMC wavefunction.
+        step : int
+            Current simulation step
+        free_projection : bool
+            True if doing free projection.
+        """
+        for k, e in self.estimators.items():
+            e.update_batch(qmc, system, hamiltonian, trial, psi, step, free_projection)
