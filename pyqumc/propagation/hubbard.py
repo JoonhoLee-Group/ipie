@@ -210,7 +210,6 @@ class Hirsch(object):
                     xi = 1
                 vtup = walker.phi[i,:nup] * delta[xi, 0]
                 vtdown = walker.phi[i+soffset,nup:] * delta[xi, 1]
-                print(walker.phi.dtype, vtup.dtype, delta.dtype)
                 walker.phi[i,:nup] = walker.phi[i,:nup] + vtup
                 walker.phi[i+soffset,nup:] = walker.phi[i+soffset,nup:] + vtdown
                 walker.update_overlap(probs, xi, trial.coeffs)
