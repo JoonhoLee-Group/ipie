@@ -138,6 +138,12 @@ class AFQMCBatch(object):
                                   verbose=self.verbosity>1)
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        if (self.qmc.nwalkers == None):
+            assert(self.qmc.nwalkers_per_task is not None)
+            self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
+        if (self.qmc.nwalkers_per_task == None):
+            assert(self.qmc.nwalkers is not None)
+            self.qmc.nwalkers_per_task = int(self.qmc.nwalkers/comm.size)
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
@@ -178,7 +184,8 @@ class AFQMCBatch(object):
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
+        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size) # This should be gone in the future
+        assert(self.qmc.nwalkers == self.qmc.nwalkers_per_task)
         # Total number of walkers.
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
