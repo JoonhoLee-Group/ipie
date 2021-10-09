@@ -66,6 +66,8 @@ class MultiSlater(object):
             # self.psi = self.psi[0]
             self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
                                        system.nup, system.ndown)
+            self.G = numpy.array(self.G, dtype = numpy.complex128)
+            self.Ghalf = numpy.array(self.Ghalf, dtype = numpy.complex128)
         else:
             self.G = None
             self.Ghalf = None
