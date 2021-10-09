@@ -88,6 +88,8 @@ class QMCOpts(object):
         self.nwalkers_per_task = get_input_value(inputs, 'num_walkers',
                                         default=None, alias=['nwalkers_per_task'],
                                         verbose=verbose)
+        if (self.nwalkers_per_task is not None):
+            self.nwalkers = None
         self.dt = get_input_value(inputs, 'timestep', default=0.005,
                                   alias=['dt'], verbose=verbose)
         self.batched = get_input_value(inputs, 'batched', default=False, verbose=verbose)
