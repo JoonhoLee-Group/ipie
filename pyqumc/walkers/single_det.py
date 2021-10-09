@@ -67,12 +67,12 @@ class SingleDetWalker(Walker):
         self.ovlp = self.ot
 
         self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis),
-                             dtype=trial.psi.dtype)
+                             dtype=numpy.complex128)
 
         self.Ghalf = [numpy.zeros(shape=(system.nup, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype),
+                                 dtype=numpy.complex128),
                      numpy.zeros(shape=(system.ndown, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype)]
+                                 dtype=numpy.complex128)]
         self.greens_function(trial)
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 

@@ -26,7 +26,7 @@ class Walker(object):
         self.unscaled_weight = self.weight
         self.phase = 1 + 0j
         self.alive = 1
-        self.phi = trial.init.copy()
+        self.phi = numpy.array(trial.init.copy(), dtype=numpy.complex128)
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0

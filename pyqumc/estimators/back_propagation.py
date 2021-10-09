@@ -74,7 +74,7 @@ class BackPropagation(object):
         self.accumulated = False
         self.eval_energy = bp.get('evaluate_energy', False)
         self.eval_ekt = bp.get('evaluate_ekt', False)
-        self.G = numpy.zeros(trial.G.shape, dtype=trial.G.dtype)
+        self.G = numpy.zeros(trial.G.shape, dtype=numpy.complex128)
         self.nstblz = qmc.nstblz
         self.BT2 = BT2
         self.restore_weights = bp.get('restore_weights', None)
@@ -148,9 +148,9 @@ class BackPropagation(object):
         nup = system.nup
         for i, wnm in enumerate(psi.walkers):
             if self.init_walker:
-                phi_bp = trial.init.copy()
+                phi_bp = numpy.array(trial.init.copy(), dtype=numpy.complex128)
             else:
-                phi_bp = trial.psi.copy()
+                phi_bp = numpy.array(trial.psi.copy(), dtype=numpy.complex128)
             # TODO: Fix for ITCF.
             self.back_propagate(phi_bp, wnm.field_configs, system, hamiltonian,
                                 self.nstblz, self.BT2, self.dt)

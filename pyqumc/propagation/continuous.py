@@ -168,10 +168,16 @@ class Continuous(object):
         #                 # print("# Warning will only be printed once.")
         #         self.nfb_trig += 1
         #         xbar[i] /= numpy.absolute(xbar[i])
-        rescaled_xbar = xbar > 1.0
-        xbar_rescaled = xbar / numpy.absolute(xbar)
-        xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
-
+        # rescaled_xbar = xbar > 1.0
+        # xbar_rescaled = xbar / numpy.absolute(xbar)
+        # xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
+        idx_to_rescale = xbar > 1.0
+        absxbar = numpy.absolute(xbar)
+        nonzeros = absxbar > 1e-13
+        xbar_rescaled = xbar.copy()
+        xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
+        xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
+        
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
