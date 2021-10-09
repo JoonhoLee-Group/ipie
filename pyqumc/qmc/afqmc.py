@@ -138,6 +138,12 @@ class AFQMC(object):
                                   verbose=self.verbosity>1)
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        if (self.qmc.nwalkers == None):
+            assert(self.qmc.nwalkers_per_task is not None)
+            self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
+        if (self.qmc.nwalkers_per_task == None):
+            assert(self.qmc.nwalkers is not None)
+            self.qmc.nwalkers_per_task = int(self.qmc.nwalkers/comm.size)
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
