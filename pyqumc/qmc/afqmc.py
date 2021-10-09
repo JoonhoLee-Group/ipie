@@ -138,6 +138,20 @@ class AFQMC(object):
                                   verbose=self.verbosity>1)
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        # Reset number of walkers so they are evenly distributed across
+        # cores/ranks.
+        # Number of walkers per core/rank.
+        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
+        # Total number of walkers.
+        if self.qmc.nwalkers == 0:
+            if comm.rank == 0:
+                print("# WARNING: Not enough walkers for selected core count.")
+                print("# There must be at least one walker per core set in the "
+                      "input file.")
+                print("# Setting one walker per core.")
+            self.qmc.nwalkers = 1
+        self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
+        
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
@@ -177,19 +191,7 @@ class AFQMC(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
-        # Reset number of walkers so they are evenly distributed across
-        # cores/ranks.
-        # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
-        # Total number of walkers.
-        if self.qmc.nwalkers == 0:
-            if comm.rank == 0:
-                print("# WARNING: Not enough walkers for selected core count.")
-                print("# There must be at least one walker per core set in the "
-                      "input file.")
-                print("# Setting one walker per core.")
-            self.qmc.nwalkers = 1
-        self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
+
         self.psi = Walkers(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,

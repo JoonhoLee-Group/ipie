@@ -56,7 +56,7 @@ class GenericContinuous(object):
             self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
         if optimised:
             if (qmc.batched):
-                self.nwalkers = qmc.nwalkers_per_task
+                self.nwalkers = qmc.nwalkers
                 self.construct_force_bias_batch = self.construct_force_bias_batch
                 self.construct_VHS_batch = self.construct_VHS_batch
             else:
