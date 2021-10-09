@@ -293,9 +293,16 @@ class Continuous(object):
         if self.force_bias:
             xbar = self.propagator.construct_force_bias_batch(hamiltonian, walker_batch, trial)
 
-        rescaled_xbar = xbar > 1.0
-        xbar_rescaled = xbar / numpy.absolute(xbar)
-        xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
+        # rescaled_xbar = xbar > 1.0
+        # xbar_rescaled = xbar / numpy.absolute(xbar)
+        # xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
+
+        idx_to_rescale = xbar > 1.0
+        absxbar = numpy.absolute(xbar)
+        nonzeros = absxbar > 1e-13
+        xbar_rescaled = xbar.copy()
+        xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
+        xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
 
         # Normally distrubted auxiliary fields.
         xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)

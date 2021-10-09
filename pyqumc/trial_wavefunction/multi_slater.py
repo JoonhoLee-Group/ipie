@@ -31,6 +31,10 @@ class MultiSlater(object):
             self.ortho_expansion = True
         else:
             self.psi = wfn[1]
+            imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
+            if (imag_norm <= 1e-8):
+                print("# making trial wavefunction MO coefficient real")
+                self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
             self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
             self.ortho_expansion = False
 
@@ -367,8 +371,8 @@ class MultiSlater(object):
         # self._rchol = get_shared_array(comm, shape, numpy.complex128)
         shape_a = (nchol, self.ndets*(M*(na)))
         shape_b = (nchol, self.ndets*(M*(nb)))
-        self._rchola = get_shared_array(comm, shape_a, numpy.complex128)
-        self._rcholb = get_shared_array(comm, shape_b, numpy.complex128)
+        self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
+        self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
         for i, psi in enumerate(self.psi):
             start_time = time.time()
             if self.verbose:

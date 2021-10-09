@@ -41,14 +41,14 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.ovlp = self.ot
 
         self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
-                             dtype=trial.psi.dtype)
+                             dtype=numpy.complex128)
         self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
-                             dtype=trial.psi.dtype)
+                             dtype=numpy.complex128)
 
         self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype)
+                                 dtype=numpy.complex128)
         self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype)
+                                 dtype=numpy.complex128)
         self.greens_function(trial)
         # self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
         # self.buff_size /= float(self.nwalkers)
@@ -224,7 +224,8 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         for iw in range(self.nwalkers):
             ovlp = numpy.dot(self.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
-            self.Ghalfa[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,:nup].T)
+            ovlp_inv = scipy.linalg.inv(ovlp)
+            self.Ghalfa[iw] = numpy.dot(ovlp_inv, self.phi[iw][:,:nup].T)
             self.Ga[iw] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalfa[iw])
             sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
             sign_b, log_ovlp_b = 1.0, 0.0
@@ -234,7 +235,6 @@ class SingleDetWalkerBatch(WalkerBatch):
                 self.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
                 self.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalfb[iw])
             det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
-
         det = numpy.array(det, dtype=numpy.complex128)
 
         return det
