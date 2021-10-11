@@ -258,7 +258,9 @@ class AFQMCBatch(object):
 
             rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
-                self.psi.walkers_batch.weight[rescale_idx].fill(self.psi.walkers_batch.total_weight * 0.10)
+                new_weights = numpy.zeros(numpy.sum(rescale_idx), dtype = numpy.float64)
+                new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
+                self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
@@ -299,11 +301,11 @@ class AFQMCBatch(object):
                 nblocks = max(self.qmc.nblocks, 1)
                 nstblz = max(nsteps // self.qmc.nstblz, 1)
                 npcon = max(nsteps // self.qmc.npop_control, 1)
-                print("# - Step: {:.6f} s for {} steps".format(self.tstep/nsteps, nsteps))
-                print("# - Propagation: {:.6f} s / call for {} call(s)".format(self.tprop/nsteps, nsteps))
+                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep, nsteps, nblocks))
+                print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
-                print("# - Orthogonalisation: {:.6f} s / call for {} call(s)".format(self.tortho/nstblz, nstblz))
-                print("# - Population control: {:.6f} s / call for {} call(s)".format(self.tpopc/npcon, npcon))
+                print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
+                print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):

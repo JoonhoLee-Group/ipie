@@ -86,8 +86,14 @@ class GenericContinuous(object):
             mf_shift = 1j*trial.G[0].ravel()*hamiltonian.chol_vecs
             mf_shift += 1j*trial.G[1].ravel()*hamiltonian.chol_vecs
         else:
-            mf_shift = 1j*numpy.dot(hamiltonian.chol_vecs.T,
-                                    (trial.G[0]+trial.G[1]).ravel())
+            Gcharge = (trial.G[0]+trial.G[1]).ravel()
+            if numpy.isrealobj(hamiltonian.chol_vecs):
+                tmp_real = numpy.dot(Gcharge.real, hamiltonian.chol_vecs)
+                tmp_imag = numpy.dot(Gcharge.imag, hamiltonian.chol_vecs)
+                mf_shift = 1.j * tmp_real - tmp_imag
+            else:
+                mf_shift = 1j*numpy.dot(hamiltonian.chol_vecs.T,
+                                        (trial.G[0]+trial.G[1]).ravel())
         return mf_shift
 
     def construct_mean_field_shift_multi_det(self, system, trial):

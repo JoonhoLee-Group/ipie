@@ -156,21 +156,6 @@ class Continuous(object):
         if self.force_bias:
             xbar = self.propagator.construct_force_bias(hamiltonian, walker, trial)
 
-        # for i in range(hamiltonian.nfields):
-        #     if numpy.absolute(xbar[i]) > 1.0:
-        #         if self.nfb_trig < 1:
-        #             if self.verbose:
-        #                 pass
-        #                 # TODO: Fix verbosity setting. We broadcast the qmc
-        #                 # object.
-        #                 # print("# Rescaling force bias is triggered: {} {}"
-        #                       # .format(xbar[i], 1.0))
-        #                 # print("# Warning will only be printed once.")
-        #         self.nfb_trig += 1
-        #         xbar[i] /= numpy.absolute(xbar[i])
-        # rescaled_xbar = xbar > 1.0
-        # xbar_rescaled = xbar / numpy.absolute(xbar)
-        # xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
         idx_to_rescale = xbar > 1.0
         absxbar = numpy.absolute(xbar)
         nonzeros = absxbar > 1e-13
@@ -184,6 +169,7 @@ class Continuous(object):
         cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
         cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
+
 
         # Operator terms contributing to propagator.
         VHS = self.propagator.construct_VHS(hamiltonian, xshifted)
@@ -324,12 +310,9 @@ class Continuous(object):
         # Operator terms contributing to propagator.
         VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted)
         assert(len(VHS.shape) == 3)
-
         for iw in range (walker_batch.nwalkers):
             # 2.b Apply two-body
-            self.apply_exponential(walker_batch.phi[iw][:,:system.nup], VHS[iw])
-            if system.ndown > 0:
-                self.apply_exponential(walker_batch.phi[iw][:,system.nup:], VHS[iw])
+            self.apply_exponential(walker_batch.phi[iw], VHS[iw])
 
         return (cmf, cfb, xshifted)
 

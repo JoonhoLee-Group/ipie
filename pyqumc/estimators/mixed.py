@@ -161,7 +161,7 @@ class Mixed(object):
         self.estimates[self.names.weight] += numpy.sum(walker_batch.weight)
         self.estimates[self.names.ovlp] += numpy.sum(walker_batch.weight * abs(walker_batch.ot))
         self.estimates[self.names.ehyb] += numpy.sum(walker_batch.weight * walker_batch.hybrid_energy)
-        
+
         if self.calc_one_rdm:
             start = self.names.time+1
             end = self.names.time+1+w.G.size
