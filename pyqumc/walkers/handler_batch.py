@@ -262,7 +262,6 @@ class WalkersBatch(object):
         self.walkers_batch.weight.fill(1.0)
 
     def pair_branch(self, comm):
-        # walker_info = [[abs(w.weight),1,comm.rank,comm.rank] for w in self.walkers]
         walker_info = [[abs(self.walkers_batch.weight[w]),1,comm.rank,comm.rank] for w in range(self.walkers_batch.nwalkers)]
         glob_inf = comm.gather(walker_info, root=0)
         # Want same random number seed used on all processors

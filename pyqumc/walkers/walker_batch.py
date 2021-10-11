@@ -32,7 +32,7 @@ class WalkerBatch(object):
         self.unscaled_weight = self.weight.copy()
         self.phase = numpy.array([1. + 0.j for iw in range(self.nwalkers)])
         self.alive = numpy.array([1 for iw in range(self.nwalkers)])
-        self.phi = numpy.array([trial.init.copy() for iw in range(self.nwalkers)])
+        self.phi = numpy.array([trial.init.copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
 
         self.ot = numpy.array([1.0 for iw in range(self.nwalkers)])
         self.ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])

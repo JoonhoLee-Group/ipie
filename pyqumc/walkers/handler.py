@@ -412,7 +412,6 @@ class Walkers(object):
         for r in reqs:
             r.wait()
 
-
     def recompute_greens_function(self, trial, time_slice=None):
         for w in self.walkers:
             w.greens_function(trial, time_slice)

@@ -180,6 +180,7 @@ class AFQMC(object):
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
+            print("# Trial wfn energy is {}".format(self.trial.energy))
         comm.barrier()
         prop_opt = options.get('propagator', {})
         self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
@@ -233,9 +234,10 @@ class AFQMC(object):
         if psi is not None:
             self.psi = psi
         self.setup_timers()
-        w0 = self.psi.walkers[0]
+        # w0 = self.psi.walkers[0]
+        # (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
         eshift = 0
-        (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
+        
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
                                                    self.trial, self.psi, 0,
@@ -252,6 +254,7 @@ class AFQMC(object):
                                        self.propagators.free_projection)
                 self.tortho += time.time() - start
             start = time.time()
+            
             for w in self.psi.walkers:
                 if abs(w.weight) > 1e-8:
                     self.propagators.propagate_walker(w, self.system, self.hamiltonian,

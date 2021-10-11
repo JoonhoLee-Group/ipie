@@ -155,8 +155,14 @@ class GenericContinuous(object):
         """
         Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
         Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
-        self.vbias_batch = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
-        self.vbias_batch = self.vbias_batch.T.copy()
+        if numpy.isrealobj(trial._rchola) and numpy.isrealobj(trial._rcholb):
+            vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
+            vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+            self.vbias_batch.real = vbias_batch_real.T.copy()
+            self.vbias_batch.imag = vbias_batch_imag.T.copy()
+        else:    
+            vbias_batch = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
+            self.vbias_batch = vbias_batch.T.copy()
 
         return - self.sqrt_dt * (1j*self.vbias_batch-self.mf_shift)
 

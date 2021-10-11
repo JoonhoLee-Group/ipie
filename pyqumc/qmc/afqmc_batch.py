@@ -179,6 +179,7 @@ class AFQMCBatch(object):
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
+            print("# Trial wfn energy is {}".format(self.trial.energy))
         comm.barrier()
         prop_opt = options.get('propagator', {})
         self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
@@ -233,8 +234,8 @@ class AFQMCBatch(object):
             self.psi = psi
         self.setup_timers()
         # w0 = self.psi.walkers[0]
-        eshift = 0
-        energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
+        # energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
+        eshift = 0.0
 
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators['mixed'].update_batch(self.qmc, self.system, self.hamiltonian,
@@ -292,16 +293,17 @@ class AFQMCBatch(object):
                 print("# End Time: {:s}".format(time.asctime()))
                 print("# Running time : {:.6f} seconds"
                       .format((time.time() - self._init_time)))
-                print("# Timing breakdown (per processor, per block/step):")
+                print("# Timing breakdown (per processor, per call, calls):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
                 nsteps = max(self.qmc.nsteps, 1)
+                nblocks = max(self.qmc.nblocks, 1)
                 nstblz = max(nsteps // self.qmc.nstblz, 1)
                 npcon = max(nsteps // self.qmc.npop_control, 1)
-                print("# - Step: {:.6f} s".format((self.tstep/nsteps)))
-                print("# - Orthogonalisation: {:.6f} s".format(self.tortho/nstblz))
-                print("# - Propagation: {:.6f} s".format(self.tprop/nsteps))
-                print("# - Estimators: {:.6f} s".format(self.testim/nsteps))
-                print("# - Population control: {:.6f} s".format(self.tpopc/npcon))
+                print("# - Step: {:.6f} s for {} steps".format(self.tstep/nsteps, nsteps))
+                print("# - Propagation: {:.6f} s / call for {} call(s)".format(self.tprop/nsteps, nsteps))
+                print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
+                print("# - Orthogonalisation: {:.6f} s / call for {} call(s)".format(self.tortho/nstblz, nstblz))
+                print("# - Population control: {:.6f} s / call for {} call(s)".format(self.tpopc/npcon, npcon))
 
 
     def determine_dtype(self, propagator, system):
