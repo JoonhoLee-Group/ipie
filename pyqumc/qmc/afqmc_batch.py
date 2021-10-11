@@ -9,7 +9,7 @@ from math import exp
 import copy
 import h5py
 from pyqumc.estimators.handler import Estimators
-from pyqumc.estimators.local_energy import local_energy
+from pyqumc.estimators.local_energy_batch import local_energy_batch
 from pyqumc.propagation.utils import get_propagator_driver
 from pyqumc.qmc.options import QMCOpts
 from pyqumc.qmc.utils import set_rng_seed
@@ -23,13 +23,13 @@ from pyqumc.utils.misc import (
         )
 from pyqumc.utils.io import  to_json, serialise, get_input_value
 from pyqumc.utils.mpi import get_shared_comm
-from pyqumc.walkers.handler import Walkers
+from pyqumc.walkers.handler_batch import WalkersBatch
 
 
-class AFQMC(object):
-    """AFQMC driver.
+class AFQMCBatch(object):
+    """AFQMCBatch driver.
 
-    Zero temperature AFQMC using open ended random walk.
+    Zero temperature AFQMCBatch using open ended random walk.
 
     This object contains all the instances of the classes which parse input
     options.
@@ -147,7 +147,8 @@ class AFQMC(object):
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
+        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size) # This should be gone in the future
+        assert(self.qmc.nwalkers == self.qmc.nwalkers_per_task)
         # Total number of walkers.
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
@@ -157,7 +158,7 @@ class AFQMC(object):
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
-        
+            
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
@@ -175,8 +176,6 @@ class AFQMC(object):
                                        scomm=self.shared_comm,
                                        verbose=verbose)
             )
-            # if self.system.name == 'Generic':
-                # self.trial.half_rotate(self.system, self.shared_comm)
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
@@ -198,23 +197,22 @@ class AFQMC(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
-
-        self.psi = Walkers(self.system, self.hamiltonian, self.trial,
+        self.psi = WalkersBatch(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
                            nprop_tot=self.estimators.nprop_tot,
                            nbp=self.estimators.nbp,
                            comm=comm)
+
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            # no more extra memory requirement for the local energy evaluation
-            # factor = float(self.system.ne) / self.hamiltonian.nbasis
-            # mem = factor*self.trial._mem_required*self.shared_comm.size
-            # print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
-            # if mem > 0.5*mem_avail:
-            #     print("# Warning: Memory requirements of calculation are high")
-            #     print("# Consider using fewer walkers per node.")
-            #     print("# Memory available: {:.6f}".format(mem_avail))
+            factor = float(self.system.ne) / self.hamiltonian.nbasis
+            mem = factor*self.trial._mem_required*self.shared_comm.size
+            print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
+            if mem > 0.5*mem_avail:
+                print("# Warning: Memory requirements of calculation are high")
+                print("# Consider using fewer walkers per node.")
+                print("# Memory available: {:.6f}".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -236,13 +234,14 @@ class AFQMC(object):
             self.psi = psi
         self.setup_timers()
         # w0 = self.psi.walkers[0]
-        # (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
-        eshift = 0
-        
+        # energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
+        eshift = 0.0
+
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
-                                                   self.trial, self.psi, 0,
+        self.estimators.estimators['mixed'].update_batch(self.qmc, self.system, self.hamiltonian,
+                                                   self.trial, self.psi.walkers_batch, 0,
                                                    self.propagators.free_projection)
+
         # Print out zeroth step for convenience.
         if verbose:
             self.estimators.estimators['mixed'].print_step(comm, comm.size, 0, 1)
@@ -251,17 +250,18 @@ class AFQMC(object):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
-                self.psi.orthogonalise(self.trial,
-                                       self.propagators.free_projection)
+                self.psi.orthogonalise(self.trial, self.propagators.free_projection)
                 self.tortho += time.time() - start
             start = time.time()
-            
-            for w in self.psi.walkers:
-                if abs(w.weight) > 1e-8:
-                    self.propagators.propagate_walker(w, self.system, self.hamiltonian,
-                                                      self.trial, eshift)
-                if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
-                    w.weight = w.total_weight * 0.10
+
+            self.propagators.propagate_walker_batch(self.psi.walkers_batch, self.system, self.hamiltonian, self.trial, eshift)
+
+            rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
+            if step > 1:
+                new_weights = numpy.zeros(numpy.sum(rescale_idx), dtype = numpy.float64)
+                new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
+                self.psi.walkers_batch.weight[rescale_idx] = new_weights
+
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
@@ -269,13 +269,13 @@ class AFQMC(object):
                 self.tpopc += time.time() - start
             # calculate estimators
             start = time.time()
-            self.estimators.update(self.qmc, self.system, self.hamiltonian,
-                                   self.trial, self.psi, step,
+            self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
+                                   self.trial, self.psi.walkers_batch, step,
                                    self.propagators.free_projection)
             self.testim += time.time() - start
             self.estimators.print_step(comm, comm.size, step)
             if self.psi.write_restart and step % self.psi.write_freq == 0:
-                self.psi.write_walkers(comm)
+                self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
                 eshift = self.estimators.estimators['mixed'].get_shift(self.propagators.hybrid)
             else:
@@ -295,16 +295,17 @@ class AFQMC(object):
                 print("# End Time: {:s}".format(time.asctime()))
                 print("# Running time : {:.6f} seconds"
                       .format((time.time() - self._init_time)))
-                print("# Timing breakdown (per processor, per block/step):")
+                print("# Timing breakdown (per processor, per call, calls):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
                 nsteps = max(self.qmc.nsteps, 1)
+                nblocks = max(self.qmc.nblocks, 1)
                 nstblz = max(nsteps // self.qmc.nstblz, 1)
                 npcon = max(nsteps // self.qmc.npop_control, 1)
-                print("# - Step: {:.6f} s".format((self.tstep/nsteps)))
-                print("# - Orthogonalisation: {:.6f} s".format(self.tortho/nstblz))
-                print("# - Propagation: {:.6f} s".format(self.tprop/nsteps))
-                print("# - Estimators: {:.6f} s".format(self.testim/nsteps))
-                print("# - Population control: {:.6f} s".format(self.tpopc/npcon))
+                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep, nsteps, nblocks))
+                print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
+                print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
+                print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
+                print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):

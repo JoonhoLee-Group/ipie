@@ -10,6 +10,7 @@ import time
 from pyqumc.estimators.utils import H5EstimatorHelper
 from pyqumc.estimators.thermal import particle_number, one_rdm_from_G
 from pyqumc.estimators.local_energy import local_energy
+from pyqumc.estimators.local_energy_batch import local_energy_batch
 
 from pyqumc.estimators.greens_function import gab_mod_ovlp, gab_mod
 
@@ -117,6 +118,59 @@ class Mixed(object):
         }
         if root:
             self.setup_output(filename)
+
+
+    def update_batch(self, qmc, system, hamiltonian, trial, walker_batch, step, free_projection=False):
+        """Update mixed estimates for walkers.
+
+        Parameters
+        ----------
+        qmc : :class:`pyqumc.state.QMCOpts` object.
+            Container for qmc input options.
+        system : system object.
+            Container for model input options.
+        hamiltonian : hamiltonian object.
+            Container for hamiltonian input options.
+        trial : :class:`pyqumc.trial_wavefunction.X' object
+            Trial wavefunction class.
+        psi : :class:`pyqumc.walkers.Walkers` object
+            CPMC wavefunction.
+        step : int
+            Current simulation step
+        free_projection : bool
+            True if doing free projection.
+        """
+        assert(free_projection == False)
+        assert(self.thermal == False)
+
+        # When using importance sampling we only need to know the current
+        # walkers weight as well as the local energy, the walker's overlap
+        # with the trial wavefunction is not needed.
+        if step % self.energy_eval_freq == 0:
+            walker_batch.greens_function(trial)
+            if self.eval_energy:
+                energy = local_energy_batch(system, hamiltonian, walker_batch, trial)
+            else:
+                energy = numpy.zeros(walker_batch.nwalkers,3,dtype=numpy.complex128)
+            self.estimates[self.names.enumer] += numpy.sum(walker_batch.weight*energy[:,0].real)
+            self.estimates[self.names.e1b:self.names.e2b+1] += (
+                numpy.array([numpy.sum(walker_batch.weight * energy[:,1].real), numpy.sum(walker_batch.weight * energy[:,2].real)])
+            )
+            self.estimates[self.names.edenom] += numpy.sum(walker_batch.weight)
+        self.estimates[self.names.uweight] += numpy.sum(walker_batch.unscaled_weight)
+        self.estimates[self.names.weight] += numpy.sum(walker_batch.weight)
+        self.estimates[self.names.ovlp] += numpy.sum(walker_batch.weight * abs(walker_batch.ot))
+        self.estimates[self.names.ehyb] += numpy.sum(walker_batch.weight * walker_batch.hybrid_energy)
+
+        if self.calc_one_rdm:
+            start = self.names.time+1
+            end = self.names.time+1+w.G.size
+            self.estimates[start:end] += w.weight*w.G.flatten().real
+        if self.calc_two_rdm is not None:
+            start = end
+            end = end + self.two_rdm.size
+            self.estimates[start:end] += w.weight*self.two_rdm.flatten().real
+
 
     def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update mixed estimates for walkers.

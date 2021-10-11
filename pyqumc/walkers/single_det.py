@@ -67,12 +67,12 @@ class SingleDetWalker(Walker):
         self.ovlp = self.ot
 
         self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis),
-                             dtype=trial.psi.dtype)
+                             dtype=numpy.complex128)
 
         self.Ghalf = [numpy.zeros(shape=(system.nup, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype),
+                                 dtype=numpy.complex128),
                      numpy.zeros(shape=(system.ndown, hamiltonian.nbasis),
-                                 dtype=trial.psi.dtype)]
+                                 dtype=numpy.complex128)]
         self.greens_function(trial)
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
@@ -320,74 +320,3 @@ class SingleDetWalker(Walker):
         if (ndown>0):
             self.Ghalf[1] = self.phi[:,nup:].dot(self.inv_ovlp[1])
 
-    # def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
-    #     """Compute walkers local energy
-
-    #     Parameters
-    #     ----------
-    #     system : object
-    #         System object.
-
-    #     Returns
-    #     -------
-    #     (E, T, V) : tuple
-    #         Mixed estimates for walker's energy components.
-    #     """
-    #     if system.name == "HubbardHolstein":
-    #         return local_energy_hh(system, self.G, self.X, self.Lap, Ghalf=self.Ghalf)
-    #     if system.control_variate:
-    #         return local_energy(system, self.G, Ghalf=self.Ghalf,
-    #                             two_rdm=two_rdm,
-    #                             C0=self.C0,
-    #                             ecoul0=self.ecoul0,
-    #                             exxa0=self.exxa0,
-    #                             exxb0=self.exxb0, eri=eri, UVT=UVT)
-    #     else:
-    #         return local_energy(system, self.G, Ghalf=self.Ghalf,
-    #                             two_rdm=two_rdm, rchol=rchol, eri=eri, UVT=UVT)
-
-    def local_energy_2body(self, system, rchol):
-        """Compute walkers two-body local energy
-
-        Parameters
-        ----------
-        system : object
-            System object.
-
-        Returns
-        -------
-        (E, T, V) : tuple
-            Mixed estimates for walker's energy components.
-        """
-
-        nalpha, nbeta = system.nup, system.ndown
-        nbasis = system.nbasis
-        if rchol is not None:
-            naux = rchol.shape[1]
-
-        Ga, Gb = self.Ghalf[0], self.Ghalf[1]
-        Xa = rchol[:nalpha*nbasis].T.dot(Ga.ravel())
-        Xb = rchol[nalpha*nbasis:].T.dot(Gb.ravel())
-        ecoul = numpy.dot(Xa,Xa)
-        ecoul += numpy.dot(Xb,Xb)
-        ecoul += 2*numpy.dot(Xa,Xb)
-        rchol_a, rchol_b = rchol[:nalpha*nbasis], rchol[nalpha*nbasis:]
-
-        rchol_a = rchol_a.T
-        rchol_b = rchol_b.T
-        Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchol_a.dtype)
-        Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rchol_b.dtype)
-        GaT = Ga.T
-        GbT = Gb.T
-        for x in range(naux):
-            rmi_a = rchol_a[x].reshape((nalpha,nbasis))
-            Ta[x] = rmi_a.dot(GaT)
-            rmi_b = rchol_b[x].reshape((nbeta,nbasis))
-            Tb[x] = rmi_b.dot(GbT)
-        exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
-        exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
-
-        exx = exxa + exxb
-        e2b = 0.5 * (ecoul - exx)
-
-        return ecoul, exxa, exxb

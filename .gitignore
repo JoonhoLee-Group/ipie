@@ -2,6 +2,7 @@
 *lastfailed
 
 # Data files.
+*.json
 *.out
 *.hdf5
 src/openfermion/data/
