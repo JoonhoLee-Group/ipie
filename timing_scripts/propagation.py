@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-divide = 1
+divide = 4
 
 nao = 1000 // divide
 nocc = 200  // divide
@@ -37,7 +37,7 @@ assert np.allclose(walkers_batch_phi[0],walkers_batch_phi2[0])
 print("propagation 2 = {}".format((t1 - t0)))
 
 # # version 3
-# walkers_batch_phi3 = np.hstack((w for w in walkers_batch_phi0)).reshape(nao, nwalkers, nocc)
+walkers_batch_phi3 = np.hstack((w for w in walkers_batch_phi0)).reshape(nao, nwalkers*nocc)
 # print (walkers_batch_phi3.shape, walkers_batch_phi0.shape)
 # VHS.dot(walkers_batch_phi3)
 # # # version 1

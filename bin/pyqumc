@@ -15,7 +15,7 @@ def main(input_file):
     """
     (afqmc, comm) = setup_calculation(input_file)
     afqmc.run(comm=comm, verbose=True)
-    afqmc.finalise(comm=comm, verbose=True)
+    afqmc.finalise(verbose=True)
 
 
 if __name__ == '__main__':

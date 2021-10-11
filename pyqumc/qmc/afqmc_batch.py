@@ -279,7 +279,7 @@ class AFQMCBatch(object):
                 eshift += (self.estimators.estimators['mixed'].get_shift()-eshift)
             self.tstep += time.time() - start_step
 
-    def finalise(self, comm=None, verbose=False):
+    def finalise(self, verbose=False):
         """Tidy up.
 
         Parameters
@@ -303,10 +303,8 @@ class AFQMCBatch(object):
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
-        print("# -  {}                Recv: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_recv/(npcon*nblocks), npcon, nblocks))
-        print("# -  {}                Send: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_send/(npcon*nblocks), npcon, nblocks))
-        print("# -  {}  Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
-        print("# -  {}    Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -     Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -       Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):

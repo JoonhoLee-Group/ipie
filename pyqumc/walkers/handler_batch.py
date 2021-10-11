@@ -191,7 +191,8 @@ class WalkersBatch(object):
             self.add_non_communication()
             self.comb(comm, global_weights)
         elif self.pcont_method == "pair_branch":
-            self.pair_branch(comm)
+            # self.pair_branch(comm)
+            self.pair_branch_fast(comm)
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
@@ -305,6 +306,125 @@ class WalkersBatch(object):
         self.walkers_batch.weight.fill(1.0)
         self.add_non_communication()
 
+    def pair_branch_fast(self, comm):
+        self.start_time()
+        walker_info_0 = numpy.abs(self.walkers_batch.weight)
+        self.add_non_communication()
+
+        self.start_time()
+        glob_inf = None
+        glob_inf_0 = None
+        glob_inf_1 = None
+        glob_inf_2 = None
+        glob_inf_3 = None
+        if comm.rank == 0:
+            glob_inf_0 = numpy.empty([comm.size, self.walkers_batch.nwalkers], dtype=numpy.float64)
+            glob_inf_1 = numpy.empty([comm.size, self.walkers_batch.nwalkers], dtype=numpy.int64)
+            glob_inf_1.fill(1)
+            glob_inf_2 = numpy.array([[r for i in range (self.walkers_batch.nwalkers)] for r in range(comm.size)], dtype=numpy.int64)
+            glob_inf_3 = numpy.array([[r for i in range (self.walkers_batch.nwalkers)] for r in range(comm.size)], dtype=numpy.int64)
+
+        self.add_non_communication()
+
+        self.start_time()
+        comm.Gather(walker_info_0, glob_inf_0, root=0)
+        self.add_communication()
+
+        # Want same random number seed used on all processors
+        self.start_time()
+        if comm.rank == 0:
+            # Rescale weights.
+            glob_inf = numpy.zeros((self.walkers_batch.nwalkers*comm.size, 4), dtype=numpy.float64)
+            glob_inf[:,0] = glob_inf_0.ravel()
+            glob_inf[:,1] = glob_inf_1.ravel()
+            glob_inf[:,2] = glob_inf_2.ravel()
+            glob_inf[:,3] = glob_inf_3.ravel()
+            total_weight = sum(w[0] for w in glob_inf)
+            sort = numpy.argsort(glob_inf[:,0], kind='mergesort')
+            isort = numpy.argsort(sort, kind='mergesort')
+            glob_inf = glob_inf[sort]
+            s = 0
+            e = len(glob_inf) - 1
+            tags = []
+            isend = 0
+            while s < e:
+                if glob_inf[s][0] < self.min_weight or glob_inf[e][0] > self.max_weight:
+                    # sum of paired walker weights
+                    wab = glob_inf[s][0] + glob_inf[e][0]
+                    r = numpy.random.rand()
+                    if r < glob_inf[e][0] / wab:
+                        # clone large weight walker
+                        glob_inf[e][0] = 0.5 * wab
+                        glob_inf[e][1] = 2
+                        # Processor we will send duplicated walker to
+                        glob_inf[e][3] = glob_inf[s][2]
+                        send = glob_inf[s][2]
+                        # Kill small weight walker
+                        glob_inf[s][0] = 0.0
+                        glob_inf[s][1] = 0
+                        glob_inf[s][3] = glob_inf[e][2]
+                    else:
+                        # clone small weight walker
+                        glob_inf[s][0] = 0.5 * wab
+                        glob_inf[s][1] = 2
+                        # Processor we will send duplicated walker to
+                        glob_inf[s][3] = glob_inf[e][2]
+                        send = glob_inf[e][2]
+                        # Kill small weight walker
+                        glob_inf[e][0] = 0.0
+                        glob_inf[e][1] = 0
+                        glob_inf[e][3] = glob_inf[s][2]
+                    tags.append([send])
+                    s += 1
+                    e -= 1
+                else:
+                    break
+            nw = self.nwalkers
+            glob_inf = glob_inf[isort].reshape((comm.size,nw,4))
+        else:
+            data = None
+            glob_inf = None
+            total_weight = 0
+        self.add_non_communication()
+        self.start_time()
+        
+        data = numpy.empty([self.walkers_batch.nwalkers, 4], dtype=numpy.float64)
+        comm.Scatter(glob_inf, data, root=0)
+
+        self.add_communication()
+        # Keep total weight saved for capping purposes.
+        walker_buffers = []
+        reqs = []
+        for iw, walker in enumerate(data):
+            if walker[1] > 1:
+                self.start_time()
+                tag = comm.rank*self.walkers_batch.nwalkers + walker[3]
+                self.walkers_batch.weight[iw] = walker[0]
+                buff = self.walkers_batch.get_buffer(iw)
+                self.add_non_communication()
+                self.start_time()
+                reqs.append(comm.Isend(buff,
+                                       dest=int(round(walker[3])),
+                                       tag=tag))
+                self.add_send_time()
+        for iw, walker in enumerate(data):
+            if walker[1] == 0:
+                self.start_time()
+                tag = walker[3]*self.walkers_batch.nwalkers + comm.rank
+                self.add_non_communication()
+                self.start_time()
+                comm.Recv(self.walker_buffer,
+                          source=int(round(walker[3])),
+                          tag=tag)
+                self.add_recv_time()
+                self.start_time()
+                self.walkers_batch.set_buffer(iw, self.walker_buffer)
+                self.add_non_communication()
+        self.start_time()
+        for r in reqs:
+            r.wait()
+        self.add_communication()
+
     def pair_branch(self, comm):
         self.start_time()
         walker_info = [[abs(self.walkers_batch.weight[w]),1,comm.rank,comm.rank] for w in range(self.walkers_batch.nwalkers)]
@@ -312,6 +432,7 @@ class WalkersBatch(object):
         self.start_time()
         glob_inf = comm.gather(walker_info, root=0)
         self.add_communication()
+
         # Want same random number seed used on all processors
         self.start_time()
         if comm.rank == 0:
