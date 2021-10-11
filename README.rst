@@ -34,7 +34,7 @@ Clone the repository
 
     $ git clone https://github.com/linusjoonho/pyqumc.git
 
-and run the following in the top-level pyqcqmc directory
+and run the following in the top-level pyqumc directory
 
 ::
 
