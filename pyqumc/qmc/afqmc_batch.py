@@ -206,13 +206,6 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            factor = float(self.system.ne) / self.hamiltonian.nbasis
-            mem = factor*self.trial._mem_required*self.shared_comm.size
-            print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
-            if mem > 0.5*mem_avail:
-                print("# Warning: Memory requirements of calculation are high")
-                print("# Consider using fewer walkers per node.")
-                print("# Memory available: {:.6f}".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string

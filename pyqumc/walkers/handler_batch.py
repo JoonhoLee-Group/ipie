@@ -298,9 +298,14 @@ class WalkersBatch(object):
         self.add_non_communication()
 
     def pair_branch(self, comm):
+        self.start_time()
         walker_info = [[abs(self.walkers_batch.weight[w]),1,comm.rank,comm.rank] for w in range(self.walkers_batch.nwalkers)]
+        self.add_non_communication()
+        self.start_time()
         glob_inf = comm.gather(walker_info, root=0)
+        self.add_communication()
         # Want same random number seed used on all processors
+        self.start_time()
         if comm.rank == 0:
             # Rescale weights.
             glob_inf = numpy.array([item for sub in glob_inf for item in sub])
@@ -349,27 +354,42 @@ class WalkersBatch(object):
         else:
             data = None
             total_weight = 0
+        self.add_non_communication()
+        self.start_time()
         data = comm.scatter(glob_inf, root=0)
+        self.add_communication()
         # Keep total weight saved for capping purposes.
         walker_buffers = []
         reqs = []
         for iw, walker in enumerate(data):
             if walker[1] > 1:
+                self.start_time()
                 tag = comm.rank*len(walker_info) + walker[3]
                 self.walkers_batch.weight[iw] = walker[0]
                 buff = self.walkers_batch.get_buffer(iw)
+                self.add_non_communication()
+                self.start_time()
                 reqs.append(comm.Isend(buff,
                                        dest=int(round(walker[3])),
                                        tag=tag))
+                self.add_communication()
         for iw, walker in enumerate(data):
             if walker[1] == 0:
+                self.start_time()
                 tag = walker[3]*len(walker_info) + comm.rank
+                self.add_non_communication()
+                self.start_time()
                 comm.Recv(self.walker_buffer,
                           source=int(round(walker[3])),
                           tag=tag)
+                self.add_communication()
+                self.start_time()
                 self.walkers_batch.set_buffer(iw, self.walker_buffer)
+                self.add_non_communication()
+        self.start_time()
         for r in reqs:
             r.wait()
+        self.add_communication()
 
     def set_total_weight(self, total_weight):
         self.walkers_batch.total_weight = total_weight
