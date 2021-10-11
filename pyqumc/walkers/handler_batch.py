@@ -98,6 +98,8 @@ class WalkersBatch(object):
         self.start_time_const = 0.0
         self.communication_time = 0.0
         self.non_communication_time = 0.0
+        self.recv_time = 0.0
+        self.send_time = 0.0
         
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
@@ -155,6 +157,10 @@ class WalkersBatch(object):
         self.non_communication_time += time.time() - self.start_time_const
     def add_communication(self):
         self.communication_time += time.time() - self.start_time_const
+    def add_recv_time(self):
+        self.recv_time += time.time() - self.start_time_const
+    def add_send_time(self):
+        self.send_time += time.time() - self.start_time_const
 
     def pop_control(self, comm):
         self.start_time()
@@ -261,7 +267,7 @@ class WalkersBatch(object):
                 self.add_non_communication()
                 self.start_time()
                 reqs.append(comm.Isend(buff, dest=dest_proc, tag=i))
-                self.add_communication()
+                self.add_send_time()
         # Now receive walkers on processors where walkers are to be killed.
         for i, (c, k) in enumerate(zip(clone, kill)):
             # Receiving to current processor?
@@ -276,8 +282,10 @@ class WalkersBatch(object):
                 comm.Recv(self.walker_buffer, source=source_proc, tag=i)
                 # with h5py.File('walkers_recv.h5', 'w') as fh5:
                     # fh5['walk_{}'.format(k)] = self.walker_buffer.copy()
+                self.add_recv_time()
+                self.start_time()
                 self.walkers_batch.set_buffer(kill_pos, self.walker_buffer)
-                self.add_communication()
+                self.add_non_communication()
                 # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
                     # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = self.walkers[kill_pos].get_buffer()
         self.start_time()
@@ -372,7 +380,7 @@ class WalkersBatch(object):
                 reqs.append(comm.Isend(buff,
                                        dest=int(round(walker[3])),
                                        tag=tag))
-                self.add_communication()
+                self.add_send_time()
         for iw, walker in enumerate(data):
             if walker[1] == 0:
                 self.start_time()
@@ -382,7 +390,7 @@ class WalkersBatch(object):
                 comm.Recv(self.walker_buffer,
                           source=int(round(walker[3])),
                           tag=tag)
-                self.add_communication()
+                self.add_recv_time()
                 self.start_time()
                 self.walkers_batch.set_buffer(iw, self.walker_buffer)
                 self.add_non_communication()
