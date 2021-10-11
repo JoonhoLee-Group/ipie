@@ -291,7 +291,7 @@ class AFQMCBatch(object):
         nblocks = max(self.qmc.nblocks, 1)
         nstblz = max(nsteps // self.qmc.nstblz, 1)
         npcon = max(nsteps // self.qmc.npop_control, 1)
-        if self.root or comm==None:
+        if self.root:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
                 print("# Running time : {:.6f} seconds"
@@ -303,8 +303,8 @@ class AFQMCBatch(object):
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
-                print("# -     Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
-                print("# -       Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(comm.rank, self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -     Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -       Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):
