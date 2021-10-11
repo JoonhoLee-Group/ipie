@@ -287,6 +287,10 @@ class AFQMCBatch(object):
         verbose : bool
             If true print out some information to stdout.
         """
+        nsteps = max(self.qmc.nsteps, 1)
+        nblocks = max(self.qmc.nblocks, 1)
+        nstblz = max(nsteps // self.qmc.nstblz, 1)
+        npcon = max(nsteps // self.qmc.npop_control, 1)
         if self.root or comm==None:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
@@ -294,10 +298,6 @@ class AFQMCBatch(object):
                       .format((time.time() - self._init_time)))
                 print("# Timing breakdown (per processor, per call, calls):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                nsteps = max(self.qmc.nsteps, 1)
-                nblocks = max(self.qmc.nblocks, 1)
-                nstblz = max(nsteps // self.qmc.nstblz, 1)
-                npcon = max(nsteps // self.qmc.npop_control, 1)
                 print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep, nsteps, nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
