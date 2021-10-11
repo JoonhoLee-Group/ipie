@@ -55,9 +55,10 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         # Grab objects that are walker specific
         # WARNING!! One has to add names to the list here if new objects are added
-        self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
-                           "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
-                           "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
+        # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
+        #                    "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
+        #                    "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
+        self.buff_names = ["weight", "unscaled_weight", "phase", "phi", "hybrid_energy"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
 
