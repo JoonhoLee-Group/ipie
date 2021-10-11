@@ -267,6 +267,8 @@ class AFQMCBatch(object):
                 start = time.time()
                 self.psi.pop_control(comm)
                 self.tpopc += time.time() - start
+                self.tpopc_comm = self.psi.communication_time
+                self.tpopc_non_comm = self.psi.non_communication_time
             # calculate estimators
             start = time.time()
             self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
@@ -306,6 +308,8 @@ class AFQMCBatch(object):
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
+                print("# -         Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -     Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):
@@ -346,6 +350,8 @@ class AFQMCBatch(object):
         self.tprop = 0
         self.testim = 0
         self.tpopc = 0
+        self.tpopc_comm = 0
+        self.tpopc_non_comm = 0
         self.tstep = 0
 
 
