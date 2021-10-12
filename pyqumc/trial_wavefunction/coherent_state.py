@@ -31,7 +31,7 @@ try:
     import jax.numpy as np
     import jax.scipy.linalg as LA
     import numpy
-except ModuleNotFoundError:
+except (ModuleNotFoundError,ImportError) :
     import numpy
     np = numpy
     def jit(function):

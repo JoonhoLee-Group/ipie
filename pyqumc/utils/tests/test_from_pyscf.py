@@ -9,7 +9,7 @@ try:
             dump_pyqumc
             )
     no_pyscf = False
-except (ImportError, OSError):
+except (ImportError, OSError, ValueError):
     no_pyscf = True
 from pyqumc.utils.io import (
         write_input,
