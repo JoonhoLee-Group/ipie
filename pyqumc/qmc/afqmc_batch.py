@@ -255,7 +255,7 @@ class AFQMCBatch(object):
                 new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
                 self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
-            if step % self.qmc.npop_control == 0 or step % self.estimators.energy_eval_freq == 0:
+            if step % self.qmc.npop_control == 0:
                 comm.Barrier()
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
@@ -267,6 +267,8 @@ class AFQMCBatch(object):
                 self.tpopc_comm = self.psi.communication_time
                 self.tpopc_non_comm = self.psi.non_communication_time
             # calculate estimators
+            if step % self.estimators.energy_eval_freq == 0:
+                comm.Barrier()
             start = time.time()
             self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.psi.walkers_batch, step,
