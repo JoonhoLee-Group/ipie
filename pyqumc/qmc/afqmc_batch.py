@@ -255,6 +255,8 @@ class AFQMCBatch(object):
                 new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
                 self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
+            if step % self.qmc.npop_control == 0 or step % self.estimators.energy_eval_freq == 0:
+                comm.Barrier()
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
@@ -269,8 +271,8 @@ class AFQMCBatch(object):
             self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.psi.walkers_batch, step,
                                    self.propagators.free_projection)
-            self.testim += time.time() - start
             self.estimators.print_step(comm, comm.size, step)
+            self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
