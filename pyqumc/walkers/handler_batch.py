@@ -10,6 +10,7 @@ from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.stack import FieldConfig
 from pyqumc.utils.io import get_input_value
 from pyqumc.utils.misc import update_stack
+from mpi4py import MPI
 
 
 class WalkersBatch(object):
@@ -170,10 +171,20 @@ class WalkersBatch(object):
         global_weights = numpy.empty(len(weights)*comm.size)
         self.add_non_communication()
         self.start_time()
-        comm.Allgather(weights, global_weights)
+        if self.pcont_method == "comb":
+            comm.Allgather(weights, global_weights)
+            total_weight = sum(global_weights)
+        else:
+            sum_weights = numpy.sum(weights)
+            total_weight = numpy.empty(1, dtype=numpy.float64)
+            comm.Reduce(sum_weights, total_weight,
+                        op=MPI.SUM, root=0)
+            comm.Bcast(total_weight, root=0)
+            total_weight = total_weight[0]
+
         self.add_communication()
         self.start_time()
-        total_weight = sum(global_weights)
+
         # Rescale weights to combat exponential decay/growth.
         scale = total_weight / self.target_weight
         if total_weight < 1e-8:
