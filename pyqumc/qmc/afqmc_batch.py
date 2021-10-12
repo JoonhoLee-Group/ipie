@@ -266,9 +266,8 @@ class AFQMCBatch(object):
                 self.tpopc_recv = self.psi.recv_time
                 self.tpopc_comm = self.psi.communication_time
                 self.tpopc_non_comm = self.psi.non_communication_time
+
             # calculate estimators
-            if step % self.estimators.energy_eval_freq == 0:
-                comm.Barrier()
             start = time.time()
             self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.psi.walkers_batch, step,
