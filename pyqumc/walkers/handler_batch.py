@@ -10,6 +10,7 @@ from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.stack import FieldConfig
 from pyqumc.utils.io import get_input_value
 from pyqumc.utils.misc import update_stack
+from mpi4py import MPI
 
 
 class WalkersBatch(object):
@@ -95,6 +96,11 @@ class WalkersBatch(object):
         self.target_weight = qmc.ntot_walkers
         # self.nw = qmc.nwalkers
         self.set_total_weight(qmc.ntot_walkers)
+        self.start_time_const = 0.0
+        self.communication_time = 0.0
+        self.non_communication_time = 0.0
+        self.recv_time = 0.0
+        self.send_time = 0.0
         
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
@@ -145,13 +151,40 @@ class WalkersBatch(object):
         for (i, (w,wbp)) in enumerate(zip(self.walkers, phi_bp)):
             numpy.copyto(self.walkers[i].phi_bp, wbp.phi)
 
+
+    def start_time(self):
+        self.start_time_const = time.time()
+    def add_non_communication(self):
+        self.non_communication_time += time.time() - self.start_time_const
+    def add_communication(self):
+        self.communication_time += time.time() - self.start_time_const
+    def add_recv_time(self):
+        self.recv_time += time.time() - self.start_time_const
+    def add_send_time(self):
+        self.send_time += time.time() - self.start_time_const
+
     def pop_control(self, comm):
+        self.start_time()
         if self.ntot_walkers == 1:
             return
         weights = numpy.abs(self.walkers_batch.weight)
         global_weights = numpy.empty(len(weights)*comm.size)
-        comm.Allgather(weights, global_weights)
-        total_weight = sum(global_weights)
+        self.add_non_communication()
+        self.start_time()
+        if self.pcont_method == "comb":
+            comm.Allgather(weights, global_weights)
+            total_weight = sum(global_weights)
+        else:
+            sum_weights = numpy.sum(weights)
+            total_weight = numpy.empty(1, dtype=numpy.float64)
+            comm.Reduce(sum_weights, total_weight,
+                        op=MPI.SUM, root=0)
+            comm.Bcast(total_weight, root=0)
+            total_weight = total_weight[0]
+
+        self.add_communication()
+        self.start_time()
+
         # Rescale weights to combat exponential decay/growth.
         scale = total_weight / self.target_weight
         if total_weight < 1e-8:
@@ -164,14 +197,13 @@ class WalkersBatch(object):
         # Todo: Just standardise information we want to send between routines.
         self.walkers_batch.unscaled_weight = self.walkers_batch.weight
         self.walkers_batch.weight = self.walkers_batch.weight / scale
-        # for w in self.walkers:
-            # w.unscaled_weight = w.weight
-            # w.weight = w.weight / scale
         if self.pcont_method == "comb":
             global_weights = global_weights / scale
+            self.add_non_communication()
             self.comb(comm, global_weights)
         elif self.pcont_method == "pair_branch":
-            self.pair_branch(comm)
+            # self.pair_branch(comm)
+            self.pair_branch_fast(comm)
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
@@ -189,6 +221,8 @@ class WalkersBatch(object):
         # walker objects in memory. We don't want future changes in a given
         # element of psi having unintended consequences.
         # todo : add phase to walker for free projection
+        
+        self.start_time()
         if comm.rank == 0:
             parent_ix = numpy.zeros(len(weights), dtype='i')
         else:
@@ -211,7 +245,12 @@ class WalkersBatch(object):
         else:
             data = None
 
+        self.add_non_communication()
+
+        self.start_time()
         data = comm.bcast(data, root=0)
+        self.add_communication()
+        self.start_time()
         parent_ix = data['ix']
         # Keep total weight saved for capping purposes.
         # where returns a tuple (array,), selecting first element.
@@ -220,10 +259,14 @@ class WalkersBatch(object):
         reqs = []
         walker_buffers = []
         # First initiate non-blocking sends of walkers.
+        self.add_non_communication()
+        self.start_time()
         comm.barrier()
+        self.add_communication()
         for i, (c, k) in enumerate(zip(clone, kill)):
             # Sending from current processor?
             if c // self.nwalkers == comm.rank:
+                self.start_time()
                 # Location of walker to clone in local list.
                 clone_pos = c % self.nwalkers
                 # copying walker data to intermediate buffer to avoid issues
@@ -233,21 +276,31 @@ class WalkersBatch(object):
                 # with h5py.File('before_{}.h5'.format(comm.rank), 'a') as fh5:
                     # fh5['walker_{}_{}_{}'.format(c,k,dest_proc)] = self.walkers[clone_pos].get_buffer()
                 buff = self.walkers_batch.get_buffer(clone_pos)
+                self.add_non_communication()
+                self.start_time()
                 reqs.append(comm.Isend(buff, dest=dest_proc, tag=i))
+                self.add_send_time()
         # Now receive walkers on processors where walkers are to be killed.
         for i, (c, k) in enumerate(zip(clone, kill)):
             # Receiving to current processor?
             if k // self.nwalkers == comm.rank:
+                self.start_time()
                 # Processor we are receiving from.
                 source_proc = c // self.nwalkers
                 # Location of walker to kill in local list of walkers.
                 kill_pos = k % self.nwalkers
+                self.add_non_communication()
+                self.start_time()
                 comm.Recv(self.walker_buffer, source=source_proc, tag=i)
                 # with h5py.File('walkers_recv.h5', 'w') as fh5:
                     # fh5['walk_{}'.format(k)] = self.walker_buffer.copy()
+                self.add_recv_time()
+                self.start_time()
                 self.walkers_batch.set_buffer(kill_pos, self.walker_buffer)
+                self.add_non_communication()
                 # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
                     # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = self.walkers[kill_pos].get_buffer()
+        self.start_time()
         # Complete non-blocking send.
         for rs in reqs:
             rs.wait()
@@ -255,16 +308,144 @@ class WalkersBatch(object):
         # if len(kill) > 0 or len(clone) > 0:
             # sys.exit()
         comm.Barrier()
+        self.add_communication()
         # Reset walker weight.
         # TODO: check this.
         # for w in self.walkers:
             # w.weight = 1.0
+        self.start_time()
         self.walkers_batch.weight.fill(1.0)
+        self.add_non_communication()
+
+    def pair_branch_fast(self, comm):
+        self.start_time()
+        walker_info_0 = numpy.abs(self.walkers_batch.weight)
+        self.add_non_communication()
+
+        self.start_time()
+        glob_inf = None
+        glob_inf_0 = None
+        glob_inf_1 = None
+        glob_inf_2 = None
+        glob_inf_3 = None
+        if comm.rank == 0:
+            glob_inf_0 = numpy.empty([comm.size, self.walkers_batch.nwalkers], dtype=numpy.float64)
+            glob_inf_1 = numpy.empty([comm.size, self.walkers_batch.nwalkers], dtype=numpy.int64)
+            glob_inf_1.fill(1)
+            glob_inf_2 = numpy.array([[r for i in range (self.walkers_batch.nwalkers)] for r in range(comm.size)], dtype=numpy.int64)
+            glob_inf_3 = numpy.array([[r for i in range (self.walkers_batch.nwalkers)] for r in range(comm.size)], dtype=numpy.int64)
+
+        self.add_non_communication()
+
+        self.start_time()
+        comm.Gather(walker_info_0, glob_inf_0, root=0)
+        self.add_communication()
+
+        # Want same random number seed used on all processors
+        self.start_time()
+        if comm.rank == 0:
+            # Rescale weights.
+            glob_inf = numpy.zeros((self.walkers_batch.nwalkers*comm.size, 4), dtype=numpy.float64)
+            glob_inf[:,0] = glob_inf_0.ravel()
+            glob_inf[:,1] = glob_inf_1.ravel()
+            glob_inf[:,2] = glob_inf_2.ravel()
+            glob_inf[:,3] = glob_inf_3.ravel()
+            total_weight = sum(w[0] for w in glob_inf)
+            sort = numpy.argsort(glob_inf[:,0], kind='mergesort')
+            isort = numpy.argsort(sort, kind='mergesort')
+            glob_inf = glob_inf[sort]
+            s = 0
+            e = len(glob_inf) - 1
+            tags = []
+            isend = 0
+            while s < e:
+                if glob_inf[s][0] < self.min_weight or glob_inf[e][0] > self.max_weight:
+                    # sum of paired walker weights
+                    wab = glob_inf[s][0] + glob_inf[e][0]
+                    r = numpy.random.rand()
+                    if r < glob_inf[e][0] / wab:
+                        # clone large weight walker
+                        glob_inf[e][0] = 0.5 * wab
+                        glob_inf[e][1] = 2
+                        # Processor we will send duplicated walker to
+                        glob_inf[e][3] = glob_inf[s][2]
+                        send = glob_inf[s][2]
+                        # Kill small weight walker
+                        glob_inf[s][0] = 0.0
+                        glob_inf[s][1] = 0
+                        glob_inf[s][3] = glob_inf[e][2]
+                    else:
+                        # clone small weight walker
+                        glob_inf[s][0] = 0.5 * wab
+                        glob_inf[s][1] = 2
+                        # Processor we will send duplicated walker to
+                        glob_inf[s][3] = glob_inf[e][2]
+                        send = glob_inf[e][2]
+                        # Kill small weight walker
+                        glob_inf[e][0] = 0.0
+                        glob_inf[e][1] = 0
+                        glob_inf[e][3] = glob_inf[s][2]
+                    tags.append([send])
+                    s += 1
+                    e -= 1
+                else:
+                    break
+            nw = self.nwalkers
+            glob_inf = glob_inf[isort].reshape((comm.size,nw,4))
+        else:
+            data = None
+            glob_inf = None
+            total_weight = 0
+        self.add_non_communication()
+        self.start_time()
+        
+        data = numpy.empty([self.walkers_batch.nwalkers, 4], dtype=numpy.float64)
+        comm.Scatter(glob_inf, data, root=0)
+
+        self.add_communication()
+        # Keep total weight saved for capping purposes.
+        walker_buffers = []
+        reqs = []
+        for iw, walker in enumerate(data):
+            if walker[1] > 1:
+                self.start_time()
+                tag = comm.rank*self.walkers_batch.nwalkers + walker[3]
+                self.walkers_batch.weight[iw] = walker[0]
+                buff = self.walkers_batch.get_buffer(iw)
+                self.add_non_communication()
+                self.start_time()
+                reqs.append(comm.Isend(buff,
+                                       dest=int(round(walker[3])),
+                                       tag=tag))
+                self.add_send_time()
+        for iw, walker in enumerate(data):
+            if walker[1] == 0:
+                self.start_time()
+                tag = walker[3]*self.walkers_batch.nwalkers + comm.rank
+                self.add_non_communication()
+                self.start_time()
+                comm.Recv(self.walker_buffer,
+                          source=int(round(walker[3])),
+                          tag=tag)
+                self.add_recv_time()
+                self.start_time()
+                self.walkers_batch.set_buffer(iw, self.walker_buffer)
+                self.add_non_communication()
+        self.start_time()
+        for r in reqs:
+            r.wait()
+        self.add_communication()
 
     def pair_branch(self, comm):
+        self.start_time()
         walker_info = [[abs(self.walkers_batch.weight[w]),1,comm.rank,comm.rank] for w in range(self.walkers_batch.nwalkers)]
+        self.add_non_communication()
+        self.start_time()
         glob_inf = comm.gather(walker_info, root=0)
+        self.add_communication()
+
         # Want same random number seed used on all processors
+        self.start_time()
         if comm.rank == 0:
             # Rescale weights.
             glob_inf = numpy.array([item for sub in glob_inf for item in sub])
@@ -313,27 +494,42 @@ class WalkersBatch(object):
         else:
             data = None
             total_weight = 0
+        self.add_non_communication()
+        self.start_time()
         data = comm.scatter(glob_inf, root=0)
+        self.add_communication()
         # Keep total weight saved for capping purposes.
         walker_buffers = []
         reqs = []
         for iw, walker in enumerate(data):
             if walker[1] > 1:
+                self.start_time()
                 tag = comm.rank*len(walker_info) + walker[3]
                 self.walkers_batch.weight[iw] = walker[0]
                 buff = self.walkers_batch.get_buffer(iw)
+                self.add_non_communication()
+                self.start_time()
                 reqs.append(comm.Isend(buff,
                                        dest=int(round(walker[3])),
                                        tag=tag))
+                self.add_send_time()
         for iw, walker in enumerate(data):
             if walker[1] == 0:
+                self.start_time()
                 tag = walker[3]*len(walker_info) + comm.rank
+                self.add_non_communication()
+                self.start_time()
                 comm.Recv(self.walker_buffer,
                           source=int(round(walker[3])),
                           tag=tag)
+                self.add_recv_time()
+                self.start_time()
                 self.walkers_batch.set_buffer(iw, self.walker_buffer)
+                self.add_non_communication()
+        self.start_time()
         for r in reqs:
             r.wait()
+        self.add_communication()
 
     def set_total_weight(self, total_weight):
         self.walkers_batch.total_weight = total_weight

@@ -206,13 +206,6 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            factor = float(self.system.ne) / self.hamiltonian.nbasis
-            mem = factor*self.trial._mem_required*self.shared_comm.size
-            print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
-            if mem > 0.5*mem_avail:
-                print("# Warning: Memory requirements of calculation are high")
-                print("# Consider using fewer walkers per node.")
-                print("# Memory available: {:.6f}".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -262,18 +255,25 @@ class AFQMCBatch(object):
                 new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
                 self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
+            if step % self.qmc.npop_control == 0:
+                comm.Barrier()
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
                 self.psi.pop_control(comm)
                 self.tpopc += time.time() - start
+                self.tpopc_send = self.psi.send_time
+                self.tpopc_recv = self.psi.recv_time
+                self.tpopc_comm = self.psi.communication_time
+                self.tpopc_non_comm = self.psi.non_communication_time
+
             # calculate estimators
             start = time.time()
             self.estimators.update_batch(self.qmc, self.system, self.hamiltonian,
                                    self.trial, self.psi.walkers_batch, step,
                                    self.propagators.free_projection)
-            self.testim += time.time() - start
             self.estimators.print_step(comm, comm.size, step)
+            self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
@@ -290,6 +290,10 @@ class AFQMCBatch(object):
         verbose : bool
             If true print out some information to stdout.
         """
+        nsteps = max(self.qmc.nsteps, 1)
+        nblocks = max(self.qmc.nblocks, 1)
+        nstblz = max(nsteps // self.qmc.nstblz, 1)
+        npcon = max(nsteps // self.qmc.npop_control, 1)
         if self.root:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
@@ -297,15 +301,13 @@ class AFQMCBatch(object):
                       .format((time.time() - self._init_time)))
                 print("# Timing breakdown (per processor, per call, calls):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                nsteps = max(self.qmc.nsteps, 1)
-                nblocks = max(self.qmc.nblocks, 1)
-                nstblz = max(nsteps // self.qmc.nstblz, 1)
-                npcon = max(nsteps // self.qmc.npop_control, 1)
                 print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep, nsteps, nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
+                print("# -     Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
+                print("# -       Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):
@@ -346,6 +348,8 @@ class AFQMCBatch(object):
         self.tprop = 0
         self.testim = 0
         self.tpopc = 0
+        self.tpopc_comm = 0
+        self.tpopc_non_comm = 0
         self.tstep = 0
 
 
