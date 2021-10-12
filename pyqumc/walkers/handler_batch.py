@@ -34,9 +34,6 @@ class WalkersBatch(object):
                  comm=None, nprop_tot=None, nbp=None):
         self.nwalkers = qmc.nwalkers
         self.ntot_walkers = qmc.ntot_walkers
-        if verbose:
-            print("# nwalkers = {}".format(self.nwalkers))
-            print("# ntot_walkers = {}".format(self.ntot_walkers))
         self.write_freq = walker_opts.get('write_freq', 0)
         self.write_file = walker_opts.get('write_file', 'restart.h5')
         self.read_file = walker_opts.get('read_file', None)
@@ -45,7 +42,9 @@ class WalkersBatch(object):
         else:
             rank = comm.rank
         if verbose:
-            print("# Setting up wavefunction object.")
+            print("# Setting up walkers.handler_batch.Walkers.")
+            print("# qmc.nwalkers = {}".format(self.nwalkers))
+            print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
         assert(trial.name == 'MultiSlater' and trial.ndets == 1)
         if verbose:
             print("# Using single det walker with msd wavefunction.")
@@ -101,6 +100,9 @@ class WalkersBatch(object):
         self.non_communication_time = 0.0
         self.recv_time = 0.0
         self.send_time = 0.0
+
+        if verbose:
+            print("# Finish setting up walkers.handler.Walkers.")
         
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
