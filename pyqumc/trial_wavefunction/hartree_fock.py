@@ -108,4 +108,4 @@ class HartreeFock(object):
         if self.verbose:
             print ("# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                    %(self.energy.real, self.e1b.real, self.e2b.real))
-            print ("# Time to evaluate local energy: %f s"%(time.time()-start))
+            print ("# Time to evaluate local energy: {} s".format(time.time()-start))

@@ -56,11 +56,11 @@ def test_pair_branch():
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
     handler_batch = WalkersBatch(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
         handler_batch.walkers_batch.reortho()
         handler_batch.pop_control(comm)
-
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size

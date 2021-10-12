@@ -3,6 +3,7 @@ import math
 import numpy
 import scipy.linalg
 import sys
+import time
 from pyqumc.utils.linalg import exponentiate_matrix
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.utils.linalg import reortho
@@ -34,6 +35,7 @@ class GenericContinuous(object):
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
+        start = time.time()
         if trial.ndets > 1:
             optimised = False
             self.mf_shift = (
@@ -43,6 +45,7 @@ class GenericContinuous(object):
             self.mf_shift = self.construct_mean_field_shift(hamiltonian, trial)
 
         if verbose:
+            print("# Time to mean field shift: {} s".format(time.time()-start))
             print("# Absolute value of maximum component of mean field shift: "
                   "{:13.8e}.".format(numpy.max(numpy.abs(self.mf_shift))))
         # Mean field shifted one-body propagator
@@ -72,7 +75,7 @@ class GenericContinuous(object):
         self.ebound = (2.0/self.dt)**0.5
         self.mean_local_energy = 0
         if verbose:
-            print("# Finished setting up Generic propagator.")
+            print("# Finished setting up propagation.GenericContinuous.")
 
     def construct_mean_field_shift(self, hamiltonian, trial):
         """Compute mean field shift.

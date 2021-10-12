@@ -248,6 +248,13 @@ class AFQMCBatch(object):
             start = time.time()
 
             self.propagators.propagate_walker_batch(self.psi.walkers_batch, self.system, self.hamiltonian, self.trial, eshift)
+            self.tprop_fbias = self.propagators.tfbias
+            self.tprop_ovlp = self.propagators.tovlp
+            self.tprop_update = self.propagators.tupdate
+            self.tprop_gf = self.propagators.tgf
+            self.tprop_vhs = self.propagators.tvhs
+            self.tprop_gemm = self.propagators.tgemm
+
 
             rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
@@ -299,15 +306,21 @@ class AFQMCBatch(object):
                 print("# End Time: {:s}".format(time.asctime()))
                 print("# Running time : {:.6f} seconds"
                       .format((time.time() - self._init_time)))
-                print("# Timing breakdown (per processor, per call, calls):")
+                print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep, nsteps, nblocks))
+                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_fbias/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_vhs/(nblocks*nsteps), nsteps, nblocks))
+                print("#     - Green's Function: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gf/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -          Overlap: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_ovlp/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -  GEMM operations: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gemm/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
-                print("# -     Other Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
-                print("# -       Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
+                print("#       -     Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_comm/(npcon*nblocks), npcon, nblocks))
+                print("#       - Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc_non_comm/(npcon*nblocks), npcon, nblocks))
 
 
     def determine_dtype(self, propagator, system):
@@ -346,6 +359,14 @@ class AFQMCBatch(object):
     def setup_timers(self):
         self.tortho = 0
         self.tprop = 0
+
+        self.tprop_fbias = 0.0
+        self.tprop_ovlp = 0.0
+        self.tprop_update = 0.0
+        self.tprop_gf = 0.0
+        self.tprop_vhs = 0.0
+        self.tprop_gemm = 0.0
+
         self.testim = 0
         self.tpopc = 0
         self.tpopc_comm = 0

@@ -30,7 +30,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
                                                            comm=comm,
                                                            verbose=verbose)
-        ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts)
+        ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
     elif ham_opts['name'] == 'Hubbard':
         ham = Hubbard(ham_opts, verbose)
     elif ham_opts['name'] == 'UEG':

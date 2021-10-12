@@ -19,7 +19,7 @@ class MultiSlater(object):
                  init=None, verbose=False, orbs=None):
         self.verbose = verbose
         if verbose:
-            print ("# Parsing MultiSlater trial wavefunction input options.")
+            print ("# Parsing input options for trial_wavefunction.MultiSlater.")
         init_time = time.time()
         self.name = "MultiSlater"
         self.type = "MultiSlater"
@@ -103,7 +103,7 @@ class MultiSlater(object):
         if write_wfn:
             self.write_wavefunction(filename=output_file)
         if verbose:
-            print ("# Finished setting up trial wavefunction.")
+            print ("# Finished setting up trial_wavefunction.MultiSlater.")
     
     def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
@@ -169,7 +169,7 @@ class MultiSlater(object):
         if self.verbose:
             print("# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                    %(self.energy.real, self.e1b.real, self.e2b.real))
-            print("# Time to evaluate local energy: %f s"%(time.time()-start))
+            print("# Time to evaluate local energy: {} s".format(time.time()-start))
 
     def from_phmsd(self, nup, ndown, nbasis, wfn, orbs):
         ndets = len(wfn[0])
@@ -424,7 +424,7 @@ class MultiSlater(object):
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
-                print("# Time to half rotate {} seconds.".format(time.time()-start_time))
+                print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
 
         if comm is not None:
             comm.barrier()

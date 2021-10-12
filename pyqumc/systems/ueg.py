@@ -42,7 +42,7 @@ class UEG(object):
 
     def __init__(self, options, verbose=False):
         if verbose:
-            print("# Parsing input options.")
+            print("# Parsing input options for systems.UEG.")
         self.name = "UEG"
         self.nup = options.get('nup')
         self.ndown = options.get('ndown')

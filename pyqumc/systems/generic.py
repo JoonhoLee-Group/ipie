@@ -47,11 +47,15 @@ class Generic(object):
 
     def __init__(self, nelec, options = None, verbose=False):
         if verbose:
-            print("# Parsing input options.")
+            print("# Parsing input options for systems.Generic.")
         self.name = "Generic"
         self.verbose = verbose
         self.nup, self.ndown = nelec
         self.nelec = nelec
         self.ne = self.nup + self.ndown
+        
+        if verbose:
+            print("# Number of alpha electrons: %d"%(self.nup))
+            print("# Number of beta electrons: %d"%(self.ndown))
 
         self.ktwist = numpy.array([None])

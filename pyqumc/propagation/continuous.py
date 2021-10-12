@@ -2,6 +2,7 @@ import cmath
 import math
 import numpy
 import sys
+import time
 from pyqumc.estimators.local_energy import local_energy
 from pyqumc.propagation.operations import kinetic_real
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
@@ -13,7 +14,7 @@ class Continuous(object):
     """
     def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
-            print("# Parsing propagator input options.")
+            print("# Parsing input options for propagation.Continuous.")
             print("# Using continuous Hubbard--Stratonovich transformations.")
         # Input options
         self.free_projection = options.get('free_projection', False)
@@ -86,6 +87,13 @@ class Continuous(object):
                 self.propagate_walker = self.propagate_walker_phaseless
         self.verbose = verbose
 
+        self.tfbias = 0.0
+        self.tovlp = 0.0
+        self.tupdate = 0.0
+        self.tgf = 0.0
+        self.tvhs = 0.0
+        self.tgemm = 0.0
+
     @property
     def mf_const_fac(self):
         return math.exp(self.log_mf_const_fac)
@@ -154,7 +162,9 @@ class Continuous(object):
         # Optimal force bias.
         xbar = numpy.zeros(hamiltonian.nfields)
         if self.force_bias:
+            start_time = time.time()
             xbar = self.propagator.construct_force_bias(hamiltonian, walker, trial)
+            self.tfbias += time.time() - start_time
 
         idx_to_rescale = xbar > 1.0
         absxbar = numpy.absolute(xbar)
@@ -172,7 +182,10 @@ class Continuous(object):
 
 
         # Operator terms contributing to propagator.
+        start_time = time.time()
         VHS = self.propagator.construct_VHS(hamiltonian, xshifted)
+        self.tvhs += time.time() - start_time
+        start_time = time.time()
         if len(VHS.shape) == 3:
             # 2.b Apply two-body
             self.apply_exponential(walker.phi[:,:system.nup], VHS[0])
@@ -183,6 +196,7 @@ class Continuous(object):
             self.apply_exponential(walker.phi[:,:system.nup], VHS)
             if system.ndown > 0:
                 self.apply_exponential(walker.phi[:,system.nup:], VHS)
+        self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
 
@@ -283,7 +297,9 @@ class Continuous(object):
         # Optimal force bias.
         xbar = numpy.zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
+            start_time = time.time()
             xbar = self.propagator.construct_force_bias_batch(hamiltonian, walker_batch, trial)
+            self.tfbias += time.time() - start_time
 
         # rescaled_xbar = xbar > 1.0
         # xbar_rescaled = xbar / numpy.absolute(xbar)
@@ -308,11 +324,15 @@ class Continuous(object):
         cfb = numpy.einsum("wx,wx->w",xi,xbar) - 0.5*numpy.einsum("wx,wx->w",xbar,xbar)
 
         # Operator terms contributing to propagator.
+        start_time = time.time()
         VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted)
+        self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
+        start_time = time.time()
         for iw in range (walker_batch.nwalkers):
             # 2.b Apply two-body
             self.apply_exponential(walker_batch.phi[iw], VHS[iw])
+        self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
 
@@ -331,20 +351,30 @@ class Continuous(object):
         Returns
         -------
         """
+        start_time = time.time()
         ovlp = walker_batch.greens_function(trial)
+        self.tgf += time.time() - start_time
         # 2. Update Slater matrix
         # 2.a Apply one-body
+        start_time = time.time()
         for iw in range(walker_batch.nwalkers):
             kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+        self.tgemm += time.time() - start_time
         # 2.b Apply two-body
         (cmf, cfb, xmxbar) = self.two_body_propagator_batch(walker_batch, system, hamiltonian, trial)
         # 2.c Apply one-body
+        start_time = time.time()
         for iw in range(walker_batch.nwalkers):
             kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+        self.tgemm += time.time() - start_time
 
         # Now apply phaseless approximation
+        start_time = time.time()
         ovlp_new = walker_batch.calc_overlap(trial)
+        self.tovlp += time.time() - start_time
+        start_time = time.time()
         self.update_weight_batch(system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
+        self.tupdate += time.time() - start_time
     
     def update_weight_hybrid_batch(self, system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
         ovlp_ratio = ovlp_new / ovlp
