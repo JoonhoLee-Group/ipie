@@ -308,7 +308,7 @@ class AFQMCBatch(object):
                       .format((time.time() - self._init_time)))
                 print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
+                print("# - Step: {:.6f} s / call for {} calls in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_fbias/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_vhs/(nblocks*nsteps), nsteps, nblocks))
