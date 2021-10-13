@@ -42,6 +42,7 @@ information in `afqmc.h5`.
         "qmc": {
             "dt": 0.005,
             "nsteps": 10,
+            "batched": true,
             "blocks": 1000,
             "nwalkers": 100,
             "pop_control_freq": 5
