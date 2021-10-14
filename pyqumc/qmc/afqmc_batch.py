@@ -206,6 +206,7 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
+            print("# Available memory on the node is {} MB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -226,8 +227,6 @@ class AFQMCBatch(object):
         if psi is not None:
             self.psi = psi
         self.setup_timers()
-        # w0 = self.psi.walkers[0]
-        # energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
         eshift = 0.0
 
         # Calculate estimates for initial distribution of walkers.
@@ -254,7 +253,6 @@ class AFQMCBatch(object):
             self.tprop_gf = self.propagators.tgf
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
-
 
             rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:

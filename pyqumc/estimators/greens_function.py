@@ -1,6 +1,71 @@
 import numpy
 import scipy.linalg
 
+# Later we will add walker kinds as an input too
+def get_greens_function(trial):
+    """Wrapper to select the calc_overlap function
+
+    Parameters
+    ----------
+    trial : class
+        Trial wavefunction object.
+
+    Returns
+    -------
+    propagator : class or None
+        Propagator object.
+    """
+
+    if trial.name == "MultiSlater" and trial.ndets == 1:
+        compute_greens_function = greens_function_single_det
+    else:
+        compute_greens_function = None
+
+    return compute_greens_function
+
+def greens_function(walker_batch, trial):
+    if trial.name == "MultiSlater" and trial.ndets == 1:
+        return greens_function_single_det(walker_batch, trial)
+    else:
+        return None
+
+def greens_function_single_det(walker_batch, trial):
+    """Compute walker's green's function.
+
+    Parameters
+    ----------
+    walker_batch : object
+        SingleDetWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    Returns
+    -------
+    det : float64 / complex128
+        Determinant of overlap matrix.
+    """
+    nup = walker_batch.nup
+    ndown = walker_batch.ndown
+
+    det = []
+
+    for iw in range(walker_batch.nwalkers):
+        ovlp = numpy.dot(walker_batch.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
+        ovlp_inv = scipy.linalg.inv(ovlp)
+        walker_batch.Ghalfa[iw] = numpy.dot(ovlp_inv, walker_batch.phi[iw][:,:nup].T)
+        walker_batch.Ga[iw] = numpy.dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
+        sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
+        sign_b, log_ovlp_b = 1.0, 0.0
+        if ndown > 0:
+            ovlp = numpy.dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
+            sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
+            walker_batch.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), walker_batch.phi[iw][:,nup:].T)
+            walker_batch.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
+        det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
+    det = numpy.array(det, dtype=numpy.complex128)
+
+    return det
+
+
 # Green's functions
 def gab(A, B):
     r"""One-particle Green's function.

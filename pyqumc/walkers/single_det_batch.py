@@ -6,6 +6,8 @@ from pyqumc.walkers.stack import FieldConfig
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
+from pyqumc.estimators.greens_function import greens_function_single_det
+from pyqumc.propagation.overlap import calc_overlap_single_det
 
 class SingleDetWalkerBatch(WalkerBatch):
     """UHF style walker.
@@ -36,7 +38,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.inv_ovlpb = numpy.zeros((self.nwalkers, system.ndown, system.ndown), dtype=numpy.complex128)
 
         self.inverse_overlap(trial)
-        self.ot = self.calc_overlap(trial)
+        self.ot = calc_overlap_single_det(self, trial)
         self.le_oratio = 1.0
         self.ovlp = self.ot
 
@@ -49,9 +51,8 @@ class SingleDetWalkerBatch(WalkerBatch):
                                  dtype=numpy.complex128)
         self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
                                  dtype=numpy.complex128)
-        self.greens_function(trial)
-        # self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
-        # self.buff_size /= float(self.nwalkers)
+        
+        greens_function_single_det(self, trial)
 
         # Grab objects that are walker specific
         # WARNING!! One has to add names to the list here if new objects are added
@@ -108,60 +109,6 @@ class SingleDetWalkerBatch(WalkerBatch):
                     scipy.linalg.inv((trial.psi[:,nup:].conj()).T.dot(self.phi[iw][:,nup:]))
                 )
 
-    def update_inverse_overlap(self, trial, vtup, vtdown, i):
-        """Update inverse overlap matrix given a single row update of walker.
-
-        Parameters
-        ----------
-        trial : object
-            Trial wavefunction object.
-        vtup : :class:`numpy.ndarray`
-            Update vector for spin up sector.
-        vtdown : :class:`numpy.ndarray`
-            Update vector for spin down sector.
-        i : int
-            Basis index.
-        """
-        nup = self.nup
-        ndown = self.ndown
-
-        for iw in range(self.nwalkers):
-            self.inv_ovlpa[iw] = (
-                sherman_morrison(self.inv_ovlp[iw][0], trial.psi[i,:nup].conj(), vtup[iw])
-            )
-            self.inv_ovlpb[iw] = (
-                sherman_morrison(self.inv_ovlp[iw][1], trial.psi[i,nup:].conj(), vtdown[iw])
-            )
-
-    def calc_overlap(self, trial):
-        """Caculate overlap with trial wavefunction.
-
-        Parameters
-        ----------
-        trial : object
-            Trial wavefunction object.
-
-        Returns
-        -------
-        ot : float / complex
-            Overlap.
-        """
-        na = self.ndown
-        nb = self.ndown
-        ot = numpy.zeros(self.nwalkers, dtype=numpy.complex128)
-        for iw in range(self.nwalkers):
-            Oalpha = numpy.dot(trial.psi[:,:na].conj().T, self.phi[iw][:,:na])
-            sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
-            logdet_b, sign_b = 0.0, 1.0
-            if nb > 0:
-                Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[iw][:,na:])
-                sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
-
-            ot[iw] = sign_a*sign_b*numpy.exp(logdet_a+logdet_b-self.log_shift[iw])
-
-
-        return ot
-
     def reortho(self):
         """reorthogonalise walkers.
 
@@ -205,56 +152,3 @@ class SingleDetWalkerBatch(WalkerBatch):
             self.ot[iw] = self.ot[iw] / detR[iw]
             self.ovlp[iw] = self.ot[iw]
         return detR
-
-    def greens_function(self, trial):
-        """Compute walker's green's function.
-
-        Parameters
-        ----------
-        trial : object
-            Trial wavefunction object.
-        Returns
-        -------
-        det : float64 / complex128
-            Determinant of overlap matrix.
-        """
-        nup = self.nup
-        ndown = self.ndown
-
-        det = []
-
-        for iw in range(self.nwalkers):
-            ovlp = numpy.dot(self.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
-            ovlp_inv = scipy.linalg.inv(ovlp)
-            self.Ghalfa[iw] = numpy.dot(ovlp_inv, self.phi[iw][:,:nup].T)
-            self.Ga[iw] = numpy.dot(trial.psi[:,:nup].conj(), self.Ghalfa[iw])
-            sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
-            sign_b, log_ovlp_b = 1.0, 0.0
-            if ndown > 0:
-                ovlp = numpy.dot(self.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
-                sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
-                self.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), self.phi[iw][:,nup:].T)
-                self.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), self.Ghalfb[iw])
-            det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-self.log_shift[iw])]
-        det = numpy.array(det, dtype=numpy.complex128)
-
-        return det
-
-    def rotated_greens_function(self):
-        """Compute "rotated" walker's green's function.
-
-        Green's function without trial wavefunction multiplication.
-
-        Parameters
-        ----------
-        trial : object
-            Trial wavefunction object.
-        """
-        nup = self.nup
-        ndown = self.ndown
-        for iw in range(self.nwalkers):
-            self.Ghalfa[iw] = self.phi[iw][:,:nup].dot(self.inv_ovlp[iw][0])
-            self.Ghalfb[iw] = numpy.zeros(self.Ghalfa[iw].shape)
-            if (ndown>0):
-                self.Ghalfb[iw] = self.phi[iw][:,nup:].dot(self.inv_ovlp[iw][1])
-

@@ -7,9 +7,11 @@ from pyqumc.trial_wavefunction.multi_slater import MultiSlater
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.utils.misc import dotdict
+from pyqumc.propagation.overlap import calc_overlap_single_det
 from pyqumc.estimators.greens_function import gab
 from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.local_energy_batch import local_energy_batch
+from pyqumc.estimators.greens_function import greens_function_single_det
 
 @pytest.mark.unit
 def test_buff_size():
@@ -106,7 +108,7 @@ def test_reortho():
 
     # Test Green's function
     ovlp = walker.calc_overlap(trial)
-    ovlp_batch = walkers_batch.calc_overlap(trial)
+    ovlp_batch = calc_overlap_single_det(walkers_batch,trial)
 
     assert walker.ot == pytest.approx(ovlp)
     assert walker.ot == pytest.approx(ovlp_batch[0])
