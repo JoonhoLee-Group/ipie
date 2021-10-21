@@ -23,7 +23,7 @@ from pyqumc.utils.misc import (
         )
 from pyqumc.utils.io import  to_json, serialise, get_input_value
 from pyqumc.utils.mpi import get_shared_comm
-from pyqumc.walkers.handler_batch import WalkersBatch
+from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
 
 
 class AFQMCBatch(object):
@@ -197,7 +197,7 @@ class AFQMCBatch(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
-        self.psi = WalkersBatch(self.system, self.hamiltonian, self.trial,
+        self.psi = WalkerBatchHandler(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
                            nprop_tot=self.estimators.nprop_tot,
@@ -247,6 +247,7 @@ class AFQMCBatch(object):
             start = time.time()
 
             self.propagators.propagate_walker_batch(self.psi.walkers_batch, self.system, self.hamiltonian, self.trial, eshift)
+            
             self.tprop_fbias = self.propagators.tfbias
             self.tprop_ovlp = self.propagators.tovlp
             self.tprop_update = self.propagators.tupdate

@@ -18,6 +18,8 @@ def get_greens_function(trial):
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
         compute_greens_function = greens_function_single_det
+    elif trial.name == "MultiSlater" and trial.ndets > 1:
+        compute_greens_function = greens_function_multi_det
     else:
         compute_greens_function = None
 
@@ -26,6 +28,8 @@ def get_greens_function(trial):
 def greens_function(walker_batch, trial):
     if trial.name == "MultiSlater" and trial.ndets == 1:
         return greens_function_single_det(walker_batch, trial)
+    elif trial.name == "MultiSlater" and trial.ndets > 1:
+        return greens_function_multi_det(walker_batch, trial)
     else:
         return None
 
@@ -64,6 +68,60 @@ def greens_function_single_det(walker_batch, trial):
     det = numpy.array(det, dtype=numpy.complex128)
 
     return det
+
+def greens_function_multi_det(walker_batch, trial):
+    """Compute walker's green's function.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    Returns
+    -------
+    det : float64 / complex128
+        Determinant of overlap matrix.
+    """
+    nup = walker_batch.nup
+    walker_batch.Ga.fill(0.0)
+    walker_batch.Gb.fill(0.0)
+    tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype = numpy.complex128)
+    for iw in range(walker_batch.nwalkers):
+        for (ix, detix) in enumerate(trial.psi):
+            # construct "local" green's functions for each component of psi_T
+            Oup = numpy.dot(walker_batch.phi[iw,:,:nup].T, detix[:,:nup].conj())
+            # det(A) = det(A^T)
+            sign_a, logdet_a = numpy.linalg.slogdet(Oup)
+            walker_batch.det_ovlpas[iw,ix] = sign_a*numpy.exp(logdet_a)
+            if abs(walker_batch.det_ovlpas[iw,ix]) < 1e-16:
+                continue
+
+            Odn = numpy.dot(walker_batch.phi[iw,:,nup:].T, detix[:,nup:].conj())
+            sign_b, logdet_b = numpy.linalg.slogdet(Odn)
+            walker_batch.det_ovlpbs[iw,ix] = sign_b*numpy.exp(logdet_b)
+            ovlp = walker_batch.det_ovlpas[iw,ix] * walker_batch.det_ovlpbs[iw,ix]
+            if abs(ovlp) < 1e-16:
+                continue
+
+            inv_ovlp = scipy.linalg.inv(Oup)
+            walker_batch.Gihalfa[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phi[iw][:,:nup].T)
+            walker_batch.Gia[iw,ix,:,:] = numpy.dot(detix[:,:nup].conj(), walker_batch.Gihalfa[iw,ix,:,:])
+
+            inv_ovlp = scipy.linalg.inv(Odn)
+            walker_batch.Gihalfb[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phi[iw][:,nup:].T)
+            walker_batch.Gib[iw,ix,:,:] = numpy.dot(detix[:,nup:].conj(),walker_batch.Gihalfb[iw,ix,:,:])
+
+            tot_ovlps[iw] += trial.coeffs[ix].conj()*ovlp
+            walker_batch.det_weights[iw,ix] = trial.coeffs[ix].conj() * ovlp
+
+            walker_batch.Ga[iw] += walker_batch.Gia[iw,ix,:,:] * walker_batch.det_ovlpas[iw,ix] * trial.coeffs[ix].conj() 
+            walker_batch.Gb[iw] += walker_batch.Gib[iw,ix,:,:] * walker_batch.det_ovlpbs[iw,ix] * trial.coeffs[ix].conj()
+        
+        walker_batch.Ga[iw] /= tot_ovlps[iw]
+        walker_batch.Gb[iw] /= tot_ovlps[iw]
+
+    return tot_ovlps
 
 
 # Green's functions

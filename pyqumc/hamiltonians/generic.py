@@ -77,7 +77,7 @@ class Generic(object):
         self._alt_convention = False # chemical potential sign convention
 
         self.ecore = ecore
-        self.chol_vecs = chol
+        self.chol_vecs = chol # [M^2, nchol]
 
         if self.exact_eri:
             if self.verbose:

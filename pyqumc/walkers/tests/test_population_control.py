@@ -13,7 +13,7 @@ from pyqumc.systems.generic import Generic
 from pyqumc.hamiltonians.generic import Generic as HamGeneric
 from pyqumc.utils.mpi import get_shared_comm
 from pyqumc.utils.io import  get_input_value
-from pyqumc.walkers.handler_batch import WalkersBatch
+from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
 from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.walkers.handler import Walkers
@@ -24,7 +24,7 @@ from pyqumc.utils.testing import (
         )
 
 @pytest.mark.unit
-def test_pair_branch():
+def test_pair_branch_batch():
     import mpi4py
     mpi4py.rc.recv_mprobe = False
     from mpi4py import MPI
@@ -55,7 +55,7 @@ def test_pair_branch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkersBatch(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, verbose=False, comm=comm)
 
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
@@ -82,7 +82,7 @@ def test_pair_branch():
     assert pytest.approx(handler_batch.walkers_batch.phi[iw][0,0]) == -0.0005573508035052743+0.12432250308987346j
 
 @pytest.mark.unit
-def test_comb():
+def test_comb_batch():
     import mpi4py
     mpi4py.rc.recv_mprobe = False
     from mpi4py import MPI
@@ -113,7 +113,7 @@ def test_comb():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkersBatch(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, verbose=False, comm=comm)
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
         handler_batch.walkers_batch.reortho()
@@ -137,5 +137,5 @@ def test_comb():
     assert pytest.approx(handler_batch.walkers_batch.phi[iw][0,0]) == -0.0597200851442905-0.002353281222663805j
 
 if __name__ == '__main__':
-    test_pair_branch()
-    test_comb()
+    test_pair_branch_batch()
+    test_comb_batch()

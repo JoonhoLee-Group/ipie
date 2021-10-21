@@ -79,11 +79,9 @@ def local_energy_multi_det(system, hamiltonian, trial, Gi, weights):
     weight = 0
     energies = 0
     denom = 0
-    for w, G in zip(weights, Gi):
-        # construct "local" green's functions for each component of A
+    for idet, (w, G) in enumerate(zip(weights, Gi)):
         energies += w * numpy.array(local_energy_G(system, hamiltonian, trial, G))
         denom += w
-
     return tuple(energies/denom)
 
 def local_energy_multi_det_hh(system, Gi, weights, X, Lapi):

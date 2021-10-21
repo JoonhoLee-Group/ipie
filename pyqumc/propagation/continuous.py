@@ -171,20 +171,20 @@ class Continuous(object):
             xbar = self.propagator.construct_force_bias(hamiltonian, walker, trial)
             self.tfbias += time.time() - start_time
 
-        idx_to_rescale = xbar > 1.0
-        absxbar = numpy.absolute(xbar)
+        absxbar = numpy.abs(xbar)
+        idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
         xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
-        
+        self.nfb_trig += numpy.sum(idx_to_rescale)
+
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
         cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
         cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
-
 
         # Operator terms contributing to propagator.
         start_time = time.time()
@@ -238,6 +238,7 @@ class Continuous(object):
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
+        eoriginal = ehyb
         if ehyb.real > eshift.real + self.ebound:
             ehyb = eshift.real+self.ebound+1j*ehyb.imag
             self.nhe_trig += 1
@@ -252,10 +253,13 @@ class Continuous(object):
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
+        eoriginal = ehyb.copy()
         idx = ehyb.real > eshift.real + self.ebound
         ehyb[idx] = eshift.real+self.ebound+1j*ehyb[idx].imag
+        self.nhe_trig += numpy.sum(idx)
         idx = ehyb.real < eshift.real - self.ebound
         ehyb[idx] = eshift.real-self.ebound+1j*ehyb[idx].imag
+        self.nhe_trig += numpy.sum(idx)
         return ehyb
 
     def apply_bound_local_energy(self, eloc, eshift):
@@ -301,17 +305,19 @@ class Continuous(object):
             xbar = - self.propagator.sqrt_dt * (1j*self.propagator.vbias_batch-self.propagator.mf_shift)
             self.tfbias += time.time() - start_time
 
-        idx_to_rescale = xbar > 1.0
-        absxbar = numpy.absolute(xbar)
+        absxbar = numpy.abs(xbar)
+        idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
         xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
 
+        self.nfb_trig += numpy.sum(idx_to_rescale)
+
         # Normally distrubted auxiliary fields.
         xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)
         xshifted = xi - xbar
-        
+
         # Constant factor arising from force bias and mean field shift
         cmf = -self.sqrt_dt * numpy.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
@@ -386,7 +392,6 @@ class Continuous(object):
         tobeinstantlykilled = numpy.isinf(magn)
         tosurvive = numpy.isfinite(magn)
         
-        # print(ovlp_new.shape, walker_batch.ot.shape)
         walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
         walker_batch.weight[tobeinstantlykilled].fill(0.0)
 
@@ -440,10 +445,10 @@ class Continuous(object):
         importance_function = (
                 cmath.exp(-self.dt*(0.5*(hybrid_energy+walker.hybrid_energy)-eshift))
         )
+
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
         (magn, phase) = cmath.polar(importance_function)
         walker.hybrid_energy = hybrid_energy
-
         if not math.isinf(magn):
             # Determine cosine phase from Arg(<psi_T|B(x-\bar{x})|phi>/<psi_T|phi>)
             # Note this doesn't include exponential factor from shifting

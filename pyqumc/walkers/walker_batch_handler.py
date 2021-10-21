@@ -7,13 +7,14 @@ import scipy.linalg
 import sys
 import time
 from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
+from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.walkers.stack import FieldConfig
 from pyqumc.utils.io import get_input_value
 from pyqumc.utils.misc import update_stack
 from mpi4py import MPI
 
 
-class WalkersBatch(object):
+class WalkerBatchHandler(object):
     """Container for groups of walkers which make up a wavefunction.
 
     Parameters
@@ -45,15 +46,25 @@ class WalkersBatch(object):
             print("# Setting up walkers.handler_batch.Walkers.")
             print("# qmc.nwalkers = {}".format(self.nwalkers))
             print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
-        assert(trial.name == 'MultiSlater' and trial.ndets == 1)
-        if verbose:
-            print("# Using single det walker with msd wavefunction.")
-        self.walker_type = 'SD'
-        if (len(trial.psi.shape) == 3):
-            trial.psi = trial.psi[0]
-        self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, 
-                            nwalkers = self.nwalkers, walker_opts=walker_opts,
-                            index=0, nprop_tot=nprop_tot,nbp=nbp)
+
+        assert(trial.name == 'MultiSlater')
+        
+        if (trial.ndets == 1):
+            if verbose:
+                print("# Using single det walker with a single det trial.")
+            self.walker_type = 'SD'
+            if (len(trial.psi.shape) == 3):
+                trial.psi = trial.psi[0]
+            self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, 
+                                nwalkers = self.nwalkers, walker_opts=walker_opts,
+                                index=0, nprop_tot=nprop_tot,nbp=nbp)
+        elif (trial.ndets > 1):
+            if verbose:
+                print("# Using single det walker with a multi det trial.")
+            self.walker_type = 'SD'
+            self.walkers_batch = MultiDetTrialWalkerBatch(system, hamiltonian, trial, 
+                                nwalkers = self.nwalkers, walker_opts=walker_opts,
+                                index=0, nprop_tot=nprop_tot,nbp=nbp)
 
         self.buff_size = self.walkers_batch.buff_size
 

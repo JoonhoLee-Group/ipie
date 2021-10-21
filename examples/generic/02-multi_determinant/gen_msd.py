@@ -10,7 +10,11 @@ from pyqumc.utils.io import (
         write_input
         )
 
-mol = gto.M(atom=[('N', 0, 0, 0), ('N', (0,0,3.0))], basis='sto-3g', verbose=3,
+nocca = 4
+noccb = 2
+
+mol = gto.M(atom=[('N', 0, 0, 0), ('N', (0,0,3.0))], basis='ccpvdz', verbose=3,
+            spin = nocca-noccb,
             unit='Bohr')
 mf = scf.RHF(mol)
 mf.chkfile = 'scf.chk'
@@ -27,7 +31,7 @@ h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo,
                                             chol_cut=1e-5, verbose=True)
 write_qmcpack_dense(h1e, chol.T.copy(), nelec,
                     h1e.shape[-1], enuc=enuc, filename='afqmc.h5')
-coeff, occa, occb = zip(*fci.addons.large_ci(fcivec, M, (3,3),
+coeff, occa, occb = zip(*fci.addons.large_ci(fcivec, M, (nocca,noccb),
                                          tol=0.1, return_strs=False))
 core = [i for i in range(mc.ncore)]
 occa = [numpy.array(core + [o + mc.ncore for o in oa]) for oa in occa]
@@ -42,9 +46,17 @@ occb = numpy.array(occb)[ixs]
 nmo = mf.mo_coeff.shape[-1]
 rdm = mc.make_rdm1()
 eigs, eigv = numpy.linalg.eigh(rdm)
-psi0a = eigv[::-1,:mol.nelec[0]].copy()
-psi0b = eigv[::-1,:mol.nelec[1]].copy()
+psi0a = eigv[::-1,occa[0]].copy()
+psi0b = eigv[::-1,occb[0]].copy()
+
+nocca = mol.nelec[0]
+noccb = mol.nelec[1]
+nbsf = psi0a.shape[0]
+
+psi0a += 1e-1 * numpy.random.randn(nocca*nbsf).reshape(nbsf,nocca)
+psi0b += 1e-1 * numpy.random.randn(noccb*nbsf).reshape(nbsf,noccb)
+
 psi0 = [psi0a, psi0b]
 write_qmcpack_wfn('afqmc.h5', (coeff,occa,occb), 'uhf',
                   mol.nelec, nmo, init=psi0, mode='a')
-write_input('input.json', 'afqmc.h5', 'afqmc.h5')
+#write_input('input.json', 'afqmc.h5', 'afqmc.h5')
