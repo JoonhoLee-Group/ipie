@@ -65,7 +65,7 @@ def test_walker_overlap():
         gb = numpy.dot(init[:,system.nup:], numpy.dot(isb, psib.conj().T)).T
         ovlp = numpy.linalg.det(sa)*numpy.linalg.det(sb)
         ovlp_sum += c.conj()*ovlp
-        walk_ovlp = walker.ovlps[idet]
+        walk_ovlp = walker.ovlpsa[idet] * walker.ovlpsb[idet]
         assert ovlp == pytest.approx(walk_ovlp)
         assert numpy.linalg.norm(ga-walker.Gi[idet,0]) == pytest.approx(0)
         assert numpy.linalg.norm(gb-walker.Gi[idet,1]) == pytest.approx(0)

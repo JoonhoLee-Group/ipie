@@ -90,8 +90,9 @@ class MultiSlater(object):
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
         self._rchol = None
-        self._rchol_a = None
-        self._rchol_b = None
+        self._rchola = None
+        self._rcholb = None
+        self.half_rotated_chol = False
         self._UVT = None
         self._eri = None
         self._mem_required = 0.0
@@ -425,7 +426,7 @@ class MultiSlater(object):
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
-
+        self.half_rotated_chol = True
         if comm is not None:
             comm.barrier()
         # self._rot_hs_pot = self._rchol

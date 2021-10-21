@@ -2,7 +2,7 @@ import numpy
 try:
     from pyscf import lib
     einsum = lib.einsum
-except (ImportError,ValueError):
+except (ImportError,ValueError,OSError):
     einsum = numpy.einsum
 
 # Assume it's generic

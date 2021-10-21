@@ -73,7 +73,8 @@ def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
             wfn = (coeffs, wfn)
         trial = MultiSlater(system, hamiltonian, wfn, init=psi0, options=options, verbose=verbose)
         if system.name == 'Generic':
-            trial.half_rotate(system, hamiltonian, scomm)
+            if (trial.ndets == 1):
+                trial.half_rotate(system, hamiltonian, scomm)
         rediag = options.get('recompute_ci', False)
         if rediag:
             if comm.rank == 0:

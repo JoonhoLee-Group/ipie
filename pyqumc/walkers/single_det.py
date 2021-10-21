@@ -163,12 +163,11 @@ class SingleDetWalker(Walker):
         ot : float / complex
             Overlap.
         """
-        na = self.ndown
+        na = self.nup
         Oalpha = numpy.dot(trial.psi[:,:na].conj().T, self.phi[:,:na])
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
-        nb = self.ndown
         logdet_b, sign_b = 0.0, 1.0
-        if nb > 0:
+        if self.ndown > 0:
             Obeta = numpy.dot(trial.psi[:,na:].conj().T, self.phi[:,na:])
             sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
