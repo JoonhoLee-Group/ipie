@@ -4,7 +4,7 @@ import scipy.linalg
 from pyqumc.estimators.local_energy import local_energy_multi_det
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
-from pyqumc.propagation.overlap import calc_overlap_multi_det
+from pyqumc.propagation.overlap import get_calc_overlap
 from pyqumc.estimators.greens_function import greens_function_multi_det
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
@@ -51,7 +51,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
-        self.ot = calc_overlap_multi_det(self,trial)
+        calc_overlap = get_calc_overlap(trial)
+
+        self.ot = calc_overlap(self,trial)
         # TODO: fix name.
         self.ovlp = self.ot
         self.le_oratio = 1.0

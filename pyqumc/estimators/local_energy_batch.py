@@ -20,8 +20,6 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
         for iwalker, (w, Ga, Gb, Ghalfa, Ghalfb) in enumerate(zip(walker_batch.det_weights, 
                             walker_batch.Gia, walker_batch.Gib, 
                             walker_batch.Gihalfa, walker_batch.Gihalfb)):
-            numpy.set_printoptions(precision=5, suppress=True)
-            # print(Ga)
             denom = 0.0 + 0.0j
             numer0 = 0.0 + 0.0j
             numer1 = 0.0 + 0.0j

@@ -3,6 +3,18 @@ import numpy
 import scipy.linalg
 import time
 
+def minor_mask(A, i, j):
+    r"""computing matrix minor, i-th row and j-th column removed"""
+    mask = numpy.ones_like(A, dtype=bool)
+    mask[i, :] = False
+    mask[:, j] = False
+
+    minor = A[mask].reshape(A.shape[0] - 1, A.shape[1] - 1)
+
+    del mask
+
+    return minor
+
 def sherman_morrison(Ainv, u, vt):
     r"""Sherman-Morrison update of a matrix inverse:
 

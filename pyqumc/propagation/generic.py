@@ -102,10 +102,13 @@ class GenericContinuous(object):
                                         (trial.G[0]+trial.G[1]).ravel())
         return mf_shift
 
-    def construct_mean_field_shift_multi_det(self, system, trial):
-        nb = system.nbasis
-        mf_shift = [trial.contract_one_body(Vpq.reshape(nb,nb)) for Vpq in system.chol_vecs.T]
-        mf_shift = 1j*numpy.array(mf_shift)
+    def construct_mean_field_shift_multi_det(self, hamiltonian, trial):
+        if (trial.G != None):
+            mf_shift = self.construct_mean_field_shift(hamiltonian,trial)
+        else:
+            nb = hamiltonian.nbasis
+            mf_shift = [trial.contract_one_body(Vpq.reshape(nb,nb)) for Vpq in hamiltonian.chol_vecs.T]
+            mf_shift = 1j*numpy.array(mf_shift)
         return mf_shift
 
     def construct_one_body_propagator(self, hamiltonian, dt):

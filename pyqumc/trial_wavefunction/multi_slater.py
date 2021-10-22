@@ -6,7 +6,7 @@ from pyqumc.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
 from pyqumc.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
-from pyqumc.estimators.ci import get_hmatel, get_one_body_matel
+from pyqumc.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
 from pyqumc.utils.io import (
         get_input_value,
         write_qmcpack_wfn
@@ -61,7 +61,11 @@ class MultiSlater(object):
             else:
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
-        self.ndets = len(self.coeffs)
+
+        self.ndets = options.get('ndets', len(self.coeffs))
+        if self.verbose:
+            print("# Setting ndets: {}".format(self.ndets))
+
         if self.ndets == 1:
             # self.psi = self.psi[0]
             self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
@@ -83,6 +87,68 @@ class MultiSlater(object):
                 self.init = self.psi[0].copy()
             else:
                 self.init = self.psi.copy()
+
+        if len(self.psi.shape) == 3: # this is for Wick's theorem
+            if verbose:
+                print("# Setting the first determinant in"
+                      " expansion as the reference wfn for Wick's theorem.")
+            self.psi0 = self.psi[0].copy()
+            if verbose:
+                print("# Setting additional member variables for Wick's theorem")
+            d0a = self.occa[0]
+            d0b = self.occb[0]
+            self.cre_a = [[]] # one empty list as a member to account for the reference state
+            self.anh_a = [[]] # one empty list as a member to account for the reference state
+            self.cre_b = [[]] # one empty list as a member to account for the reference state
+            self.anh_b = [[]] # one empty list as a member to account for the reference state
+            self.phase_a = [1.0] # one empty list as a member to account for the reference state
+            self.phase_b = [1.0] # one empty list as a member to account for the reference state
+            for j in range(1, self.ndets):
+                dja = self.occa[j]
+                djb = self.occb[j]
+                
+                anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
+                cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
+                
+                anh_b = list(set(djb)-set(d0b))
+                cre_b = list(set(d0b)-set(djb))
+
+                cre_a.sort()
+                cre_b.sort()
+                anh_a.sort()
+                anh_b.sort()
+
+                self.anh_a += [anh_a]
+                self.anh_b += [anh_b]
+                self.cre_a += [cre_a]
+                self.cre_b += [cre_b]
+
+                perm_a = get_perm(anh_a, cre_a, d0a, dja)
+                perm_b = get_perm(anh_b, cre_b, d0b, djb)
+                
+                if (perm_a):
+                    self.phase_a += [-1]
+                else:
+                    self.phase_a += [+1]
+
+                if (perm_b):
+                    self.phase_b += [-1]
+                else:
+                    self.phase_b += [+1]
+
+                # if (perm_a == perm_b):
+                #     phase = +1
+                # else:
+                #     phase = -1
+
+            if verbose:
+                print("# Computing 1-RDM of the trial wfn for mean-field shift")
+            start = time.time()
+            self.G = self.compute_1rdm(hamiltonian.nbasis)
+            end = time.time()
+            if verbose:
+                print("# Time to compute 1-RDM: {} s".format(end - start))
+
         self.error = False
         self.initialisation_time = time.time() - init_time
         self._nalpha = system.nup
@@ -194,21 +260,21 @@ class MultiSlater(object):
             self.psi[idet,:,:nup] = I[:,occa]
             self.psi[idet,:,nup:] = I[:,occb]
 
-    def recompute_ci_coeffs(self, system):
+    def recompute_ci_coeffs(self, nup, ndown, ham):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
         S = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
-        m = system.nbasis
-        na = system.nup
-        nb = system.ndown
+        m = ham.nbasis
+        na = nup
+        nb = ndown
         if self.ortho_expansion:
             for i in range(self.ndets):
                 for j in range(i,self.ndets):
                     di = self.spin_occs[i]
                     dj = self.spin_occs[j]
-                    H[i,j] = get_hmatel(system,di,dj)[0]
+                    H[i,j] = get_hmatel(ham,nup+ndown,di,dj)[0]
             e, ev = scipy.linalg.eigh(H, lower=False)
         else:
-            na = system.nup
+            na = nup
             for i, di in enumerate(self.psi):
                 for j, dj in enumerate(self.psi):
                     if j >= i:
@@ -222,7 +288,7 @@ class MultiSlater(object):
                                 rchol = self.rchol(i)
                             else:
                                 rchol = None
-                            H[i,j] = ovlp * local_energy(system, G,
+                            H[i,j] = ovlp * local_energy(ham, G,
                                                          Ghalf=Ghalf,
                                                          rchol=rchol)[0]
                             S[i,j] = ovlp
@@ -235,20 +301,56 @@ class MultiSlater(object):
                 # print("{} {}".format(co, cn))
         return numpy.array(ev[:,0], dtype=numpy.complex128)
 
+    def compute_1rdm(self, nbasis):
+        assert(self.ortho_expansion == True)
+        denom = numpy.sum(self.coeffs.conj() * self.coeffs)
+        Pa = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
+        Pb = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
+        P = [Pa, Pb]
+        for idet in range(self.ndets):
+            di = self.spin_occs[idet]
+            # zero excitation case
+            for iorb in range(len(di)):
+                ii, spin_ii = map_orb(di[iorb], nbasis)
+                P[spin_ii][ii,ii] += self.coeffs[idet].conj()*self.coeffs[idet]
+            for jdet in range(idet+1, self.ndets):
+                dj = self.spin_occs[jdet]
+                from_orb = list(set(dj)-set(di))
+                to_orb = list(set(di)-set(dj))
+                nex = len(from_orb)
+                if (nex > 1):
+                    continue
+                elif (nex == 1):
+                    perm = get_perm(from_orb, to_orb, di, dj)
+                    if (perm):
+                        phase = -1
+                    else:
+                        phase = 1
+                    ii, si = map_orb(from_orb[0], nbasis)
+                    aa, sa = map_orb(to_orb[0], nbasis)
+                    if (si == sa):
+                        P[si][aa,ii] += self.coeffs[jdet].conj()*self.coeffs[idet] * phase
+                        P[si][ii,aa] += self.coeffs[jdet]*self.coeffs[idet].conj() * phase
+        P[0] /= denom
+        P[1] /= denom
+        
+        return P
+
+
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0
         na = self._nalpha
         for i in range(self.ndets):
             for j in range(self.ndets):
-                cfac = self.coeffs[i].conj()*self.coeffs[j].conj()
+                cfac = self.coeffs[i].conj()*self.coeffs[j]
                 if self.ortho_expansion:
                     di = self.spin_occs[i]
                     dj = self.spin_occs[j]
                     tij = get_one_body_matel(ints,di,dj)
                     numer += cfac * tij
                     if i == j:
-                        denom += self.coeffs[i].conj()*self.coeffs[i].conj()
+                        denom += self.coeffs[i].conj()*self.coeffs[i]
                 else:
                     di = self.psi[i]
                     dj = self.psi[j]
