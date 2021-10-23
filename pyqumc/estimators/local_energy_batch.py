@@ -33,6 +33,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
                 numer1 += w[idet] * e[1]
                 numer2 += w[idet] * e[2]
                 denom += w[idet]
+            # return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
             energy += [list([numer0/denom, numer1/denom, numer2/denom])]
 
     else:

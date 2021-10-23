@@ -30,14 +30,14 @@ class GenericContinuous(object):
     """
 
     def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
-        optimised = options.get('optimised', True)
+        self.optimised = options.get('optimised', True)
         # Derived Attributes
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
         start = time.time()
         if trial.ndets > 1:
-            optimised = False
+            self.optimised = False
             self.mf_shift = (
                     self.construct_mean_field_shift_multi_det(hamiltonian, trial)
                     )
@@ -58,7 +58,7 @@ class GenericContinuous(object):
             self.vbias_batch = numpy.zeros((qmc.nwalkers, hamiltonian.nfields), dtype=numpy.complex128)
         else:
             self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
-        if optimised:
+        if self.optimised:
             if (qmc.batched):
                 self.construct_force_bias = None
                 self.construct_VHS_batch = self.construct_VHS_batch
@@ -183,7 +183,7 @@ class GenericContinuous(object):
                              for Vpq in hamiltonian.chol_vecs.T])
         return - self.sqrt_dt * (1j*vbias-self.mf_shift)
         # else:
-            # return self.construct_force_bias_slow(hamiltonian, walker, trial)
+        #     return self.construct_force_bias_slow(hamiltonian, walker, trial)
 
     def construct_VHS_slow(self, hamiltonian, shifted):
         # VHS_{ik} = \sum_{n} v_{(ik),n} (x-xbar)_n

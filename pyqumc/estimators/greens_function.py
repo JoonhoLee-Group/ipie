@@ -122,11 +122,15 @@ def greens_function_multi_det(walker_batch, trial):
             tot_ovlps[iw] += trial.coeffs[ix].conj()*ovlp
             walker_batch.det_weights[iw,ix] = trial.coeffs[ix].conj() * ovlp
 
-            walker_batch.Ga[iw] += walker_batch.Gia[iw,ix,:,:] * walker_batch.det_ovlpas[iw,ix] * trial.coeffs[ix].conj() 
-            walker_batch.Gb[iw] += walker_batch.Gib[iw,ix,:,:] * walker_batch.det_ovlpbs[iw,ix] * trial.coeffs[ix].conj()
+            walker_batch.Ga[iw] += walker_batch.Gia[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
+            walker_batch.Gb[iw] += walker_batch.Gib[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
+            # walker_batch.Ghalfa[iw] += walker_batch.Gihalfa[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
+            # walker_batch.Ghalfb[iw] += walker_batch.Gihalfb[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
         
         walker_batch.Ga[iw] /= tot_ovlps[iw]
         walker_batch.Gb[iw] /= tot_ovlps[iw]
+        # walker_batch.Ghalfa[iw] /= tot_ovlps[iw]
+        # walker_batch.Ghalfb[iw] /= tot_ovlps[iw]
 
     return tot_ovlps
 
@@ -150,10 +154,12 @@ def greens_function_multi_det_wicks(walker_batch, trial):
     nup = walker_batch.nup
     ndown = walker_batch.ndown
 
-    for iw in range(walker_batch.nwalkers):
-        walker_batch.Ga[iw].fill(0.0+0.0j)
-        walker_batch.Gb[iw].fill(0.0+0.0j)
-        
+    walker_batch.Ga.fill(0.0+0.0j)
+    walker_batch.Gb.fill(0.0+0.0j)
+    # walker_batch.Ghalfa.fill(0.0+0.0j)
+    # walker_batch.Ghalfb.fill(0.0+0.0j)
+
+    for iw in range(walker_batch.nwalkers):        
         phi = walker_batch.phi[iw] # walker wfn
 
         Oalpha = numpy.dot(trial.psi0[:,:nup].conj().T, phi[:,:nup])
@@ -163,23 +169,37 @@ def greens_function_multi_det_wicks(walker_batch, trial):
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
-        ovlpa0 = sign_a*numpy.exp(logdet_a)
-        ovlpb0 = sign_b*numpy.exp(logdet_b)
+        walker_batch.det_ovlpas[iw,0] = sign_a*numpy.exp(logdet_a)
+        walker_batch.det_ovlpbs[iw,0] = sign_b*numpy.exp(logdet_b)
+        ovlpa0 = walker_batch.det_ovlpas[iw,0]
+        ovlpab = walker_batch.det_ovlpbs[iw,0]
 
         G0, G0H = gab_spin(trial.psi0, phi, nup, ndown)
-        G0a = G0[0]
-        G0b = G0[1]
-        Q0a = numpy.eye(nbasis) - G0a
-        Q0b = numpy.eye(nbasis) - G0b
+        walker_batch.G0a[iw] = G0[0].copy()
+        walker_batch.G0b[iw] = G0[1].copy()
+        # walker_batch.Ghalf0a[iw] = G0H[0].copy()
+        # walker_batch.Ghalf0b[iw] = G0H[1].copy()
+        walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
+        walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
+
+        G0a = walker_batch.G0a[iw]
+        G0b = walker_batch.G0b[iw]
+        # Ghalf0a = walker_batch.Ghalf0a[iw]
+        # Ghalf0b = walker_batch.Ghalf0b[iw]
+        Q0a = walker_batch.Q0a[iw]
+        Q0b = walker_batch.Q0b[iw]
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
         
         walker_batch.Ga[iw] += G0a * trial.coeffs[0].conj()
         walker_batch.Gb[iw] += G0b * trial.coeffs[0].conj()
+        
+        # walker_batch.Ghalfa[iw] += Ghalf0a * trial.coeffs[0].conj()
+        # walker_batch.Ghalfb[iw] += Ghalf0b * trial.coeffs[0].conj()
 
-        CIa = numpy.zeros((nbasis,nbasis), dtype=numpy.complex128)
-        CIb = numpy.zeros((nbasis,nbasis), dtype=numpy.complex128)
+        walker_batch.CIa[iw].fill(0.0+0.0j)
+        walker_batch.CIb[iw].fill(0.0+0.0j)
 
         for jdet in range(1, trial.ndets):
             nex_a = len(trial.cre_a[jdet])
@@ -199,26 +219,29 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                     det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
                     det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
 
-            ovlpa = numpy.linalg.det(det_a) * trial.phase_a[jdet]
-            ovlpb = numpy.linalg.det(det_b) * trial.phase_b[jdet]
+            walker_batch.det_ovlpas[iw,jdet] = numpy.linalg.det(det_a) * trial.phase_a[jdet]
+            walker_batch.det_ovlpbs[iw,jdet] = numpy.linalg.det(det_b) * trial.phase_b[jdet]
+            ovlpa = walker_batch.det_ovlpas[iw,jdet]
+            ovlpb = walker_batch.det_ovlpbs[iw,jdet]
+
             ovlp += trial.coeffs[jdet].conj() * ovlpa * ovlpb
 
             # contribution 1 (disconnected diagrams)
-            walker_batch.Ga[iw] += trial.coeffs[jdet].conj() * G0a * ovlpa 
-            walker_batch.Gb[iw] += trial.coeffs[jdet].conj() * G0b * ovlpb 
-
+            walker_batch.Ga[iw] += trial.coeffs[jdet].conj() * G0a * ovlpa * ovlpb
+            walker_batch.Gb[iw] += trial.coeffs[jdet].conj() * G0b * ovlpa * ovlpb 
+            print("nex_a, nex_b = {}, {}".format(nex_a, nex_b))
             # intermediates for contribution 2 (connected diagrams)
             if (nex_a == 1):
-                CIa[trial.anh_a[jdet][0],trial.cre_a[jdet][0]] += trial.coeffs[jdet].conj() * trial.phase_a[jdet]
+                walker_batch.CIa[iw,trial.anh_a[jdet][0],trial.cre_a[jdet][0]] += trial.coeffs[jdet].conj() * trial.phase_a[jdet] * ovlpb
             elif (nex_a == 2):
                 p = trial.cre_a[jdet][0]
                 q = trial.anh_a[jdet][0]
                 r = trial.cre_a[jdet][1]
                 s = trial.anh_a[jdet][1]
-                CIa[q,p] += trial.coeffs[jdet].conj() * G0a[r,s] * trial.phase_a[jdet]
-                CIa[s,r] += trial.coeffs[jdet].conj() * G0a[p,q] * trial.phase_a[jdet]
-                CIa[q,r] -= trial.coeffs[jdet].conj() * G0a[p,s] * trial.phase_a[jdet]
-                CIa[s,p] -= trial.coeffs[jdet].conj() * G0a[r,q] * trial.phase_a[jdet]
+                walker_batch.CIa[iw,q,p] += trial.coeffs[jdet].conj() * G0a[r,s] * trial.phase_a[jdet] * ovlpb
+                walker_batch.CIa[iw,s,r] += trial.coeffs[jdet].conj() * G0a[p,q] * trial.phase_a[jdet] * ovlpb
+                walker_batch.CIa[iw,q,r] -= trial.coeffs[jdet].conj() * G0a[p,s] * trial.phase_a[jdet] * ovlpb
+                walker_batch.CIa[iw,s,p] -= trial.coeffs[jdet].conj() * G0a[r,q] * trial.phase_a[jdet] * ovlpb
             elif (nex_a == 3):
                 p = trial.cre_a[jdet][0]
                 q = trial.anh_a[jdet][0]
@@ -227,17 +250,17 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                 t = trial.cre_a[jdet][2]
                 u = trial.anh_a[jdet][2]
 
-                CIa[q,p] += trial.coeffs[jdet].conj() * (G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s]) * trial.phase_a[jdet] # 0 0
-                CIa[s,p] -= trial.coeffs[jdet].conj() * (G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q]) * trial.phase_a[jdet] # 0 1
-                CIa[u,p] += trial.coeffs[jdet].conj() * (G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q]) * trial.phase_a[jdet] # 0 2
+                walker_batch.CIa[iw,q,p] += trial.coeffs[jdet].conj() * (G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s]) * trial.phase_a[jdet] * ovlpb # 0 0
+                walker_batch.CIa[iw,s,p] -= trial.coeffs[jdet].conj() * (G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q]) * trial.phase_a[jdet] * ovlpb # 0 1
+                walker_batch.CIa[iw,u,p] += trial.coeffs[jdet].conj() * (G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q]) * trial.phase_a[jdet] * ovlpb # 0 2
                 
-                CIa[q,r] -= trial.coeffs[jdet].conj() * (G0a[p,s]*G0a[t,u] - G0a[p,u]*G0a[t,s]) * trial.phase_a[jdet] # 1 0
-                CIa[s,r] += trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[t,u] - G0a[p,u]*G0a[t,q]) * trial.phase_a[jdet] # 1 1
-                CIa[u,r] -= trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[t,s] - G0a[p,s]*G0a[t,q]) * trial.phase_a[jdet] # 1 2
+                walker_batch.CIa[iw,q,r] -= trial.coeffs[jdet].conj() * (G0a[p,s]*G0a[t,u] - G0a[p,u]*G0a[t,s]) * trial.phase_a[jdet] * ovlpb # 1 0
+                walker_batch.CIa[iw,s,r] += trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[t,u] - G0a[p,u]*G0a[t,q]) * trial.phase_a[jdet] * ovlpb # 1 1
+                walker_batch.CIa[iw,u,r] -= trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[t,s] - G0a[p,s]*G0a[t,q]) * trial.phase_a[jdet] * ovlpb # 1 2
 
-                CIa[q,t] += trial.coeffs[jdet].conj() * (G0a[p,s]*G0a[r,u] - G0a[p,u]*G0a[r,s]) * trial.phase_a[jdet] # 2 0
-                CIa[s,t] -= trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[r,u] - G0a[p,u]*G0a[r,q]) * trial.phase_a[jdet] # 2 1
-                CIa[u,t] += trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[r,s] - G0a[p,s]*G0a[r,q]) * trial.phase_a[jdet] # 2 2
+                walker_batch.CIa[iw,q,t] += trial.coeffs[jdet].conj() * (G0a[p,s]*G0a[r,u] - G0a[p,u]*G0a[r,s]) * trial.phase_a[jdet] * ovlpb # 2 0
+                walker_batch.CIa[iw,s,t] -= trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[r,u] - G0a[p,u]*G0a[r,q]) * trial.phase_a[jdet] * ovlpb # 2 1
+                walker_batch.CIa[iw,u,t] += trial.coeffs[jdet].conj() * (G0a[p,q]*G0a[r,s] - G0a[p,s]*G0a[r,q]) * trial.phase_a[jdet] * ovlpb # 2 2
 
             elif (nex_a > 3):
                 cofactor = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)
@@ -246,19 +269,19 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                     for jex in range(nex_a):
                         q = trial.anh_a[jdet][jex]
                         cofactor[:,:] = minor_mask(det_b, iex, jex)
-                        CIa[q,p] += trial.coeffs[jdet].conj() * numpy.linalg.det(cofactor) * trial.phase_a[jdet] * (-1)**(iex+jex)
+                        walker_batch.CIa[iw,q,p] += trial.coeffs[jdet].conj() * numpy.linalg.det(cofactor) * trial.phase_a[jdet] * ovlpb * (-1)**(iex+jex)
 
             if (nex_b == 1):
-                CIb[trial.anh_b[jdet][0],trial.cre_b[jdet][0]] += trial.coeffs[jdet].conj() * trial.phase_b[jdet]
+                walker_batch.CIb[iw,trial.anh_b[jdet][0],trial.cre_b[jdet][0]] += trial.coeffs[jdet].conj() * trial.phase_b[jdet] * ovlpa
             elif (nex_b == 2):
                 p = trial.cre_b[jdet][0]
                 q = trial.anh_b[jdet][0]
                 r = trial.cre_b[jdet][1]
                 s = trial.anh_b[jdet][1]
-                CIb[q,p] += trial.coeffs[jdet].conj() * G0b[r,s] * trial.phase_b[jdet]
-                CIb[s,r] += trial.coeffs[jdet].conj() * G0b[p,q] * trial.phase_b[jdet]
-                CIb[q,r] -= trial.coeffs[jdet].conj() * G0b[p,s] * trial.phase_b[jdet]
-                CIb[s,p] -= trial.coeffs[jdet].conj() * G0b[r,q] * trial.phase_b[jdet]
+                walker_batch.CIb[iw,q,p] += trial.coeffs[jdet].conj() * G0b[r,s] * trial.phase_b[jdet] * ovlpa
+                walker_batch.CIb[iw,s,r] += trial.coeffs[jdet].conj() * G0b[p,q] * trial.phase_b[jdet] * ovlpa
+                walker_batch.CIb[iw,q,r] -= trial.coeffs[jdet].conj() * G0b[p,s] * trial.phase_b[jdet] * ovlpa
+                walker_batch.CIb[iw,s,p] -= trial.coeffs[jdet].conj() * G0b[r,q] * trial.phase_b[jdet] * ovlpa
             elif (nex_b == 3):
                 p = trial.cre_b[jdet][0]
                 q = trial.anh_b[jdet][0]
@@ -267,17 +290,17 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                 t = trial.cre_b[jdet][2]
                 u = trial.anh_b[jdet][2]
 
-                CIb[q,p] += trial.coeffs[jdet].conj() * (G0b[r,s]*G0b[t,u] - G0b[r,u]*G0b[t,s]) * trial.phase_b[jdet] # 0 0
-                CIb[s,p] -= trial.coeffs[jdet].conj() * (G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q]) * trial.phase_b[jdet] # 0 1
-                CIb[u,p] += trial.coeffs[jdet].conj() * (G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q]) * trial.phase_b[jdet] # 0 2
+                walker_batch.CIb[iw,q,p] += trial.coeffs[jdet].conj() * (G0b[r,s]*G0b[t,u] - G0b[r,u]*G0b[t,s]) * trial.phase_b[jdet] * ovlpa # 0 0
+                walker_batch.CIb[iw,s,p] -= trial.coeffs[jdet].conj() * (G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q]) * trial.phase_b[jdet] * ovlpa # 0 1
+                walker_batch.CIb[iw,u,p] += trial.coeffs[jdet].conj() * (G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q]) * trial.phase_b[jdet] * ovlpa # 0 2
                 
-                CIb[q,r] -= trial.coeffs[jdet].conj() * (G0b[p,s]*G0b[t,u] - G0b[p,u]*G0b[t,s]) * trial.phase_b[jdet] # 1 0
-                CIb[s,r] += trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[t,u] - G0b[p,u]*G0b[t,q]) * trial.phase_b[jdet] # 1 1
-                CIb[u,r] -= trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[t,s] - G0b[p,s]*G0b[t,q]) * trial.phase_b[jdet] # 1 2
+                walker_batch.CIb[iw,q,r] -= trial.coeffs[jdet].conj() * (G0b[p,s]*G0b[t,u] - G0b[p,u]*G0b[t,s]) * trial.phase_b[jdet] * ovlpa # 1 0
+                walker_batch.CIb[iw,s,r] += trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[t,u] - G0b[p,u]*G0b[t,q]) * trial.phase_b[jdet] * ovlpa # 1 1
+                walker_batch.CIb[iw,u,r] -= trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[t,s] - G0b[p,s]*G0b[t,q]) * trial.phase_b[jdet] * ovlpa # 1 2
 
-                CIb[q,t] += trial.coeffs[jdet].conj() * (G0b[p,s]*G0b[r,u] - G0b[p,u]*G0b[r,s]) * trial.phase_b[jdet] # 2 0
-                CIb[s,t] -= trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[r,u] - G0b[p,u]*G0b[r,q]) * trial.phase_b[jdet] # 2 1
-                CIb[u,t] += trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[r,s] - G0b[p,s]*G0b[r,q]) * trial.phase_b[jdet] # 2 2
+                walker_batch.CIb[iw,q,t] += trial.coeffs[jdet].conj() * (G0b[p,s]*G0b[r,u] - G0b[p,u]*G0b[r,s]) * trial.phase_b[jdet] * ovlpa # 2 0
+                walker_batch.CIb[iw,s,t] -= trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[r,u] - G0b[p,u]*G0b[r,q]) * trial.phase_b[jdet] * ovlpa # 2 1
+                walker_batch.CIb[iw,u,t] += trial.coeffs[jdet].conj() * (G0b[p,q]*G0b[r,s] - G0b[p,s]*G0b[r,q]) * trial.phase_b[jdet] * ovlpa # 2 2
 
             elif (nex_b > 3):
                 cofactor = numpy.zeros((nex_b-1, nex_b-1), dtype=numpy.complex128)
@@ -286,19 +309,26 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                     for jex in range(nex_b):
                         q = trial.anh_b[jdet][jex]
                         cofactor[:,:] = minor_mask(det_b, iex, jex)
-                        CIb[q,p] += trial.coeffs[jdet].conj() * numpy.linalg.det(cofactor) * trial.phase_b[jdet] * (-1)**(iex+jex)        
+                        walker_batch.CIb[iw,q,p] += trial.coeffs[jdet].conj() * numpy.linalg.det(cofactor) * trial.phase_b[jdet] * ovlpa * (-1)**(iex+jex)        
 
         # contribution 2 (connected diagrams)
-        walker_batch.Ga[iw] += Q0a.dot(CIa).dot(G0a)
-        walker_batch.Gb[iw] += Q0b.dot(CIb).dot(G0b)
-        
-        ovlp *= ovlp0
+        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0a)
+        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0b)
 
-        walker_batch.Ga[iw] *= ovlpa0
-        walker_batch.Gb[iw] *= ovlpb0
+        # walker_batch.Ghalfa[iw] += Ghalf0a.dot(walker_batch.CIa[iw].T).dot(Q0a.T)
+        # walker_batch.Ghalfb[iw] += Ghalf0b.dot(walker_batch.CIb[iw].T).dot(Q0b.T)
+
+        # multiplying everything by reference overlap        
+        ovlp *= ovlp0
+        walker_batch.Ga[iw] *= ovlp0
+        walker_batch.Gb[iw] *= ovlp0
+        # walker_batch.Ghalfa[iw] *= ovlp0
+        # walker_batch.Ghalfb[iw] *= ovlp0
 
         walker_batch.Ga[iw] /= ovlp
         walker_batch.Gb[iw] /= ovlp
+        # walker_batch.Ghalfa[iw] /= ovlp
+        # walker_batch.Ghalfb[iw] /= ovlp
 
         tot_ovlps[iw] = ovlp
 

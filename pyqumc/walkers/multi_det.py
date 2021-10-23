@@ -218,27 +218,23 @@ class MultiDetWalker(Walker):
             sign_b, logdet_b = numpy.linalg.slogdet(Odn)
             self.ovlpsb[ix] = sign_b*numpy.exp(logdet_b)
 
-            
             ovlp = self.ovlpsa[ix] * self.ovlpsb[ix]
             if abs(ovlp) < 1e-16:
                 continue
 
             inv_ovlp = scipy.linalg.inv(Oup)
-            self.Gi[ix,0,:,:] = numpy.dot(detix[:,:nup].conj(),
-                                          numpy.dot(inv_ovlp,
-                                                    self.phi[:,:nup].T)
-                                          )
+            Ghalfa = numpy.dot(inv_ovlp,self.phi[:,:nup].T)
+            self.Gi[ix,0,:,:] = numpy.dot(detix[:,:nup].conj(),Ghalfa)
 
             inv_ovlp = scipy.linalg.inv(Odn)
-            self.Gi[ix,1,:,:] = numpy.dot(detix[:,nup:].conj(),
-                                          numpy.dot(inv_ovlp,
-                                                    self.phi[:,nup:].T)
-                                          )
+            Ghalfb =  numpy.dot(inv_ovlp, self.phi[:,nup:].T)
+            self.Gi[ix,1,:,:] = numpy.dot(detix[:,nup:].conj(),Ghalfb)
+
             tot_ovlp += trial.coeffs[ix].conj()*ovlp
 
             self.weights[ix] = trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
-            self.G[0] += trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.Gi[ix,0,:,:]
-            self.G[1] += trial.coeffs[ix].conj() * self.ovlpsb[ix] * self.Gi[ix,1,:,:]
+            self.G[0] += self.weights[ix] * self.Gi[ix,0,:,:]
+            self.G[1] += self.weights[ix] * self.Gi[ix,1,:,:]
 
         self.G[0] /= tot_ovlp
         self.G[1] /= tot_ovlp
@@ -274,10 +270,12 @@ class MultiDetWalker(Walker):
         return tot_ovlp
 
     def contract_one_body(self, ints, trial):
-        # numer = 0.0
-        # denom = 0.0
-        # for i, Gi in enumerate(self.Gi):
-        #     Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
-        #     numer += numpy.dot(Gitmp.ravel(),ints.ravel())
-        #     denom += self.weights[i]
-        return numpy.dot((self.G[0]+self.G[1]).ravel(), ints.ravel())
+        numer = 0.0
+        denom = 0.0
+        for i, Gi in enumerate(self.Gi):
+            # Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
+            Gitmp = trial.coeffs[i].conj() * (Gi[0]+Gi[1]) * self.ovlpsa[i] * self.ovlpsb[i]
+            numer += numpy.dot(Gitmp.ravel(),ints.ravel())
+            denom += self.weights[i]
+        return numer/denom
+        # return numpy.dot((self.G[0]+self.G[1]).ravel(), ints.ravel())

@@ -53,7 +53,8 @@ def test_hybrid():
     walker = MultiDetWalker(system, ham, trial)
     for i in range(0,10):
         prop.propagate_walker(walker, system, ham, trial, trial.energy)
-    assert walker.weight == pytest.approx(0.8296101502964913) # new value after fixing the force bias and contract_one_body bug
+    assert walker.weight == pytest.approx(0.7540668958301742) # new value after dixing contract_one_body bug
+    # assert walker.weight == pytest.approx(0.8296101502964913) # new value after fixing the force bias and contract_one_body bug
 
 if __name__ == '__main__':
     test_nomsd()

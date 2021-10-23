@@ -153,7 +153,6 @@ class MultiSlater(object):
         self._rchol = None
         self._rchola = None
         self._rcholb = None
-        self.half_rotated_chol = False
         self._UVT = None
         self._eri = None
         self._mem_required = 0.0
@@ -366,13 +365,19 @@ class MultiSlater(object):
                           init=init)
 
     def half_rotate(self, system, hamiltonian, comm=None):
-        # Half rotated cholesky vectors (by trial wavefunction).
+        # Half rotated cholesky vectors (by trial wavefunction or a reference wfn in the case of PHMSD).
         na = system.nup
         nb = system.ndown
         M = hamiltonian.nbasis
         nchol = hamiltonian.chol_vecs.shape[-1]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
+        
+        hr_ndet = self.ndets
+        if (self.ortho_expansion):
+            if self.verbose:
+                print("# Only performing half-rotation of the reference determinant")
+            hr_ndet = 1
 
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
             chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
@@ -380,11 +385,11 @@ class MultiSlater(object):
             chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
 
         if (hamiltonian.exact_eri):
-            shape = (self.ndets,(M**2*(na**2+nb**2) + M**2*(na*nb)))
+            shape = (hr_ndet,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
             self._mem_required = self._eri.nbytes / (1024.0**3.0)
 
-            for i, psi in enumerate(self.psi):
+            for i, psi in enumerate(self.psi[:hr_ndet]):
                 vipjq_aa = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
                 vipjq_bb = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
                 vipjq_ab = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
@@ -467,17 +472,17 @@ class MultiSlater(object):
             if comm is not None:
                 comm.barrier()
         # else:
-        # shape = (self.ndets*(M*(na+nb)), nchol)
+        # shape = (hr_ndet*(M*(na+nb)), nchol)
         # self._rchol = get_shared_array(comm, shape, numpy.complex128)
-        shape_a = (nchol, self.ndets*(M*(na)))
-        shape_b = (nchol, self.ndets*(M*(nb)))
+        shape_a = (nchol, hr_ndet*(M*(na)))
+        shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
-        for i, psi in enumerate(self.psi):
+        for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
             if self.verbose:
                 print("# Rotating Cholesky for determinant {} of "
-                      "{}.".format(i+1,self.ndets))
+                      "{}.".format(i+1,hr_ndet))
             # start = i*M*(na+nb)
             start_a = i*M*na # determinant loops
             start_b = i*M*nb # determinant loops
@@ -523,7 +528,6 @@ class MultiSlater(object):
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
-        self.half_rotated_chol = True
         if comm is not None:
             comm.barrier()
         # self._rot_hs_pot = self._rchol
