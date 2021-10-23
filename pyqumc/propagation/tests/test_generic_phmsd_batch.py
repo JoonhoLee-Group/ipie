@@ -10,6 +10,7 @@ from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.walkers.multi_det import MultiDetWalker
+from pyqumc.estimators.greens_function import greens_function_multi_det, greens_function_multi_det_wicks
 from pyqumc.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
@@ -64,7 +65,6 @@ def test_phmsd_greens_function_batch():
     nelec = (5,4)
     nwalkers = 1
     ndets = 5
-    nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     nchols = chol.shape[0]
     system = Generic(nelec=nelec)
@@ -85,6 +85,14 @@ def test_phmsd_greens_function_batch():
     walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
 
+    greens_function_multi_det(walker_batch, trial)
+    for iw in range(nwalkers):
+        assert numpy.allclose(walker_batch.Gia[iw], walkers[iw].Gi[:,0,:,:])
+        assert numpy.allclose(walker_batch.Gib[iw], walkers[iw].Gi[:,1,:,:])
+        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0,:,:])
+        assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1,:,:])
+
+    greens_function_multi_det_wicks(walker_batch, trial)
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Gia[iw], walkers[iw].Gi[:,0,:,:])
         assert numpy.allclose(walker_batch.Gib[iw], walkers[iw].Gi[:,1,:,:])
@@ -168,6 +176,10 @@ def test_phmsd_propagation_batch():
 
     for istep in range(nsteps):
         prop_batch.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
+
+    for iw in range(nwalkers):
+        assert numpy.allclose(walkers[iw].phi,walker_batch.phi[iw])
+        assert numpy.allclose(walkers[iw].weight,walker_batch.weight[iw])
 
 if __name__ == '__main__':
     test_phmsd_greens_function_batch()

@@ -274,13 +274,10 @@ class MultiDetWalker(Walker):
         return tot_ovlp
 
     def contract_one_body(self, ints, trial):
-        numer = 0.0
-        denom = 0.0
-        for i, Gi in enumerate(self.Gi):
-            Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
-            numer += numpy.dot(Gitmp.ravel(),ints.ravel())
-            denom += self.weights[i]
-
-        # return numpy.dot((self.G[0]+self.G[1]).ravel(), ints.ravel())
-
-        return numer / denom
+        # numer = 0.0
+        # denom = 0.0
+        # for i, Gi in enumerate(self.Gi):
+        #     Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
+        #     numer += numpy.dot(Gitmp.ravel(),ints.ravel())
+        #     denom += self.weights[i]
+        return numpy.dot((self.G[0]+self.G[1]).ravel(), ints.ravel())

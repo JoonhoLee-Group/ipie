@@ -88,7 +88,7 @@ class MultiSlater(object):
             else:
                 self.init = self.psi.copy()
 
-        if len(self.psi.shape) == 3: # this is for Wick's theorem
+        if self.ortho_expansion: # this is for Wick's theorem
             if verbose:
                 print("# Setting the first determinant in"
                       " expansion as the reference wfn for Wick's theorem.")
@@ -101,8 +101,8 @@ class MultiSlater(object):
             self.anh_a = [[]] # one empty list as a member to account for the reference state
             self.cre_b = [[]] # one empty list as a member to account for the reference state
             self.anh_b = [[]] # one empty list as a member to account for the reference state
-            self.phase_a = [1.0] # one empty list as a member to account for the reference state
-            self.phase_b = [1.0] # one empty list as a member to account for the reference state
+            self.phase_a = [1.0] # 1.0 is for the reference state
+            self.phase_b = [1.0] # 1.0 is for the reference state
             for j in range(1, self.ndets):
                 dja = self.occa[j]
                 djb = self.occb[j]
@@ -135,11 +135,6 @@ class MultiSlater(object):
                     self.phase_b += [-1]
                 else:
                     self.phase_b += [+1]
-
-                # if (perm_a == perm_b):
-                #     phase = +1
-                # else:
-                #     phase = -1
 
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
@@ -333,7 +328,7 @@ class MultiSlater(object):
                         P[si][ii,aa] += self.coeffs[jdet]*self.coeffs[idet].conj() * phase
         P[0] /= denom
         P[1] /= denom
-        
+
         return P
 
 

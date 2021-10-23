@@ -178,9 +178,12 @@ class GenericContinuous(object):
         return - self.sqrt_dt * (1j*self.vbias-self.mf_shift)
 
     def construct_force_bias_multi_det(self, hamiltonian, walker, trial):
+        # if (trial.G != None):
         vbias = numpy.array([walker.contract_one_body(Vpq, trial)
                              for Vpq in hamiltonian.chol_vecs.T])
         return - self.sqrt_dt * (1j*vbias-self.mf_shift)
+        # else:
+            # return self.construct_force_bias_slow(hamiltonian, walker, trial)
 
     def construct_VHS_slow(self, hamiltonian, shifted):
         # VHS_{ik} = \sum_{n} v_{(ik),n} (x-xbar)_n
