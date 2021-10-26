@@ -33,15 +33,22 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walker_batch, trial)
     # Cholesky vectors. [M^2, nchol]
     # vbias = numpy.dot(hamiltonian.chol_vecs.T, walker.G[0].ravel())
     # vbias += numpy.dot(hamiltonian.chol_vecs.T, walker.G[1].ravel())
+    # Cholesky vectors. [nchol, M^2]
     if numpy.isrealobj(hamiltonian.chol_vecs):
-        vbias_batch_real = (Ga.real + Gb.real).dot(hamiltonian.chol_vecs)
-        vbias_batch_imag = (Ga.imag + Gb.imag).dot(hamiltonian.chol_vecs)
-        vbias_batch = numpy.empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
-        vbias_batch.real = vbias_batch_real.copy()
-        vbias_batch.imag = vbias_batch_imag.copy()
+        # vbias_batch_real = hamiltonian.chol_vecs.dot(Ga.T.real + Gb.T.real)
+        # vbias_batch_imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
+        # vbias_batch = numpy.empty((hamiltonian.nchol,walker_batch.nwalkers), dtype=numpy.complex128)
+        # vbias_batch.real = vbias_batch_real.copy()
+        # vbias_batch.imag = vbias_batch_imag.copy()
+        vbias_batch = numpy.empty((hamiltonian.nchol,walker_batch.nwalkers), dtype=numpy.complex128)
+        vbias_batch.real = hamiltonian.chol_vecs.dot(Ga.T.real + Gb.T.real)
+        vbias_batch.imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
+        vbias_batch = vbias_batch.T.copy()
         return vbias_batch
     else:    
-        vbias_batch_tmp = (Ga+Gb).dot(hamiltonian.chol_vecs)
+        # vbias_batch_tmp = (Ga+Gb).dot(hamiltonian.chol_vecs)
+        vbias_batch_tmp = hamiltonian.chol_vecs.dot(Ga.T+Gb.T)
+        vbias_batch_tmp = vbias_batch_tmp.T.copy()
         return vbias_batch_tmp
 
 def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):

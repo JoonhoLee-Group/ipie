@@ -129,7 +129,6 @@ def test_walker_energy():
             nume += trial.coeffs[i].conj()*ovlp*e
             deno += trial.coeffs[i].conj()*ovlp
         energies[iw] = nume/deno
-    # e = local_energy_batch(system, ham, walker, trial)
     
     greens_function_multi_det_wicks(walker, trial) # compute green's function using Wick's theorem
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)

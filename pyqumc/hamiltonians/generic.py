@@ -79,6 +79,8 @@ class Generic(object):
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
 
+        self.chol_vecs = self.chol_vecs.T.copy() #[nchol,M^2]
+
         if self.exact_eri:
             if self.verbose:
                 print("# exact_eri is true for local energy")
@@ -125,18 +127,17 @@ class Generic(object):
         if verbose:
             print("# Number of orbitals: %d"%self.nbasis)
             print("# Approximate memory required by Cholesky vectors %f GB"%mem)
-        self.nchol = self.chol_vecs.shape[-1]
+        self.nchol = self.chol_vecs.shape[0]
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod
         else:
             h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-            construct_h1e_mod(chol, self.H1, h1e_mod)
+            construct_h1e_mod(self.chol_vecs, self.H1, h1e_mod)
             self.h1e_mod = h1e_mod
 
         # For consistency
         self.vol = 1.0
         self.nfields = self.nchol
-        # self.hs_pot = self.chol_vecs
         
         if verbose:
             print("# Number of Cholesky vectors: %d"%(self.nchol))
@@ -149,17 +150,17 @@ class Generic(object):
     def hijkl(self, i, j, k, l):
         ik = i*self.nbasis + k
         jl = j*self.nbasis + l
-        return numpy.dot(self.chol_vecs[ik,:], self.chol_vecs[jl,:])
+        return numpy.dot(self.chol_vecs[:,ik], self.chol_vecs[:,jl])
 
     def write_integrals(self, nelec, filename='hamil.h5'):
         if self.sparse:
             write_qmcpack_sparse(self.H1[0],
-                                 self.chol_vecs.reshape((-1,self.nbasis*self.nbasis)).T.copy(),
+                                 self.chol_vecs.T.copy(),
                                  nelec, self.nbasis,
                                  ecuc=self.ecore, filename=filename)
         else:
             write_qmcpack_dense(self.H1[0],
-                                self.chol_vecs,
+                                self.chol_vecs.T.copy(),
                                 nelec, self.nbasis,
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
@@ -184,8 +185,9 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
     # Eqn (17) of [Motta17]_
     nbasis = h1e.shape[-1]
-    chol_3 = chol.reshape((nbasis, nbasis, -1))
+    nchol = chol.shape[0]
+    chol_3 = chol.reshape((nchol, nbasis, nbasis))
     # assert chol_3.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
-    v0 = 0.5 * numpy.einsum('ikn,jkn->ij', chol_3, chol_3, optimize='optimal')
+    v0 = 0.5 * numpy.einsum('nik,njk->ij', chol_3, chol_3, optimize='optimal')
     h1e_mod[0,:,:] = h1e[0] - v0
     h1e_mod[1,:,:] = h1e[1] - v0

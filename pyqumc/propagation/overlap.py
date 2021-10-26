@@ -19,9 +19,9 @@ def get_calc_overlap(trial):
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
         calc_overlap = calc_overlap_single_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == False:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         calc_overlap = calc_overlap_multi_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
         # calc_overlap = calc_overlap_multi_det
         calc_overlap = calc_overlap_multi_det_wicks
     else:

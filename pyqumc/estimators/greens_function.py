@@ -19,9 +19,9 @@ def get_greens_function(trial):
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
         compute_greens_function = greens_function_single_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == False:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         compute_greens_function = greens_function_multi_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
         # compute_greens_function = greens_function_multi_det
         compute_greens_function = greens_function_multi_det_wicks
     else:
@@ -32,9 +32,9 @@ def get_greens_function(trial):
 def greens_function(walker_batch, trial):
     if trial.name == "MultiSlater" and trial.ndets == 1:
         return greens_function_single_det(walker_batch, trial)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == False:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         return greens_function_multi_det(walker_batch, trial)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
         # return greens_function_multi_det(walker_batch, trial)
         return greens_function_multi_det_wicks(walker_batch, trial)
     else:

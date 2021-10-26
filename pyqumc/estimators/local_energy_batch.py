@@ -8,9 +8,9 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
 
     if (walker_batch.name == "SingleDetWalkerBatch"):
         return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = iw)
-    elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.ortho_expansion == False):
+    elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False):
         return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.ortho_expansion == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
         return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walker_batch, trial, iw = iw)
 
@@ -49,11 +49,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
         P0 = G0[0] + G0[1]
-        Xa = numpy.einsum("m,mx->x", G0[0].ravel(), ham.chol_vecs)
-        Xb = numpy.einsum("m,mx->x", G0[1].ravel(), ham.chol_vecs)
+        Xa = ham.chol_vecs.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
+        Xb = ham.chol_vecs.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
         
-        LXa = ham.chol_vecs.dot(Xa)
-        LXb = ham.chol_vecs.dot(Xb)
+        LXa = numpy.einsum("x,xm->m", Xa, ham.chol_vecs, optimize=True)
+        LXb = numpy.einsum("x,xm->m", Xb, ham.chol_vecs, optimize=True)
         LXa = LXa.reshape((nbasis,nbasis))
         LXb = LXb.reshape((nbasis,nbasis))
 
@@ -71,7 +71,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         cont2_Kaa = 0.0 + 0.0j
         cont2_Kbb = 0.0 + 0.0j
         for x in range(nchol): 
-            Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
+            Lmn = ham.chol_vecs[x,:].reshape((nbasis, nbasis))
             LGL = Lmn.dot(G0a.T).dot(Lmn)
             cont2_Kaa -= numpy.sum(LGL*QCIGa) 
 
@@ -83,8 +83,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Laa = numpy.einsum("iq,pj,xij->xqp",Q0a, G0a, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,xij->xqp",Q0b, G0b, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
       
         cont3 = 0.0 + 0.0j
 
@@ -111,8 +111,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
             ovlpb = numpy.linalg.det(det_b) * trial.phase_b[jdet]
 
             for x in range(nchol):
-                La = Laa[:,:,x]
-                Lb = Lbb[:,:,x]
+                La = Laa[x,:,:]
+                Lb = Lbb[x,:,:]
 
                 if (nex_a > 0 and nex_b > 0): # 2-leg opposite spin block
                     cofactor_a = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)

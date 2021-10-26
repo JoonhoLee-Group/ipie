@@ -92,3 +92,7 @@ def test_local_energy_cholesky_opt_batched():
     assert numpy.allclose(res[0], 20.6826247016273)
     assert numpy.allclose(res[1], 23.0173528796140)
     assert numpy.allclose(res[2], -2.3347281779866)
+
+if __name__ == '__main__':
+    test_local_energy_cholesky()
+    test_local_energy_cholesky_opt()

@@ -88,8 +88,10 @@ class MultiSlater(object):
             else:
                 self.init = self.psi.copy()
 
-        if self.ortho_expansion: # this is for Wick's theorem
+        self.wicks = options.get('wicks', False)
+        if self.wicks: # this is for Wick's theorem
             if verbose:
+                print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
                       " expansion as the reference wfn for Wick's theorem.")
             self.psi0 = self.psi[0].copy()
@@ -136,6 +138,7 @@ class MultiSlater(object):
                 else:
                     self.phase_b += [+1]
 
+        if self.ortho_expansion: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
@@ -369,7 +372,7 @@ class MultiSlater(object):
         na = system.nup
         nb = system.ndown
         M = hamiltonian.nbasis
-        nchol = hamiltonian.chol_vecs.shape[-1]
+        nchol = hamiltonian.chol_vecs.shape[0]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
         
@@ -380,9 +383,9 @@ class MultiSlater(object):
             hr_ndet = 1
 
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
-            chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
+            chol = hamiltonian.chol_vecs.reshape((nchol,M,M))
         else:
-            chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
+            chol = hamiltonian.chol_vecs.toarray().reshape((nchol,M,M))
 
         if (hamiltonian.exact_eri):
             shape = (hr_ndet,(M**2*(na**2+nb**2) + M**2*(na*nb)))
@@ -390,9 +393,9 @@ class MultiSlater(object):
             self._mem_required = self._eri.nbytes / (1024.0**3.0)
 
             for i, psi in enumerate(self.psi[:hr_ndet]):
-                vipjq_aa = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
-                vipjq_bb = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
-                vipjq_ab = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
+                vipjq_aa = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
+                vipjq_bb = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
+                vipjq_ab = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
                 self._eri[i,:M**2*na**2] = vipjq_aa.ravel()
                 self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
                 self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
@@ -489,7 +492,7 @@ class MultiSlater(object):
             compute = True
             # Distribute amongst MPI tasks on this node.
             if comm is not None:
-                nwork_per_thread = chol.shape[-1] // comm.size
+                nwork_per_thread = chol.shape[0] // comm.size
                 if nwork_per_thread == 0:
                     start_n = 0
                     end_n = nchol
@@ -503,26 +506,21 @@ class MultiSlater(object):
                         end_n = nchol
             else:
                 start_n = 0
-                end_n = chol.shape[-1]
+                end_n = chol.shape[0]
 
             nchol_loc = end_n - start_n
             # if comm.rank == 0:
                 # print(start_n, end_n, nchol_loc)
                 # print(numpy.may_share_memory(chol, chol[:,start_n:end_n]))
             if compute:
-                rup = numpy.tensordot(psi[:,:na].conj(),
-                                      chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((na*M,nchol_loc)).T.copy()
-                rdn = numpy.tensordot(psi[:,na:].conj(),
-                                      chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((nb*M,nchol_loc)).T.copy()
+                # Investigate whether these einsums are fast in the future
+                rup = numpy.einsum("mi,xmn->xin", psi[:,:na].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rup = rup.reshape((nchol_loc, na*M))
+                rdn = numpy.einsum("mi,xmn->xin", psi[:,na:].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rdn = rdn.reshape((nchol_loc, nb*M))
                 self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
 
-                # self._rchol[start:start+M*na,start_n:end_n] = rup[:]
-                # self._rchol[start+M*na:start+M*(na+nb),start_n:end_n] = rdn[:]
-
-            # self._mem_required = self._rchol.nbytes / (1024.0**3.0)
             self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
@@ -530,7 +528,7 @@ class MultiSlater(object):
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
         if comm is not None:
             comm.barrier()
-        # self._rot_hs_pot = self._rchol
+
         if(hamiltonian.control_variate):
             self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
 
