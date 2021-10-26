@@ -138,6 +138,26 @@ class AFQMC(object):
                                   verbose=self.verbosity>1)
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        if (self.qmc.nwalkers == None):
+            assert(self.qmc.nwalkers_per_task is not None)
+            self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
+        if (self.qmc.nwalkers_per_task == None):
+            assert(self.qmc.nwalkers is not None)
+            self.qmc.nwalkers_per_task = int(self.qmc.nwalkers/comm.size)
+        # Reset number of walkers so they are evenly distributed across
+        # cores/ranks.
+        # Number of walkers per core/rank.
+        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
+        # Total number of walkers.
+        if self.qmc.nwalkers == 0:
+            if comm.rank == 0:
+                print("# WARNING: Not enough walkers for selected core count.")
+                print("# There must be at least one walker per core set in the "
+                      "input file.")
+                print("# Setting one walker per core.")
+            self.qmc.nwalkers = 1
+        self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
+        
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
@@ -160,6 +180,7 @@ class AFQMC(object):
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
+            print("# Trial wfn energy is {}".format(self.trial.energy))
         comm.barrier()
         prop_opt = options.get('propagator', {})
         self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
@@ -177,19 +198,7 @@ class AFQMC(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
-        # Reset number of walkers so they are evenly distributed across
-        # cores/ranks.
-        # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(self.qmc.nwalkers/comm.size)
-        # Total number of walkers.
-        if self.qmc.nwalkers == 0:
-            if comm.rank == 0:
-                print("# WARNING: Not enough walkers for selected core count.")
-                print("# There must be at least one walker per core set in the "
-                      "input file.")
-                print("# Setting one walker per core.")
-            self.qmc.nwalkers = 1
-        self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
+
         self.psi = Walkers(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
@@ -198,13 +207,14 @@ class AFQMC(object):
                            comm=comm)
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            factor = float(self.system.ne) / self.hamiltonian.nbasis
-            mem = factor*self.trial._mem_required*self.shared_comm.size
-            print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
-            if mem > 0.5*mem_avail:
-                print("# Warning: Memory requirements of calculation are high")
-                print("# Consider using fewer walkers per node.")
-                print("# Memory available: {:.6f}".format(mem_avail))
+            # no more extra memory requirement for the local energy evaluation
+            # factor = float(self.system.ne) / self.hamiltonian.nbasis
+            # mem = factor*self.trial._mem_required*self.shared_comm.size
+            # print("# Approx required for energy evaluation: {:.4f} GB.".format(mem))
+            # if mem > 0.5*mem_avail:
+            #     print("# Warning: Memory requirements of calculation are high")
+            #     print("# Consider using fewer walkers per node.")
+            #     print("# Memory available: {:.6f}".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -225,10 +235,10 @@ class AFQMC(object):
         if psi is not None:
             self.psi = psi
         self.setup_timers()
-        w0 = self.psi.walkers[0]
+        # w0 = self.psi.walkers[0]
+        # (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
         eshift = 0
-        (etot, e1b, e2b) = local_energy(self.system, self.hamiltonian, w0, self.trial)
-        # (etot, e1b, e2b) = w0.local_energy(self.system, rchol=self.trial._rchol, eri=self.trial._eri, UVT=self.trial._UVT)
+        
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators['mixed'].update(self.qmc, self.system, self.hamiltonian,
                                                    self.trial, self.psi, 0,
@@ -245,10 +255,11 @@ class AFQMC(object):
                                        self.propagators.free_projection)
                 self.tortho += time.time() - start
             start = time.time()
+            
             for w in self.psi.walkers:
-                if abs(w.weight) > 1e-8:
-                    self.propagators.propagate_walker(w, self.system, self.hamiltonian,
-                                                      self.trial, eshift)
+                # if abs(w.weight) > 1e-8:
+                self.propagators.propagate_walker(w, self.system, self.hamiltonian,
+                                                  self.trial, eshift)
                 if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
                     w.weight = w.total_weight * 0.10
             self.tprop += time.time() - start
@@ -256,6 +267,7 @@ class AFQMC(object):
                 start = time.time()
                 self.psi.pop_control(comm)
                 self.tpopc += time.time() - start
+            
             # calculate estimators
             start = time.time()
             self.estimators.update(self.qmc, self.system, self.hamiltonian,

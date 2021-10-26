@@ -1,5 +1,4 @@
 import numpy
-from numpy import ndarray
 import sys
 
 def local_energy_generic(h1e, eri, G, ecore=0.0, Ghalf=None):
@@ -154,7 +153,7 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-# @profile
+
 def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     """
     Internal function for computing exchange two-electron integral energy 
@@ -300,8 +299,13 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     if rchola is not None:
         naux = rchola.shape[0]
 
-    Xa = rchola.dot(Ghalfa.ravel())
-    Xb = rcholb.dot(Ghalfb.ravel())
+    if (numpy.isrealobj(rchola) and numpy.isrealobj(rcholb)):
+        Xa = rchola.dot(Ghalfa.real.ravel()) + 1.j * rchola.dot(Ghalfa.imag.ravel())
+        Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.j * rcholb.dot(Ghalfb.imag.ravel())
+    else:
+        Xa = rchola.dot(Ghalfa.ravel())
+        Xb = rcholb.dot(Ghalfb.ravel())
+
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
     ecoul += 2*numpy.dot(Xa,Xb)
@@ -313,13 +317,22 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     Tb = numpy.zeros((nbeta,nbeta), dtype=numpy.complex128)
 
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    for x in range(naux):  
-        rmi_a = rchola[x].reshape((nalpha,nbasis))
-        Ta[:, :] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
-        exx += numpy.trace(Ta.dot(Ta))
-        rmi_b = rcholb[x].reshape((nbeta,nbasis))
-        Tb[:, :] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
-        exx += numpy.trace(Tb.dot(Tb))
+    if (numpy.isrealobj(rchola) and numpy.isrealobj(rcholb)):
+        for x in range(naux):  # write a cython function that calls blas for this.
+            rmi_a = rchola[x].reshape((nalpha,nbasis))
+            rmi_b = rcholb[x].reshape((nbeta,nbasis))
+            Ta[:,:].real = rmi_a.dot(GhalfaT.real) 
+            Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
+            Tb[:,:].real = rmi_b.dot(GhalfbT.real) 
+            Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
+            exx += numpy.trace(Ta.dot(Ta)) + numpy.trace(Tb.dot(Tb))
+    else:
+        for x in range(naux):  # write a cython function that calls blas for this.
+            rmi_a = rchola[x].reshape((nalpha,nbasis))
+            rmi_b = rcholb[x].reshape((nbeta,nbasis))
+            Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+            Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
+            exx += numpy.trace(Ta.dot(Ta)) + numpy.trace(Tb.dot(Tb))
 
     e2b = 0.5 * (ecoul - exx)
 

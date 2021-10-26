@@ -26,7 +26,7 @@ class Walker(object):
         self.unscaled_weight = self.weight
         self.phase = 1 + 0j
         self.alive = 1
-        self.phi = trial.init.copy()
+        self.phi = numpy.array(trial.init.copy(), dtype=numpy.complex128)
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0
@@ -44,7 +44,7 @@ class Walker(object):
         self.hybrid_energy = 0.0
         # Historic wavefunction for ITCF.
         self.phi_right = self.phi.copy()
-        self.weights = numpy.array([1.0])
+        self.weights = numpy.array([1.0]) # This is going to be for MSD trial... (should be named a lot better than this)
         self.detR = 1.0
         self.detR_shift = 0.0
         self.log_detR = 0.0

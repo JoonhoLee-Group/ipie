@@ -63,7 +63,7 @@ class Generic(object):
     def __init__(self, h1e, chol, ecore, h1e_mod=None, options = {},
                  verbose=False, write_ints=False):
         if verbose:
-            print("# Parsing input options.")
+            print("# Parsing input options for hamiltonians.Generic.")
         self.name = "Generic"
         self.verbose = verbose
         self.stochastic_ri = options.get("stochastic_ri", False)
@@ -77,7 +77,7 @@ class Generic(object):
         self._alt_convention = False # chemical potential sign convention
 
         self.ecore = ecore
-        self.chol_vecs = chol
+        self.chol_vecs = chol # [M^2, nchol]
 
         if self.exact_eri:
             if self.verbose:
@@ -124,7 +124,6 @@ class Generic(object):
         self.sparse = False
         if verbose:
             print("# Number of orbitals: %d"%self.nbasis)
-            print("# Number of electrons: (%d, %d)"%(self.nup, self.ndown))
             print("# Approximate memory required by Cholesky vectors %f GB"%mem)
         self.nchol = self.chol_vecs.shape[-1]
         if h1e_mod is not None:
@@ -145,7 +144,7 @@ class Generic(object):
         if write_ints:
             self.write_integrals()
         if verbose:
-            print("# Finished setting up Generic system object.")
+            print("# Finished setting up hamiltonians.Generic object.")
 
     def hijkl(self, i, j, k, l):
         ik = i*self.nbasis + k

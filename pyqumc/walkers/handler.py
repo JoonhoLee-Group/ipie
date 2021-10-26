@@ -37,9 +37,6 @@ class Walkers(object):
                  comm=None, nprop_tot=None, nbp=None):
         self.nwalkers = qmc.nwalkers
         self.ntot_walkers = qmc.ntot_walkers
-        if verbose:
-            print("# nwalkers = {}".format(self.nwalkers))
-            print("# ntot_walkers = {}".format(self.ntot_walkers))
         self.write_freq = walker_opts.get('write_freq', 0)
         self.write_file = walker_opts.get('write_file', 'restart.h5')
         self.use_log_shift = walker_opts.get('use_log_shift', False)
@@ -50,7 +47,10 @@ class Walkers(object):
         else:
             rank = comm.rank
         if verbose:
-            print("# Setting up wavefunction object.")
+            print("# Setting up walkers.handler.Walkers.")
+            print("# qmc.nwalkers = {}".format(self.nwalkers))
+            print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
+
         if trial.name == 'MultiSlater':
             self.walker_type = 'MSD'
             # TODO: FDM FIXTHIS
@@ -58,7 +58,8 @@ class Walkers(object):
                 if verbose:
                     print("# Using single det walker with msd wavefunction.")
                 self.walker_type = 'SD'
-                trial.psi = trial.psi[0]
+                if (len(trial.psi.shape) == 3):
+                    trial.psi = trial.psi[0]
                 self.walkers = [SingleDetWalker(system, hamiltonian, trial, walker_opts=walker_opts,
                                                 index=w, nprop_tot=nprop_tot,
                                                 nbp=nbp)
@@ -162,6 +163,9 @@ class Walkers(object):
         self.target_weight = qmc.ntot_walkers
         self.nw = qmc.nwalkers
         self.set_total_weight(qmc.ntot_walkers)
+
+        if verbose:
+            print("# Finish setting up walkers.handler.Walkers.")
 
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
@@ -410,7 +414,6 @@ class Walkers(object):
                 self.walkers[iw].set_buffer(self.walker_buffer)
         for r in reqs:
             r.wait()
-
 
     def recompute_greens_function(self, trial, time_slice=None):
         for w in self.walkers:

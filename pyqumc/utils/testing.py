@@ -3,6 +3,14 @@ import numpy
 from pyqumc.utils.misc import dotdict
 from pyqumc.utils.linalg import modified_cholesky
 
+def generate_hamiltonian_low_mem(nmo, nelec, cplx=False):
+    h1e = numpy.random.random((nmo,nmo))
+    if cplx:
+        h1e = h1e + 1j*numpy.random.random((nmo,nmo))
+    chol = numpy.random.rand(nmo**3 * 4).reshape((nmo*4,nmo,nmo))
+    enuc = numpy.random.rand()
+    return h1e, chol, enuc
+
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
     h1e = numpy.random.random((nmo,nmo))
     if cplx:
