@@ -15,6 +15,9 @@ from pyqumc.utils.testing import (
         get_random_wavefunction
         )
 from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from pyqumc.propagation.overlap import calc_overlap_multi_det_wicks
+from pyqumc.estimators.greens_function import greens_function_multi_det_wicks, greens_function_multi_det
+from pyqumc.estimators.local_energy_batch import local_energy_multi_det_trial_batch, local_energy_multi_det_trial_wicks_batch
 
 @pytest.mark.unit
 def test_walker_overlap_nomsd():
@@ -86,7 +89,11 @@ def test_walker_overlap_phmsd():
             assert numpy.linalg.norm(ga-walker.Gia[iw, idet]) == pytest.approx(0)
             assert numpy.linalg.norm(gb-walker.Gib[iw, idet]) == pytest.approx(0)
 
+    trial = MultiSlater(system, ham, wfn, init=init, options = {'wicks':True})
+    ovlp_wicks = calc_overlap_multi_det_wicks(walker, trial)
+
     assert ovlp_sum == pytest.approx(walker.ovlp)
+    assert ovlp_wicks == pytest.approx(walker.ovlp)
 
 @pytest.mark.unit
 def test_walker_energy():
@@ -103,7 +110,7 @@ def test_walker_energy():
     init = get_random_wavefunction(nelec, nmo)
     init[:,:na], R = reortho(init[:,:na])
     init[:,na:], R = reortho(init[:,na:])
-    trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init)
+    trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options = {'wicks':True})
     trial.calculate_energy(system, ham)
     
     nwalkers = 10
@@ -127,11 +134,17 @@ def test_walker_energy():
             nume += trial.coeffs[i].conj()*ovlp*e
             deno += trial.coeffs[i].conj()*ovlp
         energies[iw] = nume/deno
-    e = local_energy_batch(system, ham, walker, trial)
-    assert e[:,0] == pytest.approx(energies)
+    
+    greens_function_multi_det_wicks(walker, trial) # compute green's function using Wick's theorem
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)
+    greens_function_multi_det(walker, trial)
+    e_dumb = local_energy_multi_det_trial_batch(system, ham, walker, trial)
 
-    e = local_energy_batch(system, ham, walker, trial, iw=0)
-    assert e[:,0] == pytest.approx(energies[0])
+    assert e_wicks[:,0] == pytest.approx(energies)
+    assert e_dumb[:,0] == pytest.approx(energies)
+
+    # e = local_energy_batch(system, ham, walker, trial, iw=0)
+    # assert e[:,0] == pytest.approx(energies[0])
 
 if __name__=="__main__":
     test_walker_overlap_nomsd()

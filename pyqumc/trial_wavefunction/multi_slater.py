@@ -6,7 +6,7 @@ from pyqumc.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
 from pyqumc.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
-from pyqumc.estimators.ci import get_hmatel, get_one_body_matel
+from pyqumc.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
 from pyqumc.utils.io import (
         get_input_value,
         write_qmcpack_wfn
@@ -61,7 +61,11 @@ class MultiSlater(object):
             else:
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
-        self.ndets = len(self.coeffs)
+
+        self.ndets = options.get('ndets', len(self.coeffs))
+        if self.verbose:
+            print("# Setting ndets: {}".format(self.ndets))
+
         if self.ndets == 1:
             # self.psi = self.psi[0]
             self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
@@ -83,6 +87,66 @@ class MultiSlater(object):
                 self.init = self.psi[0].copy()
             else:
                 self.init = self.psi.copy()
+
+        self.wicks = options.get('wicks', False)
+        if self.wicks: # this is for Wick's theorem
+            if verbose:
+                print("# Using generalized Wick's theorem for the PHMSD trial")
+                print("# Setting the first determinant in"
+                      " expansion as the reference wfn for Wick's theorem.")
+            self.psi0 = self.psi[0].copy()
+            if verbose:
+                print("# Setting additional member variables for Wick's theorem")
+            d0a = self.occa[0]
+            d0b = self.occb[0]
+            self.cre_a = [[]] # one empty list as a member to account for the reference state
+            self.anh_a = [[]] # one empty list as a member to account for the reference state
+            self.cre_b = [[]] # one empty list as a member to account for the reference state
+            self.anh_b = [[]] # one empty list as a member to account for the reference state
+            self.phase_a = [1.0] # 1.0 is for the reference state
+            self.phase_b = [1.0] # 1.0 is for the reference state
+            for j in range(1, self.ndets):
+                dja = self.occa[j]
+                djb = self.occb[j]
+                
+                anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
+                cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
+                
+                anh_b = list(set(djb)-set(d0b))
+                cre_b = list(set(d0b)-set(djb))
+
+                cre_a.sort()
+                cre_b.sort()
+                anh_a.sort()
+                anh_b.sort()
+
+                self.anh_a += [anh_a]
+                self.anh_b += [anh_b]
+                self.cre_a += [cre_a]
+                self.cre_b += [cre_b]
+
+                perm_a = get_perm(anh_a, cre_a, d0a, dja)
+                perm_b = get_perm(anh_b, cre_b, d0b, djb)
+                
+                if (perm_a):
+                    self.phase_a += [-1]
+                else:
+                    self.phase_a += [+1]
+
+                if (perm_b):
+                    self.phase_b += [-1]
+                else:
+                    self.phase_b += [+1]
+
+        if self.ortho_expansion: # this is for phmsd
+            if verbose:
+                print("# Computing 1-RDM of the trial wfn for mean-field shift")
+            start = time.time()
+            self.G = self.compute_1rdm(hamiltonian.nbasis)
+            end = time.time()
+            if verbose:
+                print("# Time to compute 1-RDM: {} s".format(end - start))
+
         self.error = False
         self.initialisation_time = time.time() - init_time
         self._nalpha = system.nup
@@ -92,7 +156,6 @@ class MultiSlater(object):
         self._rchol = None
         self._rchola = None
         self._rcholb = None
-        self.half_rotated_chol = False
         self._UVT = None
         self._eri = None
         self._mem_required = 0.0
@@ -194,21 +257,21 @@ class MultiSlater(object):
             self.psi[idet,:,:nup] = I[:,occa]
             self.psi[idet,:,nup:] = I[:,occb]
 
-    def recompute_ci_coeffs(self, system):
+    def recompute_ci_coeffs(self, nup, ndown, ham):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
         S = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
-        m = system.nbasis
-        na = system.nup
-        nb = system.ndown
+        m = ham.nbasis
+        na = nup
+        nb = ndown
         if self.ortho_expansion:
             for i in range(self.ndets):
                 for j in range(i,self.ndets):
                     di = self.spin_occs[i]
                     dj = self.spin_occs[j]
-                    H[i,j] = get_hmatel(system,di,dj)[0]
+                    H[i,j] = get_hmatel(ham,nup+ndown,di,dj)[0]
             e, ev = scipy.linalg.eigh(H, lower=False)
         else:
-            na = system.nup
+            na = nup
             for i, di in enumerate(self.psi):
                 for j, dj in enumerate(self.psi):
                     if j >= i:
@@ -222,7 +285,7 @@ class MultiSlater(object):
                                 rchol = self.rchol(i)
                             else:
                                 rchol = None
-                            H[i,j] = ovlp * local_energy(system, G,
+                            H[i,j] = ovlp * local_energy(ham, G,
                                                          Ghalf=Ghalf,
                                                          rchol=rchol)[0]
                             S[i,j] = ovlp
@@ -235,20 +298,56 @@ class MultiSlater(object):
                 # print("{} {}".format(co, cn))
         return numpy.array(ev[:,0], dtype=numpy.complex128)
 
+    def compute_1rdm(self, nbasis):
+        assert(self.ortho_expansion == True)
+        denom = numpy.sum(self.coeffs.conj() * self.coeffs)
+        Pa = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
+        Pb = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
+        P = [Pa, Pb]
+        for idet in range(self.ndets):
+            di = self.spin_occs[idet]
+            # zero excitation case
+            for iorb in range(len(di)):
+                ii, spin_ii = map_orb(di[iorb], nbasis)
+                P[spin_ii][ii,ii] += self.coeffs[idet].conj()*self.coeffs[idet]
+            for jdet in range(idet+1, self.ndets):
+                dj = self.spin_occs[jdet]
+                from_orb = list(set(dj)-set(di))
+                to_orb = list(set(di)-set(dj))
+                nex = len(from_orb)
+                if (nex > 1):
+                    continue
+                elif (nex == 1):
+                    perm = get_perm(from_orb, to_orb, di, dj)
+                    if (perm):
+                        phase = -1
+                    else:
+                        phase = 1
+                    ii, si = map_orb(from_orb[0], nbasis)
+                    aa, sa = map_orb(to_orb[0], nbasis)
+                    if (si == sa):
+                        P[si][aa,ii] += self.coeffs[jdet].conj()*self.coeffs[idet] * phase
+                        P[si][ii,aa] += self.coeffs[jdet]*self.coeffs[idet].conj() * phase
+        P[0] /= denom
+        P[1] /= denom
+
+        return P
+
+
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0
         na = self._nalpha
         for i in range(self.ndets):
             for j in range(self.ndets):
-                cfac = self.coeffs[i].conj()*self.coeffs[j].conj()
+                cfac = self.coeffs[i].conj()*self.coeffs[j]
                 if self.ortho_expansion:
                     di = self.spin_occs[i]
                     dj = self.spin_occs[j]
                     tij = get_one_body_matel(ints,di,dj)
                     numer += cfac * tij
                     if i == j:
-                        denom += self.coeffs[i].conj()*self.coeffs[i].conj()
+                        denom += self.coeffs[i].conj()*self.coeffs[i]
                 else:
                     di = self.psi[i]
                     dj = self.psi[j]
@@ -269,28 +368,34 @@ class MultiSlater(object):
                           init=init)
 
     def half_rotate(self, system, hamiltonian, comm=None):
-        # Half rotated cholesky vectors (by trial wavefunction).
+        # Half rotated cholesky vectors (by trial wavefunction or a reference wfn in the case of PHMSD).
         na = system.nup
         nb = system.ndown
         M = hamiltonian.nbasis
-        nchol = hamiltonian.chol_vecs.shape[-1]
+        nchol = hamiltonian.chol_vecs.shape[0]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
+        
+        hr_ndet = self.ndets
+        if (self.ortho_expansion):
+            if self.verbose:
+                print("# Only performing half-rotation of the reference determinant")
+            hr_ndet = 1
 
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
-            chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
+            chol = hamiltonian.chol_vecs.reshape((nchol,M,M))
         else:
-            chol = hamiltonian.chol_vecs.toarray().reshape((M,M,nchol))
+            chol = hamiltonian.chol_vecs.toarray().reshape((nchol,M,M))
 
         if (hamiltonian.exact_eri):
-            shape = (self.ndets,(M**2*(na**2+nb**2) + M**2*(na*nb)))
+            shape = (hr_ndet,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
             self._mem_required = self._eri.nbytes / (1024.0**3.0)
 
-            for i, psi in enumerate(self.psi):
-                vipjq_aa = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
-                vipjq_bb = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
-                vipjq_ab = numpy.einsum("mpX,rqX,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
+            for i, psi in enumerate(self.psi[:hr_ndet]):
+                vipjq_aa = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
+                vipjq_bb = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
+                vipjq_ab = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
                 self._eri[i,:M**2*na**2] = vipjq_aa.ravel()
                 self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
                 self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
@@ -370,24 +475,24 @@ class MultiSlater(object):
             if comm is not None:
                 comm.barrier()
         # else:
-        # shape = (self.ndets*(M*(na+nb)), nchol)
+        # shape = (hr_ndet*(M*(na+nb)), nchol)
         # self._rchol = get_shared_array(comm, shape, numpy.complex128)
-        shape_a = (nchol, self.ndets*(M*(na)))
-        shape_b = (nchol, self.ndets*(M*(nb)))
+        shape_a = (nchol, hr_ndet*(M*(na)))
+        shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
-        for i, psi in enumerate(self.psi):
+        for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
             if self.verbose:
                 print("# Rotating Cholesky for determinant {} of "
-                      "{}.".format(i+1,self.ndets))
+                      "{}.".format(i+1,hr_ndet))
             # start = i*M*(na+nb)
             start_a = i*M*na # determinant loops
             start_b = i*M*nb # determinant loops
             compute = True
             # Distribute amongst MPI tasks on this node.
             if comm is not None:
-                nwork_per_thread = chol.shape[-1] // comm.size
+                nwork_per_thread = chol.shape[0] // comm.size
                 if nwork_per_thread == 0:
                     start_n = 0
                     end_n = nchol
@@ -401,35 +506,29 @@ class MultiSlater(object):
                         end_n = nchol
             else:
                 start_n = 0
-                end_n = chol.shape[-1]
+                end_n = chol.shape[0]
 
             nchol_loc = end_n - start_n
             # if comm.rank == 0:
                 # print(start_n, end_n, nchol_loc)
                 # print(numpy.may_share_memory(chol, chol[:,start_n:end_n]))
             if compute:
-                rup = numpy.tensordot(psi[:,:na].conj(),
-                                      chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((na*M,nchol_loc)).T.copy()
-                rdn = numpy.tensordot(psi[:,na:].conj(),
-                                      chol[:,:,start_n:end_n],
-                                      axes=((0),(0))).reshape((nb*M,nchol_loc)).T.copy()
+                # Investigate whether these einsums are fast in the future
+                rup = numpy.einsum("mi,xmn->xin", psi[:,:na].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rup = rup.reshape((nchol_loc, na*M))
+                rdn = numpy.einsum("mi,xmn->xin", psi[:,na:].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rdn = rdn.reshape((nchol_loc, nb*M))
                 self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
 
-                # self._rchol[start:start+M*na,start_n:end_n] = rup[:]
-                # self._rchol[start+M*na:start+M*(na+nb),start_n:end_n] = rdn[:]
-
-            # self._mem_required = self._rchol.nbytes / (1024.0**3.0)
             self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
-        self.half_rotated_chol = True
         if comm is not None:
             comm.barrier()
-        # self._rot_hs_pot = self._rchol
+
         if(hamiltonian.control_variate):
             self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
 

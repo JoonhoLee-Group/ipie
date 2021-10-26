@@ -4,7 +4,7 @@ import scipy.linalg
 from pyqumc.estimators.local_energy import local_energy_multi_det
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
-from pyqumc.propagation.overlap import calc_overlap_multi_det
+from pyqumc.propagation.overlap import get_calc_overlap
 from pyqumc.estimators.greens_function import greens_function_multi_det
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
@@ -51,7 +51,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
-        self.ot = calc_overlap_multi_det(self,trial)
+        calc_overlap = get_calc_overlap(trial)
+
+        self.ot = calc_overlap(self,trial)
         # TODO: fix name.
         self.ovlp = self.ot
         self.le_oratio = 1.0
@@ -59,7 +61,17 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             print("# Initial overlap of walker with trial wavefunction: {:13.8e}"
                   .format(self.ot.real))
 
-        # Green's functions for various elements of the trial wavefunction.
+        # Green's functions for various elements of the trial wavefunction.        
+        if (trial.ortho_expansion):
+            self.G0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            self.G0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            # self.Ghalf0a = numpy.zeros(shape=(self.nwalkers, system.nup,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            # self.Ghalf0b = numpy.zeros(shape=(self.nwalkers, system.ndown,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            self.Q0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            self.Q0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
+            self.CIa = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
+            self.CIb = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
+        # else:
         self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
                                      hamiltonian.nbasis), dtype=numpy.complex128)
         self.Gib = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
@@ -67,7 +79,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         self.Gihalfa = numpy.zeros(shape=(self.nwalkers, self.ndets, system.nup, hamiltonian.nbasis),
                                  dtype=numpy.complex128)
         self.Gihalfb = numpy.zeros(shape=(self.nwalkers, self.ndets, system.ndown, hamiltonian.nbasis),
-                                 dtype=numpy.complex128)
+                                     dtype=numpy.complex128)
+
+
         
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
@@ -75,6 +89,11 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                              dtype=numpy.complex128)
         self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
+        # self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
+        #                          dtype=numpy.complex128)
+        # self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
+        #                          dtype=numpy.complex128)
+
         # Contains overlaps of the current walker with the trial wavefunction.
         greens_function_multi_det(self,trial)
 
@@ -84,7 +103,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         for iw in range(self.nwalkers):
             for i, Gia, Gib in enumerate(zip(self.Gia[iw], self.Gib[iw])):
                 ofac = trial.coeffs[i].conj()*self.ovlpas[i] *self.ovlpbs[i]
-                numer += trial.coeffs[i].conj() * numpy.dot((Gia*self.ovlpas[i]+Gib*self.ovlpbs[i]).ravel(),ints.ravel())
+                numer += ofac * numpy.dot((Gia+Gib).ravel(),ints.ravel())
                 denom += ofac
         return numer / denom
 

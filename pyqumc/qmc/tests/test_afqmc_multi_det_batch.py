@@ -15,13 +15,13 @@ from pyqumc.trial_wavefunction.multi_slater import MultiSlater
 from pyqumc.utils.testing import generate_hamiltonian, get_random_phmsd
 
 steps = 25
-blocks = 10
+blocks = 5
 seed = 7
-nwalkers = 10
+nwalkers = 25
 nmo = 3
 nelec = (2,1)
 pop_control_freq = 1
-ndets = 3
+ndets = 5
 stabilise_freq = 10
 
 @pytest.mark.driver

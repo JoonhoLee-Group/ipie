@@ -182,6 +182,8 @@ class AFQMCBatch(object):
             print("# Trial wfn energy is {}".format(self.trial.energy))
         comm.barrier()
         prop_opt = options.get('propagator', {})
+        if comm.rank == 0:
+            print("# Getting propagator driver")
         self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
                                                  self.qmc, options=prop_opt,
                                                  verbose=verbose)
@@ -197,6 +199,8 @@ class AFQMCBatch(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
+        if comm.rank == 0:
+            print("# Getting WalkerBatchHandler")
         self.psi = WalkerBatchHandler(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,

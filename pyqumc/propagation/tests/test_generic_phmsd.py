@@ -19,7 +19,7 @@ from pyqumc.estimators.greens_function import gab_spin, gab
 def test_phmsd_force_bias():
     numpy.random.seed(7)
     nmo = 10
-    nelec = (5,5)
+    nelec = (6,5)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     nchols = chol.shape[0]
     system = Generic(nelec=nelec)
@@ -29,10 +29,13 @@ def test_phmsd_force_bias():
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=2, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
+    trial.half_rotate(system, ham)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
     prop = GenericContinuous(system, ham, trial, qmc)
     walker = MultiDetWalker(system, ham, trial)
-    fb = prop.construct_force_bias(ham, walker, trial)
+    
+    fb_slow = prop.construct_force_bias_slow(ham, walker, trial)
+    fb_multi_det = prop.construct_force_bias_multi_det(ham, walker, trial)
 
     ndets = wfn[0].shape[0]
     
@@ -53,13 +56,14 @@ def test_phmsd_force_bias():
         ovlpa = sign_a*numpy.exp(logdet_a)  
         ovlpb = sign_b*numpy.exp(logdet_b)
         ovlp = ovlpa * ovlpb
-        G += Gia * ovlpa * trial.coeffs[idet].conj() + Gib * ovlpb * trial.coeffs[idet].conj()
+        G += (Gia + Gib ) * trial.coeffs[idet].conj() * ovlp
         denom += ovlp * trial.coeffs[idet].conj()
 
     G /= denom
-    fb_ref[:] = - prop.sqrt_dt*(1.j*numpy.dot(ham.chol_vecs.T, G.ravel())- prop.mf_shift)
+    fb_ref[:] = - prop.sqrt_dt*(1.j*numpy.dot(ham.chol_vecs, G.ravel())- prop.mf_shift)
     
-    assert numpy.allclose(fb_ref, fb)
+    assert numpy.allclose(fb_ref, fb_slow)
+    assert numpy.allclose(fb_ref, fb_multi_det)
 
 @pytest.mark.unit
 def test_phmsd_overlap():
@@ -119,7 +123,9 @@ def test_phmsd_propagation():
     walker = MultiDetWalker(system, ham, trial)
     for i in range(0,10):
         prop.propagate_walker(walker, system, ham, trial, trial.energy)
-    assert walker.weight == pytest.approx(0.6689207316889051)
+    # print(walker.weight)
+    assert walker.weight == pytest.approx(0.6879757652436572)
+    # assert walker.weight == pytest.approx(0.6689207316889051)
 
 
 if __name__ == '__main__':
