@@ -154,7 +154,7 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
-
+# @profile
 def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     """
     Internal function for computing exchange two-electron integral energy 
@@ -184,15 +184,17 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     exx_vec_a = numpy.zeros(lwalker, dtype=numpy.complex128)
     exx_vec_b = numpy.zeros(lwalker, dtype=numpy.complex128)
 
-    Ta = numpy.zeros((nalpha, nalpha), dtype=numpy.complex128)
-    Tb = numpy.zeros((nbeta, nbeta), dtype=numpy.complex128)
+    # Ta = numpy.zeros((nalpha, nalpha * lwalker), dtype=numpy.complex128)
+    # Tb = numpy.zeros((nbeta, nbeta * lwalker), dtype=numpy.complex128)
 
     # Writing this way so in the future we can vmap of naux index of rchol_a
     for x in range(naux):
         rmi_a = rchol_a[x].reshape((nalpha, nbasis)) # can we get rid of this?
         Ta = rmi_a.dot(GaT_stacked) # (na, na x nwalker)
+        # Ta = rmi_a.real.dot(GaT_stacked.real) + 1j * rmi_a.real.dot(GaT_stacked.imag)
         rmi_b = rchol_b[x].reshape((nbeta, nbasis))
         Tb = rmi_b.dot(GbT_stacked) # (nb, nb x nwalker)
+        # Tb = rmi_b.real.dot(GbT_stacked.real) + 1j * rmi_b.real.dot(GbT_stacked.imag)
         Ta = Ta.reshape((nalpha, lwalker, nalpha))  # reshape into 3-tensor for tdot
         Tb = Tb.reshape((nbeta, lwalker, nbeta))
         exx_vec_a += numpy.einsum('ikj,jki->k', Ta, Ta, optimize=True)
