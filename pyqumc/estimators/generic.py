@@ -1,4 +1,5 @@
 import numpy
+from numpy import ndarray
 import sys
 
 def local_energy_generic(h1e, eri, G, ecore=0.0, Ghalf=None):
