@@ -37,7 +37,7 @@ def test_phmsd_local_energy():
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init, options = {'wicks':True})
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})

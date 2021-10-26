@@ -34,7 +34,7 @@ def test_phmsd_force_bias_batch():
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init, options = {'wicks':True})
     trial.half_rotate(system, ham)
 
     numpy.random.seed(7)
@@ -86,7 +86,7 @@ def test_phmsd_greens_function_batch():
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
 
     numpy.random.seed(7)
 
@@ -128,7 +128,7 @@ def test_phmsd_overlap_batch():
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
 
     numpy.random.seed(70)
 
@@ -163,7 +163,7 @@ def test_phmsd_propagation_batch():
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
 
     numpy.random.seed(7)
 
