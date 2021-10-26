@@ -229,7 +229,6 @@ def greens_function_multi_det_wicks(walker_batch, trial):
             # contribution 1 (disconnected diagrams)
             walker_batch.Ga[iw] += trial.coeffs[jdet].conj() * G0a * ovlpa * ovlpb
             walker_batch.Gb[iw] += trial.coeffs[jdet].conj() * G0b * ovlpa * ovlpb 
-            print("nex_a, nex_b = {}, {}".format(nex_a, nex_b))
             # intermediates for contribution 2 (connected diagrams)
             if (nex_a == 1):
                 walker_batch.CIa[iw,trial.anh_a[jdet][0],trial.cre_a[jdet][0]] += trial.coeffs[jdet].conj() * trial.phase_a[jdet] * ovlpb

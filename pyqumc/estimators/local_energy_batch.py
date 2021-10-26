@@ -28,6 +28,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
                 # construct "local" green's functions for each component of A
                 G = [Ga[idet], Gb[idet]]
                 Ghalf = [Ghalfa[idet], Ghalfb[idet]]
+                # return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
                 e = list(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
                 numer0 += w[idet] * e[0]
                 numer1 += w[idet] * e[1]
@@ -51,6 +52,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
             # construct "local" green's functions for each component of A
             G = [Ga[idet], Gb[idet]]
             Ghalf = [Ghalfa[idet], Ghalfb[idet]]
+            # return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
             e = list(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
             numer0 += w[idet] * e[0]
             numer1 += w[idet] * e[1]
