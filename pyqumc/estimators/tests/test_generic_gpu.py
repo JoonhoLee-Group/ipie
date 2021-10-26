@@ -41,10 +41,10 @@ def test_local_energy_cholesky_opt():
         ham.chol_vecs = cupy.array(ham.chol_vecs)
 
         trial.psi = cupy.array(trial.psi)
-        trial.coeff = cupy.array(trial.coeff)
+        trial.coeffs = cupy.array(trial.coeffs)
         trial._rchola = cupy.array(trial._rchola.copy())
         trial._rcholb = cupy.array(trial._rcholb.copy())
-        if (trial.G != None):
+        if (type(trial.G) == numpy.ndarray):
             trial.G = cupy.array(trial.G)
         if (trial.Ghalf != None):
             trial.Ghalf[0] = cupy.array(trial.Ghalf[0])
@@ -54,6 +54,8 @@ def test_local_energy_cholesky_opt():
             trial.occb = cupy.array(trial.occb)
 
     e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
+    e = cupy.array(e)
+    e = cupy.asnumpy(e)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
