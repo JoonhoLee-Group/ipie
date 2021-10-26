@@ -15,6 +15,26 @@ def minor_mask(A, i, j):
 
     return minor
 
+def minor_mask4(A, i, j, k, l):
+    r"""computing matrix minor, i-th and k-th rows and j-th and l-th column removed"""
+
+    ncols = A.shape[1]
+
+    if (ncols-2 <=0):
+        return 1.0
+
+    mask = numpy.ones_like(A, dtype=bool)
+    mask[i, :] = False
+    mask[:, j] = False
+    mask[k, :] = False
+    mask[:, l] = False
+
+    minor = A[mask].reshape(A.shape[0] - 2, A.shape[1] - 2)
+
+    del mask
+
+    return minor
+
 def sherman_morrison(Ainv, u, vt):
     r"""Sherman-Morrison update of a matrix inverse:
 
