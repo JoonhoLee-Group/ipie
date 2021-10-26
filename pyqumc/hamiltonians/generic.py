@@ -1,20 +1,10 @@
 import ast
 import h5py
 import numpy
-
-try:
-    import cupy
-    assert(cupy.is_available())
-    array = cupy.array
-    zeros = cupy.zeros
-    einsum = cupy.einsum
-    isrealobj = cupy.isrealobj
-except:
-    array = numpy.array
-    zeros = numpy.zeros
-    einsum = numpy.einsum
-    isrealobj = numpy.isrealobj
-
+array = numpy.array
+zeros = numpy.zeros
+einsum = numpy.einsum
+isrealobj = numpy.isrealobj
 import sys
 import scipy.linalg
 import time

@@ -15,8 +15,9 @@ from pyqumc.utils.testing import (
         )
 try:
     import cupy
+    gpu_available = True
 except:
-    print("# cupy unavailble")
+    gpu_available = False
 
 
 @pytest.mark.unit
@@ -32,6 +33,26 @@ def test_local_energy_cholesky_opt():
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = MultiSlater(system, ham, wfn)
     trial.half_rotate(system, ham)
+    
+    if gpu_available:
+        print("# GPU data transfer in trial")
+        ham.H1 = cupy.array(ham.H1)
+        ham.h1e_mod = cupy.array(ham.h1e_mod)
+        ham.chol_vecs = cupy.array(ham.chol_vecs)
+
+        trial.psi = cupy.array(trial.psi)
+        trial.coeff = cupy.array(trial.coeff)
+        trial._rchola = cupy.array(trial._rchola.copy())
+        trial._rcholb = cupy.array(trial._rcholb.copy())
+        if (trial.G != None):
+            trial.G = cupy.array(trial.G)
+        if (trial.Ghalf != None):
+            trial.Ghalf[0] = cupy.array(trial.Ghalf[0])
+            trial.Ghalf[1] = cupy.array(trial.Ghalf[1])
+        if (trial.ortho_expansion):
+            trial.occa = cupy.array(trial.occa)
+            trial.occb = cupy.array(trial.occb)
+
     e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
