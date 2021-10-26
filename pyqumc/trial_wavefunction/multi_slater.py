@@ -13,6 +13,15 @@ from pyqumc.utils.io import (
         )
 from pyqumc.utils.mpi import get_shared_array
 
+import numpy
+
+try:
+    import cupy
+    assert(cupy.is_available())
+    gpu_available = True
+except:
+    gpu_available = False
+
 class MultiSlater(object):
 
     def __init__(self, system, hamiltonian, wfn, nbasis=None, options={},
@@ -164,6 +173,16 @@ class MultiSlater(object):
         self.exxb0 = None
         write_wfn = options.get('write_wavefunction', False)
         output_file = options.get('output_file', 'wfn.h5')
+
+        if gpu_available:
+            if verbose:
+                print("# GPU data transfer in MultiSlater")
+            self.psi = cupy.array(self.psi)
+            self.coeff = cupy.array(self.coeff)
+            if (self.ortho_expansion):
+                self.occa = cupy.array(self.occa)
+                self.occb = cupy.array(self.occb)
+
         if write_wfn:
             self.write_wavefunction(filename=output_file)
         if verbose:
@@ -528,6 +547,12 @@ class MultiSlater(object):
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
         if comm is not None:
             comm.barrier()
+
+        if (gpu_available):
+            if verbose:
+                print("# GPU data transfer in MultiSlater.half_rotate")
+            self._rchola = cupy.array(self._rchola.copy())
+            self._rcholb = cupy.array(self._rcholb.copy())
 
         if(hamiltonian.control_variate):
             self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
