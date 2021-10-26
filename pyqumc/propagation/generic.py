@@ -30,14 +30,14 @@ class GenericContinuous(object):
     """
 
     def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
-        optimised = options.get('optimised', True)
+        self.optimised = options.get('optimised', True)
         # Derived Attributes
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
         start = time.time()
         if trial.ndets > 1:
-            optimised = False
+            self.optimised = False
             self.mf_shift = (
                     self.construct_mean_field_shift_multi_det(hamiltonian, trial)
                     )
@@ -54,22 +54,25 @@ class GenericContinuous(object):
         self.mf_core = hamiltonian.ecore + 0.5*numpy.dot(self.mf_shift, self.mf_shift)
         self.nstblz = qmc.nstblz
         if (qmc.batched):
+            self.nwalkers = qmc.nwalkers
             self.vbias_batch = numpy.zeros((qmc.nwalkers, hamiltonian.nfields), dtype=numpy.complex128)
         else:
             self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
-        if optimised:
+        if self.optimised:
             if (qmc.batched):
-                self.nwalkers = qmc.nwalkers
-                self.construct_force_bias_batch = self.construct_force_bias_batch
+                self.construct_force_bias = None
                 self.construct_VHS_batch = self.construct_VHS_batch
             else:
                 self.construct_force_bias = self.construct_force_bias_fast
                 self.construct_VHS = self.construct_VHS_fast
         else:
-            assert(qmc.batched == False or qmc.batched == None)
             if trial.ndets > 1:
-                self.construct_force_bias = self.construct_force_bias_multi_det
+                if (qmc.batched):
+                    self.construct_force_bias = None
+                else:
+                    self.construct_force_bias = self.construct_force_bias_multi_det
             else:
+                assert(qmc.batched == False or qmc.batched == None)
                 self.construct_force_bias = self.construct_force_bias_slow
             self.construct_VHS = self.construct_VHS_slow
         self.ebound = (2.0/self.dt)**0.5
@@ -85,24 +88,28 @@ class GenericContinuous(object):
                 \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
         """
+        # hamiltonian.chol_vecs [X, M^2]
         if hamiltonian.sparse:
-            mf_shift = 1j*trial.G[0].ravel()*hamiltonian.chol_vecs
-            mf_shift += 1j*trial.G[1].ravel()*hamiltonian.chol_vecs
+            mf_shift = 1j*hamiltonian.chol_vecs*trial.G[0].ravel()
+            mf_shift += 1j*hamiltonian.chol_vecs*trial.G[1].ravel()
         else:
             Gcharge = (trial.G[0]+trial.G[1]).ravel()
             if numpy.isrealobj(hamiltonian.chol_vecs):
-                tmp_real = numpy.dot(Gcharge.real, hamiltonian.chol_vecs)
-                tmp_imag = numpy.dot(Gcharge.imag, hamiltonian.chol_vecs)
+                tmp_real = numpy.dot(hamiltonian.chol_vecs,Gcharge.real)
+                tmp_imag = numpy.dot(hamiltonian.chol_vecs,Gcharge.imag)
                 mf_shift = 1.j * tmp_real - tmp_imag
             else:
-                mf_shift = 1j*numpy.dot(hamiltonian.chol_vecs.T,
+                mf_shift = 1j*numpy.dot(hamiltonian.chol_vecs,
                                         (trial.G[0]+trial.G[1]).ravel())
         return mf_shift
 
-    def construct_mean_field_shift_multi_det(self, system, trial):
-        nb = system.nbasis
-        mf_shift = [trial.contract_one_body(Vpq.reshape(nb,nb)) for Vpq in system.chol_vecs.T]
-        mf_shift = 1j*numpy.array(mf_shift)
+    def construct_mean_field_shift_multi_det(self, hamiltonian, trial):
+        if (trial.G != None):
+            mf_shift = self.construct_mean_field_shift(hamiltonian,trial)
+        else:
+            nb = hamiltonian.nbasis
+            mf_shift = [trial.contract_one_body(Vpq.reshape(nb,nb)) for Vpq in hamiltonian.chol_vecs]
+            mf_shift = 1j*numpy.array(mf_shift)
         return mf_shift
 
     def construct_one_body_propagator(self, hamiltonian, dt):
@@ -121,7 +128,8 @@ class GenericContinuous(object):
             Timestep.
         """
         nb = hamiltonian.nbasis
-        shift = 1j*hamiltonian.chol_vecs.dot(self.mf_shift).reshape(nb,nb)
+        # shift = 1j*hamiltonian.chol_vecs.dot(self.mf_shift).reshape(nb,nb)
+        shift = 1j*numpy.einsum("xm,x->m",hamiltonian.chol_vecs,self.mf_shift).reshape(nb,nb)
         H1 = hamiltonian.h1e_mod - numpy.array([shift,shift])
         self.BH1 = numpy.array([scipy.linalg.expm(-0.5*dt*H1[0]),
                                 scipy.linalg.expm(-0.5*dt*H1[1])])
@@ -143,38 +151,10 @@ class GenericContinuous(object):
         """
         # vbias = numpy.einsum('lpq,pq->l', hamiltonian.chol_vecs, walker.G[0])
         # vbias += numpy.einsum('lpq,pq->l', hamiltonian.chol_vecs, walker.G[1])
-        vbias = numpy.dot(hamiltonian.chol_vecs.T, walker.G[0].ravel())
-        vbias += numpy.dot(hamiltonian.chol_vecs.T, walker.G[1].ravel())
+        vbias = numpy.dot(hamiltonian.chol_vecs, walker.G[0].ravel())
+        vbias += numpy.dot(hamiltonian.chol_vecs, walker.G[1].ravel())
         return - self.sqrt_dt * (1j*vbias-self.mf_shift)
     
-    def construct_force_bias_batch(self, hamiltonian, walker_batch, trial):
-        """Compute optimal force bias.
-
-        Uses rotated Green's function.
-
-        Parameters
-        ----------
-        Ghalf : :class:`numpy.ndarray`
-            Half-rotated walker's Green's function.
-
-        Returns
-        -------
-        xbar : :class:`numpy.ndarray`
-            Force bias.
-        """
-        Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
-        Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
-        if numpy.isrealobj(trial._rchola) and numpy.isrealobj(trial._rcholb):
-            vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
-            vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
-            self.vbias_batch.real = vbias_batch_real.T.copy()
-            self.vbias_batch.imag = vbias_batch_imag.T.copy()
-        else:    
-            vbias_batch = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
-            self.vbias_batch = vbias_batch.T.copy()
-
-        return - self.sqrt_dt * (1j*self.vbias_batch-self.mf_shift)
-
     def construct_force_bias_fast(self, hamiltonian, walker, trial):
         """Compute optimal force bias.
 
@@ -192,22 +172,25 @@ class GenericContinuous(object):
         """
         G = walker.Ghalf
         if hamiltonian.sparse:
-            self.vbias = G[0].ravel() * trial.rot_chol(spin=0).T
-            self.vbias += G[1].ravel() * trial.rot_chol(spin=1).T
+            self.vbias = trial.rot_chol(spin=0) * G[0].ravel()
+            self.vbias += trial.rot_chol(spin=1) * G[1].ravel()
         else:
             self.vbias = numpy.dot(trial.rot_chol(spin=0), G[0].ravel())
             self.vbias += numpy.dot(trial.rot_chol(spin=1), G[1].ravel())
         return - self.sqrt_dt * (1j*self.vbias-self.mf_shift)
 
     def construct_force_bias_multi_det(self, hamiltonian, walker, trial):
+        # if (trial.G != None):
         vbias = numpy.array([walker.contract_one_body(Vpq, trial)
-                             for Vpq in hamiltonian.chol_vecs.T])
+                             for Vpq in hamiltonian.chol_vecs])
         return - self.sqrt_dt * (1j*vbias-self.mf_shift)
+        # else:
+        #     return self.construct_force_bias_slow(hamiltonian, walker, trial)
 
     def construct_VHS_slow(self, hamiltonian, shifted):
         # VHS_{ik} = \sum_{n} v_{(ik),n} (x-xbar)_n
         nb = hamiltonian.nbasis
-        return self.isqrt_dt * numpy.dot(hamiltonian.chol_vecs, shifted).reshape(nb,nb)
+        return self.isqrt_dt * numpy.einsum("xm,x->m",hamiltonian.chol_vecs, shifted).reshape(nb,nb)
 
     def construct_VHS_fast(self, hamiltonian, xshifted):
         """Construct the one body potential from the HS transformation
@@ -223,9 +206,10 @@ class GenericContinuous(object):
             the HS potential
         """
         if numpy.isrealobj(hamiltonian.chol_vecs):
-            VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag)
+            VHS = numpy.einsum("xm,x->m",hamiltonian.chol_vecs, xshifted.real) + 1.j * numpy.einsum("xm,x->m",hamiltonian.chol_vecs, xshifted.imag)
         else:
-            VHS = hamiltonian.chol_vecs.dot(xshifted)
+            # VHS = hamiltonian.chol_vecs.dot(xshifted)
+            VHS = numpy.einsum("xm,x->m",hamiltonian.chol_vecs, xshifted)
         VHS = VHS.reshape(hamiltonian.nbasis, hamiltonian.nbasis)
         return  self.isqrt_dt * VHS
 
@@ -243,10 +227,11 @@ class GenericContinuous(object):
             the HS potential
         """
         if numpy.isrealobj(hamiltonian.chol_vecs):
-            VHS = hamiltonian.chol_vecs.dot(xshifted.real.T) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag.T)
+            # VHS = hamiltonian.chol_vecs.dot(xshifted.real.T) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag.T)
+            VHS = xshifted.real.dot(hamiltonian.chol_vecs) + 1.j * xshifted.imag.dot(hamiltonian.chol_vecs)
         else:
-            VHS = hamiltonian.chol_vecs.dot(xshifted.T)
-        VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
+            VHS = xshifted.dot(hamiltonian.chol_vecs)
+        VHS = VHS.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
         return  self.isqrt_dt * VHS
 
 def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=False):
@@ -271,7 +256,7 @@ def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=Fals
         Full propagator matrix.
     """
     nbsf = hamiltonian.nbasis
-    VHS = 1j*dt**0.5*hamiltonian.chol_vecs.dot(config).reshape(nbsf, nbsf)
+    VHS = 1j*dt**0.5*hamiltonian.chol_vecs.T.dot(config).reshape(nbsf, nbsf)
     EXP_VHS = exponentiate_matrix(VHS)
     Bup = BT2[0].dot(EXP_VHS).dot(BT2[0])
     Bdown = BT2[1].dot(EXP_VHS).dot(BT2[1])

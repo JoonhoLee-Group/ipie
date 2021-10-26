@@ -16,16 +16,17 @@ from pyqumc.hamiltonians.ueg import UEG as HamUEG
 from pyqumc.utils.testing import generate_hamiltonian
 from pyqumc.trial_wavefunction.hartree_fock import HartreeFock
 
-steps = 10
-blocks = 10
+steps = 25
+blocks = 7
 seed = 7
-nwalkers = 10
-nmo = 11
-nelec = (3,3)
-pop_control_freq = 1
+nwalkers = 15
+nmo = 14
+nelec = (4,3)
+pop_control_freq = 5
+stabilise_freq = 5
 
 @pytest.mark.driver
-def test_generic_batch():
+def test_generic_single_det_batch():
     options = {
             'verbosity': 0,
             'get_sha1': False,
@@ -34,6 +35,7 @@ def test_generic_batch():
                 'steps': steps,
                 'nwalkers_per_task':nwalkers,
                 'pop_control_freq': pop_control_freq,
+                'stabilise_freq': stabilise_freq,
                 'blocks': blocks,
                 'rng_seed': seed,
                 'batched': True
@@ -79,6 +81,7 @@ def test_generic_batch():
                 'steps': steps,
                 'nwalkers_per_task':nwalkers,
                 'pop_control_freq':pop_control_freq,
+                'stabilise_freq': stabilise_freq,
                 'blocks': blocks,
                 'rng_seed': seed,
             },
@@ -120,7 +123,15 @@ def test_generic_batch():
     assert weight.imag == pytest.approx(weight_batch.imag)
     data = extract_mixed_estimates('estimates.0.h5')
 
+    assert numpy.mean(data_batch.WeightFactor.values[:-1].real) == pytest.approx(numpy.mean(data.WeightFactor.values[:-1].real))
+    assert numpy.mean(data_batch.Weight.values[:-1].real) == pytest.approx(numpy.mean(data.Weight.values[:-1].real))
+    assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(numpy.mean(data.ENumer.values[:-1].real))
+    assert numpy.mean(data_batch.EDenom.values[:-1].real) == pytest.approx(numpy.mean(data.EDenom.values[:-1].real))
     assert numpy.mean(data_batch.ETotal.values[:-1].real) == pytest.approx(numpy.mean(data.ETotal.values[:-1].real))
+    assert numpy.mean(data_batch.E1Body.values[:-1].real) == pytest.approx(numpy.mean(data.E1Body.values[:-1].real))
+    assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(numpy.mean(data.E2Body.values[:-1].real))
+    assert numpy.mean(data_batch.EHybrid.values[:-1].real) == pytest.approx(numpy.mean(data.EHybrid.values[:-1].real))
+    assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(numpy.mean(data.Overlap.values[:-1].real))
 
 if __name__=="__main__":
-    test_generic_batch()
+    test_generic_single_det_batch()

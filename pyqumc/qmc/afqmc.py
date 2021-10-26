@@ -257,9 +257,9 @@ class AFQMC(object):
             start = time.time()
             
             for w in self.psi.walkers:
-                if abs(w.weight) > 1e-8:
-                    self.propagators.propagate_walker(w, self.system, self.hamiltonian,
-                                                      self.trial, eshift)
+                # if abs(w.weight) > 1e-8:
+                self.propagators.propagate_walker(w, self.system, self.hamiltonian,
+                                                  self.trial, eshift)
                 if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
                     w.weight = w.total_weight * 0.10
             self.tprop += time.time() - start
@@ -267,6 +267,7 @@ class AFQMC(object):
                 start = time.time()
                 self.psi.pop_control(comm)
                 self.tpopc += time.time() - start
+            
             # calculate estimators
             start = time.time()
             self.estimators.update(self.qmc, self.system, self.hamiltonian,

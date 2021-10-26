@@ -23,7 +23,7 @@ from pyqumc.utils.misc import (
         )
 from pyqumc.utils.io import  to_json, serialise, get_input_value
 from pyqumc.utils.mpi import get_shared_comm
-from pyqumc.walkers.handler_batch import WalkersBatch
+from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
 
 
 class AFQMCBatch(object):
@@ -182,6 +182,8 @@ class AFQMCBatch(object):
             print("# Trial wfn energy is {}".format(self.trial.energy))
         comm.barrier()
         prop_opt = options.get('propagator', {})
+        if comm.rank == 0:
+            print("# Getting propagator driver")
         self.propagators = get_propagator_driver(self.system, self.hamiltonian, self.trial,
                                                  self.qmc, options=prop_opt,
                                                  verbose=verbose)
@@ -197,7 +199,9 @@ class AFQMCBatch(object):
             Estimators(est_opts, self.root, self.qmc, self.system, self.hamiltonian,
                        self.trial, self.propagators.BT_BP, verbose)
         )
-        self.psi = WalkersBatch(self.system, self.hamiltonian, self.trial,
+        if comm.rank == 0:
+            print("# Getting WalkerBatchHandler")
+        self.psi = WalkerBatchHandler(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
                            verbose=verbose,
                            nprop_tot=self.estimators.nprop_tot,
@@ -206,6 +210,7 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
+            print("# Available memory on the node is {} MB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -226,8 +231,6 @@ class AFQMCBatch(object):
         if psi is not None:
             self.psi = psi
         self.setup_timers()
-        # w0 = self.psi.walkers[0]
-        # energy = local_energy_batch(self.system, self.hamiltonian, self.psi.walkers_batch, self.trial, iw=0)
         eshift = 0.0
 
         # Calculate estimates for initial distribution of walkers.
@@ -248,13 +251,13 @@ class AFQMCBatch(object):
             start = time.time()
 
             self.propagators.propagate_walker_batch(self.psi.walkers_batch, self.system, self.hamiltonian, self.trial, eshift)
+            
             self.tprop_fbias = self.propagators.tfbias
             self.tprop_ovlp = self.propagators.tovlp
             self.tprop_update = self.propagators.tupdate
             self.tprop_gf = self.propagators.tgf
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
-
 
             rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
@@ -308,7 +311,7 @@ class AFQMCBatch(object):
                       .format((time.time() - self._init_time)))
                 print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                print("# - Step: {:.6f} s for {} steps in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
+                print("# - Step: {:.6f} s / call for {} calls in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_fbias/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_vhs/(nblocks*nsteps), nsteps, nblocks))

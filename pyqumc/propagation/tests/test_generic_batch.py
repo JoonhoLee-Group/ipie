@@ -4,9 +4,12 @@ from pyqumc.utils.misc import dotdict
 from pyqumc.trial_wavefunction.multi_slater import MultiSlater
 from pyqumc.systems.generic import Generic
 from pyqumc.propagation.continuous import Continuous
+from pyqumc.propagation.force_bias import construct_force_bias_batch
 from pyqumc.hamiltonians.generic import Generic as HamGeneric
 from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
+from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
+from pyqumc.walkers.multi_det import MultiDetWalker
 from pyqumc.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
@@ -14,7 +17,7 @@ from pyqumc.utils.testing import (
         )
 
 @pytest.mark.unit
-def test_hybrid():
+def test_hybrid_batch():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5,5)
@@ -56,4 +59,4 @@ def test_hybrid():
         assert numpy.allclose(walker_batch.phi[iw], walkers[iw].phi)
 
 if __name__ == '__main__':
-    test_hybrid()
+    test_hybrid_batch()

@@ -2,7 +2,6 @@ import numpy
 import os
 import unittest
 import itertools
-from pyscf import lib
 from scipy.fftpack.helper import next_fast_len
 from pyqumc.estimators.greens_function import gab_mod
 from pyqumc.utils.testing import get_random_wavefunction

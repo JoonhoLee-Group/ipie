@@ -389,32 +389,32 @@ class PW_FFT(object):
         else:
             return 0.0
 
-def unit_test():
-    from numpy import linalg as LA
-    from pyscf import gto, scf, ao2mo, mcscf, fci, ci, cc, tdscf, gw, hci
-    from pyqumc.systems.ueg import UEG
-    from pyqumc.trial_wavefunction.hartree_fock import HartreeFock
-    from pyqumc.trial_wavefunction.free_electron import FreeElectron
+# def unit_test():
+#     from numpy import linalg as LA
+#     from pyscf import gto, scf, ao2mo, mcscf, fci, ci, cc, tdscf, gw, hci
+#     from pyqumc.systems.ueg import UEG
+#     from pyqumc.trial_wavefunction.hartree_fock import HartreeFock
+#     from pyqumc.trial_wavefunction.free_electron import FreeElectron
 
-    ecut = 1.0
+#     ecut = 1.0
 
-    inputs = {'nup':7,
-    'ndown':7,
-    'rs':1.0,
-    'thermal':False,
-    'ecut':ecut}
+#     inputs = {'nup':7,
+#     'ndown':7,
+#     'rs':1.0,
+#     'thermal':False,
+#     'ecut':ecut}
 
-    system = PW_FFT(inputs, True)
-    trial = FreeElectron(system, False, inputs, True)
+#     system = PW_FFT(inputs, True)
+#     trial = FreeElectron(system, False, inputs, True)
 
-    from pyqumc.qmc.options import QMCOpts
-    from pyqumc.propagation.continuous import Continuous
+#     from pyqumc.qmc.options import QMCOpts
+#     from pyqumc.propagation.continuous import Continuous
 
-    system2 = UEG(inputs, True)
+#     system2 = UEG(inputs, True)
 
-    qmc = QMCOpts(inputs, system2, True)
+#     qmc = QMCOpts(inputs, system2, True)
 
-    trial = HartreeFock(system2, False, inputs, True)
+#     trial = HartreeFock(system2, False, inputs, True)
 
-if __name__=="__main__":
-    unit_test()
+# if __name__=="__main__":
+#     unit_test()

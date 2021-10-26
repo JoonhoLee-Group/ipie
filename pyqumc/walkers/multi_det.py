@@ -27,7 +27,7 @@ class MultiDetWalker(Walker):
     def __init__(self, system, hamiltonian, trial, walker_opts={}, index=0,
                  weights='zeros', verbose=False, nprop_tot=None, nbp=None):
         if verbose:
-            print("# Setting up MultiDetWalker object.")
+            print("# Setting up pyqumc.walkers.MultiDetWalker object.")
         Walker.__init__(self, system, hamiltonian, trial, walker_opts, index, nprop_tot, nbp)
         self.name = "MultiDetWalker"
         self.ndets = trial.psi.shape[0]
@@ -43,7 +43,8 @@ class MultiDetWalker(Walker):
             self.weights = numpy.zeros(self.ndets, dtype=dtype)
         else:
             self.weights = numpy.ones(self.ndets, dtype=dtype)
-        self.ovlps = numpy.zeros(self.ndets, dtype=dtype)
+        self.ovlpsa = numpy.zeros(self.ndets, dtype=dtype)
+        self.ovlpsb = numpy.zeros(self.ndets, dtype=dtype)
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
         self.ot = self.overlap_direct(trial)
@@ -79,23 +80,20 @@ class MultiDetWalker(Walker):
 
         self.le_oratio = 1.0
 
-        # self.noisy_overlap = walker_opts.get('noisy_overlap', False)
-        # self.noise_level = walker_opts.get('noise_level', -5)
-
-        # if (verbose):
-        #     if (self.noisy_overlap):
-        #         print("# Overlap measurement is noisy with a level {}".format(self.noise_level))
-
     def overlap_direct(self, trial):
         nup = self.nup
         for (i, det) in enumerate(trial.psi):
             Oup = numpy.dot(det[:,:nup].conj().T, self.phi[:,:nup])
             Odn = numpy.dot(det[:,nup:].conj().T, self.phi[:,nup:])
-            self.ovlps[i] = scipy.linalg.det(Oup) * scipy.linalg.det(Odn)
-            if abs(self.ovlps[i]) > 1e-16:
+            sign_a, logdet_a = numpy.linalg.slogdet(Oup)
+            sign_b, logdet_b = numpy.linalg.slogdet(Odn)
+            self.ovlpsa[i] = sign_a*numpy.exp(logdet_a)  
+            self.ovlpsb[i] = sign_b*numpy.exp(logdet_b)
+            if abs(self.ovlpsa[i]) > 1e-16:
                 self.inv_ovlp[0][i] = scipy.linalg.inv(Oup)
+            if abs(self.ovlpsb[i]) > 1e-16:
                 self.inv_ovlp[1][i] = scipy.linalg.inv(Odn)
-            self.weights[i] = trial.coeffs[i].conj() * self.ovlps[i]
+            self.weights[i] = trial.coeffs[i].conj() * self.ovlpsa[i] * self.ovlpsb[i]
         return sum(self.weights)
 
     def inverse_overlap(self, trial):
@@ -129,7 +127,8 @@ class MultiDetWalker(Walker):
         for ix in range(self.ndets):
             det_O_up = 1.0 / scipy.linalg.det(self.inv_ovlp[0][ix])
             det_O_dn = 1.0 / scipy.linalg.det(self.inv_ovlp[1][ix])
-            self.ovlps[ix] = det_O_up * det_O_dn
+            self.ovlpsa[ix] = det_O_up
+            self.ovlpsb[ix] = det_O_dn
             self.weights[ix] = trial.coeffs[ix].conj() * self.ovlps[ix]
         return sum(self.weights)
 
@@ -152,8 +151,9 @@ class MultiDetWalker(Walker):
             Odn = numpy.dot(trial.psi[ix,:,nup:].conj().T, self.phi[:,nup:])
             det_Oup = scipy.linalg.det(Oup)
             det_Odn = scipy.linalg.det(Odn)
-            self.ovlps[ix] = det_Oup * det_Odn
-            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlps[ix]
+            self.ovlpsa[ix] = det_Oup 
+            self.ovlpsb[ix] = det_Odn
+            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
         
         ovlp = sum(self.weights)
 
@@ -202,30 +202,42 @@ class MultiDetWalker(Walker):
         """
         nup = self.nup
         tot_ovlp = 0.0
+        self.G.fill(0.0+0.0j)
         for (ix, detix) in enumerate(trial.psi):
             # construct "local" green's functions for each component of psi_T
             Oup = numpy.dot(self.phi[:,:nup].T, detix[:,:nup].conj())
             # det(A) = det(A^T)
-            ovlp = scipy.linalg.det(Oup)
-            if abs(ovlp) < 1e-16:
+            # self.ovlpsa[ix] = scipy.linalg.det(Oup)
+            sign_a, logdet_a = numpy.linalg.slogdet(Oup)
+            self.ovlpsa[ix] = sign_a*numpy.exp(logdet_a)
+
+            if abs(self.ovlpsa[ix]) < 1e-16:
                 continue
-            inv_ovlp = scipy.linalg.inv(Oup)
-            self.Gi[ix,0,:,:] = numpy.dot(detix[:,:nup].conj(),
-                                          numpy.dot(inv_ovlp,
-                                                    self.phi[:,:nup].T)
-                                          )
             Odn = numpy.dot(self.phi[:,nup:].T, detix[:,nup:].conj())
-            ovlp *= scipy.linalg.det(Odn)
+            # self.ovlpsb[ix] = scipy.linalg.det(Odn)
+            sign_b, logdet_b = numpy.linalg.slogdet(Odn)
+            self.ovlpsb[ix] = sign_b*numpy.exp(logdet_b)
+
+            ovlp = self.ovlpsa[ix] * self.ovlpsb[ix]
             if abs(ovlp) < 1e-16:
                 continue
+
+            inv_ovlp = scipy.linalg.inv(Oup)
+            Ghalfa = numpy.dot(inv_ovlp,self.phi[:,:nup].T)
+            self.Gi[ix,0,:,:] = numpy.dot(detix[:,:nup].conj(),Ghalfa)
+
             inv_ovlp = scipy.linalg.inv(Odn)
+            Ghalfb =  numpy.dot(inv_ovlp, self.phi[:,nup:].T)
+            self.Gi[ix,1,:,:] = numpy.dot(detix[:,nup:].conj(),Ghalfb)
+
             tot_ovlp += trial.coeffs[ix].conj()*ovlp
-            self.Gi[ix,1,:,:] = numpy.dot(detix[:,nup:].conj(),
-                                          numpy.dot(inv_ovlp,
-                                                    self.phi[:,nup:].T)
-                                          )
-            self.ovlps[ix] = ovlp
-            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlps[ix]
+
+            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
+            self.G[0] += self.weights[ix] * self.Gi[ix,0,:,:]
+            self.G[1] += self.weights[ix] * self.Gi[ix,1,:,:]
+
+        self.G[0] /= tot_ovlp
+        self.G[1] /= tot_ovlp
 
         if(self.split_trial_local_energy):
             tot_ovlp_energy = 0.0
@@ -257,35 +269,13 @@ class MultiDetWalker(Walker):
             self.le_oratio = tot_ovlp_energy / tot_ovlp
         return tot_ovlp
 
-    # def local_energy(self, system, two_rdm=None, rchol=None, eri=None, UVT=None):
-    #     """Compute walkers local energy
-
-    #     Parameters
-    #     ----------
-    #     system : object
-    #         System object.
-
-    #     Returns
-    #     -------
-    #     (E, T, V) : tuple
-    #         Mixed estimates for walker's energy components.
-    #     """
-    #     if (self.split_trial_local_energy):
-    #         return local_energy_multi_det(system, self.le_Gi,
-    #                                       self.le_weights,
-    #                                       two_rdm=None,
-    #                                       rchol=None)
-    #     else:
-    #         return local_energy_multi_det(system, self.Gi,
-    #                                       self.weights,
-    #                                       two_rdm=None,
-    #                                       rchol=None)
-
     def contract_one_body(self, ints, trial):
         numer = 0.0
         denom = 0.0
         for i, Gi in enumerate(self.Gi):
-            ofac = trial.coeffs[i].conj()*self.ovlps[i]
-            numer += ofac * numpy.dot((Gi[0]+Gi[1]).ravel(),ints.ravel())
-            denom += ofac
-        return numer / denom
+            # Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
+            Gitmp = trial.coeffs[i].conj() * (Gi[0]+Gi[1]) * self.ovlpsa[i] * self.ovlpsb[i]
+            numer += numpy.dot(Gitmp.ravel(),ints.ravel())
+            denom += self.weights[i]
+        return numer/denom
+        # return numpy.dot((self.G[0]+self.G[1]).ravel(), ints.ravel())

@@ -4,10 +4,13 @@ import numpy
 import sys
 import time
 from pyqumc.estimators.local_energy import local_energy
+from pyqumc.estimators.greens_function import get_greens_function
+from pyqumc.propagation.overlap import get_calc_overlap
 from pyqumc.propagation.operations import kinetic_real
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
 from pyqumc.propagation.generic import GenericContinuous
+from pyqumc.propagation.force_bias import construct_force_bias_batch
 
 class Continuous(object):
     """Propagation with continuous HS transformation.
@@ -35,10 +38,12 @@ class Continuous(object):
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j*self.sqrt_dt
-        # Fix this!
+
         self.propagator = get_continuous_propagator(system, hamiltonian, trial, qmc,
                                                     options=options,
                                                     verbose=verbose)
+        self.calc_overlap = get_calc_overlap(trial)
+        self.compute_greens_function = get_greens_function(trial)
 
         if self.hybrid:
             if verbose:
@@ -166,20 +171,20 @@ class Continuous(object):
             xbar = self.propagator.construct_force_bias(hamiltonian, walker, trial)
             self.tfbias += time.time() - start_time
 
-        idx_to_rescale = xbar > 1.0
-        absxbar = numpy.absolute(xbar)
+        absxbar = numpy.abs(xbar)
+        idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
         xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
-        
+        self.nfb_trig += numpy.sum(idx_to_rescale)
+
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
         cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
         cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
-
 
         # Operator terms contributing to propagator.
         start_time = time.time()
@@ -233,6 +238,7 @@ class Continuous(object):
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
+        eoriginal = ehyb
         if ehyb.real > eshift.real + self.ebound:
             ehyb = eshift.real+self.ebound+1j*ehyb.imag
             self.nhe_trig += 1
@@ -247,16 +253,13 @@ class Continuous(object):
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
+        eoriginal = ehyb.copy()
         idx = ehyb.real > eshift.real + self.ebound
         ehyb[idx] = eshift.real+self.ebound+1j*ehyb[idx].imag
+        self.nhe_trig += numpy.sum(idx)
         idx = ehyb.real < eshift.real - self.ebound
         ehyb[idx] = eshift.real-self.ebound+1j*ehyb[idx].imag
-        # if ehyb.real > eshift.real + self.ebound:
-        #     ehyb = eshift.real+self.ebound+1j*ehyb.imag
-        #     self.nhe_trig += 1
-        # elif ehyb.real < eshift.real - self.ebound:
-        #     ehyb = eshift.real-self.ebound+1j*ehyb.imag
-        #     self.nhe_trig += 1
+        self.nhe_trig += numpy.sum(idx)
         return ehyb
 
     def apply_bound_local_energy(self, eloc, eshift):
@@ -298,29 +301,26 @@ class Continuous(object):
         xbar = numpy.zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
-            xbar = self.propagator.construct_force_bias_batch(hamiltonian, walker_batch, trial)
+            self.propagator.vbias_batch = construct_force_bias_batch(hamiltonian, walker_batch, trial)
+            xbar = - self.propagator.sqrt_dt * (1j*self.propagator.vbias_batch-self.propagator.mf_shift)
             self.tfbias += time.time() - start_time
 
-        # rescaled_xbar = xbar > 1.0
-        # xbar_rescaled = xbar / numpy.absolute(xbar)
-        # xbar = numpy.where(rescaled_xbar, xbar_rescaled, xbar)
-
-        idx_to_rescale = xbar > 1.0
-        absxbar = numpy.absolute(xbar)
+        absxbar = numpy.abs(xbar)
+        idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
         xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
 
+        self.nfb_trig += numpy.sum(idx_to_rescale)
+
         # Normally distrubted auxiliary fields.
         xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)
         xshifted = xi - xbar
-        
+
         # Constant factor arising from force bias and mean field shift
         cmf = -self.sqrt_dt * numpy.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
-        # cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
-        # cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
         cfb = numpy.einsum("wx,wx->w",xi,xbar) - 0.5*numpy.einsum("wx,wx->w",xbar,xbar)
 
         # Operator terms contributing to propagator.
@@ -352,7 +352,7 @@ class Continuous(object):
         -------
         """
         start_time = time.time()
-        ovlp = walker_batch.greens_function(trial)
+        ovlp = self.compute_greens_function(walker_batch, trial)
         self.tgf += time.time() - start_time
         # 2. Update Slater matrix
         # 2.a Apply one-body
@@ -370,7 +370,7 @@ class Continuous(object):
 
         # Now apply phaseless approximation
         start_time = time.time()
-        ovlp_new = walker_batch.calc_overlap(trial)
+        ovlp_new = self.calc_overlap(walker_batch, trial)
         self.tovlp += time.time() - start_time
         start_time = time.time()
         self.update_weight_batch(system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
@@ -378,7 +378,6 @@ class Continuous(object):
     
     def update_weight_hybrid_batch(self, system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
         ovlp_ratio = ovlp_new / ovlp
-        # print("ovlp_ratio = {}".format(ovlp_ratio))
         hybrid_energy = -(numpy.log(ovlp_ratio) + cfb + cmf)/self.dt
         hybrid_energy = self.apply_bound_hybrid_batch(hybrid_energy, eshift)
         importance_function = (
@@ -393,7 +392,6 @@ class Continuous(object):
         tobeinstantlykilled = numpy.isinf(magn)
         tosurvive = numpy.isfinite(magn)
         
-        # print(ovlp_new.shape, walker_batch.ot.shape)
         walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
         walker_batch.weight[tobeinstantlykilled].fill(0.0)
 
@@ -447,10 +445,10 @@ class Continuous(object):
         importance_function = (
                 cmath.exp(-self.dt*(0.5*(hybrid_energy+walker.hybrid_energy)-eshift))
         )
+
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
         (magn, phase) = cmath.polar(importance_function)
         walker.hybrid_energy = hybrid_energy
-
         if not math.isinf(magn):
             # Determine cosine phase from Arg(<psi_T|B(x-\bar{x})|phi>/<psi_T|phi>)
             # Note this doesn't include exponential factor from shifting
@@ -537,20 +535,3 @@ def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbo
         propagator = None
 
     return propagator
-
-
-def unit_test():
-    from pyqumc.systems.ueg import UEG
-    from pyqumc.qmc.options import QMCOpts
-    from pyqumc.trial_wavefunction.hartree_fock import HartreeFock
-
-    inputs = {'nup':1, 'ndown':1,
-    'rs':1.0, 'ecut':1.0, 'dt':0.05, 'nwalkers':10}
-
-    system = UEG(inputs, True)
-
-    qmc = QMCOpts(inputs, system, True)
-
-    trial = HartreeFock(system, False, inputs, True)
-
-    driver = Continuous({}, qmc, system, trial, True)

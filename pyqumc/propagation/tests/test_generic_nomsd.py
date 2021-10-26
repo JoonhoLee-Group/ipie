@@ -13,6 +13,7 @@ from pyqumc.utils.testing import (
         get_random_phmsd
         )
 from pyqumc.walkers.multi_det import MultiDetWalker
+from pyqumc.estimators.greens_function import gab_spin, gab
 
 @pytest.mark.unit
 def test_nomsd():
@@ -31,47 +32,6 @@ def test_nomsd():
     prop = GenericContinuous(system, ham, trial, qmc)
     fb = prop.construct_force_bias(ham, walker, trial)
     prop.construct_VHS(ham, fb)
-
-@pytest.mark.unit
-def test_phmsd():
-    numpy.random.seed(7)
-    nmo = 10
-    nelec = (5,5)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
-                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = GenericContinuous(system, ham, trial, qmc)
-    walker = MultiDetWalker(system, ham, trial)
-    fb = prop.construct_force_bias(ham, walker, trial)
-    vhs = prop.construct_VHS(ham, fb)
-
-@pytest.mark.unit
-def test_local_energy():
-    numpy.random.seed(7)
-    nmo = 10
-    nelec = (5,5)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
-                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.calculate_energy(system, ham)
-    options = {'hybrid': False}
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker = MultiDetWalker(system, ham, trial)
-    for i in range(0,10):
-        prop.propagate_walker(walker, system, ham, trial, trial.energy)
-    assert walker.weight == pytest.approx(0.68797524675701)
 
 @pytest.mark.unit
 def test_hybrid():
@@ -93,5 +53,9 @@ def test_hybrid():
     walker = MultiDetWalker(system, ham, trial)
     for i in range(0,10):
         prop.propagate_walker(walker, system, ham, trial, trial.energy)
+    assert walker.weight == pytest.approx(0.7540668958301742) # new value after dixing contract_one_body bug
+    # assert walker.weight == pytest.approx(0.8296101502964913) # new value after fixing the force bias and contract_one_body bug
 
-    assert walker.weight == pytest.approx(0.7430443466368197)
+if __name__ == '__main__':
+    test_nomsd()
+    test_hybrid()

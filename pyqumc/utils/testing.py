@@ -47,13 +47,24 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
         coeffs = numpy.random.rand(ndet)
     return (coeffs,wfn)
 
-def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False):
+def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
     ob = [c for c in itertools.combinations(orbs, ndown)]
     oa, ob = zip(*itertools.product(oa,ob))
-    oa = oa[:ndet]
-    ob = ob[:ndet]
+
+    if (shuffle):
+        ntot = len(oa)
+        det_list = [numpy.random.randint(0, ntot-1) for i in range(ndet)] # this may pick duplicated list...
+        oa = numpy.array(oa)
+        ob = numpy.array(ob)
+        oa_new = oa[det_list,:]
+        ob_new = ob[det_list,:]
+        oa = oa_new.copy()
+        ob = ob_new.copy()
+    else:
+        oa = oa[:ndet]
+        ob = ob[:ndet]
     coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
     wfn = (coeffs,oa,ob)
     if init:

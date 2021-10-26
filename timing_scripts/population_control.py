@@ -8,7 +8,7 @@ from pyqumc.estimators.local_energy import local_energy
 from pyqumc.systems.generic import Generic
 from pyqumc.utils.mpi import get_shared_comm
 from pyqumc.utils.io import  get_input_value
-from pyqumc.walkers.handler_batch import WalkersBatch
+from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
 from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.walkers.handler import Walkers
@@ -86,7 +86,7 @@ print(trial.psi.shape)
 prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
 print(trial.psi.shape)
 
-handler_batch = WalkersBatch(sys, ham, trial, qmc, wlk_opts, verbose=False, comm=comm)
+handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, wlk_opts, verbose=False, comm=comm)
 for i in range (nsteps):
     prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
     handler_batch.walkers_batch.reortho()

@@ -12,7 +12,7 @@ from pyqumc.estimators.thermal import particle_number, one_rdm_from_G
 from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.local_energy_batch import local_energy_batch
 
-from pyqumc.estimators.greens_function import gab_mod_ovlp, gab_mod
+from pyqumc.estimators.greens_function import gab_mod_ovlp, gab_mod, greens_function
 
 from pyqumc.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from pyqumc.utils.misc import dotdict
@@ -147,7 +147,7 @@ class Mixed(object):
         # walkers weight as well as the local energy, the walker's overlap
         # with the trial wavefunction is not needed.
         if step % self.energy_eval_freq == 0:
-            walker_batch.greens_function(trial)
+            greens_function(walker_batch, trial)
             if self.eval_energy:
                 energy = local_energy_batch(system, hamiltonian, walker_batch, trial)
             else:
@@ -157,6 +157,7 @@ class Mixed(object):
                 numpy.array([numpy.sum(walker_batch.weight * energy[:,1].real), numpy.sum(walker_batch.weight * energy[:,2].real)])
             )
             self.estimates[self.names.edenom] += numpy.sum(walker_batch.weight)
+
         self.estimates[self.names.uweight] += numpy.sum(walker_batch.unscaled_weight)
         self.estimates[self.names.weight] += numpy.sum(walker_batch.weight)
         self.estimates[self.names.ovlp] += numpy.sum(walker_batch.weight * abs(walker_batch.ot))
@@ -257,11 +258,13 @@ class Mixed(object):
                             E, T, V = local_energy(system, hamiltonian, w, trial)
                         else:
                             E, T, V = 0, 0, 0
+
                         self.estimates[self.names.enumer] += w.weight*w.le_oratio*E.real
                         self.estimates[self.names.e1b:self.names.e2b+1] += (
                                 w.weight*w.le_oratio*numpy.array([T,V]).real
                         )
                         self.estimates[self.names.edenom] += w.weight * w.le_oratio
+
                 self.estimates[self.names.uweight] += w.unscaled_weight
                 self.estimates[self.names.weight] += w.weight
                 self.estimates[self.names.ovlp] += w.weight * abs(w.ot)

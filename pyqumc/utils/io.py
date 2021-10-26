@@ -587,7 +587,8 @@ def write_input(filename, hamil, wfn, bp=False, options={}):
             'dt': 0.005,
             'nwalkers': 640,
             'nsteps': 25,
-            'blocks': 50000
+            'blocks': 50000,
+            'batched': True
             },
         'trial': {
             'filename': wfn
