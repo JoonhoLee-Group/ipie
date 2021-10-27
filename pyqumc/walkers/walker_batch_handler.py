@@ -342,8 +342,16 @@ class WalkerBatchHandler(object):
         self.add_non_communication()
 
     def pair_branch_fast(self, comm):
+        if is_cupy(self.walkers_batch.weight): 
+            import cupy
+            abs = cupy.abs
+            array = cupy.asnumpy
+        else:
+            abs = numpy.abs
+            array = numpy.array
+
         self.start_time()
-        walker_info_0 = numpy.abs(self.walkers_batch.weight)
+        walker_info_0 = array(abs(self.walkers_batch.weight))
         self.add_non_communication()
 
         self.start_time()

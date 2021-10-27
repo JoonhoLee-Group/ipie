@@ -116,10 +116,8 @@ class AFQMCBatch(object):
                                   verbose=self.verbosity>1)
         gpu = get_input_value(qmc_opt, 'gpu', default=False, verbose=self.verbosity>1)
 
-        if gpu:
-            self.shared_comm = comm
-        else:
-            self.shared_comm = get_shared_comm(comm, verbose=verbose)
+        self.shared_comm = comm
+
         # 2. Calculation objects.
         if system is not None:
             self.system = system
@@ -281,9 +279,13 @@ class AFQMCBatch(object):
             assert(cupy.is_available())
             zeros = cupy.zeros
             abs = cupy.abs
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
             sum = cupy.sum
         else:
             zeros = numpy.zeros
+            ndarray = numpy.ndarray
+            array = numpy.array
             abs = numpy.abs
             sum = numpy.sum
 
@@ -326,8 +328,11 @@ class AFQMCBatch(object):
             rescale_idx = abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
                 nrescales = sum(rescale_idx)
+                if type(nrescales) == ndarray:
+                    nrescales = array(nrescales)
+                    nrescales = int(nrescales[()])
                 if (nrescales > 0):
-                    new_weights = zeros(sum(rescale_idx), dtype = numpy.float64)
+                    new_weights = zeros(nrescales, dtype = numpy.float64)
                     new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
                     self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
