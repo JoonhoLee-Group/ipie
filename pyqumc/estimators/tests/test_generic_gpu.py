@@ -15,12 +15,13 @@ from pyqumc.utils.testing import (
         )
 try:
     import cupy
-    gpu_available = True
+    no_gpu = False
 except:
-    gpu_available = False
+    no_gpu = True
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_gpu, reason="gpu not found.")
 def test_local_energy_cholesky_opt():
     numpy.random.seed(7)
     nmo = 24
@@ -34,31 +35,15 @@ def test_local_energy_cholesky_opt():
     trial = MultiSlater(system, ham, wfn)
     trial.half_rotate(system, ham)
     
-    if gpu_available:
-        print("# GPU data transfer in trial")
-        ham.H1 = cupy.array(ham.H1)
-        ham.h1e_mod = cupy.array(ham.h1e_mod)
-        ham.chol_vecs = cupy.array(ham.chol_vecs)
-
-        trial.psi = cupy.array(trial.psi)
-        trial.coeffs = cupy.array(trial.coeffs)
-        trial._rchola = cupy.array(trial._rchola.copy())
-        trial._rcholb = cupy.array(trial._rcholb.copy())
-        if (type(trial.G) == numpy.ndarray):
-            trial.G = cupy.array(trial.G)
-        if (trial.Ghalf != None):
-            trial.Ghalf[0] = cupy.array(trial.Ghalf[0])
-            trial.Ghalf[1] = cupy.array(trial.Ghalf[1])
-        if (trial.ortho_expansion):
-            trial.occa = cupy.array(trial.occa)
-            trial.occb = cupy.array(trial.occb)
-
-    e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
-    e = cupy.array(e)
-    e = cupy.asnumpy(e)
-    assert e[0] == pytest.approx(20.6826247016273)
-    assert e[1] == pytest.approx(23.0173528796140)
-    assert e[2] == pytest.approx(-2.3347281779866)
+    if not no_gpu:
+        ham.cast_to_gpu()
+        trial.cast_to_gpu()
+        e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
+        e = cupy.array(e)
+        e = cupy.asnumpy(e)
+        assert e[0] == pytest.approx(20.6826247016273)
+        assert e[1] == pytest.approx(23.0173528796140)
+        assert e[2] == pytest.approx(-2.3347281779866)
 
 if __name__ == '__main__':
     test_local_energy_cholesky_opt()

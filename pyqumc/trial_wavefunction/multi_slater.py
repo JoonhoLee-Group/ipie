@@ -15,13 +15,6 @@ from pyqumc.utils.mpi import get_shared_array
 
 import numpy
 
-# try:
-#     import cupy
-#     assert(cupy.is_available())
-#     gpu_available = True
-# except:
-    # gpu_available = False
-
 class MultiSlater(object):
 
     def __init__(self, system, hamiltonian, wfn, nbasis=None, options={},
@@ -343,6 +336,21 @@ class MultiSlater(object):
 
         return P
 
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_gpu (self):
+        import cupy
+        self.psi = cupy.array(self.psi)
+        self.coeffs = cupy.array(self.coeffs)
+        self._rchola = cupy.array(self._rchola.copy())
+        self._rcholb = cupy.array(self._rcholb.copy())
+        if (type(self.G) == numpy.ndarray):
+            self.G = cupy.array(self.G)
+        if (self.Ghalf != None):
+            self.Ghalf[0] = cupy.array(self.Ghalf[0])
+            self.Ghalf[1] = cupy.array(self.Ghalf[1])
+        if (self.ortho_expansion):
+            self.occa = cupy.array(self.occa)
+            self.occb = cupy.array(self.occb)
 
     def contract_one_body(self, ints):
         numer = 0.0

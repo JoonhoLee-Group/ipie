@@ -170,6 +170,13 @@ class Generic(object):
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
 
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_gpu (self):
+        import cupy
+        self.H1 = cupy.array(self.H1)
+        self.h1e_mod = cupy.array(self.h1e_mod)
+        self.chol_vecs = cupy.array(self.chol_vecs)
+
 def read_integrals(integral_file):
     try:
         (h1e, schol_vecs, ecore, nbasis, nup, ndown) = (
