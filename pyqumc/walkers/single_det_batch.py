@@ -59,8 +59,8 @@ class SingleDetWalkerBatch(WalkerBatch):
     def cast_to_cupy (self):
         WalkerBatch.cast_to_cupy(self)
         import cupy
-        self.ot = cupy.asarray(ot)
-        self.ovlp = cupy.asarray(ovlp)
+        self.ot = cupy.asarray(self.ot)
+        self.ovlp = cupy.asarray(self.ovlp)
         self.Ga = cupy.asarray(self.Ga)
         self.Gb = cupy.asarray(self.Gb)
         self.Ghalfa = cupy.asarray(self.Ghalfa)

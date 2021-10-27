@@ -98,8 +98,7 @@ class Continuous(object):
         import cupy
         self.propagator.mf_shift = cupy.asarray(self.propagator.mf_shift)
         self.propagator.vbias_batch = cupy.asarray(self.propagator.vbias_batch)
-        self.propagator.BH1[0] = cupy.asarray(self.propagator.BH1[0])
-        self.propagator.BH1[1] = cupy.asarray(self.propagator.BH1[1])
+        self.propagator.BH1 = cupy.asarray(self.propagator.BH1)
 
     @property
     def mf_const_fac(self):
