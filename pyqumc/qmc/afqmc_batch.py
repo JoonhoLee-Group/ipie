@@ -209,7 +209,7 @@ class AFQMCBatch(object):
                            nbp=self.estimators.nbp,
                            comm=comm)
 
-        if (qmc.gpu):
+        if (self.qmc.gpu):
             try:
                 import cupy
                 assert(cupy.is_available())
@@ -217,12 +217,12 @@ class AFQMCBatch(object):
                 if comm.rank == 0:
                     print("# cupy is unavailble but GPU calculation is requested")
                 exit()
-            ngpus = cp.cuda.runtime.getDeviceCount()
+            ngpus = cupy.cuda.runtime.getDeviceCount()
             props = cupy.cuda.runtime.getDeviceProperties(0)
             name = props['name'].decode()
             device = cupy.cuda.Device(0) 
             if comm.rank == 0:
-                print("# {} GPUs are available")
+                print("# {} GPUs are available".format(ngpus))
                 print("# Device name: {}".format(name))
                 print("# Compute capability: {}".format(device.compute_capability))
                 if (ngpus > comm.size):
@@ -239,7 +239,7 @@ class AFQMCBatch(object):
             self.propagators.cast_to_cupy()
             self.hamiltonian.cast_to_cupy()
             self.trial.cast_to_cupy()
-            self.psi.walker_batch.cast_to_cupy()
+            self.psi.walkers_batch.cast_to_cupy()
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
@@ -272,6 +272,11 @@ class AFQMCBatch(object):
             zeros = numpy.zeros
             abs = numpy.abs
             sum = numpy.sum
+
+        #import warnings
+        #warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
+
+
 
         if psi is not None:
             self.psi = psi
@@ -306,9 +311,11 @@ class AFQMCBatch(object):
 
             rescale_idx = abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
-                new_weights = zeros(sum(rescale_idx), dtype = numpy.float64)
-                new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
-                self.psi.walkers_batch.weight[rescale_idx] = new_weights
+                nrescales = sum(rescale_idx)
+                if (nrescales > 0):
+                    new_weights = zeros(sum(rescale_idx), dtype = numpy.float64)
+                    new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
+                    self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
             if step % self.qmc.npop_control == 0:
                 comm.Barrier()

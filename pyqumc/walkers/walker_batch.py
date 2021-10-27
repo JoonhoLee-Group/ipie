@@ -85,6 +85,16 @@ class WalkerBatch(object):
         self.ovlp = cupy.asarray(self.ovlp)
 
     def set_buff_size_single_walker(self):
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.array
+            isrealobj = numpy.isrealobj
+
         names = []
         size = 0
         for k, v in self.__dict__.items():
@@ -94,7 +104,7 @@ class WalkerBatch(object):
             #     print("failed", k, v)
             if (not (k in self.buff_names)):
                 continue
-            if isinstance(v, (numpy.ndarray)):
+            if isinstance(v, (ndarray)):
                 names.append(k)
                 size += v.size
             elif isinstance(v, (int, float, complex)):
@@ -103,7 +113,7 @@ class WalkerBatch(object):
             elif isinstance(v, list):
                 names.append(k)
                 for l in v:
-                    if isinstance(l, (numpy.ndarray)):
+                    if isinstance(l, (ndarray)):
                         size += l.size
                     elif isinstance(l, (int, float, complex)):
                         size += 1
@@ -119,24 +129,34 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.array
+            isrealobj = numpy.isrealobj
+
         s = 0
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
             data = self.__dict__[d]
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
-            if isinstance(data[iw], (numpy.ndarray)):
-                buff[s:s+data[iw].size] = data[iw].ravel()
+            if isinstance(data[iw], (ndarray)):
+                buff[s:s+data[iw].size] = array(data[iw].ravel())
                 s += data[iw].size
             elif isinstance(data[iw], list): # when data is list
                 for l in data[iw]:
-                    if isinstance(l, (numpy.ndarray)):
-                        buff[s:s+l.size] = l.ravel()
+                    if isinstance(l, (ndarray)):
+                        buff[s:s+l.size] = array(l.ravel())
                         s += l.size
                     elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
                         buff[s:s+1] = l
                         s += 1
             else:
-                buff[s:s+1] = data[iw]
+                buff[s:s+1] = array(data[iw])
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
@@ -155,17 +175,27 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asarray
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.asarray
+            isrealobj = numpy.isrealobj
+
         s = 0
         for d in self.buff_names:
             data = self.__dict__[d]
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
-            if isinstance(data[iw], numpy.ndarray):
-                self.__dict__[d][iw] = buff[s:s+data[iw].size].reshape(data[iw].shape).copy()
+            if isinstance(data[iw], ndarray):
+                self.__dict__[d][iw] = array(buff[s:s+data[iw].size].reshape(data[iw].shape).copy())
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
-                    if isinstance(l, (numpy.ndarray)):
-                        self.__dict__[d][iw][ix] = buff[s:s+l.size].reshape(l.shape).copy()
+                    if isinstance(l, (ndarray)):
+                        self.__dict__[d][iw][ix] = array(buff[s:s+l.size].reshape(l.shape).copy())
                         s += l.size
                     elif isinstance(l, (int, float, complex)):
                         self.__dict__[d][iw][ix] = buff[s]

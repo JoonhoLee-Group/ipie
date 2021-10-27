@@ -8,7 +8,10 @@ from pyqumc.utils.misc import is_cupy
 def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
 
     if (walker_batch.name == "SingleDetWalkerBatch"):
-        return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = iw)
+        if (is_cupy(walker_batch.phi)):
+            return local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial, iw = iw)
+        else:
+            return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = iw)
     elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False):
         return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
@@ -246,6 +249,14 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
     return energy
 
 def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = None):
+
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+    else:
+        array = numpy.array
+
     energy = []
     if (iw == None):
         nwalkers = walker_batch.nwalkers
@@ -254,13 +265,13 @@ def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw =
             Ghalf = [walker_batch.Ghalfa[idx],walker_batch.Ghalfb[idx]]
             energy += [list(local_energy_G(system, hamiltonian, trial, G, Ghalf))]
 
-        energy = numpy.array(energy, dtype=numpy.complex128)
+        energy = array(energy, dtype=numpy.complex128)
         return energy
     else:
         G = [walker_batch.Ga[iw],walker_batch.Gb[iw]]
         Ghalf = [walker_batch.Ghalfa[iw],walker_batch.Ghalfb[iw]]
         energy += [list(local_energy_G(system, hamiltonian, trial, G, Ghalf))]
-        energy = numpy.array(energy, dtype=numpy.complex128)
+        energy = array(energy, dtype=numpy.complex128)
         return energy
     
 def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial, iw = None):
