@@ -63,8 +63,8 @@ class Continuous(object):
         
         self.log_mf_const_fac = -self.dt*mf_core.real
         
-        # JOONHO - isn't this repeating the work? We will check this later
-        # self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt) # I am commenting this out finally....!
+        # JOONHO - isn't this repeating the work? We will check this later; it's used by Hubbard Continuous
+        self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
 
         self.BT_BP = self.propagator.BH1
         self.nstblz = qmc.nstblz

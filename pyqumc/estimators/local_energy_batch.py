@@ -1,6 +1,7 @@
 import numpy
 from pyqumc.estimators.local_energy import local_energy_G, local_energy_generic_cholesky
 from pyqumc.utils.linalg import minor_mask, minor_mask4
+from pyqumc.utils.misc import is_cupy
 
 # TODO: should pass hamiltonian here and make it work for all possible types
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...
@@ -262,3 +263,73 @@ def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw =
         energy = numpy.array(energy, dtype=numpy.complex128)
         return energy
     
+def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial, iw = None):
+
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        einsum = cupy.einsum
+        zeros = cupy.zeros
+        isrealobj = cupy.isrealobj
+    # if numpy.isrealobj(hamiltonian.chol_vecs):
+    else:
+        einsum = numpy.einsum
+        zeros = numpy.zeros
+        isrealobj = numpy.isrealobj
+
+    nwalkers = walker_batch.Ghalfa.shape[0]
+    nalpha = walker_batch.Ghalfa.shape[1]
+    nbeta = walker_batch.Ghalfb.shape[1]
+    nbasis = walker_batch.Ghalfa.shape[-1]
+    nchol = hamiltonian.nchol
+    
+    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
+    e1b = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+
+    if (isrealobj(trial._rchola)):
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
+        Xb = trial._rcholb.dot(walker_batch.Ghalfb.real.T) + 1.j * trial._rcholb.dot(walker_batch.Ghalfb.imag.T) # naux x nwalkers
+    else:
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
+        Xb = trial._rchola.dot(walker_batch.Ghalfb.T)
+
+    ecoul = einsum("xw,xw->w", Xa, Xa, optimize=True)
+    ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
+    ecoul += 2. * einsum("xw,xw->w", Xa, Xb, optimize=True)
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
+
+    GhalfaT_batch = walker_batch.Ghalfa.transpose(0,2,1).copy() # nw x nbasis x nocc
+    GhalfbT_batch = walker_batch.Ghalfb.transpose(0,2,1).copy() # nw x nbasis x nocc
+
+    Ta = zeros((nwalkers, nalpha,nalpha), dtype=numpy.complex128)
+    Tb = zeros((nwalkers, nbeta,nbeta), dtype=numpy.complex128)
+
+    exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        rmi_a = trial._rchola[x].reshape((nalpha,nbasis))
+        rmi_b = trial._rcholb[x].reshape((nbeta,nbasis))
+        if (isrealobj(trial._rchola)):
+            Ta[:,:,:].real = rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2)
+            Ta[:,:,:].imag = rmi_a.dot(GhalfaT_batch.imag).transpose(1,0,2)
+            Tb[:,:,:].real = rmi_b.dot(GhalfbT_batch.real).transpose(1,0,2)
+            Tb[:,:,:].imag = rmi_b.dot(GhalfbT_batch.imag).transpose(1,0,2)
+        else:
+            Ta[:,:,:] = rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
+            Tb[:,:,:] = rmi_b.dot(GhalfbT_batch).transpose(1,0,2)
+
+        exx += einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
+
+    e2b = 0.5 * (ecoul - exx)
+
+    energy = zeros((nwalkers, 3), dtype=numpy.complex128)
+    energy[:,0] = e1b+e2b
+    energy[:,1] = e1b
+    energy[:,2] = e2b
+
+    return energy

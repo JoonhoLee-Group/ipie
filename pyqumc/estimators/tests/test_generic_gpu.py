@@ -38,12 +38,15 @@ def test_local_energy_cholesky_opt():
     if not no_gpu:
         ham.cast_to_cupy()
         trial.cast_to_cupy()
-        e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
+
+    e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
+    
+    if not no_gpu:
         e = cupy.array(e)
         e = cupy.asnumpy(e)
-        assert e[0] == pytest.approx(20.6826247016273)
-        assert e[1] == pytest.approx(23.0173528796140)
-        assert e[2] == pytest.approx(-2.3347281779866)
+    assert e[0] == pytest.approx(20.6826247016273)
+    assert e[1] == pytest.approx(23.0173528796140)
+    assert e[2] == pytest.approx(-2.3347281779866)
 
 if __name__ == '__main__':
     test_local_energy_cholesky_opt()
