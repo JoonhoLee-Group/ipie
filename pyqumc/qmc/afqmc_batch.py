@@ -110,7 +110,16 @@ class AFQMCBatch(object):
         self.rank = comm.rank
         self._init_time = time.time()
         self.run_time = time.asctime()
-        self.shared_comm = get_shared_comm(comm, verbose=verbose)
+        
+        qmc_opt = get_input_value(options, 'qmc', default={},
+                                  alias=['qmc_options'],
+                                  verbose=self.verbosity>1)
+        gpu = get_input_value(qmc_opt, 'gpu', default=False, verbose=self.verbosity>1)
+
+        if gpu:
+            self.shared_comm = comm
+        else:
+            self.shared_comm = get_shared_comm(comm, verbose=verbose)
         # 2. Calculation objects.
         if system is not None:
             self.system = system
@@ -134,9 +143,6 @@ class AFQMCBatch(object):
                 ham_opts[item[0]] = item[1]
             self.hamiltonian = get_hamiltonian (self.system, ham_opts, verbose = verbose, comm=self.shared_comm)
 
-        qmc_opt = get_input_value(options, 'qmc', default={},
-                                  alias=['qmc_options'],
-                                  verbose=self.verbosity>1)
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
         if (self.qmc.nwalkers == None):
