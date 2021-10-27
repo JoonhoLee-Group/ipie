@@ -339,18 +339,18 @@ class MultiSlater(object):
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self):
         import cupy
-        self.psi = cupy.array(self.psi)
-        self.coeffs = cupy.array(self.coeffs)
-        self._rchola = cupy.array(self._rchola.copy())
-        self._rcholb = cupy.array(self._rcholb.copy())
+        self.psi = cupy.asarray(self.psi)
+        self.coeffs = cupy.asarray(self.coeffs)
+        self._rchola = cupy.asarray(self._rchola.copy())
+        self._rcholb = cupy.asarray(self._rcholb.copy())
         if (type(self.G) == numpy.ndarray):
-            self.G = cupy.array(self.G)
+            self.G = cupy.asarray(self.G)
         if (self.Ghalf != None):
-            self.Ghalf[0] = cupy.array(self.Ghalf[0])
-            self.Ghalf[1] = cupy.array(self.Ghalf[1])
+            self.Ghalf[0] = cupy.asarray(self.Ghalf[0])
+            self.Ghalf[1] = cupy.asarray(self.Ghalf[1])
         if (self.ortho_expansion):
-            self.occa = cupy.array(self.occa)
-            self.occb = cupy.array(self.occb)
+            self.occa = cupy.asarray(self.occa)
+            self.occb = cupy.asarray(self.occb)
 
     def contract_one_body(self, ints):
         numer = 0.0

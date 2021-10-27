@@ -173,9 +173,9 @@ class Generic(object):
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self):
         import cupy
-        self.H1 = cupy.array(self.H1)
-        self.h1e_mod = cupy.array(self.h1e_mod)
-        self.chol_vecs = cupy.array(self.chol_vecs)
+        self.H1 = cupy.asarray(self.H1)
+        self.h1e_mod = cupy.asarray(self.h1e_mod)
+        self.chol_vecs = cupy.asarray(self.chol_vecs)
 
 def read_integrals(integral_file):
     try:
