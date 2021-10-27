@@ -1,4 +1,5 @@
 import numpy
+from pyqumc.utils.misc import is_cupy
 
 
 def propagate_single(psi, system, B):
@@ -42,11 +43,17 @@ def kinetic_real(phi, system, bt2, H1diag=False):
     state : :class:`pyqumc.state.State`
         Simulation state.
     """
+    if (is_cupy(bt2[0])):
+        import cupy
+        assert(cupy.is_available())
+        einsum = cupy.einsum
+    else:
+        einsum = numpy.einsum
     nup = system.nup
     # Assuming that our walker is in UHF form.
     if (H1diag):
-        phi[:,:nup] = numpy.einsum("ii,ij->ij", bt2[0],phi[:,:nup])
-        phi[:,nup:] = numpy.einsum("ii,ij->ij", bt2[1],phi[:,nup:])
+        phi[:,:nup] = einsum("ii,ij->ij", bt2[0],phi[:,:nup])
+        phi[:,nup:] = einsum("ii,ij->ij", bt2[1],phi[:,nup:])
     else:
         phi[:,:nup] = bt2[0].dot(phi[:,:nup])
         phi[:,nup:] = bt2[1].dot(phi[:,nup:])

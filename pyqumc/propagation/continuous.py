@@ -11,6 +11,7 @@ from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
 from pyqumc.propagation.generic import GenericContinuous
 from pyqumc.propagation.force_bias import construct_force_bias_batch
+from pyqumc.utils.misc import  is_cupy
 
 class Continuous(object):
     """Propagation with continuous HS transformation.
@@ -126,14 +127,25 @@ class Continuous(object):
         phi : numpy array
             Exp(VHS) * phi
         """
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            copy = cupy.copy
+            copyto = cupy.copyto
+            zeros = cupy.zeros
+        else:
+            copy = numpy.copy
+            copyto = numpy.copyto
+            zeros = numpy.zeros
+
         if debug:
             copy = numpy.copy(phi)
             c2 = scipy.linalg.expm(VHS).dot(copy)
     
         # Temporary array for matrix exponentiation.
-        Temp = numpy.zeros(phi.shape, dtype=phi.dtype)
+        Temp = zeros(phi.shape, dtype=phi.dtype)
 
-        numpy.copyto(Temp, phi)
+        copyto(Temp, phi)
         for n in range(1, self.exp_nmax+1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
@@ -297,31 +309,48 @@ class Continuous(object):
         xshifted : numpy array
             shifited auxiliary field
         """
+        if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            einsum = cupy.einsum
+            abs = cupy.abs
+            zeros = cupy.zeros
+            normal = cupy.random.normal
+            where = cupy.where
+            sum = cupy.sum
+        else:
+            einsum = numpy.einsum
+            abs = numpy.abs
+            zeros = numpy.zeros
+            normal = numpy.random.normal
+            where = numpy.where
+            sum = numpy.sum
+
         # Optimal force bias.
-        xbar = numpy.zeros((walker_batch.nwalkers, hamiltonian.nfields))
+        xbar = zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
             self.propagator.vbias_batch = construct_force_bias_batch(hamiltonian, walker_batch, trial)
             xbar = - self.propagator.sqrt_dt * (1j*self.propagator.vbias_batch-self.propagator.mf_shift)
             self.tfbias += time.time() - start_time
 
-        absxbar = numpy.abs(xbar)
+        absxbar = abs(xbar)
         idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
-        xbar = numpy.where(idx_to_rescale, xbar_rescaled, xbar)
+        xbar = where(idx_to_rescale, xbar_rescaled, xbar)
 
-        self.nfb_trig += numpy.sum(idx_to_rescale)
+        self.nfb_trig += sum(idx_to_rescale)
 
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)
+        xi = normal(0.0, 1.0, hamiltonian.nfields*walker_batch.nwalkers).reshape(walker_batch.nwalkers, hamiltonian.nfields)
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
-        cmf = -self.sqrt_dt * numpy.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
+        cmf = -self.sqrt_dt * einsum("wx,x->w", xshifted, self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
-        cfb = numpy.einsum("wx,wx->w",xi,xbar) - 0.5*numpy.einsum("wx,wx->w",xbar,xbar)
+        cfb = einsum("wx,wx->w",xi,xbar) - 0.5*einsum("wx,wx->w",xbar,xbar)
 
         # Operator terms contributing to propagator.
         start_time = time.time()
@@ -377,26 +406,47 @@ class Continuous(object):
         self.tupdate += time.time() - start_time
     
     def update_weight_hybrid_batch(self, system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+        if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            log = cupy.log
+            exp = cupy.exp
+            isinf = cupy.isinf
+            isfinite = cupy.isfinite
+            cos = cupy.cos
+            array = cupy.array
+            abs = cupy.abs
+            angle = cupy.angle
+        else:
+            log = numpy.log
+            exp = numpy.exp
+            isinf = numpy.isinf
+            isfinite = numpy.isfinite
+            cos = numpy.cos
+            array = numpy.array
+            abs = numpy.abs
+            angle = numpy.angle
+
         ovlp_ratio = ovlp_new / ovlp
-        hybrid_energy = -(numpy.log(ovlp_ratio) + cfb + cmf)/self.dt
+        hybrid_energy = -(log(ovlp_ratio) + cfb + cmf)/self.dt
         hybrid_energy = self.apply_bound_hybrid_batch(hybrid_energy, eshift)
         importance_function = (
-                numpy.exp(-self.dt*(0.5*(hybrid_energy+walker_batch.hybrid_energy)-eshift))
+                exp(-self.dt*(0.5*(hybrid_energy+walker_batch.hybrid_energy)-eshift))
         )
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
-        magn = numpy.abs(importance_function)
-        phase = numpy.angle(importance_function)
+        magn = abs(importance_function)
+        phase = angle(importance_function)
         # (magn, phase) = cmath.polar(importance_function)
         walker_batch.hybrid_energy = hybrid_energy
 
-        tobeinstantlykilled = numpy.isinf(magn)
-        tosurvive = numpy.isfinite(magn)
+        tobeinstantlykilled = isinf(magn)
+        tosurvive = isfinite(magn)
         
         walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
         walker_batch.weight[tobeinstantlykilled].fill(0.0)
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
-        cosine_fac = numpy.cos(dtheta)
+        cosine_fac = cos(dtheta)
         cosine_fac[cosine_fac < 0.0] = 0.0
         walker_batch.weight[tosurvive] = walker_batch.weight[tosurvive] * magn[tosurvive] * cosine_fac[tosurvive]
         walker_batch.ot[tosurvive] = ovlp_new[tosurvive]
@@ -407,9 +457,9 @@ class Continuous(object):
             for iw in range(walker_batch.nwalkers):
                 if tosurvive[iw]:
                     if magn > 1e-16:
-                        wfac = numpy.array([importance_function[iw]/magn[iw], cosine_fac[iw]])
+                        wfac = array([importance_function[iw]/magn[iw], cosine_fac[iw]])
                     else:
-                        wfac = numpy.array([0,0])
+                        wfac = array([0,0])
                     walker_batch.field_configs[iw].update(xmxbar, wfac)
 
     def propagate_walker_phaseless(self, walker, system, hamiltonian, trial, eshift):

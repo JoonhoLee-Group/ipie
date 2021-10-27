@@ -40,8 +40,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.name = "SingleDetWalkerBatch"
 
         self.ot = calc_overlap_single_det(self, trial)
-        self.le_oratio = 1.0
         self.ovlp = self.ot
+        self.le_oratio = 1.0
 
         self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
@@ -54,3 +54,14 @@ class SingleDetWalkerBatch(WalkerBatch):
                                  dtype=numpy.complex128)
         
         greens_function_single_det(self, trial)
+    
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_gpu (self):
+        WalkerBatch.cast_to_gpu(self)
+        import cupy
+        self.ot = cupy.array(ot)
+        self.ovlp = cupy.array(ovlp)
+        self.Ga = cupy.array(self.Ga)
+        self.Gb = cupy.array(self.Gb)
+        self.Ghalfa = cupy.array(self.Ghalfa)
+        self.Ghalfb = cupy.array(self.Ghalfb)

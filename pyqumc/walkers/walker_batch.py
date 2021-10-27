@@ -72,6 +72,21 @@ class WalkerBatch(object):
         self.buff_names = ["weight", "unscaled_weight", "phase", "phi", "hybrid_energy", "ot", "ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
+        self._gpu = False
+
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_gpu (self):
+        import cupy
+        self.weight = cupy.array(weight)
+        self.unscaled_weight = cupy.array(unscaled_weight)
+        self.phase = cupy.array(phase)
+        self.phi = cupy.array(phi)
+        self.hybrid_energy = cupy.array(hybrid_energy)
+        self.ot = cupy.array(ot)
+        self.ovlp = cupy.array(ovlp)
+        # GPU is automatically enabled
+        self._gpu = True
+
     def set_buff_size_single_walker(self):
         names = []
         size = 0
@@ -178,38 +193,66 @@ class WalkerBatch(object):
         parameters
         ----------
         """
+        if(self._gpu):
+            import cupy
+            assert(cupy.is_available())
+            array = cupy.array
+            diag = cupy.diag
+            zeros = cupy.zeros
+            sum = cupy.sum
+            dot = cupy.dot
+            log = cupy.log
+            cupy = numpy.cupy
+            abs = cupy.abs
+            exp = cupy.exp
+            qr = cupy.linalg.qr
+            qr_mode = 'reduced'
+        else:
+            array = numpy.array
+            diag = numpy.diag
+            zeros = numpy.zeros
+            sum = numpy.sum
+            dot = numpy.dot
+            log = numpy.log
+            sign = numpy.sign
+            abs = numpy.abs
+            exp = numpy.exp
+            qr = scipy.linalg.qr
+            qr_mode = 'economic'
+
+        complex128 = numpy.complex128
+
+
         nup = self.nup
         ndown = self.ndown
 
         detR = []
         for iw in range(self.nwalkers):
-            (self.phi[iw][:,:nup], Rup) = scipy.linalg.qr(self.phi[iw][:,:nup],
-                                                      mode='economic')
-            Rdown = numpy.zeros(Rup.shape)
+            (self.phi[iw][:,:nup], Rup) = qr(self.phi[iw][:,:nup],mode=qr_mode)
+            Rdown = zeros(Rup.shape)
             if ndown > 0:
-                (self.phi[iw][:,nup:], Rdn) = scipy.linalg.qr(self.phi[iw][:,nup:],
-                                                            mode='economic')
+                (self.phi[iw][:,nup:], Rdn) = qr(self.phi[iw][:,nup:], mode=qr_mode)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
             # Wanted detR factors to remain positive, dump the sign in orbitals.
-            Rup_diag = numpy.diag(Rup)
-            signs_up = numpy.sign(Rup_diag)
+            Rup_diag = diag(Rup)
+            signs_up = sign(Rup_diag)
             if ndown > 0:
-                Rdn_diag = numpy.diag(Rdn)
-                signs_dn = numpy.sign(Rdn_diag)
-            self.phi[iw][:,:nup] = numpy.dot(self.phi[iw][:,:nup], numpy.diag(signs_up))
+                Rdn_diag = diag(Rdn)
+                signs_dn = sign(Rdn_diag)
+            self.phi[iw][:,:nup] = dot(self.phi[iw][:,:nup], diag(signs_up))
             if ndown > 0:
-                self.phi[iw][:,nup:] = numpy.dot(self.phi[iw][:,nup:], numpy.diag(signs_dn))
+                self.phi[iw][:,nup:] = dot(self.phi[iw][:,nup:], diag(signs_dn))
             # include overlap factor
             # det(R) = \prod_ii R_ii
             # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
             # C factor included to avoid over/underflow
-            log_det = numpy.sum(numpy.log(numpy.abs(Rup_diag)))
+            log_det = sum(log(abs(Rup_diag)))
             if ndown > 0:
-                log_det += numpy.sum(numpy.log(numpy.abs(Rdn_diag)))
-            detR += [numpy.exp(log_det-self.detR_shift[iw])]
-            self.log_detR[iw] += numpy.log(detR[iw])
+                log_det += sum(log(abs(Rdn_diag)))
+            detR += [exp(log_det-self.detR_shift[iw])]
+            self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
             # print(self.ot[iw], detR[iw])
             self.ot[iw] = self.ot[iw] / detR[iw]

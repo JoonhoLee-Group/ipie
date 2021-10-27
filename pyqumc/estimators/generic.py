@@ -1,27 +1,7 @@
 import sys
-
 import numpy
+from pyqumc.utils.misc import is_cupy
 
-try:
-    import cupy
-    assert(cupy.is_available())
-    array = cupy.array
-    zeros = cupy.zeros
-    sum = cupy.sum
-    dot = cupy.dot
-    trace = cupy.trace
-    einsum = cupy.einsum
-    isrealobj = cupy.isrealobj
-except:
-    array = numpy.array
-    zeros = numpy.zeros
-    einsum = numpy.einsum
-    trace = numpy.trace
-    sum = numpy.sum
-    dot = numpy.dot
-    isrealobj = numpy.isrealobj
-
-complex128 = numpy.complex128
 
 def local_energy_generic(h1e, eri, G, ecore=0.0, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
@@ -315,6 +295,27 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
+    if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+        zeros = cupy.zeros
+        sum = cupy.sum
+        dot = cupy.dot
+        trace = cupy.trace
+        einsum = cupy.einsum
+        isrealobj = cupy.isrealobj
+    else:
+        array = numpy.array
+        zeros = numpy.zeros
+        einsum = numpy.einsum
+        trace = numpy.trace
+        sum = numpy.sum
+        dot = numpy.dot
+        isrealobj = numpy.isrealobj
+
+    complex128 = numpy.complex128
+
     e1b = sum(ham.H1[0]*Ga) + sum(ham.H1[1]*Gb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
