@@ -2,6 +2,7 @@ import numpy
 import scipy
 import sys
 from pyqumc.walkers.stack import FieldConfig
+from pyqumc.utils.misc import is_cupy
 
 class WalkerBatch(object):
     """WalkerBatch base class.
@@ -72,10 +73,8 @@ class WalkerBatch(object):
         self.buff_names = ["weight", "unscaled_weight", "phase", "phi", "hybrid_energy", "ot", "ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
-        self._gpu = False
-
     # This function casts relevant member variables into cupy arrays
-    def cast_to_gpu (self):
+    def cast_to_cupy (self):
         import cupy
         self.weight = cupy.array(weight)
         self.unscaled_weight = cupy.array(unscaled_weight)
@@ -84,8 +83,6 @@ class WalkerBatch(object):
         self.hybrid_energy = cupy.array(hybrid_energy)
         self.ot = cupy.array(ot)
         self.ovlp = cupy.array(ovlp)
-        # GPU is automatically enabled
-        self._gpu = True
 
     def set_buff_size_single_walker(self):
         names = []
@@ -193,7 +190,7 @@ class WalkerBatch(object):
         parameters
         ----------
         """
-        if(self._gpu):
+        if(is_cupy(self.phi)):
             import cupy
             assert(cupy.is_available())
             array = cupy.array

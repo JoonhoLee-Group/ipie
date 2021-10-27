@@ -36,8 +36,8 @@ def test_local_energy_cholesky_opt():
     trial.half_rotate(system, ham)
     
     if not no_gpu:
-        ham.cast_to_gpu()
-        trial.cast_to_gpu()
+        ham.cast_to_cupy()
+        trial.cast_to_cupy()
         e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
         e = cupy.array(e)
         e = cupy.asnumpy(e)

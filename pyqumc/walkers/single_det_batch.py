@@ -56,8 +56,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         greens_function_single_det(self, trial)
     
     # This function casts relevant member variables into cupy arrays
-    def cast_to_gpu (self):
-        WalkerBatch.cast_to_gpu(self)
+    def cast_to_cupy (self):
+        WalkerBatch.cast_to_cupy(self)
         import cupy
         self.ot = cupy.array(ot)
         self.ovlp = cupy.array(ovlp)

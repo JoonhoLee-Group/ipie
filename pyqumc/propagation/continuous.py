@@ -11,7 +11,7 @@ from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
 from pyqumc.propagation.generic import GenericContinuous
 from pyqumc.propagation.force_bias import construct_force_bias_batch
-from pyqumc.utils.misc import  is_cupy
+from pyqumc.utils.misc import is_cupy
 
 class Continuous(object):
     """Propagation with continuous HS transformation.
@@ -64,18 +64,12 @@ class Continuous(object):
         self.log_mf_const_fac = -self.dt*mf_core.real
         
         # JOONHO - isn't this repeating the work? We will check this later
-        self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
+        # self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt) # I am commenting this out finally....!
 
         self.BT_BP = self.propagator.BH1
         self.nstblz = qmc.nstblz
         self.nfb_trig = 0
         self.nhe_trig = 0
-
-        self.control_variate = options.get('control_variate', False)
-
-        if (self.control_variate):
-            if verbose:
-                print("# control_variate used in propagator")
 
         self.ebound = (2.0/self.dt)**0.5
 
@@ -99,6 +93,13 @@ class Continuous(object):
         self.tgf = 0.0
         self.tvhs = 0.0
         self.tgemm = 0.0
+
+    def cast_to_cupy (self):
+        import cupy
+        self.propagator.mf_shift = cupy.array(self.propagator.mf_shift)
+        self.propagator.vbias_batch = cupy.array(self.propagator.vbias_batch)
+        self.propagator.BH1[0] = cupy.array(self.propagator.BH1[0])
+        self.propagator.BH1[1] = cupy.array(self.propagator.BH1[1])
 
     @property
     def mf_const_fac(self):

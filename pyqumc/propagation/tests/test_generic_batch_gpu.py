@@ -61,9 +61,10 @@ def test_hybrid_batch():
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
     if not no_gpu:
-        ham.cast_to_gpu()
-        trial.cast_to_gpu()
-        walker_batch.cast_to_gpu()
+        prop.cast_to_cupy()
+        ham.cast_to_cupy()
+        trial.cast_to_cupy()
+        walker_batch.cast_to_cupy()
 
     for i in range (nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)

@@ -337,7 +337,7 @@ class MultiSlater(object):
         return P
 
     # This function casts relevant member variables into cupy arrays
-    def cast_to_gpu (self):
+    def cast_to_cupy (self):
         import cupy
         self.psi = cupy.array(self.psi)
         self.coeffs = cupy.array(self.coeffs)

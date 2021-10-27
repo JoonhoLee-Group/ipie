@@ -171,7 +171,7 @@ class Generic(object):
                                 real_chol=not self.cplx_chol)
 
     # This function casts relevant member variables into cupy arrays
-    def cast_to_gpu (self):
+    def cast_to_cupy (self):
         import cupy
         self.H1 = cupy.array(self.H1)
         self.h1e_mod = cupy.array(self.h1e_mod)
