@@ -24,6 +24,7 @@ from pyqumc.utils.misc import (
 from pyqumc.utils.io import  to_json, serialise, get_input_value
 from pyqumc.utils.mpi import get_shared_comm
 from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
+from pyqumc.utils.misc import is_cupy
 
 
 class AFQMCBatch(object):
@@ -208,6 +209,38 @@ class AFQMCBatch(object):
                            nbp=self.estimators.nbp,
                            comm=comm)
 
+        if (qmc.gpu):
+            try:
+                import cupy
+                assert(cupy.is_available())
+            except:
+                if comm.rank == 0:
+                    print("# cupy is unavailble but GPU calculation is requested")
+                exit()
+            ngpus = cp.cuda.runtime.getDeviceCount()
+            props = cupy.cuda.runtime.getDeviceProperties(0)
+            name = props['name'].decode()
+            device = cupy.cuda.Device(0) 
+            if comm.rank == 0:
+                print("# {} GPUs are available")
+                print("# Device name: {}".format(name))
+                print("# Compute capability: {}".format(device.compute_capability))
+                if (ngpus > comm.size):
+                    print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
+
+            if (ngpus < comm.size):
+                if comm.rank == 0:
+                    print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
+                exit()
+            
+            if comm.rank == 0:
+                print("# Casting numpy arrays to cupy arrays")
+
+            self.propagators.cast_to_cupy()
+            self.hamiltonian.cast_to_cupy()
+            self.trial.cast_to_cupy()
+            self.psi.walker_batch.cast_to_cupy()
+
         if comm.rank == 0:
             mem_avail = get_node_mem()
             print("# Available memory on the node is {} MB".format(mem_avail))
@@ -228,6 +261,18 @@ class AFQMCBatch(object):
             Initial wavefunction / distribution of walkers.
         comm : MPI communicator
         """
+
+        if is_cupy(self.psi.walkers_batch.phi): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            zeros = cupy.zeros
+            abs = cupy.abs
+            sum = cupy.sum
+        else:
+            zeros = numpy.zeros
+            abs = numpy.abs
+            sum = numpy.sum
+
         if psi is not None:
             self.psi = psi
         self.setup_timers()
@@ -259,9 +304,9 @@ class AFQMCBatch(object):
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
 
-            rescale_idx = numpy.abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
+            rescale_idx = abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
-                new_weights = numpy.zeros(numpy.sum(rescale_idx), dtype = numpy.float64)
+                new_weights = zeros(sum(rescale_idx), dtype = numpy.float64)
                 new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
                 self.psi.walkers_batch.weight[rescale_idx] = new_weights
 
