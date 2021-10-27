@@ -76,13 +76,13 @@ class WalkerBatch(object):
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self):
         import cupy
-        self.weight = cupy.asarray(weight)
-        self.unscaled_weight = cupy.asarray(unscaled_weight)
-        self.phase = cupy.asarray(phase)
-        self.phi = cupy.asarray(phi)
-        self.hybrid_energy = cupy.asarray(hybrid_energy)
-        self.ot = cupy.asarray(ot)
-        self.ovlp = cupy.asarray(ovlp)
+        self.weight = cupy.asarray(self.weight)
+        self.unscaled_weight = cupy.asarray(self.unscaled_weight)
+        self.phase = cupy.asarray(self.phase)
+        self.phi = cupy.asarray(self.phi)
+        self.hybrid_energy = cupy.asarray(self.hybrid_energy)
+        self.ot = cupy.asarray(self.ot)
+        self.ovlp = cupy.asarray(self.ovlp)
 
     def set_buff_size_single_walker(self):
         names = []
@@ -199,7 +199,7 @@ class WalkerBatch(object):
             sum = cupy.sum
             dot = cupy.dot
             log = cupy.log
-            cupy = numpy.cupy
+            sign = numpy.sign
             abs = cupy.abs
             exp = cupy.exp
             qr = cupy.linalg.qr
