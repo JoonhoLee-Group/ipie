@@ -12,7 +12,7 @@ from pyqumc.walkers.stack import FieldConfig
 from pyqumc.utils.io import get_input_value
 from pyqumc.utils.misc import update_stack
 from mpi4py import MPI
-
+from pyqumc.utils.misc import is_cupy
 
 class WalkerBatchHandler(object):
     """Container for groups of walkers which make up a wavefunction.
@@ -177,10 +177,16 @@ class WalkerBatchHandler(object):
         self.send_time += time.time() - self.start_time_const
 
     def pop_control(self, comm):
+        if is_cupy(self.walkers_batch.weight): 
+            import cupy
+            array = cupy.asnumpy
+        else:
+            array = numpy.array
+
         self.start_time()
         if self.ntot_walkers == 1:
             return
-        weights = numpy.abs(self.walkers_batch.weight)
+        weights = numpy.abs(array(self.walkers_batch.weight))
         global_weights = numpy.empty(len(weights)*comm.size)
         self.add_non_communication()
         self.start_time()
@@ -234,6 +240,11 @@ class WalkerBatchHandler(object):
         # walker objects in memory. We don't want future changes in a given
         # element of psi having unintended consequences.
         # todo : add phase to walker for free projection
+        if is_cupy(self.walkers_batch.weight): 
+            import cupy
+            array = cupy.asnumpy
+        else:
+            array = numpy.array
         
         self.start_time()
         if comm.rank == 0:
@@ -331,8 +342,16 @@ class WalkerBatchHandler(object):
         self.add_non_communication()
 
     def pair_branch_fast(self, comm):
+        if is_cupy(self.walkers_batch.weight): 
+            import cupy
+            abs = cupy.abs
+            array = cupy.asnumpy
+        else:
+            abs = numpy.abs
+            array = numpy.array
+
         self.start_time()
-        walker_info_0 = numpy.abs(self.walkers_batch.weight)
+        walker_info_0 = array(abs(self.walkers_batch.weight))
         self.add_non_communication()
 
         self.start_time()

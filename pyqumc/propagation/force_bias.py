@@ -1,4 +1,5 @@
 import numpy
+from pyqumc.utils.misc import is_cupy
 
 def construct_force_bias_batch(hamiltonian, walker_batch, trial):
     """Compute optimal force bias.
@@ -30,23 +31,14 @@ def construct_force_bias_batch(hamiltonian, walker_batch, trial):
 def construct_force_bias_batch_multi_det_trial(hamiltonian, walker_batch, trial):
     Ga = walker_batch.Ga.reshape(walker_batch.nwalkers, hamiltonian.nbasis**2)
     Gb = walker_batch.Gb.reshape(walker_batch.nwalkers, hamiltonian.nbasis**2)
-    # Cholesky vectors. [M^2, nchol]
-    # vbias = numpy.dot(hamiltonian.chol_vecs.T, walker.G[0].ravel())
-    # vbias += numpy.dot(hamiltonian.chol_vecs.T, walker.G[1].ravel())
     # Cholesky vectors. [nchol, M^2]
     if numpy.isrealobj(hamiltonian.chol_vecs):
-        # vbias_batch_real = hamiltonian.chol_vecs.dot(Ga.T.real + Gb.T.real)
-        # vbias_batch_imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
-        # vbias_batch = numpy.empty((hamiltonian.nchol,walker_batch.nwalkers), dtype=numpy.complex128)
-        # vbias_batch.real = vbias_batch_real.copy()
-        # vbias_batch.imag = vbias_batch_imag.copy()
         vbias_batch = numpy.empty((hamiltonian.nchol,walker_batch.nwalkers), dtype=numpy.complex128)
         vbias_batch.real = hamiltonian.chol_vecs.dot(Ga.T.real + Gb.T.real)
         vbias_batch.imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
         return vbias_batch
     else:    
-        # vbias_batch_tmp = (Ga+Gb).dot(hamiltonian.chol_vecs)
         vbias_batch_tmp = hamiltonian.chol_vecs.dot(Ga.T+Gb.T)
         vbias_batch_tmp = vbias_batch_tmp.T.copy()
         return vbias_batch_tmp
@@ -72,12 +64,21 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        isrealobj = cupy.isrealobj
+        empty = cupy.empty
+    else:
+        isrealobj = numpy.isrealobj
+        empty = numpy.empty
+
     Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
     Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
-    if numpy.isrealobj(trial._rchola) and numpy.isrealobj(trial._rcholb):
+    if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
         vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
         vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
-        vbias_batch = numpy.empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
+        vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
         return vbias_batch

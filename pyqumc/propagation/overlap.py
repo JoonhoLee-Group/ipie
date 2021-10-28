@@ -1,6 +1,7 @@
 import numpy
 import scipy.linalg
 from pyqumc.estimators.greens_function import gab_spin
+from pyqumc.utils.misc import is_cupy
 
 # Later we will add walker kinds as an input too
 def get_calc_overlap(trial):
@@ -44,19 +45,32 @@ def calc_overlap_single_det(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
+    if (is_cupy(trial.psi)):
+        import cupy
+        assert(cupy.is_available())
+        zeros = cupy.zeros
+        dot = cupy.dot
+        slogdet = cupy.linalg.slogdet
+        exp = cupy.exp
+    else:
+        zeros = numpy.zeros
+        dot = numpy.dot
+        slogdet = numpy.linalg.slogdet
+        exp = numpy.exp
+
     na = walker_batch.nup
     nb = walker_batch.ndown
-    ot = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
+    ot = zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
     for iw in range(walker_batch.nwalkers):
-        Oalpha = numpy.dot(trial.psi[:,:na].conj().T, walker_batch.phi[iw][:,:na])
-        sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
+        Oalpha = dot(trial.psi[:,:na].conj().T, walker_batch.phi[iw][:,:na])
+        sign_a, logdet_a = slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
-            Obeta = numpy.dot(trial.psi[:,na:].conj().T, walker_batch.phi[iw][:,na:])
-            sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
+            Obeta = dot(trial.psi[:,na:].conj().T, walker_batch.phi[iw][:,na:])
+            sign_b, logdet_b = slogdet(Obeta)
 
-        ot[iw] = sign_a*sign_b*numpy.exp(logdet_a+logdet_b-walker_batch.log_shift[iw])
+        ot[iw] = sign_a*sign_b*exp(logdet_a+logdet_b-walker_batch.log_shift[iw])
     
     return ot
 

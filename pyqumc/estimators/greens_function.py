@@ -1,6 +1,7 @@
 import numpy
 import scipy.linalg
 from pyqumc.utils.linalg import  minor_mask
+from pyqumc.utils.misc import  is_cupy
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
@@ -54,25 +55,40 @@ def greens_function_single_det(walker_batch, trial):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+        dot = cupy.dot
+        exp = cupy.exp
+        inv = cupy.linalg.inv
+        slogdet = cupy.linalg.slogdet
+    else:
+        array = numpy.array
+        dot = numpy.dot
+        exp = numpy.exp
+        inv = scipy.linalg.inv
+        slogdet = numpy.linalg.slogdet
+
     nup = walker_batch.nup
     ndown = walker_batch.ndown
 
     det = []
 
     for iw in range(walker_batch.nwalkers):
-        ovlp = numpy.dot(walker_batch.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
-        ovlp_inv = scipy.linalg.inv(ovlp)
-        walker_batch.Ghalfa[iw] = numpy.dot(ovlp_inv, walker_batch.phi[iw][:,:nup].T)
-        walker_batch.Ga[iw] = numpy.dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
-        sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
+        ovlp = dot(walker_batch.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
+        ovlp_inv = inv(ovlp)
+        walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phi[iw][:,:nup].T)
+        walker_batch.Ga[iw] = dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
+        sign_a, log_ovlp_a = slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0:
-            ovlp = numpy.dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
-            sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
-            walker_batch.Ghalfb[iw] = numpy.dot(scipy.linalg.inv(ovlp), walker_batch.phi[iw][:,nup:].T)
-            walker_batch.Gb[iw] = numpy.dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
-        det += [sign_a*sign_b*numpy.exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
-    det = numpy.array(det, dtype=numpy.complex128)
+            ovlp = dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
+            sign_b, log_ovlp_b = slogdet(ovlp)
+            walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phi[iw][:,nup:].T)
+            walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
+        det += [sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
+    det = array(det, dtype=numpy.complex128)
 
     return det
 

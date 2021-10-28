@@ -1,6 +1,7 @@
-import numpy
-from numpy import ndarray
 import sys
+import numpy
+from pyqumc.utils.misc import is_cupy
+
 
 def local_energy_generic(h1e, eri, G, ecore=0.0, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
@@ -202,11 +203,11 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     return exx_vec_b + exx_vec_a
 
 
-def local_energy_generic_cholesky_opt_batched(system, ham, Ga_batch: ndarray,
-                                              Gb_batch: ndarray,
-                                              Ghalfa_batch: ndarray,
-                                              Ghalfb_batch: ndarray,
-                                              rchola: ndarray, rcholb: ndarray):
+def local_energy_generic_cholesky_opt_batched(system, ham, Ga_batch: numpy.ndarray,
+                                              Gb_batch: numpy.ndarray,
+                                              Ghalfa_batch: numpy.ndarray,
+                                              Ghalfb_batch: numpy.ndarray,
+                                              rchola: numpy.ndarray, rcholb: numpy.ndarray):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals. and batched
@@ -294,31 +295,52 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0]*Ga) + numpy.sum(ham.H1[1]*Gb)
+    if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+        zeros = cupy.zeros
+        sum = cupy.sum
+        dot = cupy.dot
+        trace = cupy.trace
+        einsum = cupy.einsum
+        isrealobj = cupy.isrealobj
+    else:
+        array = numpy.array
+        zeros = numpy.zeros
+        einsum = numpy.einsum
+        trace = numpy.trace
+        sum = numpy.sum
+        dot = numpy.dot
+        isrealobj = numpy.isrealobj
+
+    complex128 = numpy.complex128
+
+    e1b = sum(ham.H1[0]*Ga) + sum(ham.H1[1]*Gb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     if rchola is not None:
         naux = rchola.shape[0]
 
-    if (numpy.isrealobj(rchola) and numpy.isrealobj(rcholb)):
+    if (isrealobj(rchola) and isrealobj(rcholb)):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.j * rcholb.dot(Ghalfb.imag.ravel())
     else:
         Xa = rchola.dot(Ghalfa.ravel())
         Xb = rcholb.dot(Ghalfb.ravel())
 
-    ecoul = numpy.dot(Xa,Xa)
-    ecoul += numpy.dot(Xb,Xb)
-    ecoul += 2*numpy.dot(Xa,Xb)
+    ecoul = dot(Xa,Xa)
+    ecoul += dot(Xb,Xb)
+    ecoul += 2*dot(Xa,Xb)
 
     GhalfaT = Ghalfa.T.copy()
     GhalfbT = Ghalfb.T.copy()
     
-    Ta = numpy.zeros((nalpha,nalpha), dtype=numpy.complex128)
-    Tb = numpy.zeros((nbeta,nbeta), dtype=numpy.complex128)
+    Ta = zeros((nalpha,nalpha), dtype=complex128)
+    Tb = zeros((nbeta,nbeta), dtype=complex128)
 
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if (numpy.isrealobj(rchola) and numpy.isrealobj(rcholb)):
+    if (isrealobj(rchola) and isrealobj(rcholb)):
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
             rmi_b = rcholb[x].reshape((nbeta,nbasis))
@@ -326,14 +348,14 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
             Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
             Tb[:,:].real = rmi_b.dot(GhalfbT.real) 
             Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
-            exx += numpy.trace(Ta.dot(Ta)) + numpy.trace(Tb.dot(Tb))
+            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
     else:
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
             rmi_b = rcholb[x].reshape((nbeta,nbasis))
             Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
             Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
-            exx += numpy.trace(Ta.dot(Ta)) + numpy.trace(Tb.dot(Tb))
+            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
 
     e2b = 0.5 * (ecoul - exx)
 

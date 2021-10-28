@@ -10,6 +10,11 @@ import time
 from functools import  reduce
 import socket
 
+def is_cupy(obj):
+    t = str(type(obj))
+    cond = 'cupy' in t
+    return cond
+
 
 def get_git_revision_hash():
     """ Return git revision.

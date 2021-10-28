@@ -1,6 +1,10 @@
 import ast
 import h5py
 import numpy
+array = numpy.array
+zeros = numpy.zeros
+einsum = numpy.einsum
+isrealobj = numpy.isrealobj
 import sys
 import scipy.linalg
 import time
@@ -77,7 +81,7 @@ class Generic(object):
         self._alt_convention = False # chemical potential sign convention
 
         self.ecore = ecore
-        self.chol_vecs = chol # [M^2, nchol]
+        self.chol_vecs = array(chol) # [M^2, nchol]
 
         self.chol_vecs = self.chol_vecs.T.copy() #[nchol,M^2]
 
@@ -111,15 +115,16 @@ class Generic(object):
                 print("# control_variate = {}".format(self.control_variate))
 
 
-        if isinstance(self.chol_vecs.dtype, numpy.complex128):
+        if isrealobj(self.chol_vecs.dtype):
             if verbose:
-                print("# Found complex Choleksy integrals.")
+                print("# Found real Choleksy integrals.")
+            self.cplx_chol = False
         else:
             if verbose:
-                print("# Found real Cholesky integrals.")
-            self.cplx_chol = False
+                print("# Found complex Cholesky integrals.")
+            self.cplx_chol = True
 
-        self.H1 = h1e
+        self.H1 = array(h1e)
         self.nbasis = h1e.shape[-1]
         
         mem = self.chol_vecs.nbytes / (1024.0**3)
@@ -131,7 +136,7 @@ class Generic(object):
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod
         else:
-            h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
+            h1e_mod = zeros(self.H1.shape, dtype=self.H1.dtype)
             construct_h1e_mod(self.chol_vecs, self.H1, h1e_mod)
             self.h1e_mod = h1e_mod
 
@@ -165,6 +170,24 @@ class Generic(object):
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
 
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_cupy (self, verbose = False):
+        import cupy
+        
+        size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
+        if verbose:
+            expected_bytes = size * 8. # float64
+            print("# hamiltonians.generic: expected to allocate {} GB".format(expected_bytes/1024**3))
+
+        self.H1 = cupy.asarray(self.H1)
+        self.h1e_mod = cupy.asarray(self.h1e_mod)
+        self.chol_vecs = cupy.asarray(self.chol_vecs)
+
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# hamiltonians.Generic: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+
 def read_integrals(integral_file):
     try:
         (h1e, schol_vecs, ecore, nbasis, nup, ndown) = (
@@ -188,6 +211,6 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     nchol = chol.shape[0]
     chol_3 = chol.reshape((nchol, nbasis, nbasis))
     # assert chol_3.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
-    v0 = 0.5 * numpy.einsum('nik,njk->ij', chol_3, chol_3, optimize='optimal')
+    v0 = 0.5 * einsum('nik,njk->ij', chol_3, chol_3, optimize='optimal')
     h1e_mod[0,:,:] = h1e[0] - v0
     h1e_mod[1,:,:] = h1e[1] - v0

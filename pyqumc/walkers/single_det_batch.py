@@ -40,8 +40,8 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.name = "SingleDetWalkerBatch"
 
         self.ot = calc_overlap_single_det(self, trial)
-        self.le_oratio = 1.0
         self.ovlp = self.ot
+        self.le_oratio = 1.0
 
         self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
@@ -54,3 +54,27 @@ class SingleDetWalkerBatch(WalkerBatch):
                                  dtype=numpy.complex128)
         
         greens_function_single_det(self, trial)
+    
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_cupy (self, verbose):
+        WalkerBatch.cast_to_cupy(self, verbose)
+
+        size = self.Ga.size + self.Gb.size + self.Ghalfa.size + self.Ghalfb.size
+        size += self.ot.size
+        size += self.ovlp.size
+        if verbose:
+            expected_bytes = size * 16.
+            print("# SingleDetWalkerBatch: expected to allocate {} GB".format(expected_bytes/1024**3))
+
+        import cupy
+        self.ot = cupy.asarray(self.ot)
+        self.ovlp = cupy.asarray(self.ovlp)
+        self.Ga = cupy.asarray(self.Ga)
+        self.Gb = cupy.asarray(self.Gb)
+        self.Ghalfa = cupy.asarray(self.Ghalfa)
+        self.Ghalfb = cupy.asarray(self.Ghalfb)
+
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# SingleDetWalkerBatch: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))

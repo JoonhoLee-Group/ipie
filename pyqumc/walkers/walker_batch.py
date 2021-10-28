@@ -2,6 +2,7 @@ import numpy
 import scipy
 import sys
 from pyqumc.walkers.stack import FieldConfig
+from pyqumc.utils.misc import is_cupy
 
 class WalkerBatch(object):
     """WalkerBatch base class.
@@ -45,7 +46,7 @@ class WalkerBatch(object):
         self.weight_bp = self.weight
         # Historic wavefunction for back propagation.
         self.phi_old = self.phi.copy()
-        self.hybrid_energy = [0.0 for iw in range(self.nwalkers)]
+        self.hybrid_energy = numpy.array([0.0 for iw in range(self.nwalkers)])
         # Historic wavefunction for ITCF.
         # self.weights = [numpy.array([1.0]) for iw in range(self.nwalkers)] # This is going to be for MSD trial... (should be named a lot better than this)
         self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
@@ -72,7 +73,42 @@ class WalkerBatch(object):
         self.buff_names = ["weight", "unscaled_weight", "phase", "phi", "hybrid_energy", "ot", "ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
+    # This function casts relevant member variables into cupy arrays
+    def cast_to_cupy (self, verbose=False):
+        import cupy
+
+        size = self.weight.size + self.unscaled_weight.size + self.phase.size
+        size += self.phi.size
+        size += self.hybrid_energy.size
+        size += self.ot.size
+        size += self.ovlp.size
+        if verbose:
+            expected_bytes = size * 16.
+            print("# WalkerBatch: expected to allocate {} GB".format(expected_bytes/1024**3))
+
+        self.weight = cupy.asarray(self.weight)
+        self.unscaled_weight = cupy.asarray(self.unscaled_weight)
+        self.phase = cupy.asarray(self.phase)
+        self.phi = cupy.asarray(self.phi)
+        self.hybrid_energy = cupy.asarray(self.hybrid_energy)
+        self.ot = cupy.asarray(self.ot)
+        self.ovlp = cupy.asarray(self.ovlp)
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# WalkerBatch: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+
     def set_buff_size_single_walker(self):
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.array
+            isrealobj = numpy.isrealobj
+
         names = []
         size = 0
         for k, v in self.__dict__.items():
@@ -82,7 +118,7 @@ class WalkerBatch(object):
             #     print("failed", k, v)
             if (not (k in self.buff_names)):
                 continue
-            if isinstance(v, (numpy.ndarray)):
+            if isinstance(v, (ndarray)):
                 names.append(k)
                 size += v.size
             elif isinstance(v, (int, float, complex)):
@@ -91,7 +127,7 @@ class WalkerBatch(object):
             elif isinstance(v, list):
                 names.append(k)
                 for l in v:
-                    if isinstance(l, (numpy.ndarray)):
+                    if isinstance(l, (ndarray)):
                         size += l.size
                     elif isinstance(l, (int, float, complex)):
                         size += 1
@@ -107,24 +143,34 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.array
+            isrealobj = numpy.isrealobj
+
         s = 0
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
             data = self.__dict__[d]
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
-            if isinstance(data[iw], (numpy.ndarray)):
-                buff[s:s+data[iw].size] = data[iw].ravel()
+            if isinstance(data[iw], (ndarray)):
+                buff[s:s+data[iw].size] = array(data[iw].ravel())
                 s += data[iw].size
             elif isinstance(data[iw], list): # when data is list
                 for l in data[iw]:
-                    if isinstance(l, (numpy.ndarray)):
-                        buff[s:s+l.size] = l.ravel()
+                    if isinstance(l, (ndarray)):
+                        buff[s:s+l.size] = array(l.ravel())
                         s += l.size
                     elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
                         buff[s:s+1] = l
                         s += 1
             else:
-                buff[s:s+1] = data[iw]
+                buff[s:s+1] = array(data[iw])
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
@@ -143,17 +189,27 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+            ndarray = cupy.ndarray
+            array = cupy.asarray
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.asarray
+            isrealobj = numpy.isrealobj
+
         s = 0
         for d in self.buff_names:
             data = self.__dict__[d]
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
-            if isinstance(data[iw], numpy.ndarray):
-                self.__dict__[d][iw] = buff[s:s+data[iw].size].reshape(data[iw].shape).copy()
+            if isinstance(data[iw], ndarray):
+                self.__dict__[d][iw] = array(buff[s:s+data[iw].size].reshape(data[iw].shape).copy())
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
-                    if isinstance(l, (numpy.ndarray)):
-                        self.__dict__[d][iw][ix] = buff[s:s+l.size].reshape(l.shape).copy()
+                    if isinstance(l, (ndarray)):
+                        self.__dict__[d][iw][ix] = array(buff[s:s+l.size].reshape(l.shape).copy())
                         s += l.size
                     elif isinstance(l, (int, float, complex)):
                         self.__dict__[d][iw][ix] = buff[s]
@@ -178,38 +234,66 @@ class WalkerBatch(object):
         parameters
         ----------
         """
+        if(is_cupy(self.phi)):
+            import cupy
+            assert(cupy.is_available())
+            array = cupy.array
+            diag = cupy.diag
+            zeros = cupy.zeros
+            sum = cupy.sum
+            dot = cupy.dot
+            log = cupy.log
+            sign = numpy.sign
+            abs = cupy.abs
+            exp = cupy.exp
+            qr = cupy.linalg.qr
+            qr_mode = 'reduced'
+        else:
+            array = numpy.array
+            diag = numpy.diag
+            zeros = numpy.zeros
+            sum = numpy.sum
+            dot = numpy.dot
+            log = numpy.log
+            sign = numpy.sign
+            abs = numpy.abs
+            exp = numpy.exp
+            qr = scipy.linalg.qr
+            qr_mode = 'economic'
+
+        complex128 = numpy.complex128
+
+
         nup = self.nup
         ndown = self.ndown
 
         detR = []
         for iw in range(self.nwalkers):
-            (self.phi[iw][:,:nup], Rup) = scipy.linalg.qr(self.phi[iw][:,:nup],
-                                                      mode='economic')
-            Rdown = numpy.zeros(Rup.shape)
+            (self.phi[iw][:,:nup], Rup) = qr(self.phi[iw][:,:nup],mode=qr_mode)
+            Rdown = zeros(Rup.shape)
             if ndown > 0:
-                (self.phi[iw][:,nup:], Rdn) = scipy.linalg.qr(self.phi[iw][:,nup:],
-                                                            mode='economic')
+                (self.phi[iw][:,nup:], Rdn) = qr(self.phi[iw][:,nup:], mode=qr_mode)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
             # Wanted detR factors to remain positive, dump the sign in orbitals.
-            Rup_diag = numpy.diag(Rup)
-            signs_up = numpy.sign(Rup_diag)
+            Rup_diag = diag(Rup)
+            signs_up = sign(Rup_diag)
             if ndown > 0:
-                Rdn_diag = numpy.diag(Rdn)
-                signs_dn = numpy.sign(Rdn_diag)
-            self.phi[iw][:,:nup] = numpy.dot(self.phi[iw][:,:nup], numpy.diag(signs_up))
+                Rdn_diag = diag(Rdn)
+                signs_dn = sign(Rdn_diag)
+            self.phi[iw][:,:nup] = dot(self.phi[iw][:,:nup], diag(signs_up))
             if ndown > 0:
-                self.phi[iw][:,nup:] = numpy.dot(self.phi[iw][:,nup:], numpy.diag(signs_dn))
+                self.phi[iw][:,nup:] = dot(self.phi[iw][:,nup:], diag(signs_dn))
             # include overlap factor
             # det(R) = \prod_ii R_ii
             # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
             # C factor included to avoid over/underflow
-            log_det = numpy.sum(numpy.log(numpy.abs(Rup_diag)))
+            log_det = sum(log(abs(Rup_diag)))
             if ndown > 0:
-                log_det += numpy.sum(numpy.log(numpy.abs(Rdn_diag)))
-            detR += [numpy.exp(log_det-self.detR_shift[iw])]
-            self.log_detR[iw] += numpy.log(detR[iw])
+                log_det += sum(log(abs(Rdn_diag)))
+            detR += [exp(log_det-self.detR_shift[iw])]
+            self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
             # print(self.ot[iw], detR[iw])
             self.ot[iw] = self.ot[iw] / detR[iw]

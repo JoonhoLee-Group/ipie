@@ -7,6 +7,7 @@ import time
 from pyqumc.utils.linalg import exponentiate_matrix
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.utils.linalg import reortho
+from pyqumc.utils.misc import is_cupy
 
 class GenericContinuous(object):
     """Propagator for generic many-electron Hamiltonian.
@@ -226,7 +227,14 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if numpy.isrealobj(hamiltonian.chol_vecs):
+        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            isrealobj = cupy.isrealobj
+        else:
+            isrealobj = numpy.isrealobj
+
+        if isrealobj(hamiltonian.chol_vecs):
             # VHS = hamiltonian.chol_vecs.dot(xshifted.real.T) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag.T)
             VHS = xshifted.real.dot(hamiltonian.chol_vecs) + 1.j * xshifted.imag.dot(hamiltonian.chol_vecs)
         else:
