@@ -337,12 +337,32 @@ class MultiSlater(object):
         return P
 
     # This function casts relevant member variables into cupy arrays
-    def cast_to_cupy (self):
+    def cast_to_cupy (self, verbose = False):
         import cupy
+
+        size = self.coeffs.size
+        if (numpy.isrealobj(self.psi)):
+            size += self.psi.size/2.
+        else:
+            size += self.psi.size
+        if (numpy.isrealobj(self._rchola)):
+            size += self._rchola.size/2. + self._rcholb.size/2.
+        else:
+            size += self._rchola.size + self._rcholb.size
+        if (type(self.G) == numpy.ndarray):
+            size += self.G.size
+        if (self.Ghalf != None):
+            size += self.Ghalf[0].size + self.Ghalf[1].size
+        if (self.ortho_expansion):
+            size += (self.occa.size + self.occb.size)/2. # to account for the fact that these are float64, not complex128
+        if verbose:
+            expected_bytes = size * 16.
+            print("# trial_wavefunction.MultiSlater: expected to allocate {} GB".format(expected_bytes/1024**3))
+
         self.psi = cupy.asarray(self.psi)
         self.coeffs = cupy.asarray(self.coeffs)
-        self._rchola = cupy.asarray(self._rchola.copy())
-        self._rcholb = cupy.asarray(self._rcholb.copy())
+        self._rchola = cupy.asarray(self._rchola)
+        self._rcholb = cupy.asarray(self._rcholb)
         if (type(self.G) == numpy.ndarray):
             self.G = cupy.asarray(self.G)
         if (self.Ghalf != None):
@@ -351,7 +371,10 @@ class MultiSlater(object):
         if (self.ortho_expansion):
             self.occa = cupy.asarray(self.occa)
             self.occb = cupy.asarray(self.occb)
-
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# trial_wavefunction.MultiSlater: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0

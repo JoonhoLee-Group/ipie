@@ -94,11 +94,19 @@ class Continuous(object):
         self.tvhs = 0.0
         self.tgemm = 0.0
 
-    def cast_to_cupy (self):
+    def cast_to_cupy (self, verbose = False):
         import cupy
+        size = self.propagator.mf_shift.size + self.propagator.vbias_batch.size + self.propagator.BH1.size
+        if verbose:
+            expected_bytes = size * 16. # assuming complex128
+            print("# propagators.Continuous: expected to allocate {} GB".format(expected_bytes/1024**3))
         self.propagator.mf_shift = cupy.asarray(self.propagator.mf_shift)
         self.propagator.vbias_batch = cupy.asarray(self.propagator.vbias_batch)
         self.propagator.BH1 = cupy.asarray(self.propagator.BH1)
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# propagators.Continuous: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
 
     @property
     def mf_const_fac(self):

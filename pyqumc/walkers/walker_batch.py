@@ -46,7 +46,7 @@ class WalkerBatch(object):
         self.weight_bp = self.weight
         # Historic wavefunction for back propagation.
         self.phi_old = self.phi.copy()
-        self.hybrid_energy = [0.0 for iw in range(self.nwalkers)]
+        self.hybrid_energy = numpy.array([0.0 for iw in range(self.nwalkers)])
         # Historic wavefunction for ITCF.
         # self.weights = [numpy.array([1.0]) for iw in range(self.nwalkers)] # This is going to be for MSD trial... (should be named a lot better than this)
         self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
@@ -74,8 +74,18 @@ class WalkerBatch(object):
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
     # This function casts relevant member variables into cupy arrays
-    def cast_to_cupy (self):
+    def cast_to_cupy (self, verbose=False):
         import cupy
+
+        size = self.weight.size + self.unscaled_weight.size + self.phase.size
+        size += self.phi.size
+        size += self.hybrid_energy.size
+        size += self.ot.size
+        size += self.ovlp.size
+        if verbose:
+            expected_bytes = size * 16.
+            print("# WalkerBatch: expected to allocate {} GB".format(expected_bytes/1024**3))
+
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
@@ -83,6 +93,10 @@ class WalkerBatch(object):
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
         self.ot = cupy.asarray(self.ot)
         self.ovlp = cupy.asarray(self.ovlp)
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print("# WalkerBatch: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
 
     def set_buff_size_single_walker(self):
         if is_cupy(self.weight):

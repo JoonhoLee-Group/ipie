@@ -242,16 +242,16 @@ class AFQMCBatch(object):
 
             if comm.rank == 0:
                 print("# Casting arrays in propagators")
-            self.propagators.cast_to_cupy()
+            self.propagators.cast_to_cupy(verbose)
             if comm.rank == 0:
                 print("# Casting arrays in hamiltonian")
-            self.hamiltonian.cast_to_cupy()
+            self.hamiltonian.cast_to_cupy(verbose)
             if comm.rank == 0:
                 print("# Casting arrays in trial")
-            self.trial.cast_to_cupy()
+            self.trial.cast_to_cupy(verbose)
             if comm.rank == 0:
                 print("# Casting arrays in walkers_batch")
-            self.psi.walkers_batch.cast_to_cupy()
+            self.psi.walkers_batch.cast_to_cupy(verbose)
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
