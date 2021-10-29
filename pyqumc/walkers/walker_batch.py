@@ -52,7 +52,7 @@ class WalkerBatch(object):
         self.detR = [1.0 for iw in range(self.nwalkers)]
         self.detR_shift = [0.0 for iw in range(self.nwalkers)]
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
-        self.log_shift = [0.0 for iw in range(self.nwalkers)]
+        self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
         # Number of propagators to store for back propagation / ITCF.
         num_propg = [walker_opts.get('num_propg', 1) for iw in range(self.nwalkers)]
@@ -75,7 +75,7 @@ class WalkerBatch(object):
     def cast_to_cupy (self, verbose=False):
         import cupy
 
-        size = self.weight.size + self.unscaled_weight.size + self.phase.size
+        size = self.weight.size + self.unscaled_weight.size + self.phase.size + self.log_shift.size
         size += self.phia.size
         if (self.ndown >0 and not self.rhf):
             size += self.phib.size
@@ -89,6 +89,7 @@ class WalkerBatch(object):
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
+        self.log_shift = cupy.asarray(self.log_shift)
         self.phia = cupy.asarray(self.phia)
         if (self.ndown >0 and not self.rhf):
             self.phib = cupy.asarray(self.phib)

@@ -297,7 +297,44 @@ class Continuous(object):
         else:
             eloc_bounded = eloc
         return eloc_bounded
-    
+
+    def apply_exponential_batch(self, phi, VHS):
+        """Apply exponential propagator of the HS transformation
+        Parameters
+        ----------
+        system :
+            system class
+        phi : numpy array
+            a state
+        VHS : numpy array
+            HS transformation potential
+        Returns
+        -------
+        phi : numpy array
+            Exp(VHS) * phi
+        """
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            copy = cupy.copy
+            copyto = cupy.copyto
+            zeros = cupy.zeros
+            einsum = cupy.einsum
+        else:
+            copy = numpy.copy
+            copyto = numpy.copyto
+            zeros = numpy.zeros
+            einsum = numpy.einsum
+
+        # Temporary array for matrix exponentiation.
+        Temp = zeros(phi.shape, dtype=phi.dtype)
+        copyto(Temp, phi)
+        for n in range(1, self.exp_nmax+1):
+            Temp = einsum("wmn,wni->wmi",VHS, Temp, optimize=True)
+            Temp /= n
+            phi += Temp
+        return phi
+
     def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
         """It applies the two-body propagator to a batch of walkers
         Parameters
@@ -366,11 +403,17 @@ class Continuous(object):
         self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
         start_time = time.time()
-        for iw in range (walker_batch.nwalkers):
-            # 2.b Apply two-body
-            walker_batch.phia[iw] = self.apply_exponential(walker_batch.phia[iw], VHS[iw])
+
+        if is_cupy(trial.psi):
+            walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
             if (walker_batch.ndown > 0 and not walker_batch.rhf):
-                walker_batch.phib[iw] = self.apply_exponential(walker_batch.phib[iw], VHS[iw])
+                walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
+        else:
+            for iw in range (walker_batch.nwalkers):
+                # 2.b Apply two-body
+                walker_batch.phia[iw] = self.apply_exponential(walker_batch.phia[iw], VHS[iw])
+                if (walker_batch.ndown > 0 and not walker_batch.rhf):
+                    walker_batch.phib[iw] = self.apply_exponential(walker_batch.phib[iw], VHS[iw])
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
