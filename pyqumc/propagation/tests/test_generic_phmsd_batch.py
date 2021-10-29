@@ -133,9 +133,6 @@ def test_phmsd_overlap_batch():
     numpy.random.seed(70)
 
     trial.calculate_energy(system, ham)
-    options = {'hybrid': True}
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
 
     walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
@@ -183,7 +180,6 @@ def test_phmsd_propagation_batch():
 
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     prop_batch.propagator.vbias_batch = construct_force_bias_batch(ham, walker_batch, trial)
-    fb = - prop_batch.propagator.sqrt_dt * (1j*prop_batch.propagator.vbias_batch-prop_batch.propagator.mf_shift)
 
     for istep in range(nsteps):
         for iw in range(nwalkers):
@@ -195,7 +191,8 @@ def test_phmsd_propagation_batch():
         prop_batch.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walkers[iw].phi,walker_batch.phi[iw])
+        assert numpy.allclose(walkers[iw].phi[:,:nelec[0]],walker_batch.phia[iw])
+        assert numpy.allclose(walkers[iw].phi[:,nelec[0]:],walker_batch.phib[iw])
         assert numpy.allclose(walkers[iw].weight,walker_batch.weight[iw])
 
 if __name__ == '__main__':

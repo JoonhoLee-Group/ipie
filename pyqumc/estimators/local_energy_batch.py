@@ -8,7 +8,7 @@ from pyqumc.utils.misc import is_cupy
 def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
 
     if (walker_batch.name == "SingleDetWalkerBatch"):
-        if (is_cupy(walker_batch.phi)):
+        if (is_cupy(walker_batch.phia)):
             return local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial, iw = iw)
         else:
             return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = iw)
@@ -17,7 +17,6 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
         return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walker_batch, trial, iw = iw)
-
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, iw = None):
     assert(iw == None)
@@ -31,7 +30,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
 
     e2bs = []
     for iwalker in range(nwalkers):
-        phi = walker_batch.phi[iwalker].copy() # walker wfn
         ovlpa0 = walker_batch.det_ovlpas[iwalker,0]
         ovlpb0 = walker_batch.det_ovlpbs[iwalker,0]
         ovlp0 = ovlpa0 * ovlpb0
@@ -249,7 +247,6 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial,
     return energy
 
 def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = None):
-
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
@@ -282,7 +279,6 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
         einsum = cupy.einsum
         zeros = cupy.zeros
         isrealobj = cupy.isrealobj
-    # if numpy.isrealobj(hamiltonian.chol_vecs):
     else:
         einsum = numpy.einsum
         zeros = numpy.zeros
@@ -337,6 +333,61 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
         exx += einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
 
     e2b = 0.5 * (ecoul - exx)
+
+    energy = zeros((nwalkers, 3), dtype=numpy.complex128)
+    energy[:,0] = e1b+e2b
+    energy[:,1] = e1b
+    energy[:,2] = e2b
+
+    return energy
+
+def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial, iw = None):
+
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        einsum = cupy.einsum
+        zeros = cupy.zeros
+        isrealobj = cupy.isrealobj
+    else:
+        einsum = numpy.einsum
+        zeros = numpy.zeros
+        isrealobj = numpy.isrealobj
+
+    nwalkers = walker_batch.Ghalfa.shape[0]
+    nalpha = walker_batch.Ghalfa.shape[1]
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
+    
+    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    e1b = 2.0 * Ga.dot(hamiltonian.H1[0].ravel()) + hamiltonian.ecore
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+
+    if (isrealobj(trial._rchola)):
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
+    else:
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
+
+    ecoul = 2. * einsum("xw,xw->w", Xa, Xa, optimize=True)
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    GhalfaT_batch = walker_batch.Ghalfa.transpose(0,2,1).copy() # nw x nbasis x nocc
+
+    Ta = zeros((nwalkers, nalpha,nalpha), dtype=numpy.complex128)
+
+    exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        rmi_a = trial._rchola[x].reshape((nalpha,nbasis))
+        if (isrealobj(trial._rchola)):
+            Ta[:,:,:].real = rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2)
+            Ta[:,:,:].imag = rmi_a.dot(GhalfaT_batch.imag).transpose(1,0,2)
+        else:
+            Ta[:,:,:] = rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
+
+        exx += einsum("wij,wji->w",Ta,Ta,optimize=True)
+
+    e2b = ecoul - exx
 
     energy = zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:,0] = e1b+e2b

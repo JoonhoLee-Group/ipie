@@ -73,15 +73,30 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
         isrealobj = numpy.isrealobj
         empty = numpy.empty
 
-    Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
-    Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
-    if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
-        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
-        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
-        vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
-        vbias_batch.real = vbias_batch_real.T.copy()
-        vbias_batch.imag = vbias_batch_imag.T.copy()
-        return vbias_batch
-    else:    
-        vbias_batch_tmp = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
-        return vbias_batch_tmp.T
+
+    if (walker_batch.rhf):
+        Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
+        if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
+            vbias_batch_real = 2.*trial._rchola.dot(Ghalfa.T.real)
+            vbias_batch_imag = 2.*trial._rchola.dot(Ghalfa.T.imag)
+            vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
+            vbias_batch.real = vbias_batch_real.T.copy()
+            vbias_batch.imag = vbias_batch_imag.T.copy()
+            return vbias_batch
+        else:    
+            vbias_batch_tmp = 2.*trial._rchola.dot(Ghalfa.T) 
+            return vbias_batch_tmp.T
+
+    else:
+        Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
+        Ghalfb = walker_batch.Ghalfb.reshape(walker_batch.nwalkers, walker_batch.ndown*hamiltonian.nbasis)
+        if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
+            vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
+            vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+            vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=numpy.complex128)
+            vbias_batch.real = vbias_batch_real.T.copy()
+            vbias_batch.imag = vbias_batch_imag.T.copy()
+            return vbias_batch
+        else:    
+            vbias_batch_tmp = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
+            return vbias_batch_tmp.T

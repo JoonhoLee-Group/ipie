@@ -6,8 +6,8 @@ from pyqumc.walkers.stack import FieldConfig
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from pyqumc.estimators.greens_function import greens_function_single_det
-from pyqumc.propagation.overlap import calc_overlap_single_det
+from pyqumc.estimators.greens_function import greens_function
+from pyqumc.propagation.overlap import calc_overlap_single_det, get_calc_overlap
 
 class SingleDetWalkerBatch(WalkerBatch):
     """UHF style walker.
@@ -39,21 +39,28 @@ class SingleDetWalkerBatch(WalkerBatch):
                         nprop_tot=nprop_tot, nbp=nbp)
         self.name = "SingleDetWalkerBatch"
 
-        self.ot = calc_overlap_single_det(self, trial)
+        calc_overlap = get_calc_overlap(trial)
+        self.ot = calc_overlap(self, trial)
         self.ovlp = self.ot
         self.le_oratio = 1.0
 
         self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
-        self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+        if self.rhf:
+            self.Gb = None
+        else:
+            self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
 
         self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
                                  dtype=numpy.complex128)
-        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
+        if self.rhf:
+            self.Ghalfb = None
+        else:
+            self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
                                  dtype=numpy.complex128)
         
-        greens_function_single_det(self, trial)
+        greens_function(self, trial)
     
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self, verbose):

@@ -29,26 +29,24 @@ class WalkerBatch(object):
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0
+        self.rhf = walker_opts.get('rhf', False)
 
         self.weight = numpy.array([walker_opts.get('weight', 1.0) for iw in range(self.nwalkers)])
         self.unscaled_weight = self.weight.copy()
         self.phase = numpy.array([1. + 0.j for iw in range(self.nwalkers)])
         self.alive = numpy.array([1 for iw in range(self.nwalkers)])
-        self.phi = numpy.array([trial.init.copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
+        self.phia = numpy.array([trial.init[:,:self.nup].copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
+        if not self.rhf:
+            self.phib = numpy.array([trial.init[:,self.nup:].copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
+        else:
+            self.phib = None
 
         self.ot = numpy.array([1.0 for iw in range(self.nwalkers)])
         self.ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
         # in case we use local energy approximation to the propagation
         self.eloc = numpy.array([0.0 for iw in range(self.nwalkers)])
-        # walkers overlap at time tau before backpropagation occurs
-        self.ot_bp = numpy.array([1.0 for iw in range(self.nwalkers)])
-        # walkers weight at time tau before backpropagation occurs
-        self.weight_bp = self.weight
-        # Historic wavefunction for back propagation.
-        self.phi_old = self.phi.copy()
+
         self.hybrid_energy = numpy.array([0.0 for iw in range(self.nwalkers)])
-        # Historic wavefunction for ITCF.
-        # self.weights = [numpy.array([1.0]) for iw in range(self.nwalkers)] # This is going to be for MSD trial... (should be named a lot better than this)
         self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
         self.weights.fill(1.0)
         self.detR = [1.0 for iw in range(self.nwalkers)]
@@ -70,7 +68,7 @@ class WalkerBatch(object):
         # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
         #                    "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
         #                    "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
-        self.buff_names = ["weight", "unscaled_weight", "phase", "phi", "hybrid_energy", "ot", "ovlp"]
+        self.buff_names = ["weight", "unscaled_weight", "phase", "phia", "phib", "hybrid_energy", "ot", "ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
     # This function casts relevant member variables into cupy arrays
@@ -78,7 +76,9 @@ class WalkerBatch(object):
         import cupy
 
         size = self.weight.size + self.unscaled_weight.size + self.phase.size
-        size += self.phi.size
+        size += self.phia.size
+        if (self.ndown >0 and not self.rhf):
+            size += self.phib.size
         size += self.hybrid_energy.size
         size += self.ot.size
         size += self.ovlp.size
@@ -89,7 +89,9 @@ class WalkerBatch(object):
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
-        self.phi = cupy.asarray(self.phi)
+        self.phia = cupy.asarray(self.phia)
+        if (self.ndown >0 and not self.rhf):
+            self.phib = cupy.asarray(self.phib)
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
         self.ot = cupy.asarray(self.ot)
         self.ovlp = cupy.asarray(self.ovlp)
@@ -234,7 +236,7 @@ class WalkerBatch(object):
         parameters
         ----------
         """
-        if(is_cupy(self.phi)):
+        if(is_cupy(self.phia)):
             import cupy
             assert(cupy.is_available())
             array = cupy.array
@@ -266,36 +268,45 @@ class WalkerBatch(object):
 
         nup = self.nup
         ndown = self.ndown
-
+        
+        # self.phia = self.phi[:,:,:self.nup]
+        # self.phib = self.phi[:,:,self.nup:]
+        
         detR = []
         for iw in range(self.nwalkers):
-            (self.phi[iw][:,:nup], Rup) = qr(self.phi[iw][:,:nup],mode=qr_mode)
+            (self.phia[iw], Rup) = qr(self.phia[iw],mode=qr_mode)
             Rdown = zeros(Rup.shape)
-            if ndown > 0:
-                (self.phi[iw][:,nup:], Rdn) = qr(self.phi[iw][:,nup:], mode=qr_mode)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
             # Wanted detR factors to remain positive, dump the sign in orbitals.
             Rup_diag = diag(Rup)
             signs_up = sign(Rup_diag)
-            if ndown > 0:
-                Rdn_diag = diag(Rdn)
-                signs_dn = sign(Rdn_diag)
-            self.phi[iw][:,:nup] = dot(self.phi[iw][:,:nup], diag(signs_up))
-            if ndown > 0:
-                self.phi[iw][:,nup:] = dot(self.phi[iw][:,nup:], diag(signs_dn))
+            self.phia[iw] = dot(self.phia[iw], diag(signs_up))
+
             # include overlap factor
             # det(R) = \prod_ii R_ii
             # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
             # C factor included to avoid over/underflow
             log_det = sum(log(abs(Rup_diag)))
-            if ndown > 0:
+
+            if ndown > 0 and not self.rhf:
+                (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
+                Rdn_diag = diag(Rdn)
+                signs_dn = sign(Rdn_diag)
+                self.phib[iw] = dot(self.phib[iw], diag(signs_dn))
                 log_det += sum(log(abs(Rdn_diag)))
+            elif ndown > 0 and self.rhf:
+                log_det *= 2.0
+
             detR += [exp(log_det-self.detR_shift[iw])]
             self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
             # print(self.ot[iw], detR[iw])
             self.ot[iw] = self.ot[iw] / detR[iw]
             self.ovlp[iw] = self.ot[iw]
+        
+        # self.phi[:,:,:self.nup] = self.phia.copy()
+        # self.phi[:,:,self.nup:] = self.phib.copy()
+
         return detR

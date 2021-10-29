@@ -19,7 +19,8 @@ def get_greens_function(trial):
     """
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
-        compute_greens_function = greens_function_single_det
+        # compute_greens_function = greens_function_single_det
+        compute_greens_function = greens_function_single_det_batch
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         compute_greens_function = greens_function_multi_det
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
@@ -31,15 +32,8 @@ def get_greens_function(trial):
     return compute_greens_function
 
 def greens_function(walker_batch, trial):
-    if trial.name == "MultiSlater" and trial.ndets == 1:
-        return greens_function_single_det(walker_batch, trial)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
-        return greens_function_multi_det(walker_batch, trial)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
-        # return greens_function_multi_det(walker_batch, trial)
-        return greens_function_multi_det_wicks(walker_batch, trial)
-    else:
-        return None
+    compute_greens_function = get_greens_function(trial)
+    return compute_greens_function(walker_batch,trial)
 
 def greens_function_single_det(walker_batch, trial):
     """Compute walker's green's function.
@@ -82,15 +76,77 @@ def greens_function_single_det(walker_batch, trial):
         walker_batch.Ga[iw] = dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
         sign_a, log_ovlp_a = slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
-        if ndown > 0:
+        if ndown > 0 and not walker_batch.rhf:
             ovlp = dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
             sign_b, log_ovlp_b = slogdet(ovlp)
             walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phi[iw][:,nup:].T)
             walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
-        det += [sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
+            det += [sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
+        elif ndown > 0 and walker_batch.rhf:
+            det += [sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift[iw])]
+        elif ndown == 0:
+            det += [sign_a*exp(log_ovlp_a-walker_batch.log_shift)]
+
     det = array(det, dtype=numpy.complex128)
 
     return det
+
+def greens_function_single_det_batch(walker_batch, trial):
+    """Compute walker's green's function using only batched operations.
+
+    Parameters
+    ----------
+    walker_batch : object
+        SingleDetWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    Returns
+    -------
+    ot : float64 / complex128
+        Overlap with trial.
+    """
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+        dot = cupy.dot
+        exp = cupy.exp
+        einsum = cupy.einsum
+        inv = cupy.linalg.inv
+        slogdet = cupy.linalg.slogdet
+    else:
+        array = numpy.array
+        dot = numpy.dot
+        exp = numpy.exp
+        einsum = numpy.einsum
+        inv = numpy.linalg.inv
+        slogdet = numpy.linalg.slogdet
+
+    nup = walker_batch.nup
+    ndown = walker_batch.ndown
+
+    ovlp_a = einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize = True)
+    ovlp_inv_a = inv(ovlp_a)
+    sign_a, log_ovlp_a = slogdet(ovlp_a)
+
+    walker_batch.Ghalfa = einsum("wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True)
+    walker_batch.Ga = einsum("mi,win->wmn",trial.psia.conj(), walker_batch.Ghalfa, optimize=True)
+
+    if ndown > 0 and not walker_batch.rhf:
+        ovlp_b = einsum("wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize = True)
+        ovlp_inv_b = inv(ovlp_b)
+
+        sign_b, log_ovlp_b = slogdet(ovlp_b)
+        walker_batch.Ghalfb = einsum("wij,wmj->wim", ovlp_inv_b, walker_batch.phib, optimize=True)
+        walker_batch.Gb = einsum("mi,win->wmn",trial.psib.conj(), walker_batch.Ghalfb, optimize=True)
+        ot = sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift)
+    elif ndown > 0 and walker_batch.rhf:
+        ot = sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift)
+    elif ndown == 0:
+        ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
+
+    return ot
+
 
 def greens_function_multi_det(walker_batch, trial):
     """Compute walker's green's function.
@@ -113,14 +169,14 @@ def greens_function_multi_det(walker_batch, trial):
     for iw in range(walker_batch.nwalkers):
         for (ix, detix) in enumerate(trial.psi):
             # construct "local" green's functions for each component of psi_T
-            Oup = numpy.dot(walker_batch.phi[iw,:,:nup].T, detix[:,:nup].conj())
+            Oup = numpy.dot(walker_batch.phia[iw].T, detix[:,:nup].conj())
             # det(A) = det(A^T)
             sign_a, logdet_a = numpy.linalg.slogdet(Oup)
             walker_batch.det_ovlpas[iw,ix] = sign_a*numpy.exp(logdet_a)
             if abs(walker_batch.det_ovlpas[iw,ix]) < 1e-16:
                 continue
 
-            Odn = numpy.dot(walker_batch.phi[iw,:,nup:].T, detix[:,nup:].conj())
+            Odn = numpy.dot(walker_batch.phib[iw].T, detix[:,nup:].conj())
             sign_b, logdet_b = numpy.linalg.slogdet(Odn)
             walker_batch.det_ovlpbs[iw,ix] = sign_b*numpy.exp(logdet_b)
             ovlp = walker_batch.det_ovlpas[iw,ix] * walker_batch.det_ovlpbs[iw,ix]
@@ -128,11 +184,11 @@ def greens_function_multi_det(walker_batch, trial):
                 continue
 
             inv_ovlp = scipy.linalg.inv(Oup)
-            walker_batch.Gihalfa[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phi[iw][:,:nup].T)
+            walker_batch.Gihalfa[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phia[iw].T)
             walker_batch.Gia[iw,ix,:,:] = numpy.dot(detix[:,:nup].conj(), walker_batch.Gihalfa[iw,ix,:,:])
 
             inv_ovlp = scipy.linalg.inv(Odn)
-            walker_batch.Gihalfb[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phi[iw][:,nup:].T)
+            walker_batch.Gihalfb[iw,ix,:,:] = numpy.dot(inv_ovlp, walker_batch.phib[iw].T)
             walker_batch.Gib[iw,ix,:,:] = numpy.dot(detix[:,nup:].conj(),walker_batch.Gihalfb[iw,ix,:,:])
 
             tot_ovlps[iw] += trial.coeffs[ix].conj()*ovlp
@@ -140,13 +196,9 @@ def greens_function_multi_det(walker_batch, trial):
 
             walker_batch.Ga[iw] += walker_batch.Gia[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
             walker_batch.Gb[iw] += walker_batch.Gib[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
-            # walker_batch.Ghalfa[iw] += walker_batch.Gihalfa[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
-            # walker_batch.Ghalfb[iw] += walker_batch.Gihalfb[iw,ix,:,:] * ovlp * trial.coeffs[ix].conj()
         
         walker_batch.Ga[iw] /= tot_ovlps[iw]
         walker_batch.Gb[iw] /= tot_ovlps[iw]
-        # walker_batch.Ghalfa[iw] /= tot_ovlps[iw]
-        # walker_batch.Ghalfb[iw] /= tot_ovlps[iw]
 
     return tot_ovlps
 
@@ -172,16 +224,15 @@ def greens_function_multi_det_wicks(walker_batch, trial):
 
     walker_batch.Ga.fill(0.0+0.0j)
     walker_batch.Gb.fill(0.0+0.0j)
-    # walker_batch.Ghalfa.fill(0.0+0.0j)
-    # walker_batch.Ghalfb.fill(0.0+0.0j)
 
     for iw in range(walker_batch.nwalkers):        
-        phi = walker_batch.phi[iw] # walker wfn
+        phia = walker_batch.phia[iw] # walker wfn
+        phib = walker_batch.phib[iw] # walker wfn
 
-        Oalpha = numpy.dot(trial.psi0[:,:nup].conj().T, phi[:,:nup])
+        Oalpha = numpy.dot(trial.psi0a.conj().T, phia)
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
-        Obeta = numpy.dot(trial.psi0[:,nup:].conj().T, phi[:,nup:])
+        Obeta = numpy.dot(trial.psi0b.conj().T, phib)
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
@@ -190,9 +241,11 @@ def greens_function_multi_det_wicks(walker_batch, trial):
         ovlpa0 = walker_batch.det_ovlpas[iw,0]
         ovlpab = walker_batch.det_ovlpbs[iw,0]
 
-        G0, G0H = gab_spin(trial.psi0, phi, nup, ndown)
-        walker_batch.G0a[iw] = G0[0].copy()
-        walker_batch.G0b[iw] = G0[1].copy()
+        # G0, G0H = gab_spin(trial.psi0, phi, nup, ndown)
+        G0a, G0Ha = gab_mod(trial.psi0a, phia)
+        G0b, G0Hb = gab_mod(trial.psi0b, phib)
+        walker_batch.G0a[iw] = G0a
+        walker_batch.G0b[iw] = G0b
         walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
         walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
 

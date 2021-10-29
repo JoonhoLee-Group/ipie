@@ -55,6 +55,8 @@ class WalkerBatchHandler(object):
             self.walker_type = 'SD'
             if (len(trial.psi.shape) == 3):
                 trial.psi = trial.psi[0]
+                trial.psia = trial.psia[0]
+                trial.psib = trial.psib[0]
             self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, 
                                 nwalkers = self.nwalkers, walker_opts=walker_opts,
                                 index=0, nprop_tot=nprop_tot,nbp=nbp)
@@ -89,7 +91,7 @@ class WalkerBatchHandler(object):
                       "issues.")
         
         if not self.walker_type == "thermal":
-            walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phi.size
+            walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phia.size + self.walkers_batch.phib.size
         if self.write_freq > 0:
             self.write_restart = True
             self.dsets = []

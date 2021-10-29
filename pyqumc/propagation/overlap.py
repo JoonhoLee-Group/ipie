@@ -1,6 +1,6 @@
 import numpy
 import scipy.linalg
-from pyqumc.estimators.greens_function import gab_spin
+from pyqumc.estimators.greens_function import gab_spin, gab_mod
 from pyqumc.utils.misc import is_cupy
 
 # Later we will add walker kinds as an input too
@@ -19,7 +19,8 @@ def get_calc_overlap(trial):
     """
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
-        calc_overlap = calc_overlap_single_det
+        # calc_overlap = calc_overlap_single_det
+        calc_overlap = calc_overlap_single_det_batch
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         calc_overlap = calc_overlap_multi_det
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
@@ -63,15 +64,61 @@ def calc_overlap_single_det(walker_batch, trial):
     ot = zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
     for iw in range(walker_batch.nwalkers):
-        Oalpha = dot(trial.psi[:,:na].conj().T, walker_batch.phi[iw][:,:na])
+        Oalpha = dot(trial.psia.conj().T, walker_batch.phia[iw])
         sign_a, logdet_a = slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
-            Obeta = dot(trial.psi[:,na:].conj().T, walker_batch.phi[iw][:,na:])
+            Obeta = dot(trial.psib.conj().T, walker_batch.phib[iw])
             sign_b, logdet_b = slogdet(Obeta)
 
         ot[iw] = sign_a*sign_b*exp(logdet_a+logdet_b-walker_batch.log_shift[iw])
     
+    return ot
+
+def calc_overlap_single_det_batch(walker_batch, trial):
+    """Caculate overlap with single det trial wavefunction.
+
+    Parameters
+    ----------
+    walker_batch : object
+        WalkerBatch object (this stores some intermediates for the particular trial wfn).
+    trial : object
+        Trial wavefunction object.
+
+    Returns
+    -------
+    ot : float / complex
+        Overlap.
+    """
+    if (is_cupy(trial.psi)):
+        import cupy
+        assert(cupy.is_available())
+        zeros = cupy.zeros
+        dot = cupy.dot
+        einsum = cupy.einsum
+        slogdet = cupy.linalg.slogdet
+        exp = cupy.exp
+    else:
+        zeros = numpy.zeros
+        dot = numpy.dot
+        einsum = numpy.einsum
+        slogdet = numpy.linalg.slogdet
+        exp = numpy.exp
+
+    nup = walker_batch.nup
+    ndown = walker_batch.ndown
+    ovlp_a = einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize = True)
+    sign_a, log_ovlp_a = slogdet(ovlp_a)
+
+    if ndown > 0 and not walker_batch.rhf:
+        ovlp_b = einsum("wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize = True)
+        sign_b, log_ovlp_b = slogdet(ovlp_b)
+        ot = sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift)
+    elif ndown > 0 and walker_batch.rhf:
+        ot = sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift)
+    elif ndown == 0:
+        ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
+
     return ot
 
 def calc_overlap_multi_det_wicks(walker_batch, trial):
@@ -89,24 +136,30 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
     ovlps : float / complex
         Overlap.
     """
-    psi0 = trial.psi0 # reference det
+    psi0a = trial.psi0a # reference det
+    psi0b = trial.psi0b # reference det
+
     na = walker_batch.nup
     nb = walker_batch.ndown
 
     ovlps = []
     for iw in range(walker_batch.nwalkers):
-        phi = walker_batch.phi[iw]
-        Oalpha = numpy.dot(psi0[:,:na].conj().T, phi[:,:na])
+        phia = walker_batch.phia[iw]
+        Oalpha = numpy.dot(psi0a.conj().T, phia)
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
-        Obeta = numpy.dot(psi0[:,na:].conj().T, phi[:,na:])
+        
+        phib = walker_batch.phib[iw]
+        Obeta = numpy.dot(psi0b.conj().T, phib)
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
 
-        G0, G0H = gab_spin(psi0, phi, na, nb)
-        G0a = G0[0]
-        G0b = G0[1]
+        G0a, G0Ha = gab_mod(psi0a, phia)
+        G0b, G0Hb = gab_mod(psi0b, phib)
+        # G0, G0H = gab_spin(psi0, phi, na, nb)
+        # G0a = G0[0]
+        # G0b = G0[1]
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
@@ -158,8 +211,8 @@ def calc_overlap_multi_det(walker_batch, trial):
     nup = walker_batch.nup
     for iw in range(walker_batch.nwalkers):
         for (i, det) in enumerate(trial.psi):
-            Oup = numpy.dot(det[:,:nup].conj().T, walker_batch.phi[iw,:,:nup])
-            Odn = numpy.dot(det[:,nup:].conj().T, walker_batch.phi[iw,:,nup:])
+            Oup = numpy.dot(det[:,:nup].conj().T, walker_batch.phia[iw])
+            Odn = numpy.dot(det[:,nup:].conj().T, walker_batch.phib[iw])
             sign_a, logdet_a = numpy.linalg.slogdet(Oup)
             sign_b, logdet_b = numpy.linalg.slogdet(Odn)
             walker_batch.det_ovlpas[iw,i] = sign_a*numpy.exp(logdet_a)
