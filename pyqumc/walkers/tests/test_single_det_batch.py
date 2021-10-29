@@ -25,6 +25,8 @@ def test_buff_size_batch():
     wfn[0,:,system.nup:] = eigv[:,:system.ndown].copy()
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
 
     nwalkers = 1
     walkers = [SingleDetWalker(system, ham, trial) for i in range(nwalkers)]
@@ -44,6 +46,8 @@ def test_overlap_batch():
     wfn[0,:,system.nup:] = eigv[:,:system.ndown].copy()
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
 
     nwalkers = 10
     walkers = [SingleDetWalker(system, ham, trial) for i in range(nwalkers)]
@@ -78,6 +82,8 @@ def test_greens_function_batch():
     wfn[0,:,system.nup:] = eigv[:,:system.ndown].copy()
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     nup = system.nup
     walker = SingleDetWalker(system, ham, trial)
 
@@ -100,6 +106,8 @@ def test_reortho_batch():
     wfn = numpy.random.random((ham.nbasis*system.ne)).reshape(1,ham.nbasis, system.ne)
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     nup = system.nup
     walker = SingleDetWalker(system, ham, trial)
 

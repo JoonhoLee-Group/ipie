@@ -274,7 +274,7 @@ class AFQMCBatch(object):
         comm : MPI communicator
         """
 
-        if is_cupy(self.psi.walkers_batch.phi): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(self.psi.walkers_batch.phia): # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
             assert(cupy.is_available())
             zeros = cupy.zeros

@@ -6,7 +6,7 @@ import time
 from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.greens_function import get_greens_function
 from pyqumc.propagation.overlap import get_calc_overlap
-from pyqumc.propagation.operations import kinetic_real
+from pyqumc.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
 from pyqumc.propagation.planewave import PlaneWave
 from pyqumc.propagation.generic import GenericContinuous
@@ -368,7 +368,9 @@ class Continuous(object):
         start_time = time.time()
         for iw in range (walker_batch.nwalkers):
             # 2.b Apply two-body
-            self.apply_exponential(walker_batch.phi[iw], VHS[iw])
+            walker_batch.phia[iw] = self.apply_exponential(walker_batch.phia[iw], VHS[iw])
+            if (walker_batch.ndown > 0 and not walker_batch.rhf):
+                walker_batch.phib[iw] = self.apply_exponential(walker_batch.phib[iw], VHS[iw])
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -391,18 +393,23 @@ class Continuous(object):
         start_time = time.time()
         ovlp = self.compute_greens_function(walker_batch, trial)
         self.tgf += time.time() - start_time
+
         # 2. Update Slater matrix
         # 2.a Apply one-body
         start_time = time.time()
-        for iw in range(walker_batch.nwalkers):
-            kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+        walker_batch.phia = kinetic_spin_real_batch(walker_batch.phia, self.propagator.BH1[0])
+        if (walker_batch.ndown > 0 and not walker_batch.rhf):
+            walker_batch.phib = kinetic_spin_real_batch(walker_batch.phib, self.propagator.BH1[1])
         self.tgemm += time.time() - start_time
+
         # 2.b Apply two-body
         (cmf, cfb, xmxbar) = self.two_body_propagator_batch(walker_batch, system, hamiltonian, trial)
+
         # 2.c Apply one-body
         start_time = time.time()
-        for iw in range(walker_batch.nwalkers):
-            kinetic_real(walker_batch.phi[iw], system, self.propagator.BH1)
+        walker_batch.phia = kinetic_spin_real_batch(walker_batch.phia, self.propagator.BH1[0])
+        if (walker_batch.ndown > 0 and not walker_batch.rhf):
+            walker_batch.phib = kinetic_spin_real_batch(walker_batch.phib, self.propagator.BH1[1])
         self.tgemm += time.time() - start_time
 
         # Now apply phaseless approximation

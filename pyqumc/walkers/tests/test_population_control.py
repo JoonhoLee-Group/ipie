@@ -48,6 +48,8 @@ def test_pair_branch_batch():
     trial.half_rotate(sys, ham)
 
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     trial.calculate_energy(sys, ham)
     
     numpy.random.seed(7)
@@ -74,12 +76,13 @@ def test_pair_branch_batch():
         handler.pop_control(comm)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(handler_batch.walkers_batch.phi[iw], handler.walkers[iw].phi)
+        assert numpy.allclose(handler_batch.walkers_batch.phia[iw], handler.walkers[iw].phi[:,:sys.nup])
+        assert numpy.allclose(handler_batch.walkers_batch.phib[iw], handler.walkers[iw].phi[:,sys.nup:])
         assert numpy.allclose(handler_batch.walkers_batch.weight[iw], handler.walkers[iw].weight)
     assert pytest.approx (handler_batch.walkers_batch.weight[0]) == 0.2571750688329709
     assert pytest.approx (handler_batch.walkers_batch.weight[1]) == 1.0843219322894988
     assert pytest.approx (handler_batch.walkers_batch.weight[2]) == 0.8338283613093604
-    assert pytest.approx(handler_batch.walkers_batch.phi[iw][0,0]) == -0.0005573508035052743+0.12432250308987346j
+    assert pytest.approx(handler_batch.walkers_batch.phia[iw][0,0]) == -0.0005573508035052743+0.12432250308987346j
 
 @pytest.mark.unit
 def test_comb_batch():
@@ -106,6 +109,8 @@ def test_comb_batch():
     trial.half_rotate(sys, ham)
 
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     trial.calculate_energy(sys, ham)
     
     numpy.random.seed(7)
@@ -132,9 +137,10 @@ def test_comb_batch():
         handler.pop_control(comm)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(handler_batch.walkers_batch.phi[iw], handler.walkers[iw].phi)
+        assert numpy.allclose(handler_batch.walkers_batch.phia[iw], handler.walkers[iw].phi[:,:sys.nup])
+        assert numpy.allclose(handler_batch.walkers_batch.phib[iw], handler.walkers[iw].phi[:,sys.nup:])
         assert numpy.allclose(handler_batch.walkers_batch.weight[iw], handler.walkers[iw].weight)
-    assert pytest.approx(handler_batch.walkers_batch.phi[iw][0,0]) == -0.0597200851442905-0.002353281222663805j
+    assert pytest.approx(handler_batch.walkers_batch.phia[iw][0,0]) == -0.0597200851442905-0.002353281222663805j
 
 if __name__ == '__main__':
     test_pair_branch_batch()

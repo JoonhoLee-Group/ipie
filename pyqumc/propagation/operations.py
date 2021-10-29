@@ -58,6 +58,39 @@ def kinetic_real(phi, system, bt2, H1diag=False):
         phi[:,:nup] = bt2[0].dot(phi[:,:nup])
         phi[:,nup:] = bt2[1].dot(phi[:,nup:])
 
+def kinetic_spin_real_batch(phi, bt2, H1diag=False):
+    r"""Propagate by the kinetic term by direct matrix multiplication. Only one spin component. Assuming phi is a batch.
+
+    For use with the continuus algorithm and free propagation.
+
+    todo : this is the same a propagating by an arbitrary matrix, remove.
+
+    Parameters
+    ----------
+    walker : :class:`pyqumc.walker.Walker`
+        Walker object to be updated. on output we have acted on
+        :math:`|\phi_i\rangle` by :math:`B_{T/2}` and updated the weight
+        appropriately.  updates inplace.
+    state : :class:`pyqumc.state.State`
+        Simulation state.
+    """
+    if (is_cupy(bt2)):
+        import cupy
+        assert(cupy.is_available())
+        einsum = cupy.einsum
+    else:
+        einsum = numpy.einsum
+    
+    # Assuming that our walker is in UHF form.
+    if (H1diag):
+        phi[:,:] = einsum("ii,wij->ij", bt2,phi)
+    else:
+        phi = bt2.dot(phi)
+        phi = phi.transpose(1,0,2)
+
+    return phi
+
+
 def local_energy_bound(local_energy, mean, threshold):
     """Try to suppress rare population events by imposing local energy bound.
 

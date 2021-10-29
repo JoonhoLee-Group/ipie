@@ -39,6 +39,9 @@ class MultiSlater(object):
                 self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
             self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
             self.ortho_expansion = False
+        
+        self.psia = self.psi[:,:,:system.nup]
+        self.psib = self.psi[:,:,system.nup:]
 
         self.split_trial_local_energy = options.get('split_trial_local_energy', False)
 
@@ -96,7 +99,8 @@ class MultiSlater(object):
                 print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
                       " expansion as the reference wfn for Wick's theorem.")
-            self.psi0 = self.psi[0].copy()
+            self.psi0a = self.psi[0, :, :system.nup].copy()
+            self.psi0b = self.psi[0, :, system.nup:].copy()
             if verbose:
                 print("# Setting additional member variables for Wick's theorem")
             d0a = self.occa[0]
