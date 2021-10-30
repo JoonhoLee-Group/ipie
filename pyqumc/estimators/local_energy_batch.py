@@ -1,6 +1,7 @@
 import numpy
 from pyqumc.estimators.local_energy import local_energy_G, local_energy_generic_cholesky
 from pyqumc.utils.linalg import minor_mask, minor_mask4
+from pyqumc.propagation.overlap import get_overlap_one_det_wicks
 from pyqumc.utils.misc import is_cupy
 
 # TODO: should pass hamiltonian here and make it work for all possible types
@@ -44,7 +45,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         CIb = walker_batch.CIb[iwalker]
         G0 = [G0a, G0b]
 
-        # print("G0a = {}".format(G0a))
         # contribution 1 (disconnected)
         cont1 = local_energy_generic_cholesky(system, ham, G0)[2] 
 
@@ -95,22 +95,29 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
 
-            det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
-            det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+            ovlpa, ovlpb = get_overlap_one_det_wicks(nex_a, trial.cre_a[jdet], trial.anh_a[jdet], G0a,\
+                nex_b, trial.cre_b[jdet], trial.anh_b[jdet], G0b)
+            ovlpa *= trial.phase_a[jdet]
+            ovlpb *= trial.phase_b[jdet]
 
-            for iex in range(nex_a):
-                det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
-                for jex in range(iex+1, nex_a):
-                    det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
-                    det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
-            for iex in range(nex_b):
-                det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
-                for jex in range(iex+1, nex_b):
-                    det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
-                    det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
+            if ((nex_a>=1 and nex_b >1) or (nex_b>=1 and nex_a>1)):
+                det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+                det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
 
-            ovlpa = numpy.linalg.det(det_a) * trial.phase_a[jdet]
-            ovlpb = numpy.linalg.det(det_b) * trial.phase_b[jdet]
+                for iex in range(nex_a):
+                    det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
+                    for jex in range(iex+1, nex_a):
+                        det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
+                        det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
+                for iex in range(nex_b):
+                    det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
+                    for jex in range(iex+1, nex_b):
+                        det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
+                        det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
+
+            cphasea = trial.coeffs[jdet].conj() * trial.phase_a[jdet]
+            cphaseb = trial.coeffs[jdet].conj() * trial.phase_b[jdet]
+            cphaseab = trial.coeffs[jdet].conj() * trial.phase_a[jdet] * trial.phase_b[jdet]
 
             for x in range(nchol):
                 La = Laa[x,:,:]
@@ -120,27 +127,55 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                     cofactor_a = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)
                     cofactor_b = numpy.zeros((nex_b-1, nex_b-1), dtype=numpy.complex128)
 
-                    for iex in range(nex_a):
-                        for jex in range(nex_a):
-                            p = trial.cre_a[jdet][iex]
-                            q = trial.anh_a[jdet][jex]
-                            cofactor_a[:,:] = minor_mask(det_a, iex, jex)
-                            det_cofactor_a = (-1)**(iex+jex)* numpy.linalg.det(cofactor_a)
-                            for kex in range(nex_b):
-                                for lex in range(nex_b):
-                                    r = trial.cre_b[jdet][kex]
-                                    s = trial.anh_b[jdet][lex]
-                                    cofactor_b[:,:] = minor_mask(det_b, kex, lex)
-                                    det_cofactor_b = (-1)**(kex+lex)* numpy.linalg.det(cofactor_b)
-                                    cont3 += trial.coeffs[jdet].conj() * trial.phase_a[jdet] * trial.phase_b[jdet] * La[q,p]*Lb[s,r] * det_cofactor_a * det_cofactor_b
+                    if (nex_a == 1 and nex_b == 1):
+                        p = trial.cre_a[jdet][0]
+                        q = trial.anh_a[jdet][0]
+                        r = trial.cre_b[jdet][0]
+                        s = trial.anh_b[jdet][0]
+                        cont3 += cphaseab * La[q,p]*Lb[s,r]
+                    elif (nex_a == 2 and nex_b == 1):
+                        p = trial.cre_a[jdet][0]
+                        q = trial.anh_a[jdet][0]
+                        r = trial.cre_a[jdet][1]
+                        s = trial.anh_a[jdet][1]
+                        t = trial.cre_b[jdet][0]
+                        u = trial.anh_b[jdet][0]
+                        cont3 += cphaseab * La[q,p]*Lb[u,t] * G0a[r,s]
+                        cont3 -= cphaseab * La[s,p]*Lb[u,t] * G0a[r,q]
+                        cont3 -= cphaseab * La[q,r]*Lb[u,t] * G0a[p,s]
+                        cont3 += cphaseab * La[s,r]*Lb[u,t] * G0a[p,q]
+                    elif (nex_a == 1 and nex_b == 2):
+                        p = trial.cre_a[jdet][0]
+                        q = trial.anh_a[jdet][0]
+                        r = trial.cre_b[jdet][0]
+                        s = trial.anh_b[jdet][0]
+                        t = trial.cre_b[jdet][1]
+                        u = trial.anh_b[jdet][1]
+                        cont3 += cphaseab * La[q,p]*Lb[s,r] * G0b[t,u]
+                        cont3 -= cphaseab * La[q,p]*Lb[u,r] * G0b[t,s]
+                        cont3 -= cphaseab * La[q,p]*Lb[s,t] * G0b[r,u]
+                        cont3 += cphaseab * La[q,p]*Lb[u,t] * G0b[r,s]
+                    else:
+                        for iex in range(nex_a):
+                            for jex in range(nex_a):
+                                p = trial.cre_a[jdet][iex]
+                                q = trial.anh_a[jdet][jex]
+                                cofactor_a[:,:] = minor_mask(det_a, iex, jex)
+                                det_cofactor_a = (-1)**(iex+jex)* numpy.linalg.det(cofactor_a)
+                                for kex in range(nex_b):
+                                    for lex in range(nex_b):
+                                        r = trial.cre_b[jdet][kex]
+                                        s = trial.anh_b[jdet][lex]
+                                        cofactor_b[:,:] = minor_mask(det_b, kex, lex)
+                                        det_cofactor_b = (-1)**(kex+lex)* numpy.linalg.det(cofactor_b)
+                                        cont3 += cphaseab * La[q,p]*Lb[s,r] * det_cofactor_a * det_cofactor_b
 
                 if (nex_a == 2): # 4-leg same spin block aaaa
                     p = trial.cre_a[jdet][0]
                     q = trial.anh_a[jdet][0]
                     r = trial.cre_a[jdet][1]
                     s = trial.anh_a[jdet][1]
-     
-                    cont3 += trial.coeffs[jdet].conj() * trial.phase_a[jdet] * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * ovlpb
+                    cont3 += cphasea * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * ovlpb
 
                 elif (nex_a > 2):
                     cofactor = numpy.zeros((nex_a-2, nex_a-2), dtype=numpy.complex128)
@@ -154,16 +189,14 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                     s = trial.anh_a[jdet][lex]
                                     cofactor[:,:] = minor_mask4(det_a, iex, jex, kex, lex)
                                     det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
-                                    cont3 += trial.coeffs[jdet].conj() * trial.phase_a[jdet] * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * det_cofactor * ovlpb
-
+                                    cont3 += cphasea * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * det_cofactor * ovlpb
 
                 if (nex_b == 2): # 4-leg same spin block bbbb
                     p = trial.cre_b[jdet][0]
                     q = trial.anh_b[jdet][0]
                     r = trial.cre_b[jdet][1]
                     s = trial.anh_b[jdet][1]
-     
-                    cont3 += trial.coeffs[jdet].conj() * trial.phase_b[jdet] * (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * ovlpa
+                    cont3 += cphaseb * (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * ovlpa
 
                 elif (nex_b > 2):
                     cofactor = numpy.zeros((nex_b-2, nex_b-2), dtype=numpy.complex128)
@@ -177,7 +210,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                     s = trial.anh_b[jdet][lex]
                                     cofactor[:,:] = minor_mask4(det_b, iex, jex, kex, lex)
                                     det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
-                                    cont3 += trial.coeffs[jdet].conj() * trial.phase_b[jdet] * (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * det_cofactor * ovlpa
+                                    cont3 += cphaseb * (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * det_cofactor * ovlpa
 
         cont3 *= (ovlp0/ovlp)
 

@@ -6,7 +6,7 @@ from pyqumc.walkers.stack import FieldConfig
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
 from pyqumc.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from pyqumc.estimators.greens_function import greens_function
+from pyqumc.estimators.greens_function_batch import greens_function
 from pyqumc.propagation.overlap import calc_overlap_single_det, get_calc_overlap
 
 class SingleDetWalkerBatch(WalkerBatch):

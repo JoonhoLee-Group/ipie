@@ -121,6 +121,69 @@ def calc_overlap_single_det_batch(walker_batch, trial):
 
     return ot
 
+# overlap for a given determinant
+# note that the phase is not included
+def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b):
+    if nex_a == 1:
+        p = cre_a[0]
+        q = anh_a[0]
+        ovlp_a = G0a[p,q]
+    elif nex_a == 2:
+        p = cre_a[0]
+        q = anh_a[0]
+        r = cre_a[1]
+        s = anh_a[1]
+        ovlp_a = G0a[p,q]*G0a[r,s] - G0a[p,s]*G0a[r,q]
+    elif nex_a == 3:
+        p = cre_a[0]
+        q = anh_a[0]
+        r = cre_a[1]
+        s = anh_a[1]
+        t = cre_a[2]
+        u = anh_a[2]
+        ovlp_a = G0a[p,q]*(G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s])
+        ovlp_a -= G0a[p,s]*(G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q])
+        ovlp_a += G0a[p,u]*(G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q])
+    else:
+        det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+        for iex in range(nex_a):
+            det_a[iex,iex] = G0a[cre_a[iex],anh_a[iex]]
+            for jex in range(iex+1, nex_a):
+                det_a[iex, jex] = G0a[cre_a[iex],anh_a[jex]]
+                det_a[jex, iex] = G0a[cre_a[jex],anh_a[iex]]
+        ovlp_a = numpy.linalg.det(det_a)
+
+    if nex_b == 1:
+        p = cre_b[0]
+        q = anh_b[0]
+        ovlp_b = G0b[p,q]
+    elif nex_b == 2:
+        p = cre_b[0]
+        q = anh_b[0]
+        r = cre_b[1]
+        s = anh_b[1]
+        ovlp_b = G0b[p,q]*G0b[r,s] - G0b[p,s]*G0b[r,q]
+    elif nex_b == 3:
+        p = cre_b[0]
+        q = anh_b[0]
+        r = cre_b[1]
+        s = anh_b[1]
+        t = cre_b[2]
+        u = anh_b[2]
+        ovlp_b = G0b[p,q]*(G0b[r,s]*G0b[t,u] - G0b[r,u]*G0b[t,s])
+        ovlp_b -= G0b[p,s]*(G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q])
+        ovlp_b += G0b[p,u]*(G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q])
+    else:
+        det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+        for iex in range(nex_b):
+            det_b[iex,iex] = G0b[cre_b[iex],anh_b[iex]]
+            for jex in range(iex+1, nex_b):
+                det_b[iex, jex] = G0b[cre_b[iex],anh_b[jex]]
+                det_b[jex, iex] = G0b[cre_b[jex],anh_b[iex]]
+        ovlp_b = numpy.linalg.det(det_b)
+
+    return ovlp_a, ovlp_b
+
 def calc_overlap_multi_det_wicks(walker_batch, trial):
     """Calculate overlap with multidet trial wavefunction using Wick's Theorem.
 
@@ -157,32 +220,16 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
 
         G0a, G0Ha = gab_mod(psi0a, phia)
         G0b, G0Hb = gab_mod(psi0b, phib)
-        # G0, G0H = gab_spin(psi0, phi, na, nb)
-        # G0a = G0[0]
-        # G0b = G0[1]
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
         for jdet in range(1, trial.ndets):
             nex_a = len(trial.anh_a[jdet])
             nex_b = len(trial.anh_b[jdet])
+            ovlp_a, ovlp_b = get_overlap_one_det_wicks(nex_a, trial.cre_a[jdet], trial.anh_a[jdet], G0a,\
+                nex_b, trial.cre_b[jdet], trial.anh_b[jdet], G0b)
 
-            det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
-            det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
-
-            for iex in range(nex_a):
-                det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
-                for jex in range(iex+1, nex_a):
-                    det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
-                    det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
-
-            for iex in range(nex_b):
-                det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
-                for jex in range(iex+1, nex_b):
-                    det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
-                    det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
-            
-            tmp = trial.coeffs[jdet].conj() * numpy.linalg.det(det_a) * numpy.linalg.det(det_b) * trial.phase_a[jdet] * trial.phase_b[jdet]
+            tmp = trial.coeffs[jdet].conj() * ovlp_a * ovlp_b * trial.phase_a[jdet] * trial.phase_b[jdet]
             ovlp += tmp
         ovlp *= ovlp0
 

@@ -5,7 +5,7 @@ from pyqumc.estimators.local_energy import local_energy_multi_det
 from pyqumc.walkers.walker_batch import WalkerBatch
 from pyqumc.utils.misc import get_numeric_names
 from pyqumc.propagation.overlap import get_calc_overlap
-from pyqumc.estimators.greens_function import greens_function_multi_det
+from pyqumc.estimators.greens_function_batch import greens_function_multi_det
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
     """Single-det walker for multi-det trials.

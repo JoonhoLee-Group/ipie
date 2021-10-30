@@ -4,7 +4,7 @@ import numpy
 import sys
 import time
 from pyqumc.estimators.local_energy import local_energy
-from pyqumc.estimators.greens_function import get_greens_function
+from pyqumc.estimators.greens_function_batch import get_greens_function
 from pyqumc.propagation.overlap import get_calc_overlap
 from pyqumc.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from pyqumc.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin

@@ -5,15 +5,17 @@ import time
 
 def minor_mask(A, i, j):
     r"""computing matrix minor, i-th row and j-th column removed"""
-    mask = numpy.ones_like(A, dtype=bool)
-    mask[i, :] = False
-    mask[:, j] = False
+    return numpy.delete(numpy.delete(A,i,axis=0), j, axis=1)
 
-    minor = A[mask].reshape(A.shape[0] - 1, A.shape[1] - 1)
+    # mask = numpy.ones_like(A, dtype=bool)
+    # mask[i, :] = False
+    # mask[:, j] = False
 
-    del mask
+    # minor = A[mask].reshape(A.shape[0] - 1, A.shape[1] - 1)
 
-    return minor
+    # del mask
+
+    # return minor
 
 def minor_mask4(A, i, j, k, l):
     r"""computing matrix minor, i-th and k-th rows and j-th and l-th column removed"""

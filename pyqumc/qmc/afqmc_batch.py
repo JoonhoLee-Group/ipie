@@ -255,7 +255,7 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            print("# Available memory on the node is {} MB".format(mem_avail))
+            print("# Available memory on the node is {:4.3f} MB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
