@@ -270,9 +270,6 @@ class WalkerBatch(object):
         nup = self.nup
         ndown = self.ndown
         
-        # self.phia = self.phi[:,:,:self.nup]
-        # self.phib = self.phi[:,:,self.nup:]
-        
         detR = []
         for iw in range(self.nwalkers):
             (self.phia[iw], Rup) = qr(self.phia[iw],mode=qr_mode)
@@ -303,11 +300,7 @@ class WalkerBatch(object):
             detR += [exp(log_det-self.detR_shift[iw])]
             self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
-            # print(self.ot[iw], detR[iw])
             self.ot[iw] = self.ot[iw] / detR[iw]
             self.ovlp[iw] = self.ot[iw]
-        
-        # self.phi[:,:,:self.nup] = self.phia.copy()
-        # self.phi[:,:,self.nup:] = self.phib.copy()
 
         return detR

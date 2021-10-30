@@ -90,6 +90,22 @@ class Continuous(object):
         self.tfbias = 0.0
         self.tovlp = 0.0
         self.tupdate = 0.0
+        self.tupdate1 = 0.0
+        self.tupdate2 = 0.0
+        self.tupdate3 = 0.0
+        self.tupdate4 = 0.0
+        self.tupdate5 = 0.0
+        self.tupdate6 = 0.0
+        self.tupdate7 = 0.0
+        self.tupdate8 = 0.0
+        self.tupdate9 = 0.0
+        self.tupdate10 = 0.0
+        self.tupdate11 = 0.0
+        self.tupdate12 = 0.0
+        self.tupdate13 = 0.0
+        self.tupdate14 = 0.0
+        self.tupdate15 = 0.0
+        self.tupdate16 = 0.0
         self.tgf = 0.0
         self.tvhs = 0.0
         self.tgemm = 0.0
@@ -485,32 +501,61 @@ class Continuous(object):
             abs = numpy.abs
             angle = numpy.angle
 
+        start_time = time.time()
         ovlp_ratio = ovlp_new / ovlp
+        self.tupdate1 += time.time() - start_time
+        start_time = time.time()
         hybrid_energy = -(log(ovlp_ratio) + cfb + cmf)/self.dt
+        self.tupdate2 += time.time() - start_time
+        start_time = time.time()
         hybrid_energy = self.apply_bound_hybrid_batch(hybrid_energy, eshift)
+        self.tupdate3 += time.time() - start_time
+        start_time = time.time()
         importance_function = (
                 exp(-self.dt*(0.5*(hybrid_energy+walker_batch.hybrid_energy)-eshift))
         )
+        self.tupdate4 += time.time() - start_time
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
+        start_time = time.time()
         magn = abs(importance_function)
+        self.tupdate5 += time.time() - start_time
+        start_time = time.time()
         phase = angle(importance_function)
+        self.tupdate6 += time.time() - start_time
         # (magn, phase) = cmath.polar(importance_function)
+        start_time = time.time()
         walker_batch.hybrid_energy = hybrid_energy
+        self.tupdate7 += time.time() - start_time
 
+        start_time = time.time()
         tosurvive = isfinite(magn)
+        self.tupdate8 += time.time() - start_time
 
-        # tobeinstantlykilled = isinf(magn)
-        # walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
-        # walker_batch.weight[tobeinstantlykilled].fill(0.0)
+        start_time = time.time()
         tobeinstantlykilled = isinf(magn)
+        self.tupdate9 += time.time() - start_time
+        start_time = time.time()
         magn[tobeinstantlykilled].fill(0.0)
+        self.tupdate10 += time.time() - start_time
+        start_time = time.time()
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
+        self.tupdate11 += time.time() - start_time
+        start_time = time.time()
         cosine_fac = cos(dtheta)
+        self.tupdate12 += time.time() - start_time
+        start_time = time.time()
         cosine_fac[cosine_fac < 0.0] = 0.0
+        self.tupdate13 += time.time() - start_time
+        start_time = time.time()
         walker_batch.weight = walker_batch.weight * magn * cosine_fac
+        self.tupdate14 += time.time() - start_time
+        start_time = time.time()
         walker_batch.ot = ovlp_new
+        self.tupdate15 += time.time() - start_time
+        start_time = time.time()
         walker_batch.ovlp = ovlp_new
+        self.tupdate16 += time.time() - start_time
 
 
 #       TODO: make it a proper walker batching algorithm when we add back propagation
