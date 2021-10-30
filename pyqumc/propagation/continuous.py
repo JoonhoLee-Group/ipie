@@ -535,21 +535,23 @@ class Continuous(object):
         tosurvive = isfinite(magn)
         self.tupdate8 += time.time() - start_time
 
-        start_time = time.time()
-        tobeinstantlykilled = isinf(magn)
-        self.tupdate9 += time.time() - start_time
-        start_time = time.time()
-        magn[tobeinstantlykilled] = 0.0
-        self.tupdate10 += time.time() - start_time
-        start_time = time.time()
+        # start_time = time.time()
+        # tobeinstantlykilled = isinf(magn)
+        # self.tupdate9 += time.time() - start_time
+        # start_time = time.time()
+        # magn[tobeinstantlykilled] = 0.0
+        # self.tupdate10 += time.time() - start_time
+        # start_time = time.time()
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         self.tupdate11 += time.time() - start_time
         start_time = time.time()
         cosine_fac = cos(dtheta)
         self.tupdate12 += time.time() - start_time
+        
         start_time = time.time()
-        cosine_fac[cosine_fac < 0.0] = 0.0
+        clip(cosine_fac, a_min=0.0,a_max=None, out=cosine_fac) # in-place clipping
+        # cosine_fac[cosine_fac < 0.0] = 0.0
         self.tupdate13 += time.time() - start_time
         start_time = time.time()
         walker_batch.weight = walker_batch.weight * magn * cosine_fac
