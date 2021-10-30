@@ -177,7 +177,7 @@ class Generic(object):
         size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
         if verbose:
             expected_bytes = size * 8. # float64
-            print("# hamiltonians.generic: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# hamiltonians.generic: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
@@ -186,7 +186,7 @@ class Generic(object):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# hamiltonians.Generic: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# hamiltonians.Generic: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
 
 def read_integrals(integral_file):
     try:

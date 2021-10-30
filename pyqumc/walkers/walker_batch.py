@@ -84,7 +84,7 @@ class WalkerBatch(object):
         size += self.ovlp.size
         if verbose:
             expected_bytes = size * 16.
-            print("# WalkerBatch: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# WalkerBatch: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
@@ -99,7 +99,7 @@ class WalkerBatch(object):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# WalkerBatch: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
 
     def set_buff_size_single_walker(self):
         if is_cupy(self.weight):

@@ -361,7 +361,7 @@ class MultiSlater(object):
             size += (self.occa.size + self.occb.size)/2. # to account for the fact that these are float64, not complex128
         if verbose:
             expected_bytes = size * 16.
-            print("# trial_wavefunction.MultiSlater: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# trial_wavefunction.MultiSlater: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.psi = cupy.asarray(self.psi)
         self.coeffs = cupy.asarray(self.coeffs)
@@ -378,7 +378,7 @@ class MultiSlater(object):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# trial_wavefunction.MultiSlater: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0
