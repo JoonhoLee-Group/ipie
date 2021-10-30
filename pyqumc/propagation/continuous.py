@@ -497,18 +497,21 @@ class Continuous(object):
         # (magn, phase) = cmath.polar(importance_function)
         walker_batch.hybrid_energy = hybrid_energy
 
-        tobeinstantlykilled = isinf(magn)
         tosurvive = isfinite(magn)
-        
-        walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
-        walker_batch.weight[tobeinstantlykilled].fill(0.0)
+
+        # tobeinstantlykilled = isinf(magn)
+        # walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
+        # walker_batch.weight[tobeinstantlykilled].fill(0.0)
+        tobeinstantlykilled = isinf(magn)
+        magn[tobeinstantlykilled].fill(0.0)
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         cosine_fac = cos(dtheta)
         cosine_fac[cosine_fac < 0.0] = 0.0
-        walker_batch.weight[tosurvive] = walker_batch.weight[tosurvive] * magn[tosurvive] * cosine_fac[tosurvive]
-        walker_batch.ot[tosurvive] = ovlp_new[tosurvive]
-        walker_batch.ovlp[tosurvive] = ovlp_new[tosurvive]
+        walker_batch.weight = walker_batch.weight * magn * cosine_fac
+        walker_batch.ot = ovlp_new
+        walker_batch.ovlp = ovlp_new
+
 
 #       TODO: make it a proper walker batching algorithm when we add back propagation
         if walker_batch.field_configs is not None:
