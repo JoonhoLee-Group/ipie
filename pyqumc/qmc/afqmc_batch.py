@@ -278,16 +278,20 @@ class AFQMCBatch(object):
             import cupy
             assert(cupy.is_available())
             zeros = cupy.zeros
-            abs = cupy.abs
             ndarray = cupy.ndarray
             array = cupy.asnumpy
+            abs = cupy.abs
             sum = cupy.sum
+            min = cupy.min
+            clip = cupy.clip
         else:
             zeros = numpy.zeros
             ndarray = numpy.ndarray
             array = numpy.array
             abs = numpy.abs
             sum = numpy.sum
+            min = numpy.min
+            clip = numpy.clip
 
         #import warnings
         #warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
@@ -321,36 +325,14 @@ class AFQMCBatch(object):
             self.tprop_fbias = self.propagators.tfbias
             self.tprop_ovlp = self.propagators.tovlp
             self.tprop_update = self.propagators.tupdate
-            self.tprop_update1 = self.propagators.tupdate1
-            self.tprop_update2 = self.propagators.tupdate2
-            self.tprop_update3 = self.propagators.tupdate3
-            self.tprop_update4 = self.propagators.tupdate4
-            self.tprop_update5 = self.propagators.tupdate5
-            self.tprop_update6 = self.propagators.tupdate6
-            self.tprop_update7 = self.propagators.tupdate7
-            self.tprop_update8 = self.propagators.tupdate8
-            self.tprop_update9 = self.propagators.tupdate9
-            self.tprop_update10 = self.propagators.tupdate10
-            self.tprop_update11 = self.propagators.tupdate11
-            self.tprop_update12 = self.propagators.tupdate12
-            self.tprop_update13 = self.propagators.tupdate13
-            self.tprop_update14 = self.propagators.tupdate14
-            self.tprop_update15 = self.propagators.tupdate15
-            self.tprop_update16 = self.propagators.tupdate16
             self.tprop_gf = self.propagators.tgf
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
 
-            rescale_idx = abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
-                nrescales = sum(rescale_idx)
-                if type(nrescales) == ndarray:
-                    nrescales = array(nrescales)
-                    nrescales = int(nrescales[()])
-                if (nrescales > 0):
-                    new_weights = zeros(nrescales, dtype = numpy.float64)
-                    new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
-                    self.psi.walkers_batch.weight[rescale_idx] = new_weights
+                # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
+                wbound = self.psi.walkers_batch.total_weight * 0.10
+                clip(self.psi.walkers_batch.weight, a_min=-wbound,a_max=wbound, out=self.psi.walkers_batch.weight) # in-place clipping
 
             if step % self.qmc.npop_control == 0:
                 comm.Barrier()
@@ -405,22 +387,6 @@ class AFQMCBatch(object):
                 print("#     - Green's Function: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gf/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -          Overlap: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_ovlp/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update1: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update1/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update2: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update2/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update3: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update3/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update4: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update4/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update5: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update5/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update6: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update6/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update7: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update7/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update8: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update8/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update9: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update9/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update10: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update10/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update11: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update11/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update12: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update12/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update13: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update13/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update14: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update14/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update15: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update15/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update16: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update16/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -  GEMM operations: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gemm/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
