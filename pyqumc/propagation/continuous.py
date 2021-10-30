@@ -113,12 +113,14 @@ class Continuous(object):
     def cast_to_cupy (self, verbose = False):
         import cupy
         size = self.propagator.mf_shift.size + self.propagator.vbias_batch.size + self.propagator.BH1.size
+        size += 1 # for ebound
         if verbose:
             expected_bytes = size * 16. # assuming complex128
             print("# propagators.Continuous: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
         self.propagator.mf_shift = cupy.asarray(self.propagator.mf_shift)
         self.propagator.vbias_batch = cupy.asarray(self.propagator.vbias_batch)
         self.propagator.BH1 = cupy.asarray(self.propagator.BH1)
+        self.ebound = cupy.asarray(self.ebound)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
@@ -284,18 +286,20 @@ class Continuous(object):
         return ehyb
 
     def apply_bound_hybrid_batch(self, ehyb, eshift): # shift is a number but ehyb is not
+        if is_cupy(ehyb): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            clip = cupy.clip
+        else:
+            clip = numpy.clip
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
-        eoriginal = ehyb.copy()
-        idx = ehyb.real > eshift.real + self.ebound
-        ehyb[idx] = eshift.real+self.ebound+1j*ehyb[idx].imag
-        self.nhe_trig += numpy.sum(idx)
-        idx = ehyb.real < eshift.real - self.ebound
-        ehyb[idx] = eshift.real-self.ebound+1j*ehyb[idx].imag
-        self.nhe_trig += numpy.sum(idx)
+        emax = eshift.real + self.ebound
+        emin = eshift.real + self.ebound
+        clip(ehyb.real, a_min=emin,a_max=emax, out=ehyb.real) # in-place clipping
         return ehyb
 
     def apply_bound_local_energy(self, eloc, eshift):
@@ -535,7 +539,7 @@ class Continuous(object):
         tobeinstantlykilled = isinf(magn)
         self.tupdate9 += time.time() - start_time
         start_time = time.time()
-        magn[tobeinstantlykilled].fill(0.0)
+        magn[tobeinstantlykilled] = 0.0
         self.tupdate10 += time.time() - start_time
         start_time = time.time()
 
