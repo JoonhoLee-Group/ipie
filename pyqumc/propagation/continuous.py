@@ -495,6 +495,7 @@ class Continuous(object):
             array = cupy.array
             abs = cupy.abs
             angle = cupy.angle
+            clip = cupy.clip
         else:
             log = numpy.log
             exp = numpy.exp
@@ -504,6 +505,7 @@ class Continuous(object):
             array = numpy.array
             abs = numpy.abs
             angle = numpy.angle
+            clip = numpy.clip
 
         start_time = time.time()
         ovlp_ratio = ovlp_new / ovlp
