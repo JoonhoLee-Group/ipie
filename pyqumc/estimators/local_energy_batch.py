@@ -155,6 +155,37 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                         cont3 -= cphaseab * La[q,p]*Lb[u,r] * G0b[t,s]
                         cont3 -= cphaseab * La[q,p]*Lb[s,t] * G0b[r,u]
                         cont3 += cphaseab * La[q,p]*Lb[u,t] * G0b[r,s]
+                    elif (nex_a == 2 and nex_b == 2):
+                        p = trial.cre_a[jdet][0]
+                        q = trial.anh_a[jdet][0]
+                        r = trial.cre_a[jdet][1]
+                        s = trial.anh_a[jdet][1]
+
+                        t = trial.cre_b[jdet][0]
+                        u = trial.anh_b[jdet][0]
+                        v = trial.cre_b[jdet][1]
+                        w = trial.anh_b[jdet][1]
+
+                        cont3 += cphaseab * La[q,p]*Lb[u,t] * G0a[r,s] * G0b[v,w]
+                        cont3 -= cphaseab * La[s,p]*Lb[u,t] * G0a[r,q] * G0b[v,w]
+                        cont3 -= cphaseab * La[q,r]*Lb[u,t] * G0a[p,s] * G0b[v,w]
+                        cont3 += cphaseab * La[s,r]*Lb[u,t] * G0a[p,q] * G0b[v,w]
+                        
+                        cont3 += cphaseab * La[q,p]*Lb[w,v] * G0a[r,s] * G0b[t,u]
+                        cont3 -= cphaseab * La[s,p]*Lb[w,v] * G0a[r,q] * G0b[t,u]
+                        cont3 -= cphaseab * La[q,r]*Lb[w,v] * G0a[p,s] * G0b[t,u]
+                        cont3 += cphaseab * La[s,r]*Lb[w,v] * G0a[p,q] * G0b[t,u]
+
+                        cont3 -= cphaseab * La[q,p]*Lb[w,t] * G0a[r,s] * G0b[v,u]
+                        cont3 += cphaseab * La[s,p]*Lb[w,t] * G0a[r,q] * G0b[v,u]
+                        cont3 += cphaseab * La[q,r]*Lb[w,t] * G0a[p,s] * G0b[v,u]
+                        cont3 -= cphaseab * La[s,r]*Lb[w,t] * G0a[p,q] * G0b[v,u]
+
+                        cont3 -= cphaseab * La[q,p]*Lb[u,v] * G0a[r,s] * G0b[t,w]
+                        cont3 += cphaseab * La[s,p]*Lb[u,v] * G0a[r,q] * G0b[t,w]
+                        cont3 += cphaseab * La[q,r]*Lb[u,v] * G0a[p,s] * G0b[t,w]
+                        cont3 -= cphaseab * La[s,r]*Lb[u,v] * G0a[p,q] * G0b[t,w]
+
                     elif (nex_a == 3 and nex_b == 1):
                         p = trial.cre_a[jdet][0]
                         q = trial.anh_a[jdet][0]
@@ -237,7 +268,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                     r = trial.cre_a[jdet][1]
                     s = trial.anh_a[jdet][1]
                     cont3 += cphasea * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * ovlpb
-
                 elif (nex_a > 2):
                     cofactor = numpy.zeros((nex_a-2, nex_a-2), dtype=numpy.complex128)
                     for iex in range(nex_a):
