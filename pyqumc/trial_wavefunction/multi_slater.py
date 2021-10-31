@@ -44,8 +44,10 @@ class MultiSlater(object):
         self.psib = self.psi[:,:,system.nup:]
 
         self.split_trial_local_energy = options.get('split_trial_local_energy', False)
+        self.compute_trial_energy = options.get('compute_trial_energy', True)
 
         if verbose:
+            print("# compute_trial_energy = {}".format(self.compute_trial_energy))
             print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
 
         if self.split_trial_local_energy:

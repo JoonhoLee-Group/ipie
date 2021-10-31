@@ -183,8 +183,11 @@ class AFQMCBatch(object):
             )
         mem = get_node_mem()
         if comm.rank == 0:
-            self.trial.calculate_energy(self.system, self.hamiltonian)
-            print("# Trial wfn energy is {}".format(self.trial.energy))
+            if self.trial.compute_trial_energy:
+                self.trial.calculate_energy(self.system, self.hamiltonian)
+                print("# Trial wfn energy is {}".format(self.trial.energy))
+            else:
+                print("# WARNING: skipping trial energy calculation is requested.")
         comm.barrier()
         prop_opt = options.get('propagator', {})
         if comm.rank == 0:
