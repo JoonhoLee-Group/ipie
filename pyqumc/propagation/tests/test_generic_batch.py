@@ -15,7 +15,7 @@ from pyqumc.utils.testing import (
         get_random_nomsd,
         get_random_phmsd
         )
-from pyqumc.estimators.greens_function import greens_function_single_det_batch
+from pyqumc.estimators.greens_function_batch import greens_function_single_det_batch
 from pyqumc.propagation.overlap import calc_overlap_single_det_batch
 
 @pytest.mark.unit

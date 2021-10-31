@@ -16,7 +16,7 @@ from pyqumc.utils.testing import (
         )
 from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.propagation.overlap import calc_overlap_multi_det_wicks
-from pyqumc.estimators.greens_function import greens_function_multi_det_wicks, greens_function_multi_det
+from pyqumc.estimators.greens_function_batch import greens_function_multi_det_wicks, greens_function_multi_det
 from pyqumc.estimators.local_energy_batch import local_energy_multi_det_trial_batch, local_energy_multi_det_trial_wicks_batch
 
 @pytest.mark.unit

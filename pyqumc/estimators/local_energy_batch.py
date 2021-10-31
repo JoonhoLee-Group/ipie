@@ -155,6 +155,39 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                         cont3 -= cphaseab * La[q,p]*Lb[u,r] * G0b[t,s]
                         cont3 -= cphaseab * La[q,p]*Lb[s,t] * G0b[r,u]
                         cont3 += cphaseab * La[q,p]*Lb[u,t] * G0b[r,s]
+                    # elif (nex_a == 3 and nex_b == 1):
+                    #     p = trial.cre_a[jdet][0]
+                    #     q = trial.anh_a[jdet][0]
+                    #     r = trial.cre_a[jdet][0]
+                    #     s = trial.anh_a[jdet][0]
+                    #     t = trial.cre_a[jdet][0]
+                    #     u = trial.anh_a[jdet][0]
+                    #     v = trial.cre_b[jdet][0]
+                    #     w = trial.anh_b[jdet][0]
+                        
+                    #     const = cphaseab * Lb[w,v]
+                        
+                    #     cofactor = G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s]
+                    #     cont3 += const * La[q,p] * cofactor
+                    #     cofactor = G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q]
+                    #     cont3 -= const * La[s,p] * cofactor
+                    #     cofactor = G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q]
+                    #     cont3 += const * La[u,p] * cofactor
+                    #     #
+                    #     cofactor = G0a[p,s]*G0a[t,u] - G0a[t,s]*G0a[p,u]
+                    #     cont3 -= const * La[q,r] * cofactor
+                    #     cofactor = G0a[p,q]*G0a[t,u] - G0a[t,q]*G0a[p,u]
+                    #     cont3 += const * La[s,r] * cofactor
+                    #     cofactor = G0a[p,q]*G0a[t,s] - G0a[t,q]*G0a[p,s]
+                    #     cont3 -= const * La[u,r] * cofactor
+                    #     #
+                    #     cofactor = G0a[p,s]*G0a[r,u] - G0a[r,s]*G0a[p,u]
+                    #     cont3 += const * La[q,t] * cofactor
+                    #     cofactor = G0a[p,q]*G0a[r,u] - G0a[r,q]*G0a[p,u]
+                    #     cont3 -= const * La[s,t] * cofactor
+                    #     cofactor = G0a[p,q]*G0a[r,s] - G0a[r,q]*G0a[p,s]
+                    #     cont3 += const * La[u,t] * cofactor
+
                     else:
                         for iex in range(nex_a):
                             for jex in range(nex_a):

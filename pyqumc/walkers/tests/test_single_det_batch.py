@@ -11,7 +11,7 @@ from pyqumc.propagation.overlap import calc_overlap_single_det
 from pyqumc.estimators.greens_function import gab
 from pyqumc.estimators.local_energy import local_energy
 from pyqumc.estimators.local_energy_batch import local_energy_batch
-from pyqumc.estimators.greens_function import greens_function_single_det
+from pyqumc.estimators.greens_function_batch import greens_function_single_det
 
 @pytest.mark.unit
 def test_buff_size_batch():

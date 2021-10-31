@@ -11,7 +11,7 @@ from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.walkers.single_det import SingleDetWalker
 from pyqumc.walkers.multi_det import MultiDetWalker
 from pyqumc.propagation.overlap import calc_overlap_multi_det, calc_overlap_multi_det_wicks
-from pyqumc.estimators.greens_function import greens_function_multi_det, greens_function_multi_det_wicks
+from pyqumc.estimators.greens_function_batch import greens_function_multi_det, greens_function_multi_det_wicks
 from pyqumc.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,

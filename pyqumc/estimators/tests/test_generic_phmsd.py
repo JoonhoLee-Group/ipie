@@ -16,7 +16,7 @@ from pyqumc.walkers.multi_det import MultiDetWalker
 from pyqumc.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pyqumc.estimators.greens_function import gab_spin, gab
 
-from pyqumc.estimators.greens_function import greens_function_multi_det_wicks, greens_function_multi_det
+from pyqumc.estimators.greens_function_batch import greens_function_multi_det_wicks, greens_function_multi_det
 from pyqumc.estimators.local_energy_batch import local_energy_multi_det_trial_batch, local_energy_multi_det_trial_wicks_batch
 
 from pyqumc.estimators.local_energy import local_energy_multi_det
