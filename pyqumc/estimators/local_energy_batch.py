@@ -421,10 +421,10 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                     q = trial.anh_a[jdet][0]
                     r = trial.cre_b[jdet][0]
                     s = trial.anh_b[jdet][0]
-                    for x in range(nchol):
-                        La = Laa[x]
-                        Lb = Lbb[x]
-                        cont3 += cphaseab * La[q,p]*Lb[s,r]
+                    # for x in range(nchol):
+                    #     La = Laa[x]
+                    #     Lb = Lbb[x]
+                    cont3 += cphaseab * numpy.dot(Laa[:,q,p],Lbb[:,s,r])
                 elif (nex_a == 2 and nex_b == 1):
                     p = trial.cre_a[jdet][0]
                     q = trial.anh_a[jdet][0]
@@ -436,13 +436,13 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                     cphaseab * G0a[r,q],
                     cphaseab * G0a[p,s],
                     cphaseab * G0a[p,q]]
-                    for x in range(nchol):
-                        La = Laa[x]
-                        Lb = Lbb[x]
-                        cont3 += La[q,p]*Lb[u,t] * cofactor[0]
-                        cont3 -= La[s,p]*Lb[u,t] * cofactor[1]
-                        cont3 -= La[q,r]*Lb[u,t] * cofactor[2]
-                        cont3 += La[s,r]*Lb[u,t] * cofactor[3]
+                    # for x in range(nchol):
+                    #     La = Laa[x]
+                    #     Lb = Lbb[x]
+                    cont3 += numpy.dot(Laa[:,q,p],Lbb[:,u,t]) * cofactor[0]
+                    cont3 -= numpy.dot(Laa[:,s,p],Lbb[:,u,t]) * cofactor[1]
+                    cont3 -= numpy.dot(Laa[:,q,r],Lbb[:,u,t]) * cofactor[2]
+                    cont3 += numpy.dot(Laa[:,s,r],Lbb[:,u,t]) * cofactor[3]
                 elif (nex_a == 1 and nex_b == 2):
                     p = trial.cre_a[jdet][0]
                     q = trial.anh_a[jdet][0]
@@ -454,13 +454,13 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 cphaseab * G0b[t,s],
                                 cphaseab * G0b[r,u],
                                 cphaseab * G0b[r,s]]
-                    for x in range(nchol):
-                        La = Laa[x]
-                        Lb = Lbb[x]
-                        cont3 +=  La[q,p]*Lb[s,r] * cofactor[0]
-                        cont3 -=  La[q,p]*Lb[u,r] * cofactor[1]
-                        cont3 -=  La[q,p]*Lb[s,t] * cofactor[2]
-                        cont3 +=  La[q,p]*Lb[u,t] * cofactor[3]
+                    # for x in range(nchol):
+                    #     La = Laa[x]
+                    #     Lb = Lbb[x]
+                    cont3 +=  numpy.dot(Laa[:,q,p],Lbb[:,s,r]) * cofactor[0]
+                    cont3 -=  numpy.dot(Laa[:,q,p],Lbb[:,u,r]) * cofactor[1]
+                    cont3 -=  numpy.dot(Laa[:,q,p],Lbb[:,s,t]) * cofactor[2]
+                    cont3 +=  numpy.dot(Laa[:,q,p],Lbb[:,u,t]) * cofactor[3]
                 elif (nex_a == 2 and nex_b == 2):
                     p = trial.cre_a[jdet][0]
                     q = trial.anh_a[jdet][0]
@@ -487,28 +487,28 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 cphaseab * G0a[r,q] * G0b[t,w],
                                 cphaseab * G0a[p,s] * G0b[t,w],
                                 cphaseab * G0a[p,q] * G0b[t,w]]
-                    for x in range(nchol):
-                        La = Laa[x]
-                        Lb = Lbb[x]
-                        cont3 += La[q,p]*Lb[u,t] * cofactor[0]
-                        cont3 -= La[s,p]*Lb[u,t] * cofactor[1]
-                        cont3 -= La[q,r]*Lb[u,t] * cofactor[2]
-                        cont3 += La[s,r]*Lb[u,t] * cofactor[3]
-                        
-                        cont3 += La[q,p]*Lb[w,v] * cofactor[4]
-                        cont3 -= La[s,p]*Lb[w,v] * cofactor[5]
-                        cont3 -= La[q,r]*Lb[w,v] * cofactor[6]
-                        cont3 += La[s,r]*Lb[w,v] * cofactor[7]
+                    # for x in range(nchol):
+                    #     La = Laa[x]
+                    #     Lb = Lbb[x]
+                    cont3 += numpy.dot(Laa[:,q,p],Lbb[:,u,t]) * cofactor[0]
+                    cont3 -= numpy.dot(Laa[:,s,p],Lbb[:,u,t]) * cofactor[1]
+                    cont3 -= numpy.dot(Laa[:,q,r],Lbb[:,u,t]) * cofactor[2]
+                    cont3 += numpy.dot(Laa[:,s,r],Lbb[:,u,t]) * cofactor[3]
+                    
+                    cont3 += numpy.dot(Laa[:,q,p],Lbb[:,w,v]) * cofactor[4]
+                    cont3 -= numpy.dot(Laa[:,s,p],Lbb[:,w,v]) * cofactor[5]
+                    cont3 -= numpy.dot(Laa[:,q,r],Lbb[:,w,v]) * cofactor[6]
+                    cont3 += numpy.dot(Laa[:,s,r],Lbb[:,w,v]) * cofactor[7]
 
-                        cont3 -= La[q,p]*Lb[w,t] * cofactor[8]
-                        cont3 += La[s,p]*Lb[w,t] * cofactor[9]
-                        cont3 += La[q,r]*Lb[w,t] * cofactor[10]
-                        cont3 -= La[s,r]*Lb[w,t] * cofactor[11]
+                    cont3 -= numpy.dot(Laa[:,q,p],Lbb[:,w,t]) * cofactor[8]
+                    cont3 += numpy.dot(Laa[:,s,p],Lbb[:,w,t]) * cofactor[9]
+                    cont3 += numpy.dot(Laa[:,q,r],Lbb[:,w,t]) * cofactor[10]
+                    cont3 -= numpy.dot(Laa[:,s,r],Lbb[:,w,t]) * cofactor[11]
 
-                        cont3 -= La[q,p]*Lb[u,v] * cofactor[12]
-                        cont3 += La[s,p]*Lb[u,v] * cofactor[13]
-                        cont3 += La[q,r]*Lb[u,v] * cofactor[14]
-                        cont3 -= La[s,r]*Lb[u,v] * cofactor[15]
+                    cont3 -= numpy.dot(Laa[:,q,p],Lbb[:,u,v]) * cofactor[12]
+                    cont3 += numpy.dot(Laa[:,s,p],Lbb[:,u,v]) * cofactor[13]
+                    cont3 += numpy.dot(Laa[:,q,r],Lbb[:,u,v]) * cofactor[14]
+                    cont3 -= numpy.dot(Laa[:,s,r],Lbb[:,u,v]) * cofactor[15]
 
                 elif (nex_a == 3 and nex_b == 1):
                     p = trial.cre_a[jdet][0]
@@ -590,10 +590,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                     cofactor_b[:,:] = minor_mask(det_b, kex, lex)
                                     det_cofactor_b = (-1)**(kex+lex)* numpy.linalg.det(cofactor_b)
                                     const = cphaseab * det_cofactor_a * det_cofactor_b
-                                    for x in range(nchol):
-                                        La = Laa[x]
-                                        Lb = Lbb[x]
-                                        cont3 +=  La[q,p]*Lb[s,r] * const
+                                    # for x in range(nchol):
+                                    #     La = Laa[x]
+                                    #     Lb = Lbb[x]
+                                        # cont3 +=  La[q,p]*Lb[s,r] * const
+                                    cont3 += numpy.dot(Laa[:,q,p], Lbb[:,s,r]) * const
 
             if (nex_a == 2): # 4-leg same spin block aaaa
                 p = trial.cre_a[jdet][0]
@@ -601,10 +602,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                 r = trial.cre_a[jdet][1]
                 s = trial.anh_a[jdet][1]
                 const = cphasea * ovlpb
-                for x in range(nchol):
-                    La = Laa[x]
-                    Lb = Lbb[x]
-                    cont3 += (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+                # for x in range(nchol):
+                    # La = Laa[x]
+                    # Lb = Lbb[x]
+                    # cont3 += (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+                cont3 += (numpy.dot(Laa[:,q,p],Laa[:,s,r])-numpy.dot(Laa[:,q,r],Laa[:,s,p])) * const
             elif (nex_a > 2):
                 cofactor = numpy.zeros((nex_a-2, nex_a-2), dtype=numpy.complex128)
                 for iex in range(nex_a):
@@ -618,10 +620,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 cofactor[:,:] = minor_mask4(det_a, iex, jex, kex, lex)
                                 det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
                                 const = cphasea * det_cofactor * ovlpb
-                                for x in range(nchol):
-                                    La = Laa[x]
-                                    Lb = Lbb[x]
-                                    cont3 +=  (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+                                # for x in range(nchol):
+                                #     La = Laa[x]
+                                #     Lb = Lbb[x]
+                                #     cont3 +=  (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+                                cont3 +=  (numpy.dot(Laa[:,q,p],Laa[:,s,r])-numpy.dot(Laa[:,q,r],Laa[:,s,p])) * const
 
             if (nex_b == 2): # 4-leg same spin block bbbb
                 p = trial.cre_b[jdet][0]
@@ -629,10 +632,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                 r = trial.cre_b[jdet][1]
                 s = trial.anh_b[jdet][1]
                 const = cphaseb * ovlpa
-                for x in range(nchol):
-                    La = Laa[x]
-                    Lb = Lbb[x]
-                    cont3 += (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
+                # for x in range(nchol):
+                #     La = Laa[x]
+                #     Lb = Lbb[x]
+                #     cont3 += (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
+                cont3 += (numpy.dot(Lbb[:,q,p],Lbb[:,s,r])-numpy.dot(Lbb[:,q,r],Lbb[:,s,p])) * const
 
             elif (nex_b > 2):
                 cofactor = numpy.zeros((nex_b-2, nex_b-2), dtype=numpy.complex128)
@@ -647,10 +651,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 cofactor[:,:] = minor_mask4(det_b, iex, jex, kex, lex)
                                 det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
                                 const = cphaseb * det_cofactor * ovlpa
-                                for x in range(nchol):
-                                    La = Laa[x]
-                                    Lb = Lbb[x]
-                                    cont3 +=  (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
+                                # for x in range(nchol):
+                                    # La = Laa[x]
+                                    # Lb = Lbb[x]
+                                    # cont3 +=  (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
+                                cont3 +=  (numpy.dot(Lbb[:,q,p],Lbb[:,s,r])-numpy.dot(Lbb[:,q,r],Lbb[:,s,p])) * const
         cont3 *= (ovlp0/ovlp)
 
         e2bs += [cont1 + cont2_J + cont2_K + cont3]
