@@ -100,20 +100,19 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
 #             ovlpa *= trial.phase_a[jdet]
 #             ovlpb *= trial.phase_b[jdet]
 
-#             if ((nex_a>=1 and nex_b >1) or (nex_b>=1 and nex_a>1)):
-#                 det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
-#                 det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+#             det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+#             det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
 
-#                 for iex in range(nex_a):
-#                     det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
-#                     for jex in range(iex+1, nex_a):
-#                         det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
-#                         det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
-#                 for iex in range(nex_b):
-#                     det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
-#                     for jex in range(iex+1, nex_b):
-#                         det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
-#                         det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
+#             for iex in range(nex_a):
+#                 det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
+#                 for jex in range(iex+1, nex_a):
+#                     det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
+#                     det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
+#             for iex in range(nex_b):
+#                 det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
+#                 for jex in range(iex+1, nex_b):
+#                     det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
+#                     det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
 
 #             cphasea = trial.coeffs[jdet].conj() * trial.phase_a[jdet]
 #             cphaseb = trial.coeffs[jdet].conj() * trial.phase_b[jdet]
@@ -248,7 +247,6 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
 #                         cont3 += const * Lb[u,t] * cofactor
 
 #                     else:
-#                         print(x, nex_a, nex_b)
 #                         for iex in range(nex_a):
 #                             for jex in range(nex_a):
 #                                 p = trial.cre_a[jdet][iex]
@@ -399,7 +397,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
             ovlpa *= trial.phase_a[jdet]
             ovlpb *= trial.phase_b[jdet]
 
-            # if ((nex_a>=1 and nex_b >1) or (nex_b>=1 and nex_a>1)):
             det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
             det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
 
@@ -418,142 +415,197 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
             cphaseb = trial.coeffs[jdet].conj() * trial.phase_b[jdet]
             cphaseab = trial.coeffs[jdet].conj() * trial.phase_a[jdet] * trial.phase_b[jdet]
 
-            if (nex_a == 2 and nex_b == 2):
+            if (nex_a > 0 and nex_b > 0): # 2-leg opposite spin block
+                if (nex_a == 1 and nex_b == 1):
+                    p = trial.cre_a[jdet][0]
+                    q = trial.anh_a[jdet][0]
+                    r = trial.cre_b[jdet][0]
+                    s = trial.anh_b[jdet][0]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        cont3 += cphaseab * La[q,p]*Lb[s,r]
+                elif (nex_a == 2 and nex_b == 1):
+                    p = trial.cre_a[jdet][0]
+                    q = trial.anh_a[jdet][0]
+                    r = trial.cre_a[jdet][1]
+                    s = trial.anh_a[jdet][1]
+                    t = trial.cre_b[jdet][0]
+                    u = trial.anh_b[jdet][0]
+                    cofactor = [cphaseab * G0a[r,s],
+                    cphaseab * G0a[r,q],
+                    cphaseab * G0a[p,s],
+                    cphaseab * G0a[p,q]]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        cont3 += La[q,p]*Lb[u,t] * cofactor[0]
+                        cont3 -= La[s,p]*Lb[u,t] * cofactor[1]
+                        cont3 -= La[q,r]*Lb[u,t] * cofactor[2]
+                        cont3 += La[s,r]*Lb[u,t] * cofactor[3]
+                elif (nex_a == 1 and nex_b == 2):
+                    p = trial.cre_a[jdet][0]
+                    q = trial.anh_a[jdet][0]
+                    r = trial.cre_b[jdet][0]
+                    s = trial.anh_b[jdet][0]
+                    t = trial.cre_b[jdet][1]
+                    u = trial.anh_b[jdet][1]
+                    cofactor = [cphaseab * G0b[t,u],
+                                cphaseab * G0b[t,s],
+                                cphaseab * G0b[r,u],
+                                cphaseab * G0b[r,s]]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        cont3 +=  La[q,p]*Lb[s,r] * cofactor[0]
+                        cont3 -=  La[q,p]*Lb[u,r] * cofactor[1]
+                        cont3 -=  La[q,p]*Lb[s,t] * cofactor[2]
+                        cont3 +=  La[q,p]*Lb[u,t] * cofactor[3]
+                elif (nex_a == 2 and nex_b == 2):
+                    p = trial.cre_a[jdet][0]
+                    q = trial.anh_a[jdet][0]
+                    r = trial.cre_a[jdet][1]
+                    s = trial.anh_a[jdet][1]
+
+                    t = trial.cre_b[jdet][0]
+                    u = trial.anh_b[jdet][0]
+                    v = trial.cre_b[jdet][1]
+                    w = trial.anh_b[jdet][1]
+                    cofactor = [cphaseab * G0a[r,s] * G0b[v,w],
+                                cphaseab * G0a[r,q] * G0b[v,w],
+                                cphaseab * G0a[p,s] * G0b[v,w],
+                                cphaseab * G0a[p,q] * G0b[v,w],
+                                cphaseab * G0a[r,s] * G0b[t,u],
+                                cphaseab * G0a[r,q] * G0b[t,u],
+                                cphaseab * G0a[p,s] * G0b[t,u],
+                                cphaseab * G0a[p,q] * G0b[t,u],
+                                cphaseab * G0a[r,s] * G0b[v,u],
+                                cphaseab * G0a[r,q] * G0b[v,u],
+                                cphaseab * G0a[p,s] * G0b[v,u],
+                                cphaseab * G0a[p,q] * G0b[v,u],
+                                cphaseab * G0a[r,s] * G0b[t,w],
+                                cphaseab * G0a[r,q] * G0b[t,w],
+                                cphaseab * G0a[p,s] * G0b[t,w],
+                                cphaseab * G0a[p,q] * G0b[t,w]]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        cont3 += La[q,p]*Lb[u,t] * cofactor[0]
+                        cont3 -= La[s,p]*Lb[u,t] * cofactor[1]
+                        cont3 -= La[q,r]*Lb[u,t] * cofactor[2]
+                        cont3 += La[s,r]*Lb[u,t] * cofactor[3]
+                        
+                        cont3 += La[q,p]*Lb[w,v] * cofactor[4]
+                        cont3 -= La[s,p]*Lb[w,v] * cofactor[5]
+                        cont3 -= La[q,r]*Lb[w,v] * cofactor[6]
+                        cont3 += La[s,r]*Lb[w,v] * cofactor[7]
+
+                        cont3 -= La[q,p]*Lb[w,t] * cofactor[8]
+                        cont3 += La[s,p]*Lb[w,t] * cofactor[9]
+                        cont3 += La[q,r]*Lb[w,t] * cofactor[10]
+                        cont3 -= La[s,r]*Lb[w,t] * cofactor[11]
+
+                        cont3 -= La[q,p]*Lb[u,v] * cofactor[12]
+                        cont3 += La[s,p]*Lb[u,v] * cofactor[13]
+                        cont3 += La[q,r]*Lb[u,v] * cofactor[14]
+                        cont3 -= La[s,r]*Lb[u,v] * cofactor[15]
+
+                elif (nex_a == 3 and nex_b == 1):
+                    p = trial.cre_a[jdet][0]
+                    q = trial.anh_a[jdet][0]
+                    r = trial.cre_a[jdet][1]
+                    s = trial.anh_a[jdet][1]
+                    t = trial.cre_a[jdet][2]
+                    u = trial.anh_a[jdet][2]
+                    v = trial.cre_b[jdet][0]
+                    w = trial.anh_b[jdet][0]
+                    cofactor = [G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s],
+                                G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q],
+                                G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q],
+                                G0a[p,s]*G0a[t,u] - G0a[t,s]*G0a[p,u],
+                                G0a[p,q]*G0a[t,u] - G0a[t,q]*G0a[p,u],
+                                G0a[p,q]*G0a[t,s] - G0a[t,q]*G0a[p,s],
+                                G0a[p,s]*G0a[r,u] - G0a[r,s]*G0a[p,u],
+                                G0a[p,q]*G0a[r,u] - G0a[r,q]*G0a[p,u],
+                                G0a[p,q]*G0a[r,s] - G0a[r,q]*G0a[p,s]]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        const = cphaseab * Lb[w,v]
+                        cont3 += const * La[q,p] * cofactor[0]
+                        cont3 -= const * La[s,p] * cofactor[1]
+                        cont3 += const * La[u,p] * cofactor[2]
+                        cont3 -= const * La[q,r] * cofactor[3]
+                        cont3 += const * La[s,r] * cofactor[4]
+                        cont3 -= const * La[u,r] * cofactor[5]
+                        cont3 += const * La[q,t] * cofactor[6]
+                        cont3 -= const * La[s,t] * cofactor[7]
+                        cont3 += const * La[u,t] * cofactor[8]
+                elif (nex_a == 1 and nex_b == 3):
+                    p = trial.cre_b[jdet][0]
+                    q = trial.anh_b[jdet][0]
+                    r = trial.cre_b[jdet][1]
+                    s = trial.anh_b[jdet][1]
+                    t = trial.cre_b[jdet][2]
+                    u = trial.anh_b[jdet][2]
+                    v = trial.cre_a[jdet][0]
+                    w = trial.anh_a[jdet][0]
+                    cofactor = [G0b[r,s]*G0b[t,u] - G0b[r,u]*G0b[t,s],
+                               G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q],
+                               G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q],
+                               G0b[p,s]*G0b[t,u] - G0b[t,s]*G0b[p,u],
+                               G0b[p,q]*G0b[t,u] - G0b[t,q]*G0b[p,u],
+                               G0b[p,q]*G0b[t,s] - G0b[t,q]*G0b[p,s],
+                               G0b[p,s]*G0b[r,u] - G0b[r,s]*G0b[p,u],
+                               G0b[p,q]*G0b[r,u] - G0b[r,q]*G0b[p,u],
+                               G0b[p,q]*G0b[r,s] - G0b[r,q]*G0b[p,s]]
+                    for x in range(nchol):
+                        La = Laa[x]
+                        Lb = Lbb[x]
+                        const = cphaseab * La[w,v]
+                        
+                        cont3 += const * Lb[q,p] * cofactor[0]
+                        cont3 -= const * Lb[s,p] * cofactor[1]
+                        cont3 += const * Lb[u,p] * cofactor[2]
+                        cont3 -= const * Lb[q,r] * cofactor[3]
+                        cont3 += const * Lb[s,r] * cofactor[4]
+                        cont3 -= const * Lb[u,r] * cofactor[5]
+                        cont3 += const * Lb[q,t] * cofactor[6]
+                        cont3 -= const * Lb[s,t] * cofactor[7]
+                        cont3 += const * Lb[u,t] * cofactor[8]
+
+                else:
+                    cofactor_a = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)
+                    cofactor_b = numpy.zeros((nex_b-1, nex_b-1), dtype=numpy.complex128)
+                    for iex in range(nex_a):
+                        for jex in range(nex_a):
+                            p = trial.cre_a[jdet][iex]
+                            q = trial.anh_a[jdet][jex]
+                            cofactor_a[:,:] = minor_mask(det_a, iex, jex)
+                            det_cofactor_a = (-1)**(iex+jex)* numpy.linalg.det(cofactor_a)
+                            for kex in range(nex_b):
+                                for lex in range(nex_b):
+                                    r = trial.cre_b[jdet][kex]
+                                    s = trial.anh_b[jdet][lex]
+                                    cofactor_b[:,:] = minor_mask(det_b, kex, lex)
+                                    det_cofactor_b = (-1)**(kex+lex)* numpy.linalg.det(cofactor_b)
+                                    const = cphaseab * det_cofactor_a * det_cofactor_b
+                                    for x in range(nchol):
+                                        La = Laa[x]
+                                        Lb = Lbb[x]
+                                        cont3 +=  La[q,p]*Lb[s,r] * const
+
+            if (nex_a == 2): # 4-leg same spin block aaaa
                 p = trial.cre_a[jdet][0]
                 q = trial.anh_a[jdet][0]
                 r = trial.cre_a[jdet][1]
                 s = trial.anh_a[jdet][1]
-
-                t = trial.cre_b[jdet][0]
-                u = trial.anh_b[jdet][0]
-                v = trial.cre_b[jdet][1]
-                w = trial.anh_b[jdet][1]
-
-                cofactor1 = cphaseab * G0a[r,s] * G0b[v,w]
-                cofactor2 = cphaseab * G0a[r,q] * G0b[v,w]
-                cofactor3 = cphaseab * G0a[p,s] * G0b[v,w]
-                cofactor4 = cphaseab * G0a[p,q] * G0b[v,w]
-                cofactor5 = cphaseab * G0a[r,s] * G0b[t,u]
-                cofactor6 = cphaseab * G0a[r,q] * G0b[t,u]
-                cofactor7 = cphaseab * G0a[p,s] * G0b[t,u]
-                cofactor8 = cphaseab * G0a[p,q] * G0b[t,u]
-                cofactor9 = cphaseab * G0a[r,s] * G0b[v,u]
-                cofactor10 = cphaseab * G0a[r,q] * G0b[v,u]
-                cofactor11 = cphaseab * G0a[p,s] * G0b[v,u]
-                cofactor12 = cphaseab * G0a[p,q] * G0b[v,u]
-                cofactor13 = cphaseab * G0a[r,s] * G0b[t,w]
-                cofactor14 = cphaseab * G0a[r,q] * G0b[t,w]
-                cofactor15 = cphaseab * G0a[p,s] * G0b[t,w]
-                cofactor16 = cphaseab * G0a[p,q] * G0b[t,w]
+                const = cphasea * ovlpb
                 for x in range(nchol):
-                    La = Laa[x,:,:]
-                    Lb = Lbb[x,:,:]
-                    cont3 += La[q,p]*Lb[u,t] * cofactor1
-                    cont3 -= La[s,p]*Lb[u,t] * cofactor2
-                    cont3 -= La[q,r]*Lb[u,t] * cofactor3
-                    cont3 += La[s,r]*Lb[u,t] * cofactor4
-                    
-                    cont3 += La[q,p]*Lb[w,v] * cofactor5
-                    cont3 -= La[s,p]*Lb[w,v] * cofactor6
-                    cont3 -= La[q,r]*Lb[w,v] * cofactor7
-                    cont3 += La[s,r]*Lb[w,v] * cofactor8
-
-                    cont3 -= La[q,p]*Lb[w,t] * cofactor9
-                    cont3 += La[s,p]*Lb[w,t] * cofactor10
-                    cont3 += La[q,r]*Lb[w,t] * cofactor11
-                    cont3 -= La[s,r]*Lb[w,t] * cofactor12
-
-                    cont3 -= La[q,p]*Lb[u,v] * cofactor13
-                    cont3 += La[s,p]*Lb[u,v] * cofactor14
-                    cont3 += La[q,r]*Lb[u,v] * cofactor15
-                    cont3 -= La[s,r]*Lb[u,v] * cofactor16
-            elif (nex_a == 3 and nex_b == 1):
-                p = trial.cre_a[jdet][0]
-                q = trial.anh_a[jdet][0]
-                r = trial.cre_a[jdet][1]
-                s = trial.anh_a[jdet][1]
-                t = trial.cre_a[jdet][2]
-                u = trial.anh_a[jdet][2]
-                v = trial.cre_b[jdet][0]
-                w = trial.anh_b[jdet][0]
-                
-                cofactor1 = G0a[r,s]*G0a[t,u] - G0a[r,u]*G0a[t,s]
-                cofactor2 = G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q]
-                cofactor3 = G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q]
-                cofactor4 = G0a[p,s]*G0a[t,u] - G0a[t,s]*G0a[p,u]
-                cofactor5 = G0a[p,q]*G0a[t,u] - G0a[t,q]*G0a[p,u]
-                cofactor6 = G0a[p,q]*G0a[t,s] - G0a[t,q]*G0a[p,s]
-                cofactor7 = G0a[p,s]*G0a[r,u] - G0a[r,s]*G0a[p,u]
-                cofactor8 = G0a[p,q]*G0a[r,u] - G0a[r,q]*G0a[p,u]
-                cofactor9 = G0a[p,q]*G0a[r,s] - G0a[r,q]*G0a[p,s]
-                for x in range(nchol):
-                    La = Laa[x,:,:]
-                    Lb = Lbb[x,:,:]
-                    const = cphaseab * Lb[w,v]
-                    cont3 += const * La[q,p] * cofactor1
-                    cont3 -= const * La[s,p] * cofactor2
-                    cont3 += const * La[u,p] * cofactor3
-                    cont3 -= const * La[q,r] * cofactor4
-                    cont3 += const * La[s,r] * cofactor5
-                    cont3 -= const * La[u,r] * cofactor6
-                    cont3 += const * La[q,t] * cofactor7
-                    cont3 -= const * La[s,t] * cofactor8
-                    cont3 += const * La[u,t] * cofactor9
-            elif (nex_a == 1 and nex_b == 3):
-                p = trial.cre_b[jdet][0]
-                q = trial.anh_b[jdet][0]
-                r = trial.cre_b[jdet][1]
-                s = trial.anh_b[jdet][1]
-                t = trial.cre_b[jdet][2]
-                u = trial.anh_b[jdet][2]
-                v = trial.cre_a[jdet][0]
-                w = trial.anh_a[jdet][0]
-                
-                cofactor1 = G0b[r,s]*G0b[t,u] - G0b[r,u]*G0b[t,s]
-                cofactor2 = G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q]
-                cofactor3 = G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q]
-                cofactor4 = G0b[p,s]*G0b[t,u] - G0b[t,s]*G0b[p,u]
-                cofactor5 = G0b[p,q]*G0b[t,u] - G0b[t,q]*G0b[p,u]
-                cofactor6 = G0b[p,q]*G0b[t,s] - G0b[t,q]*G0b[p,s]
-                cofactor7 = G0b[p,s]*G0b[r,u] - G0b[r,s]*G0b[p,u]
-                cofactor8 = G0b[p,q]*G0b[r,u] - G0b[r,q]*G0b[p,u]
-                cofactor9 = G0b[p,q]*G0b[r,s] - G0b[r,q]*G0b[p,s]
-                for x in range(nchol):
-                    La = Laa[x,:,:]
-                    Lb = Lbb[x,:,:]
-                    const = cphaseab * La[w,v]
-                    cont3 += const * Lb[q,p] * cofactor1
-                    cont3 -= const * Lb[s,p] * cofactor2
-                    cont3 += const * Lb[u,p] * cofactor3
-                    cont3 -= const * Lb[q,r] * cofactor4
-                    cont3 += const * Lb[s,r] * cofactor5
-                    cont3 -= const * Lb[u,r] * cofactor6
-                    cont3 += const * Lb[q,t] * cofactor7
-                    cont3 -= const * Lb[s,t] * cofactor8
-                    cont3 += const * Lb[u,t] * cofactor9
-            elif (nex_a > 2 and nex_b > 1) or (nex_b > 2 and nex_a > 1):
-                cofactor_a = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)
-                cofactor_b = numpy.zeros((nex_b-1, nex_b-1), dtype=numpy.complex128)
-
-                for iex in range(nex_a):
-                    for jex in range(nex_a):
-                        p = trial.cre_a[jdet][iex]
-                        q = trial.anh_a[jdet][jex]
-                        cofactor_a[:,:] = minor_mask(det_a, iex, jex)
-                        det_cofactor_a = (-1)**(iex+jex)* numpy.linalg.det(cofactor_a)
-                        for kex in range(nex_b):
-                            for lex in range(nex_b):
-                                r = trial.cre_b[jdet][kex]
-                                s = trial.anh_b[jdet][lex]
-                                cofactor_b[:,:] = minor_mask(det_b, kex, lex)
-                                det_cofactor_b = (-1)**(kex+lex)* numpy.linalg.det(cofactor_b)
-                                const = cphaseab * det_cofactor_a * det_cofactor_b
-                                for x in range(nchol):
-                                    La = Laa[x,:,:]
-                                    Lb = Lbb[x,:,:]
-                                    cont3 +=  La[q,p]*Lb[s,r] * const
-
-            if (nex_a > 2):
+                    La = Laa[x]
+                    Lb = Lbb[x]
+                    cont3 += (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+            elif (nex_a > 2):
                 cofactor = numpy.zeros((nex_a-2, nex_a-2), dtype=numpy.complex128)
                 for iex in range(nex_a):
                     for jex in range(nex_a):
@@ -567,11 +619,22 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
                                 const = cphasea * det_cofactor * ovlpb
                                 for x in range(nchol):
-                                    La = Laa[x,:,:]
-                                    Lb = Lbb[x,:,:]
-                                    cont3 += (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
+                                    La = Laa[x]
+                                    Lb = Lbb[x]
+                                    cont3 +=  (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * const
 
-            if (nex_b > 2):
+            if (nex_b == 2): # 4-leg same spin block bbbb
+                p = trial.cre_b[jdet][0]
+                q = trial.anh_b[jdet][0]
+                r = trial.cre_b[jdet][1]
+                s = trial.anh_b[jdet][1]
+                const = cphaseb * ovlpa
+                for x in range(nchol):
+                    La = Laa[x]
+                    Lb = Lbb[x]
+                    cont3 += (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
+
+            elif (nex_b > 2):
                 cofactor = numpy.zeros((nex_b-2, nex_b-2), dtype=numpy.complex128)
                 for iex in range(nex_b):
                     for jex in range(nex_b):
@@ -585,57 +648,9 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
                                 det_cofactor = (-1)**(kex+lex+iex+jex)* numpy.linalg.det(cofactor)
                                 const = cphaseb * det_cofactor * ovlpa
                                 for x in range(nchol):
-                                    La = Laa[x,:,:]
-                                    Lb = Lbb[x,:,:]
-                                    cont3 += (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
-
-            for x in range(nchol):
-                La = Laa[x,:,:]
-                Lb = Lbb[x,:,:]
-
-                if (nex_a > 0 and nex_b > 0): # 2-leg opposite spin block
-                    if (nex_a == 1 and nex_b == 1):
-                        p = trial.cre_a[jdet][0]
-                        q = trial.anh_a[jdet][0]
-                        r = trial.cre_b[jdet][0]
-                        s = trial.anh_b[jdet][0]
-                        cont3 += cphaseab * La[q,p]*Lb[s,r]
-                    elif (nex_a == 2 and nex_b == 1):
-                        p = trial.cre_a[jdet][0]
-                        q = trial.anh_a[jdet][0]
-                        r = trial.cre_a[jdet][1]
-                        s = trial.anh_a[jdet][1]
-                        t = trial.cre_b[jdet][0]
-                        u = trial.anh_b[jdet][0]
-                        cont3 += cphaseab * La[q,p]*Lb[u,t] * G0a[r,s]
-                        cont3 -= cphaseab * La[s,p]*Lb[u,t] * G0a[r,q]
-                        cont3 -= cphaseab * La[q,r]*Lb[u,t] * G0a[p,s]
-                        cont3 += cphaseab * La[s,r]*Lb[u,t] * G0a[p,q]
-                    elif (nex_a == 1 and nex_b == 2):
-                        p = trial.cre_a[jdet][0]
-                        q = trial.anh_a[jdet][0]
-                        r = trial.cre_b[jdet][0]
-                        s = trial.anh_b[jdet][0]
-                        t = trial.cre_b[jdet][1]
-                        u = trial.anh_b[jdet][1]
-                        cont3 += cphaseab * La[q,p]*Lb[s,r] * G0b[t,u]
-                        cont3 -= cphaseab * La[q,p]*Lb[u,r] * G0b[t,s]
-                        cont3 -= cphaseab * La[q,p]*Lb[s,t] * G0b[r,u]
-                        cont3 += cphaseab * La[q,p]*Lb[u,t] * G0b[r,s]
-
-                if (nex_a == 2): # 4-leg same spin block aaaa
-                    p = trial.cre_a[jdet][0]
-                    q = trial.anh_a[jdet][0]
-                    r = trial.cre_a[jdet][1]
-                    s = trial.anh_a[jdet][1]
-                    cont3 += cphasea * (La[q,p]*La[s,r]-La[q,r]*La[s,p]) * ovlpb
-                if (nex_b == 2): # 4-leg same spin block bbbb
-                    p = trial.cre_b[jdet][0]
-                    q = trial.anh_b[jdet][0]
-                    r = trial.cre_b[jdet][1]
-                    s = trial.anh_b[jdet][1]
-                    cont3 += cphaseb * (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * ovlpa
-
+                                    La = Laa[x]
+                                    Lb = Lbb[x]
+                                    cont3 +=  (Lb[q,p]*Lb[s,r]-Lb[q,r]*Lb[s,p]) * const
         cont3 *= (ovlp0/ovlp)
 
         e2bs += [cont1 + cont2_J + cont2_K + cont3]
@@ -649,7 +664,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
     energy[:,1] = e1bs
     energy[:,2] = e2bs
     return energy
-
 
 def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = None):
     energy = []
