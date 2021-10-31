@@ -399,20 +399,20 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
             ovlpa *= trial.phase_a[jdet]
             ovlpb *= trial.phase_b[jdet]
 
-            if ((nex_a>=1 and nex_b >1) or (nex_b>=1 and nex_a>1)):
-                det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
-                det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+            # if ((nex_a>=1 and nex_b >1) or (nex_b>=1 and nex_a>1)):
+            det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+            det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
 
-                for iex in range(nex_a):
-                    det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
-                    for jex in range(iex+1, nex_a):
-                        det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
-                        det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
-                for iex in range(nex_b):
-                    det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
-                    for jex in range(iex+1, nex_b):
-                        det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
-                        det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
+            for iex in range(nex_a):
+                det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
+                for jex in range(iex+1, nex_a):
+                    det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
+                    det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
+            for iex in range(nex_b):
+                det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
+                for jex in range(iex+1, nex_b):
+                    det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
+                    det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
 
             cphasea = trial.coeffs[jdet].conj() * trial.phase_a[jdet]
             cphaseb = trial.coeffs[jdet].conj() * trial.phase_b[jdet]
