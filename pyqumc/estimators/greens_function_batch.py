@@ -281,7 +281,7 @@ def greens_function_multi_det_wicks(walker_batch, trial):
 
             c_phasea_ovlpb = trial.coeffs[jdet].conj() * trial.phase_a[jdet] * ovlpb
             c_phaseb_ovlpa = trial.coeffs[jdet].conj() * trial.phase_b[jdet] * ovlpa
-            
+
             # contribution 1 (disconnected diagrams)
             walker_batch.Ga[iw] += trial.coeffs[jdet].conj() * G0a * ovlpa * ovlpb
             walker_batch.Gb[iw] += trial.coeffs[jdet].conj() * G0b * ovlpa * ovlpb 
@@ -318,12 +318,18 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                 walker_batch.CIa[iw,u,t] += c_phasea_ovlpb * (G0a[p,q]*G0a[r,s] - G0a[p,s]*G0a[r,q]) # 2 2
 
             elif (nex_a > 3):
+                det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+                for iex in range(nex_a):
+                    det_a[iex,iex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][iex]]
+                    for jex in range(iex+1, nex_a):
+                        det_a[iex, jex] = G0a[trial.cre_a[jdet][iex],trial.anh_a[jdet][jex]]
+                        det_a[jex, iex] = G0a[trial.cre_a[jdet][jex],trial.anh_a[jdet][iex]]
                 cofactor = numpy.zeros((nex_a-1, nex_a-1), dtype=numpy.complex128)
                 for iex in range(nex_a):
                     p = trial.cre_a[jdet][iex]
                     for jex in range(nex_a):
                         q = trial.anh_a[jdet][jex]
-                        cofactor[:,:] = minor_mask(det_b, iex, jex)
+                        cofactor[:,:] = minor_mask(det_a, iex, jex)
                         walker_batch.CIa[iw,q,p] += c_phasea_ovlpb * (-1)**(iex+jex) * numpy.linalg.det(cofactor) 
 
             if (nex_b == 1):
@@ -358,6 +364,12 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                 walker_batch.CIb[iw,u,t] += c_phaseb_ovlpa * (G0b[p,q]*G0b[r,s] - G0b[p,s]*G0b[r,q]) # 2 2
 
             elif (nex_b > 3):
+                det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+                for iex in range(nex_b):
+                    det_b[iex,iex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][iex]]
+                    for jex in range(iex+1, nex_b):
+                        det_b[iex, jex] = G0b[trial.cre_b[jdet][iex],trial.anh_b[jdet][jex]]
+                        det_b[jex, iex] = G0b[trial.cre_b[jdet][jex],trial.anh_b[jdet][iex]]
                 cofactor = numpy.zeros((nex_b-1, nex_b-1), dtype=numpy.complex128)
                 for iex in range(nex_b):
                     p = trial.cre_b[jdet][iex]
