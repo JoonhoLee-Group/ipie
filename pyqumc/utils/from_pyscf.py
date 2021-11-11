@@ -23,6 +23,9 @@ def dump_pyqumc(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
                verbose=True, wfn_file='afqmc.h5',
                chol_cut=1e-5, sparse_zero=1e-16, cas=None,
                ortho_ao=True, ao=False, sparse=False):
+    if cas is not None:
+        assert ortho_ao == False, 'Orthogonal AO cannot be used with the frozen core approximation'
+
     scf_data = load_from_pyscf_chkfile(chkfile)
     mol = scf_data['mol']
     hcore = scf_data['hcore']
@@ -41,10 +44,11 @@ def dump_pyqumc(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
         else:
             oao = scf_data['mo_coeff']
 
-    hcore, chol, nelec, enuc = generate_integrals(mol, hcore, oao,
+    hcore, chol, nelec, enuc, cas_idx = generate_integrals(mol, hcore, oao,
                                                   chol_cut=chol_cut,
                                                   verbose=verbose,
                                                   cas=cas)
+
     nbasis = hcore.shape[-1]
     msq = nbasis * nbasis
     # Why did I transpose everything?
@@ -62,9 +66,9 @@ def dump_pyqumc(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
                             nbasis, enuc,
                             filename=hamil_file,
                             ortho=oao, real_chol=True)
-    write_wfn_mol(scf_data, ortho_ao, wfn_file, mode='a')
+    write_wfn_mol(scf_data, ortho_ao, cas_idx, wfn_file, mode='a')
 
-def write_wfn_mol(scf_data, ortho_ao, filename, wfn=None,
+def write_wfn_mol(scf_data, ortho_ao, cas_idx, filename, wfn=None,
                   init=None, verbose=False, mode='w'):
     """Generate QMCPACK trial wavefunction.
 
@@ -92,10 +96,9 @@ def write_wfn_mol(scf_data, ortho_ao, filename, wfn=None,
     X = scf_data['X']
     uhf = scf_data['isUHF']
     # For RHF only nalpha entries will be filled.
-    if uhf:
-        norb = C[0].shape[0]
-    else:
-        norb = C.shape[0]
+    # HP: It looks to me both alpha and beta entries are filled
+    nfzc, nfzv, nbasis = cas_idx
+    norb = nbasis - nfzc - nfzv
     if wfn is None:
         wfn = numpy.zeros((1,norb,nalpha+nbeta), dtype=numpy.complex128)
         wfn_type = 'NOMSD'
@@ -108,16 +111,21 @@ def write_wfn_mol(scf_data, ortho_ao, filename, wfn=None,
                 wfn[0,:,nalpha:] = numpy.dot(Xinv, C[1])[:,:nbeta]
             else:
                 wfn[0,:,:nalpha] = numpy.dot(Xinv, C)[:,:nalpha]
-                wfn[0,:,nalpha:] = numpy.dot(Xinv, C)[:,:nalpha]
+                wfn[0,:,nalpha:] = numpy.dot(Xinv, C)[:,:nbeta]
         else:
-            # Assuming we are working in MO basis, only works for RHF, ROHF trials.
-            I = numpy.identity(C.shape[-1], dtype=numpy.float64)
-            wfn[0,:,:nalpha] = I[:,:nalpha]
-            wfn[0,:,nalpha:] = I[:,:nalpha]
             if uhf:
-                print(" # Warning: UHF trial wavefunction can only be used of "
-                      "working in ortho AO basis.")
-    write_qmcpack_wfn(filename, (numpy.array([1.0+0j]),wfn), 'uhf',
+                # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
+                I = numpy.identity(norb, dtype=numpy.float64)
+                wfn[0, :, :nalpha] = I[:, :nalpha]
+                Xinv = scipy.linalg.inv(C[0])
+                wfn[0, :, nalpha:] = numpy.dot(Xinv, C[1])[nfzc:nbasis-nfzv,nfzc:nfzc+nbeta]
+            else:
+                # Assuming we are working in MO basis, only works for RHF, ROHF trials.
+                I = numpy.identity(norb, dtype=numpy.float64)
+                wfn[0, :, :nalpha] = I[:, :nalpha]
+                wfn[0, :, nalpha:] = I[:, :nbeta]
+
+    write_qmcpack_wfn(filename, (coeffs,wfn), 'uhf',
                       nelec, norb, mode=mode)
     return nelec
 
@@ -160,7 +168,6 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
         h1e = numpy.dot(X.T, numpy.dot(hcore, X))
     elif (len(X.shape) == 3):
         h1e = numpy.dot(X[0].T, numpy.dot(hcore, X[0]))
-        
     nbasis = h1e.shape[-1]
     # Step 2. Genrate Cholesky decomposed ERIs in non-orthogonal AO basis.
     if verbose:
@@ -179,32 +186,48 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     enuc = mol.energy_nuc()
     # Step 3. (Optionally) freeze core / virtuals.
     nelec = mol.nelec
+    cas_idx = [0,0,nbasis]
     if cas is not None:
         nfzc = (sum(mol.nelec)-cas[0])//2
         ncas = cas[1]
         nfzv = nbasis - ncas - nfzc
-        h1e, chol_vecs, enuc = freeze_core(h1e, chol_vecs, enuc, nfzc, ncas,
+        h1e, chol_vecs, enuc = freeze_core(h1e, chol_vecs, X, enuc, nfzc, ncas,
                                            verbose)
         h1e = h1e[0]
         nelec = (mol.nelec[0]-nfzc, mol.nelec[1]-nfzc)
         mol.nelec = nelec
         orbs = numpy.identity(h1e.shape[-1])
         orbs = orbs[nfzc:nbasis-nfzv,nfzc:nbasis-nfzv]
-    return h1e, chol_vecs, nelec, enuc
+        cas_idx = [nfzc, nfzv, nbasis]
 
-def freeze_core(h1e, chol, ecore, nc, ncas, verbose=True):
+    return h1e, chol_vecs, nelec, enuc, cas_idx
+
+def freeze_core(h1e, chol, X, ecore, nc, ncas, verbose=True):
     # 1. Construct one-body hamiltonian
-    print(ecore, type(h1e), type(chol))
     nbasis = h1e.shape[-1]
     chol = chol.reshape((-1,nbasis,nbasis))
-    system = dotdict({'H1': numpy.array([h1e,h1e]),
-                      'chol_vecs': chol,
+    nchol = chol.shape[0]
+    ham = dotdict({'H1': numpy.array([h1e,h1e]),
+                      'chol_vecs': chol.reshape((-1,nbasis*nbasis)),
+                      'nchol': nchol,
                       'ecore': ecore,
                       'nbasis': nbasis})
-    psi = numpy.identity(nbasis)[:,:nc]
-    Gcore = gab(psi,psi)
-    ecore = local_energy_generic_cholesky(system, [Gcore,Gcore])[0]
-    (hc_a, hc_b) = core_contribution_cholesky(system.chol_vecs, [Gcore,Gcore])
+    system = dotdict({'nup': 0,
+                      'ndown': 0})  # HP: system.nup or system.ndown won't be used in al_energy_generic_cholesky, hence zeros are used here
+    if (len(X.shape) == 2):
+        psi_a = numpy.identity(nbasis)[:,:nc]
+        psi_b = numpy.identity(nbasis)[:,:nc]
+    elif (len(X.shape) == 3):
+        C = X
+        psi_a = numpy.identity(nbasis)[:,:nc]
+        Xinv = scipy.linalg.inv(X[0])
+        psi_b = numpy.dot(Xinv, C[1])[:,:nc]
+
+    Gcore_a = gab(psi_a,psi_a)
+    Gcore_b = gab(psi_b,psi_b)
+    ecore = local_energy_generic_cholesky(system, ham, [Gcore_a,Gcore_b])[0]
+    
+    (hc_a, hc_b) = core_contribution_cholesky(chol, [Gcore_a,Gcore_b])
     h1e = numpy.array([h1e,h1e])
     h1e[0] = h1e[0] + 2*hc_a
     h1e[1] = h1e[1] + 2*hc_b
