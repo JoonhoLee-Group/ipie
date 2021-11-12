@@ -138,11 +138,11 @@ def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, cas=None, ortho_ao=True):
         X = get_ortho_ao(s1e)
     else:
         X = mf.mo_coeff
-    h1e, chol, nelec, enuc = generate_integrals(mol, hcore, X,
+    h1e, chol, nelec, enuc, cas_idx = generate_integrals(mol, hcore, X,
                                                 chol_cut=chol_cut,
                                                 verbose=verbose,
                                                 cas=cas)
-    return h1e, chol, nelec, enuc
+    return h1e, chol, nelec, enuc, cas_idx
 
 def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False,
                            cas=None, ortho_ao=True):
@@ -153,11 +153,11 @@ def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False,
         oao = scf_data['X']
     else:
         oao = scf_data['mo_coeff']
-    h1e, chol, nelec, enuc = generate_integrals(mol, hcore, oao,
+    h1e, chol, nelec, enuc, cas_idx = generate_integrals(mol, hcore, oao,
                                                 chol_cut=chol_cut,
                                                 verbose=verbose,
                                                 cas=cas)
-    return h1e, chol, nelec, enuc
+    return h1e, chol, nelec, enuc, cas_idx
 
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     # Unpack SCF data.

@@ -63,7 +63,7 @@ Run the AFQMC calculation by:
 
 .. code-block:: bash
 
-    mpirun -np N python /path/to/pyqumc/bin/pyqumc.py input.json
+    mpirun -np N python /path/to/pyqumc/bin/pyqumc input.json
 
 See the documentation for more input options and the converter:
 

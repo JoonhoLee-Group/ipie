@@ -30,7 +30,7 @@ mc.kernel()
 e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
 print(ehf, e_tot)
 # Rotate by casscf mo coeffs.
-h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo,
+h1e, chol, nelec, cas_idx = generate_integrals(mol, mf.get_hcore(), mo,
                                             chol_cut=1e-5, verbose=True)
 write_qmcpack_dense(h1e, chol.T.copy(), nelec,
                     h1e.shape[-1], enuc=enuc, filename='afqmc_msd.h5')
