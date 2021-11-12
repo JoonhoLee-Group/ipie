@@ -46,6 +46,8 @@ def parse_args(args):
                         default=1, help='whether to do oao')
     parser.add_argument('-ao', '--ao', dest='ao', type=int,
                         default=0, help='whether to do ao')
+    parser.add_argument('-v', '--verbose', dest='verbose', type=int,
+                        default=1, help='Verbose output.')
 
     options = parser.parse_args(args)
 
@@ -66,7 +68,7 @@ def main(args):
 
     options = parse_args(args)
     dump_pyqumc(chkfile=options.input_scf, hamil_file=options.output,
-               wfn_file=options.wfn, chol_cut=options.thresh,
+               verbose=options.verbose, wfn_file=options.wfn, chol_cut=options.thresh,
                sparse=options.sparse, cas=options.cas, sparse_zero=options.sparse_zero, ortho_ao=options.oao, ao=options.ao)
     write_input(options.json_input, options.output, options.wfn, options.bp)
 
