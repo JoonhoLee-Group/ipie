@@ -1,10 +1,10 @@
 =====
-PyQuMC
+PIE
 =====
 
-PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ onte **C**\ arlo algorithms with a focus on simplicity and speed.
+PIE stands for **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
-PyQuMC inherits a lot of QMC features from pauxy.
+PIE inherits a lot of QMC features from pauxy.
 
 .. image:: https://github.com/linusjoonho/pyqumc/actions/workflows/ci2.yml/badge.svg
     :target: https://travis-ci.com/linusjoonho/pyqumc/actions/workflows/ci2.yml
