@@ -1,37 +1,37 @@
-pyqumc\.propagation package
+pie\.propagation package
 ==========================
 
 Submodules
 ----------
 
-pyqumc\.propagation\.generic module
+pie\.propagation\.generic module
 ----------------------------------
 
-.. automodule:: pyqumc.propagation.generic
+.. automodule:: pie.propagation.generic
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.propagation\.hubbard module
+pie\.propagation\.hubbard module
 ----------------------------------
 
-.. automodule:: pyqumc.propagation.hubbard
+.. automodule:: pie.propagation.hubbard
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.propagation\.operations module
+pie\.propagation\.operations module
 -------------------------------------
 
-.. automodule:: pyqumc.propagation.operations
+.. automodule:: pie.propagation.operations
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.propagation\.utils module
+pie\.propagation\.utils module
 --------------------------------
 
-.. automodule:: pyqumc.propagation.utils
+.. automodule:: pie.propagation.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,7 +40,7 @@ pyqumc\.propagation\.utils module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.propagation
+.. automodule:: pie.propagation
     :members:
     :undoc-members:
     :show-inheritance:

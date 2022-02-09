@@ -1,8 +1,8 @@
 import numpy
-from pyqumc.utils.linalg import modified_cholesky
-from pyqumc.hamiltonians.hubbard import Hubbard
-from pyqumc.trial_wavefunction.utils import get_trial_wavefunction
-from pyqumc.utils.io import write_qmcpack_dense, write_qmcpack_wfn
+from pie.utils.linalg import modified_cholesky
+from pie.hamiltonians.hubbard import Hubbard
+from pie.trial_wavefunction.utils import get_trial_wavefunction
+from pie.utils.io import write_qmcpack_dense, write_qmcpack_wfn
 from afqmctools.utils.qmcpack_utils import write_xml_input
 from mpi4py import MPI
 

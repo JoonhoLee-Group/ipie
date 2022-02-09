@@ -3,12 +3,12 @@
 import glob
 import numpy
 import matplotlib.pyplot as pl
-from pyqumc.trial_density_matrices.onebody import OneBody
-from pyqumc.qmc.calc import init_communicator, setup_calculation
-from pyqumc.qmc.thermal_afqmc import ThermalAFQMC
-from pyqumc.thermal_propagation.utils import get_propagator
-from pyqumc.analysis.thermal import analyse_energy
-from pyqumc.utils.io import to_json
+from pie.trial_density_matrices.onebody import OneBody
+from pie.qmc.calc import init_communicator, setup_calculation
+from pie.qmc.thermal_afqmc import ThermalAFQMC
+from pie.thermal_propagation.utils import get_propagator
+from pie.analysis.thermal import analyse_energy
+from pie.utils.io import to_json
 
 sys = {
     "name": "Hubbard",

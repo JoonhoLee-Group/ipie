@@ -1,45 +1,45 @@
-pyqumc\.trial\_wavefunction package
+pie\.trial\_wavefunction package
 ==================================
 
 Submodules
 ----------
 
-pyqumc\.trial\_wavefunction\.free\_electron module
+pie\.trial\_wavefunction\.free\_electron module
 -------------------------------------------------
 
-.. automodule:: pyqumc.trial_wavefunction.free_electron
+.. automodule:: pie.trial_wavefunction.free_electron
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.trial\_wavefunction\.hartree\_fock module
+pie\.trial\_wavefunction\.hartree\_fock module
 ------------------------------------------------
 
-.. automodule:: pyqumc.trial_wavefunction.hartree_fock
+.. automodule:: pie.trial_wavefunction.hartree_fock
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.trial\_wavefunction\.multi\_determinant module
+pie\.trial\_wavefunction\.multi\_determinant module
 -----------------------------------------------------
 
-.. automodule:: pyqumc.trial_wavefunction.multi_determinant
+.. automodule:: pie.trial_wavefunction.multi_determinant
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.trial\_wavefunction\.uhf module
+pie\.trial\_wavefunction\.uhf module
 --------------------------------------
 
-.. automodule:: pyqumc.trial_wavefunction.uhf
+.. automodule:: pie.trial_wavefunction.uhf
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.trial\_wavefunction\.utils module
+pie\.trial\_wavefunction\.utils module
 ----------------------------------------
 
-.. automodule:: pyqumc.trial_wavefunction.utils
+.. automodule:: pie.trial_wavefunction.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -48,7 +48,7 @@ pyqumc\.trial\_wavefunction\.utils module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.trial_wavefunction
+.. automodule:: pie.trial_wavefunction
     :members:
     :undoc-members:
     :show-inheritance:
