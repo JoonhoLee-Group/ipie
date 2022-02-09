@@ -129,6 +129,11 @@ class MultiSlater(object):
                 anh_a.sort()
                 anh_b.sort()
 
+                # anh_a = numpy.array(anh_a)
+                # cre_a = numpy.array(cre_a)
+                # anh_b = numpy.array(anh_b)
+                # cre_b = numpy.array(cre_b)
+
                 self.anh_a += [anh_a]
                 self.anh_b += [anh_b]
                 self.cre_a += [cre_a]

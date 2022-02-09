@@ -124,6 +124,8 @@ def calc_overlap_single_det_batch(walker_batch, trial):
 # overlap for a given determinant
 # note that the phase is not included
 def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b):
+    ovlp_a = 0.0 + 0.0j
+    ovlp_b = 0.0 + 0.0j
     if nex_a == 1:
         p = cre_a[0]
         q = anh_a[0]
@@ -147,10 +149,14 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
     else:
         det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
         for iex in range(nex_a):
-            det_a[iex,iex] = G0a[cre_a[iex],anh_a[iex]]
+            p = cre_a[iex]
+            q = anh_a[iex]
+            det_a[iex,iex] = G0a[p,q]
             for jex in range(iex+1, nex_a):
-                det_a[iex, jex] = G0a[cre_a[iex],anh_a[jex]]
-                det_a[jex, iex] = G0a[cre_a[jex],anh_a[iex]]
+                r = cre_a[jex]
+                s = anh_a[jex]
+                det_a[iex, jex] = G0a[p,s]
+                det_a[jex, iex] = G0a[r,q]
         ovlp_a = numpy.linalg.det(det_a)
 
     if nex_b == 1:
@@ -176,10 +182,14 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
     else:
         det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
         for iex in range(nex_b):
-            det_b[iex,iex] = G0b[cre_b[iex],anh_b[iex]]
+            p = cre_b[iex]
+            q = anh_b[iex]
+            det_b[iex,iex] = G0b[p,q]
             for jex in range(iex+1, nex_b):
-                det_b[iex, jex] = G0b[cre_b[iex],anh_b[jex]]
-                det_b[jex, iex] = G0b[cre_b[jex],anh_b[iex]]
+                r = cre_b[jex]
+                s = anh_b[jex]
+                det_b[iex, jex] = G0b[p,s]
+                det_b[jex, iex] = G0b[r,q]
         ovlp_b = numpy.linalg.det(det_b)
 
     return ovlp_a, ovlp_b

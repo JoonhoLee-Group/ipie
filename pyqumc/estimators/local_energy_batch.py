@@ -384,7 +384,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
 
         Laa = numpy.einsum("iq,pj,xij->qpx",Q0a, G0a, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
         Lbb = numpy.einsum("iq,pj,xij->qpx",Q0b, G0b, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
-      
+
         cont3 = 0.0 + 0.0j
 
         for jdet in range(1, trial.ndets):
