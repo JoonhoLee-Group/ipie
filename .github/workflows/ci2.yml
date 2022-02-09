@@ -30,12 +30,12 @@ jobs:
         python -m pytest
     - name: mpi test
       run: |
-        mpiexec -n 2 python -m pytest pyqumc/walkers/tests/test_handler.py
+        mpiexec -n 2 python -m pytest pie/walkers/tests/test_handler.py
     - name: Test with testcode
       run: |
         git clone git://github.com/jsspencer/testcode
         cd test_data
-        python ../testcode/bin/testcode.py -v  -e ../bin/pyqumc run --user-option=pyqumc launch_parallel 'mpiexec -np tc.nprocs python -u'
+        python ../testcode/bin/testcode.py -v  -e ../bin/pie run --user-option=pie launch_parallel 'mpiexec -np tc.nprocs python -u'
         cd ..
         ./tools/run_examples.sh
 
