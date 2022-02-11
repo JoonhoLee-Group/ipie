@@ -19,7 +19,7 @@ from pyqumc.utils.testing import (
 
 try:
     import cupy
-    no_gpu = False
+    no_gpu = not cupy.is_available()
 except:
     no_gpu = True
 

@@ -20,7 +20,7 @@ from pyqumc.estimators.local_energy_batch import local_energy_single_det_batch, 
 
 try:
     import cupy
-    no_gpu = False
+    no_gpu = not cupy.is_available()
 except:
     no_gpu = True
 
@@ -42,6 +42,8 @@ def test_local_energy_single_det_batch():
     trial = MultiSlater(system, ham, wfn, init=init)
     trial.half_rotate(system, ham)
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
