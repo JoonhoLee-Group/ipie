@@ -31,7 +31,7 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest pie/walkers/tests/test_handler.py
-    - name: Test with testcode
+    - name: Test examples
       run: |
         ./tools/run_examples.sh
 
