@@ -31,11 +31,7 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest pie/walkers/tests/test_handler.py
-    - name: Test with testcode
+    - name: Test examples
       run: |
-        git clone git://github.com/jsspencer/testcode
-        cd test_data
-        python ../testcode/bin/testcode.py -v  -e ../bin/pie run --user-option=pie launch_parallel 'mpiexec -np tc.nprocs python -u'
-        cd ..
         ./tools/run_examples.sh
 

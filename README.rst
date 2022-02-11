@@ -7,7 +7,7 @@ PIE stands for **P**\ython-based **I**\maginary-time **E**\volution with a focus
 PIE inherits a lot of QMC features from pauxy.
 
 .. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
-    :target: https://travis-ci.com/linusjoonho/pie/actions/workflows/ci2.yml
+    :target: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml
 
 .. image:: http://readthedocs.org/projects/pie/badge/?version=latest
     :target: http://pie.readthedocs.io/en/latest/?badge=latest
@@ -74,7 +74,7 @@ in the base of the repo. Some longer parallel tests are also run through the CI.
 `.github/workflows/ci2.yml` for more details.
 
 .. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
-    :target: https://travis-ci.com/linusjoonho/pie/actions/workflows/ci2.yml
+    :target: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml
 
 Documentation
 -------------
