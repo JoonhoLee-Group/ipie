@@ -1,2 +1,2 @@
 include versioneer.py
-include pyqumc/_version.py
+include pie/_version.py

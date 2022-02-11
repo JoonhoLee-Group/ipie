@@ -1,29 +1,29 @@
-pyqumc\.walkers package
+pie\.walkers package
 ======================
 
 Submodules
 ----------
 
-pyqumc\.walkers\.handler module
+pie\.walkers\.handler module
 ------------------------------
 
-.. automodule:: pyqumc.walkers.handler
+.. automodule:: pie.walkers.handler
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.walkers\.multi\_ghf module
+pie\.walkers\.multi\_ghf module
 ---------------------------------
 
-.. automodule:: pyqumc.walkers.multi_ghf
+.. automodule:: pie.walkers.multi_ghf
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.walkers\.single\_det module
+pie\.walkers\.single\_det module
 ----------------------------------
 
-.. automodule:: pyqumc.walkers.single_det
+.. automodule:: pie.walkers.single_det
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pyqumc\.walkers\.single\_det module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.walkers
+.. automodule:: pie.walkers
     :members:
     :undoc-members:
     :show-inheritance:

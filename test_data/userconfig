@@ -1,7 +1,7 @@
-[pyqumc]
+[pie]
 inputs_args = ('*.json', '')
 vcs = git
-extract_fn = $HOME/pyqumc/bin/pyqumc pyqumc.analysis.extraction.extract_test_data_hdf5
+extract_fn = $HOME/pie/bin/pie pie.analysis.extraction.extract_test_data_hdf5
 output = estimates.0.h5
 
 [user]

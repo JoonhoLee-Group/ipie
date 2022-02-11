@@ -1,45 +1,45 @@
-pyqumc\.estimators package
+pie\.estimators package
 =========================
 
 Submodules
 ----------
 
-pyqumc\.estimators\.back\_propagation module
+pie\.estimators\.back\_propagation module
 -------------------------------------------
 
-.. automodule:: pyqumc.estimators.back_propagation
+.. automodule:: pie.estimators.back_propagation
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.estimators\.handler module
+pie\.estimators\.handler module
 ---------------------------------
 
-.. automodule:: pyqumc.estimators.handler
+.. automodule:: pie.estimators.handler
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.estimators\.itcf module
+pie\.estimators\.itcf module
 ------------------------------
 
-.. automodule:: pyqumc.estimators.itcf
+.. automodule:: pie.estimators.itcf
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.estimators\.mixed module
+pie\.estimators\.mixed module
 -------------------------------
 
-.. automodule:: pyqumc.estimators.mixed
+.. automodule:: pie.estimators.mixed
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.estimators\.utils module
+pie\.estimators\.utils module
 -------------------------------
 
-.. automodule:: pyqumc.estimators.utils
+.. automodule:: pie.estimators.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -48,7 +48,7 @@ pyqumc\.estimators\.utils module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.yestimators
+.. automodule:: pie.yestimators
     :members:
     :undoc-members:
     :show-inheritance:

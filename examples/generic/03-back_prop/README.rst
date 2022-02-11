@@ -41,7 +41,7 @@ The rdm can be extracted from the estimates files using
 
 .. code-block:: python
 
-    from pyqumc.analysis.extraction import extract_rdm
+    from pie.analysis.extraction import extract_rdm
 
     # By default the longest path length is selected
     rdm = extract_rdm('estimates.0.h5')
@@ -52,5 +52,5 @@ The rdm can be extracted from the estimates files using
     rdm_1 = extract_rdm('estimates.0.h5', ix=300) # tau = 1.5
 
     # To get the averaged rdm use
-    from pyqumc.analysis.blocking import average_rdm
+    from pie.analysis.blocking import average_rdm
     rdm_av, rdm_err = average_rdm('estimates.0.h5')

@@ -1,29 +1,29 @@
-pyqumc\.qmc package
+pie\.qmc package
 ==================
 
 Submodules
 ----------
 
-pyqumc\.qmc\.afqmc module
+pie\.qmc\.afqmc module
 ------------------------
 
-.. automodule:: pyqumc.qmc.afqmc
+.. automodule:: pie.qmc.afqmc
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.qmc\.calc module
+pie\.qmc\.calc module
 -----------------------
 
-.. automodule:: pyqumc.qmc.calc
+.. automodule:: pie.qmc.calc
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.qmc\.options module
+pie\.qmc\.options module
 --------------------------
 
-.. automodule:: pyqumc.qmc.options
+.. automodule:: pie.qmc.options
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pyqumc\.qmc\.options module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.qmc
+.. automodule:: pie.qmc
     :members:
     :undoc-members:
     :show-inheritance:

@@ -7,8 +7,8 @@ try:
 except ImportError:
     pass
 import sys
-from pyqumc.analysis.thermal import analyse_energy, find_chem_pot
-from pyqumc.analysis.extraction import get_sys_param
+from pie.analysis.thermal import analyse_energy, find_chem_pot
+from pie.analysis.extraction import get_sys_param
 import scipy.optimize
 
 import argparse
@@ -18,7 +18,7 @@ import pandas as pd
 import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pyqumc.analysis.blocking import analyse_estimates
+from pie.analysis.blocking import analyse_estimates
 import glob
 
 
@@ -59,7 +59,7 @@ def parse_args(args):
 
 
 def main(args):
-    """Run reblocking and data analysis on pyqumc output.
+    """Run reblocking and data analysis on pie output.
 
     Parameters
     ----------

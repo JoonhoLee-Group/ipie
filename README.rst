@@ -1,23 +1,23 @@
 =====
-PyQuMC
+PIE
 =====
 
-PyQuMC is a collection of **P**\ ython implementations of **Qu**\ antum **M**\ onte **C**\ arlo algorithms with a focus on simplicity and speed.
+PIE stands for **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
-PyQuMC inherits a lot of QMC features from pauxy.
+PIE inherits a lot of QMC features from pauxy.
 
-.. image:: https://github.com/linusjoonho/pyqumc/actions/workflows/ci2.yml/badge.svg
-    :target: https://travis-ci.com/linusjoonho/pyqumc/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
+    :target: https://travis-ci.com/linusjoonho/pie/actions/workflows/ci2.yml
 
-.. image:: http://readthedocs.org/projects/pyqumc/badge/?version=latest
-    :target: http://pyqumc.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pie/badge/?version=latest
+    :target: http://pie.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
-    :target: http://github.com/linusjoonho/pyqumc/blob/master/LICENSE
+    :target: http://github.com/linusjoonho/pie/blob/master/LICENSE
 
 Features
 --------
-pyqumc can currently:
+pie can currently:
 
 - estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
 - perform phaseless and constrained path AFQMC.
@@ -32,9 +32,9 @@ Clone the repository
 
 ::
 
-    $ git clone https://github.com/linusjoonho/pyqumc.git
+    $ git clone https://github.com/linusjoonho/pie.git
 
-and run the following in the top-level pyqumc directory
+and run the following in the top-level pie directory
 
 ::
 
@@ -63,7 +63,7 @@ To perform error analysis you will also need `pyblock <https://github.com/jsspen
 Running the Test Suite
 ----------------------
 
-pyqumc contains unit tests and some longer driver tests that can be run using pytest by
+pie contains unit tests and some longer driver tests that can be run using pytest by
 running:
 
 ::
@@ -73,14 +73,14 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 `.github/workflows/ci2.yml` for more details.
 
-.. image:: https://github.com/linusjoonho/pyqumc/actions/workflows/ci2.yml/badge.svg
-    :target: https://travis-ci.com/linusjoonho/pyqumc/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
+    :target: https://travis-ci.com/linusjoonho/pie/actions/workflows/ci2.yml
 
 Documentation
 -------------
 
 Documentation and tutorials are available at
-`readthedocs <https://pyqumc.readthedocs.org>`_.
+`readthedocs <https://pie.readthedocs.org>`_.
 
-.. image:: http://readthedocs.org/projects/pyqumc/badge/?version=latest
-    :target: http://pyqumc.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/pie/badge/?version=latest
+    :target: http://pie.readthedocs.io/en/latest/?badge=latest

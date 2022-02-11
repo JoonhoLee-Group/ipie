@@ -1,17 +1,17 @@
 import numpy
-from pyqumc.qmc.afqmc_batch import AFQMCBatch
-from pyqumc.qmc.options import QMCOpts
-from pyqumc.propagation.utils import get_propagator_driver
-from pyqumc.hamiltonians.utils import get_hamiltonian
-from pyqumc.trial_wavefunction.utils import get_trial_wavefunction
-from pyqumc.estimators.local_energy import local_energy
-from pyqumc.systems.generic import Generic
-from pyqumc.utils.mpi import get_shared_comm
-from pyqumc.utils.io import  get_input_value
-from pyqumc.walkers.walker_batch_handler import WalkerBatchHandler
-from pyqumc.walkers.single_det_batch import SingleDetWalkerBatch
-from pyqumc.walkers.single_det import SingleDetWalker
-from pyqumc.walkers.handler import Walkers
+from pie.qmc.afqmc_batch import AFQMCBatch
+from pie.qmc.options import QMCOpts
+from pie.propagation.utils import get_propagator_driver
+from pie.hamiltonians.utils import get_hamiltonian
+from pie.trial_wavefunction.utils import get_trial_wavefunction
+from pie.estimators.local_energy import local_energy
+from pie.systems.generic import Generic
+from pie.utils.mpi import get_shared_comm
+from pie.utils.io import  get_input_value
+from pie.walkers.walker_batch_handler import WalkerBatchHandler
+from pie.walkers.single_det_batch import SingleDetWalkerBatch
+from pie.walkers.single_det import SingleDetWalker
+from pie.walkers.handler import Walkers
 
 import mpi4py
 mpi4py.rc.recv_mprobe = False
