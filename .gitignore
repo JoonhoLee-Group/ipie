@@ -5,6 +5,7 @@
 *.json
 *.out
 *.hdf5
+*.h5 # Make these hard to add
 src/openfermion/data/
 
 # Byte-compiled / optimized / DLL files
