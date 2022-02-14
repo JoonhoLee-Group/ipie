@@ -1,13 +1,13 @@
 Input Options
 =============
 
-pyqumc can be used either as a library or run with the usual "binary" + input file mode.
+pie can be used either as a library or run with the usual "binary" + input file mode.
 Here we will describe the input options necessary in both cases.
 
 Input File
 ^^^^^^^^^^
 
-A standard input file for pyqumc is made up of a json dict like that below:
+A standard input file for pie is made up of a json dict like that below:
 
 .. code-block:: json
 

@@ -1,29 +1,29 @@
-pyqumc\.analysis package
+pie\.analysis package
 =======================
 
 Submodules
 ----------
 
-pyqumc\.analysis\.blocking module
+pie\.analysis\.blocking module
 --------------------------------
 
-.. automodule:: pyqumc.analysis.blocking
+.. automodule:: pie.analysis.blocking
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.analysis\.correlation module
+pie\.analysis\.correlation module
 -----------------------------------
 
-.. automodule:: pyqumc.analysis.correlation
+.. automodule:: pie.analysis.correlation
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.analysis\.extraction module
+pie\.analysis\.extraction module
 ----------------------------------
 
-.. automodule:: pyqumc.analysis.extraction
+.. automodule:: pie.analysis.extraction
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pyqumc\.analysis\.extraction module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.analysis
+.. automodule:: pie.analysis
     :members:
     :undoc-members:
     :show-inheritance:

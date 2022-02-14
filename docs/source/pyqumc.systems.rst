@@ -1,29 +1,29 @@
-pyqumc\.systems package
+pie\.systems package
 ======================
 
 Submodules
 ----------
 
-pyqumc\.systems\.generic module
+pie\.systems\.generic module
 ------------------------------
 
-.. automodule:: pyqumc.systems.generic
+.. automodule:: pie.systems.generic
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.systems\.hubbard module
+pie\.systems\.hubbard module
 ------------------------------
 
-.. automodule:: pyqumc.systems.hubbard
+.. automodule:: pie.systems.hubbard
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.systems\.utils module
+pie\.systems\.utils module
 ----------------------------
 
-.. automodule:: pyqumc.systems.utils
+.. automodule:: pie.systems.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pyqumc\.systems\.utils module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.systems
+.. automodule:: pie.systems
     :members:
     :undoc-members:
     :show-inheritance:

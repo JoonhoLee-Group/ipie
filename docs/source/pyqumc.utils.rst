@@ -1,37 +1,37 @@
-pyqumc\.utils package
+pie\.utils package
 ====================
 
 Submodules
 ----------
 
-pyqumc\.utils\.fft module
+pie\.utils\.fft module
 ------------------------
 
-.. automodule:: pyqumc.utils.fft
+.. automodule:: pie.utils.fft
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.utils\.io module
+pie\.utils\.io module
 -----------------------
 
-.. automodule:: pyqumc.utils.io
+.. automodule:: pie.utils.io
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.utils\.linalg module
+pie\.utils\.linalg module
 ---------------------------
 
-.. automodule:: pyqumc.utils.linalg
+.. automodule:: pie.utils.linalg
     :members:
     :undoc-members:
     :show-inheritance:
 
-pyqumc\.utils\.misc module
+pie\.utils\.misc module
 -------------------------
 
-.. automodule:: pyqumc.utils.misc
+.. automodule:: pie.utils.misc
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,7 +40,7 @@ pyqumc\.utils\.misc module
 Module contents
 ---------------
 
-.. automodule:: pyqumc.utils
+.. automodule:: pie.utils
     :members:
     :undoc-members:
     :show-inheritance:

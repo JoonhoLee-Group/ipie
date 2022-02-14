@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pyqumc.analysis import blocking
+from pie.analysis import blocking
 import glob
 import sys
 import pandas as pd
