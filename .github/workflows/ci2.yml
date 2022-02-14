@@ -31,7 +31,9 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest pie/walkers/tests/test_handler.py
-    - name: Test examples
+    - name: Test Integration
       run: |
+        pip install pytest-mpi
+        mpirun -np 4 python -m pytest --with-mpi pie/qmc/tests/test_mpi_integration.py
         ./tools/run_examples.sh
 
