@@ -96,8 +96,8 @@ class MultiSlater(object):
                 self.init = self.psi.copy()
         
         self.wicks = options.get('wicks', False)
-        # if self.wicks: # this is for Wick's theorem
-        if True: # this is for Wick's theorem
+        if self.wicks: # this is for Wick's theorem
+        # if True: # this is for Wick's theorem
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
