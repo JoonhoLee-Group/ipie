@@ -462,15 +462,19 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
         dets_a_full[:,trial.excit_map_a[iexcit]] = dets_a
         dets_b_full[:,trial.excit_map_b[iexcit]] = dets_b
 
-    ovlps = numpy.einsum(
-                'w,J,wJ,wJ,J,J->w',
-                ovlps0,
-                trial.coeffs.conj(),
-                dets_a_full,
-                dets_b_full,
-                trial.phase_a,
-                trial.phase_b,
-                optimize=True)
+    dets_full = ovlps0[:,None] * dets_a_full * dets_b_full
+    # This could be precomputed?
+    det_factors = trial.coeffs.conj() * trial.phase_a * trial.phase_b
+    ovlps = numpy.dot(dets_full, det_factors)
+    # ovlps = numpy.einsum(
+                # 'w,J,wJ,wJ,J,J->w',
+                # ovlps0,
+                # trial.coeffs.conj(),
+                # dets_a_full,
+                # dets_b_full,
+                # trial.phase_a,
+                # trial.phase_b,
+                # optimize=True)
 
     return ovlps
 
