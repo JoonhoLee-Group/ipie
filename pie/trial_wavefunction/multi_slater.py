@@ -39,7 +39,7 @@ class MultiSlater(object):
                 self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
             self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
             self.ortho_expansion = False
-        
+
         self.psia = self.psi[:,:,:system.nup]
         self.psib = self.psi[:,:,system.nup:]
 
@@ -94,7 +94,7 @@ class MultiSlater(object):
                 self.init = self.psi[0].copy()
             else:
                 self.init = self.psi.copy()
-        
+
         self.wicks = options.get('wicks', False)
         if self.wicks: # this is for Wick's theorem
         # if True: # this is for Wick's theorem
@@ -114,13 +114,25 @@ class MultiSlater(object):
             self.anh_b = [[]] # one empty list as a member to account for the reference state
             self.phase_a = [1.0] # 1.0 is for the reference state
             self.phase_b = [1.0] # 1.0 is for the reference state
+            nexcit_a = system.nup
+            nexcit_b = system.ndown
+            # This is an overestimate because we don't know number of active
+            # electrons in trial from read in.
+            # TODO work this out.
+            max_excit = max(nexcit_a, nexcit_b)
+            cre_ex_a = [[] for _ in range(max_excit)]
+            cre_ex_b = [[] for _ in range(max_excit)]
+            anh_ex_a = [[] for _ in range(max_excit)]
+            anh_ex_b = [[] for _ in range(max_excit)]
+            excit_map_a = [[] for _ in range(max_excit)]
+            excit_map_b = [[] for _ in range(max_excit)]
             for j in range(1, self.ndets):
                 dja = self.occa[j]
                 djb = self.occb[j]
-                
+
                 anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
                 cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
-                
+
                 anh_b = list(set(djb)-set(d0b))
                 cre_b = list(set(d0b)-set(djb))
 
@@ -138,10 +150,16 @@ class MultiSlater(object):
                 self.anh_b += [anh_b]
                 self.cre_a += [cre_a]
                 self.cre_b += [cre_b]
+                anh_ex_a[len(anh_a)].append(anh_a)
+                anh_ex_b[len(anh_b)].append(anh_b)
+                cre_ex_a[len(cre_a)].append(cre_a)
+                cre_ex_b[len(cre_b)].append(cre_b)
+                excit_map_a[len(anh_a)].append(j)
+                excit_map_b[len(anh_b)].append(j)
 
                 perm_a = get_perm(anh_a, cre_a, d0a, dja)
                 perm_b = get_perm(anh_b, cre_b, d0b, djb)
-                
+
                 if (perm_a):
                     self.phase_a += [-1]
                 else:
@@ -152,6 +170,12 @@ class MultiSlater(object):
                 else:
                     self.phase_b += [+1]
 
+            self.cre_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a]
+            self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
+            self.anh_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a]
+            self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
+            self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
+            self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
         if self.ortho_expansion: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
@@ -183,7 +207,7 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial_wavefunction.MultiSlater.")
-    
+
     def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
 
@@ -428,7 +452,7 @@ class MultiSlater(object):
         nchol = hamiltonian.chol_vecs.shape[0]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
-        
+
         hr_ndet = self.ndets
         if (self.ortho_expansion):
             if self.verbose:
@@ -513,7 +537,7 @@ class MultiSlater(object):
                             VT = numpy.diag(numpy.sqrt(s)).dot(VT)
 
                             UVT_ab += [(U, VT)]
-                    
+
                     r_ab = numpy.array(r_ab)
                     r_ab = numpy.mean(r_ab)
 
