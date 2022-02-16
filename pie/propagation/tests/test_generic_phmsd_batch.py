@@ -10,7 +10,11 @@ from pie.walkers.single_det_batch import SingleDetWalkerBatch
 from pie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from pie.walkers.single_det import SingleDetWalker
 from pie.walkers.multi_det import MultiDetWalker
-from pie.propagation.overlap import calc_overlap_multi_det, calc_overlap_multi_det_wicks
+from pie.propagation.overlap import (
+        calc_overlap_multi_det,
+        calc_overlap_multi_det_wicks,
+        calc_overlap_multi_det_wicks_opt
+        )
 from pie.estimators.greens_function_batch import greens_function_multi_det, greens_function_multi_det_wicks
 from pie.utils.testing import (
         generate_hamiltonian,
@@ -139,10 +143,12 @@ def test_phmsd_overlap_batch():
 
     ovlps0 = calc_overlap_multi_det(walker_batch, trial)
     ovlps = calc_overlap_multi_det_wicks(walker_batch, trial)
+    ovlps_opt = calc_overlap_multi_det_wicks_opt(walker_batch, trial)
     for iw in range(nwalkers):
-        assert numpy.allclose(walkers[iw].ovlp,walker_batch.ovlp[iw])
-        assert numpy.allclose(ovlps[iw],walker_batch.ovlp[iw])
-        assert numpy.allclose(ovlps0[iw],walker_batch.ovlp[iw])
+        assert numpy.allclose(walkers[iw].ovlp, walker_batch.ovlp[iw])
+        assert numpy.allclose(ovlps[iw], walker_batch.ovlp[iw])
+        assert numpy.allclose(ovlps0[iw], walker_batch.ovlp[iw])
+        assert numpy.allclose(ovlps[iw], ovlps_opt[iw])
 
 @pytest.mark.unit
 def test_phmsd_propagation_batch():
