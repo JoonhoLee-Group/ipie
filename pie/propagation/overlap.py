@@ -251,6 +251,24 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
     return ovlps
 
 def get_dets_single_excitation_batched(G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at single excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater 
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit1_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit1_beta)
+    """
     if trial.cre_ex_a[1].shape[0] == 0:
         dets_a = None
     else:
@@ -264,6 +282,24 @@ def get_dets_single_excitation_batched(G0wa, G0wb, trial):
     return dets_a, dets_b
 
 def get_dets_double_excitation_batched(G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at double excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater 
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit2_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit2_beta)
+    """
     if trial.cre_ex_a[2].shape[0] == 0:
         dets_a = None
     else:
@@ -279,6 +315,24 @@ def get_dets_double_excitation_batched(G0wa, G0wb, trial):
     return dets_a, dets_b
 
 def get_dets_triple_excitation_batched(G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at triple excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater 
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit3_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit3_beta)
+    """
     if trial.cre_ex_a[3].shape[0] == 0:
         dets_a = None
     else:
@@ -312,6 +366,24 @@ def get_dets_triple_excitation_batched(G0wa, G0wb, trial):
     return dets_a, dets_b
 
 def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at arbitrary excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater 
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excitn_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excitn_beta)
+    """
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = G0wa.shape[0]
     if ndets_a == 0:
