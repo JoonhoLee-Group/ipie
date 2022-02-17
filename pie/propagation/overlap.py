@@ -73,7 +73,7 @@ def calc_overlap_single_det(walker_batch, trial):
             sign_b, logdet_b = slogdet(Obeta)
 
         ot[iw] = sign_a*sign_b*exp(logdet_a+logdet_b-walker_batch.log_shift[iw])
-    
+
     return ot
 
 def calc_overlap_single_det_batch(walker_batch, trial):
@@ -148,7 +148,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
         ovlp_a -= G0a[p,s]*(G0a[r,q]*G0a[t,u] - G0a[r,u]*G0a[t,q])
         ovlp_a += G0a[p,u]*(G0a[r,q]*G0a[t,s] - G0a[r,s]*G0a[t,q])
     else:
-        det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)    
+        det_a = numpy.zeros((nex_a,nex_a), dtype=numpy.complex128)
         for iex in range(nex_a):
             p = cre_a[iex]
             q = anh_a[iex]
@@ -181,7 +181,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
         ovlp_b -= G0b[p,s]*(G0b[r,q]*G0b[t,u] - G0b[r,u]*G0b[t,q])
         ovlp_b += G0b[p,u]*(G0b[r,q]*G0b[t,s] - G0b[r,s]*G0b[t,q])
     else:
-        det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)    
+        det_b = numpy.zeros((nex_b,nex_b), dtype=numpy.complex128)
         for iex in range(nex_b):
             p = cre_b[iex]
             q = anh_b[iex]
@@ -259,7 +259,7 @@ def get_dets_single_excitation_batched(G0wa, G0wb, trial):
         Alpha reference Green's function (all walkers).
     G0wb : numpy.ndarray
         Bewa reference Green's function (all walkers).
-    trial : MultiSlater 
+    trial : MultiSlater
         Trial wavefunction instance.
 
     Returns
@@ -290,7 +290,7 @@ def get_dets_double_excitation_batched(G0wa, G0wb, trial):
         Alpha reference Green's function (all walkers).
     G0wb : numpy.ndarray
         Bewa reference Green's function (all walkers).
-    trial : MultiSlater 
+    trial : MultiSlater
         Trial wavefunction instance.
 
     Returns
@@ -323,7 +323,7 @@ def get_dets_triple_excitation_batched(G0wa, G0wb, trial):
         Alpha reference Green's function (all walkers).
     G0wb : numpy.ndarray
         Bewa reference Green's function (all walkers).
-    trial : MultiSlater 
+    trial : MultiSlater
         Trial wavefunction instance.
 
     Returns
@@ -374,7 +374,7 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
         Alpha reference Green's function (all walkers).
     G0wb : numpy.ndarray
         Bewa reference Green's function (all walkers).
-    trial : MultiSlater 
+    trial : MultiSlater
         Trial wavefunction instance.
 
     Returns
@@ -411,6 +411,30 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
         dets_b = numpy.linalg.det(det_mat)
     return dets_a, dets_b
 
+def compute_determinants_batched(G0a, G0b, trial):
+    na = trial._nalpha
+    nb = trial._nbeta
+    nwalker = G0a.shape[0]
+    ndets = len(trial.coeffs)
+    dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
+    dets_b_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
+    # Use low level excitation optimizations
+    dets_a, dets_b = get_dets_single_excitation_batched(G0a, G0b, trial)
+    dets_a_full[:,trial.excit_map_a[1]] = dets_a
+    dets_b_full[:,trial.excit_map_b[1]] = dets_b
+    dets_a, dets_b = get_dets_double_excitation_batched(G0a, G0b, trial)
+    dets_a_full[:,trial.excit_map_a[2]] = dets_a
+    dets_b_full[:,trial.excit_map_b[2]] = dets_b
+    dets_a, dets_b = get_dets_triple_excitation_batched(G0a, G0b, trial)
+    dets_a_full[:,trial.excit_map_a[3]] = dets_a
+    dets_b_full[:,trial.excit_map_b[3]] = dets_b
+    for iexcit in range(4, max(na, nb)):
+        dets_a, dets_b = get_dets_nfold_excitation_batched(iexcit, G0a, G0b, trial)
+        dets_a_full[:,trial.excit_map_a[iexcit]] = dets_a
+        dets_b_full[:,trial.excit_map_b[iexcit]] = dets_b
+
+    return dets_a_full, dets_b_full
+
 def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
     """Calculate overlap with multidet trial wavefunction using Wick's Theorem.
 
@@ -442,25 +466,9 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
     G0a = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phia, inv_ovlps_a, trial.psi0a.conj(), optimize=True)
     inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
     G0b = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phib, inv_ovlps_b, trial.psi0b.conj(), optimize=True)
-    nwalker = walker_batch.phia.shape[0]
-    ndets = len(trial.coeffs)
-    dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
-    dets_b_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
     # Use low level excitation optimizations
-    dets_a, dets_b = get_dets_single_excitation_batched(G0a, G0b, trial)
-    dets_a_full[:,trial.excit_map_a[1]] = dets_a
-    dets_b_full[:,trial.excit_map_b[1]] = dets_b
-    dets_a, dets_b = get_dets_double_excitation_batched(G0a, G0b, trial)
-    dets_a_full[:,trial.excit_map_a[2]] = dets_a
-    dets_b_full[:,trial.excit_map_b[2]] = dets_b
-    dets_a, dets_b = get_dets_triple_excitation_batched(G0a, G0b, trial)
-    dets_a_full[:,trial.excit_map_a[3]] = dets_a
-    dets_b_full[:,trial.excit_map_b[3]] = dets_b
     ovlps = numpy.array(ovlps, dtype = numpy.complex128)
-    for iexcit in range(4, max(na, nb)):
-        dets_a, dets_b = get_dets_nfold_excitation_batched(iexcit, G0a, G0b, trial)
-        dets_a_full[:,trial.excit_map_a[iexcit]] = dets_a
-        dets_b_full[:,trial.excit_map_b[iexcit]] = dets_b
+    dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
 
     dets_full = ovlps0[:,None] * dets_a_full * dets_b_full
     # This could be precomputed?

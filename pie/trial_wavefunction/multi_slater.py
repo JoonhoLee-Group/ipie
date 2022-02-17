@@ -112,8 +112,8 @@ class MultiSlater(object):
             self.anh_a = [[]] # one empty list as a member to account for the reference state
             self.cre_b = [[]] # one empty list as a member to account for the reference state
             self.anh_b = [[]] # one empty list as a member to account for the reference state
-            self.phase_a = [1.0] # 1.0 is for the reference state
-            self.phase_b = [1.0] # 1.0 is for the reference state
+            self.phase_a = numpy.ones(self.ndets) # 1.0 is for the reference state
+            self.phase_b = numpy.ones(self.ndets) # 1.0 is for the reference state
             nexcit_a = system.nup
             nexcit_b = system.ndown
             # This is an overestimate because we don't know number of active
@@ -160,15 +160,15 @@ class MultiSlater(object):
                 perm_a = get_perm(anh_a, cre_a, d0a, dja)
                 perm_b = get_perm(anh_b, cre_b, d0b, djb)
 
-                if (perm_a):
-                    self.phase_a += [-1]
+                if perm_a:
+                    self.phase_a[j] = -1
                 else:
-                    self.phase_a += [+1]
+                    self.phase_a[j] = +1
 
-                if (perm_b):
-                    self.phase_b += [-1]
+                if perm_b:
+                    self.phase_b[j] = -1
                 else:
-                    self.phase_b += [+1]
+                    self.phase_b[j] = +1
 
             self.cre_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a]
             self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
