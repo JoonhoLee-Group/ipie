@@ -794,7 +794,14 @@ def build_CI_nfold_excitation(
                         det_mat,
                         cofactor_matrix)
                 dets_a = numpy.linalg.det(cofactor_matrix)
-                walker_batch.CIa[:,qs,ps] += (-1)**(iex+jex) * dets_a * phases
+                rhs = (-1)**(iex+jex) * dets_a * phases
+                reduce_to_CI_tensor(
+                        nwalkers,
+                        ndets_a,
+                        qs, ps,
+                        walker_batch.CIa,
+                        rhs,
+                        )
     ndets_b = len(trial.cre_ex_b[nexcit])
     if ndets_b == 0:
         dets_b = None
@@ -821,7 +828,14 @@ def build_CI_nfold_excitation(
                         det_mat,
                         cofactor_matrix)
                 dets_b = numpy.linalg.det(cofactor_matrix)
-                walker_batch.CIb[:,qs,ps] += (-1)**(iex+jex) * dets_b * phases
+                rhs = (-1)**(iex+jex) * dets_b * phases
+                reduce_to_CI_tensor(
+                        nwalkers,
+                        ndets_b,
+                        qs, ps,
+                        walker_batch.CIb,
+                        rhs,
+                        )
     return dets_a, dets_b
 
 def greens_function_multi_det_wicks_opt(walker_batch, trial):
