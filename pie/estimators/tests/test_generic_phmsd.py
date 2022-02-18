@@ -30,20 +30,20 @@ from pie.estimators.local_energy import local_energy_multi_det
 @pytest.mark.unit
 def test_greens_function_wicks_opt():
     numpy.random.seed(7)
-    nmo = 10
-    nelec = (6,6)
+    nmo = 12
+    nelec = (7,7)
     nwalkers = 10
     nsteps = 100
-    ndets = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                      ecore=0)
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1000, init=True)
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::10], oa[::10], ob[::10])
+    # wfn_2 = (ci[:100], oa[:100], ob[:100])
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
@@ -53,11 +53,36 @@ def test_greens_function_wicks_opt():
     nbasis = walker_batch_ref.Ga.shape[-1]
     from pie.propagation.overlap import calc_overlap_multi_det_wicks_opt
     ovlp_ref = calc_overlap_multi_det_wicks_opt(walker_batch_ref, trial)
-    ovlps = greens_function_multi_det_wicks_opt(walker_batch_test, trial)
+    ovlps = greens_function_multi_det_wicks(walker_batch_ref, trial)
     assert numpy.allclose(ovlp_ref, ovlps)
-    ovlps_ref = greens_function_multi_det_wicks(walker_batch_test, trial)
+    ovlps_ref = greens_function_multi_det_wicks_opt(walker_batch_test, trial)
     assert numpy.allclose(walker_batch_test.Ga, walker_batch_ref.Ga)
     assert numpy.allclose(walker_batch_test.Gb, walker_batch_ref.Gb)
+
+# Move to propagator tests
+@pytest.mark.unit
+def test_cofactor_matrix():
+    numpy.random.seed(7)
+    nexcit = 7
+    nwalkers = 10
+    ndets_b  = 11
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
+    cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
+    iex = 6
+    jex = 6
+    from pie.propagation.wicks_kernels import get_cofactor_matrix_batched
+    from pie.utils.linalg import minor_mask
+    get_cofactor_matrix_batched(
+            nwalkers,
+            ndets_b,
+            nexcit,
+            iex,
+            jex,
+            det_mat,
+            cofactor_matrix)
+    for iw in range(nwalkers):
+        for jdet in range(ndets_b):
+            assert numpy.allclose(cofactor_matrix[iw, jdet], minor_mask(det_mat[iw, jdet], iex, jex))
 
 @pytest.mark.unit
 def test_phmsd_local_energy():
