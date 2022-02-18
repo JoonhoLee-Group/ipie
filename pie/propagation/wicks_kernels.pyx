@@ -28,6 +28,19 @@ def get_det_matrix_batched(
                     det_matrix[iw, idet, jex, iex] = G0[iw, r, q]
     return det_matrix
 
+def reduce_to_CI_tensor(
+        int nwalker,
+        int ndet_level,
+        int[:] ps,
+        int[:] qs,
+        double complex[:,:,:] tensor,
+        double complex[:,:] rhs):
+    cdef iw, idet
+    for iw in range(nwalker):
+        for idet in range(ndet_level):
+            # += not supported in cython for complex types.
+            tensor[iw, ps[idet], qs[idet]] = tensor[iw, ps[idet], qs[idet]] + rhs[iw, idet]
+
 def get_cofactor_matrix_batched(
         int nwalker,
         int ndet,
@@ -36,17 +49,22 @@ def get_cofactor_matrix_batched(
         int col,
         double complex[:,:,:,:] det_matrix,
         double complex[:,:,:,:] cofactor):
-    cdef int i, j
-    cdef int ishift, jshift
+    cdef int i, j, iw, idet, ishift, jshift
 
     for iw in range(nwalker):
         for idet in range(ndet):
             for i in range(nexcit):
+                ishift = 0
+                jshift = 0
                 if i > row:
                     ishift = 1
+                if i == nexcit-1 and row == nexcit - 1:
+                    continue
                 for j in range(nexcit):
                     if j > col:
                         jshift = 1
+                    if j == nexcit-1 and col == nexcit - 1:
+                        continue
                     cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[iw, idet, i, j]
 
 # def get_greens_function_det_matrix_batched(
