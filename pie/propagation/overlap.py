@@ -1,3 +1,4 @@
+import itertools
 import numpy
 import scipy.linalg
 from pie.estimators.greens_function import gab_spin, gab_mod
@@ -272,6 +273,7 @@ def get_dets_single_excitation_batched(G0wa, G0wb, trial):
     if trial.cre_ex_a[1].shape[0] == 0:
         dets_a = None
     else:
+        # arrays of length ndet_per_single_excitation
         ps, qs = trial.cre_ex_a[1][:,0], trial.anh_ex_a[1][:,0]
         dets_a = G0wa[:, ps, qs]
     if trial.cre_ex_b[1].shape[0] == 0:
@@ -386,28 +388,31 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
     """
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = G0wa.shape[0]
+    indices = numpy.indices((nexcit, nexcit))
     if ndets_a == 0:
         dets_a = None
     else:
         det_mat = numpy.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
-        get_det_matrix_batched(
-                nexcit,
-                trial.cre_ex_a[nexcit],
-                trial.anh_ex_a[nexcit],
-                G0wa,
-                det_mat)
+        ps = trial.cre_ex_a[nexcit]
+        qs = trial.anh_ex_a[nexcit]
+        psqs = numpy.array([list(itertools.product(p,q)) for (p,q) in zip(ps,qs)])
+        _shape = (nwalkers, ndets_a, nexcit, nexcit)
+        det_mat[:, :, indices[0], indices[1]] = (
+                G0wa[:, psqs[:,:,0], psqs[:,:,1]].reshape(_shape)
+                )
         dets_a = numpy.linalg.det(det_mat)
     ndets_b = len(trial.cre_ex_b[nexcit])
     if ndets_b == 0:
         dets_b = None
     else:
         det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
-        get_det_matrix_batched(
-                nexcit,
-                trial.cre_ex_b[nexcit],
-                trial.anh_ex_b[nexcit],
-                G0wb,
-                det_mat)
+        ps = trial.cre_ex_b[nexcit]
+        qs = trial.anh_ex_b[nexcit]
+        psqs = numpy.array([list(itertools.product(p,q)) for (p,q) in zip(ps,qs)])
+        _shape = (nwalkers, ndets_b, nexcit, nexcit)
+        det_mat[:, :, indices[0], indices[1]] = (
+                G0wb[:, psqs[:,:,0], psqs[:,:,1]].reshape(_shape)
+                )
         dets_b = numpy.linalg.det(det_mat)
     return dets_a, dets_b
 
