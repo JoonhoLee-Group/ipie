@@ -170,6 +170,11 @@ class MultiSlater(object):
                 else:
                     self.phase_b[j] = +1
 
+            self.ndet_a = [len(ex) for ex in cre_ex_a]
+            self.ndet_b = [len(ex) for ex in cre_ex_b]
+            self.max_excite_a = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_a))
+            self.max_excite_b = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_b))
+            self.max_excite = max(self.max_excite_a, self.max_excite_b)
             self.cre_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a]
             self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
             self.anh_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a]
