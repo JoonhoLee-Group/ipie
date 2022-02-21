@@ -267,9 +267,15 @@ def get_sys_info(sha1, branch, uuid, nranks):
             print("# Using {:s} v{:s} from: {:s}.".format(lib, vers, path))
             info['{:s}'.format(lib)] = {'version': vers, 'path': path}
             if lib == 'numpy':
-                np_lib = l.__config__.blas_opt_info['libraries']
+                try:
+                    np_lib = l.__config__.blas_opt_info['libraries']
+                except AttributeError:
+                    np_lib = l.__config__.blas_ilp64_opt_info['libraries']
                 print("# - BLAS lib: {:s}".format(' '.join(np_lib)))
-                lib_dir = l.__config__.blas_opt_info['library_dirs']
+                try:
+                    lib_dir = l.__config__.blas_opt_info['library_dirs']
+                except AttributeError:
+                    lib_dir = l.__config__.blas_ilp64_opt_info['library_dirs']
                 print("# - BLAS dir: {:s}".format(' '.join(lib_dir)))
                 info['{:s}'.format(lib)]['BLAS'] = {'lib': ' '.join(np_lib),
                                                     'path': ' '.join(lib_dir)}
