@@ -11,6 +11,16 @@ from pie.qmc.calc import (
         get_driver
         )
 
+try:
+    import pytest_mpi
+    have_pytest_mpi = True
+except ImportError:
+    have_pytest_mpi = False
+
+
+comm = MPI.COMM_WORLD
+serial_test = comm.size == 1
+
 _data_dir  = os.path.abspath(os.path.dirname(__file__)) + '/reference_data'
 _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
 _tests     = [(d+'/input.json',d+'/reference.json') for d in _test_dirs]
@@ -37,6 +47,8 @@ def run_test_system(input_file, benchmark_file):
     comm.barrier()
 
 @pytest.mark.mpi
+@pytest.mark.skipif(serial_test, reason="Test should be run on multiple cores.")
+@pytest.mark.skipif(not have_pytest_mpi, reason="Test requires pytest-mpi plugin.")
 @pytest.mark.parametrize("input_dir, benchmark_dir", _tests)
 def test_system_mpi(input_dir, benchmark_dir):
     run_test_system(input_dir, benchmark_dir)
