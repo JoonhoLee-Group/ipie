@@ -939,4 +939,6 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     ovlps *= ovlps0
     walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]
     walker_batch.Gb *= (ovlps0 / ovlps)[:, None, None]
+    walker_batch.det_ovlpas[:,0] = signs_a*numpy.exp(logdets_a)
+    walker_batch.det_ovlpbs[:,0] = signs_b*numpy.exp(logdets_b)
     return ovlps
