@@ -289,11 +289,6 @@ class AFQMCBatch(object):
             abs = numpy.abs
             sum = numpy.sum
 
-        #import warnings
-        #warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
-
-
-
         if psi is not None:
             self.psi = psi
         self.setup_timers()
