@@ -38,7 +38,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walker_batch, trial)
         vbias_batch.imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
         return vbias_batch
-    else:    
+    else:
         vbias_batch_tmp = hamiltonian.chol_vecs.dot(Ga.T+Gb.T)
         vbias_batch_tmp = vbias_batch_tmp.T.copy()
         return vbias_batch_tmp
