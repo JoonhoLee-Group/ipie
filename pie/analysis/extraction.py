@@ -132,7 +132,10 @@ def get_sys_param(filename, param):
 
 def extract_test_data_hdf5(filename):
     """For use with testcode"""
-    data = extract_mixed_estimates(filename).drop(['Iteration', 'Time'], axis=1)[::10].to_dict(orient='list')
+    data = extract_mixed_estimates(filename)
+    # use list so can json serialise easily.
+    data = data.drop(['Iteration', 'Time'], axis=1)[::10].to_dict(orient='list')
+    data['sys_info'] = get_metadata(filename)['sys_info']
     try:
         mrdm = extract_rdm(filename, est_type='mixed', rdm_type='one_rdm')
     except (KeyError,TypeError,AttributeError):
@@ -148,16 +151,16 @@ def extract_test_data_hdf5(filename):
         im = numpy.imag(mrdm)
         re[numpy.abs(re)<1e-12] = 0.0
         im[numpy.abs(im)<1e-12] = 0.0
-        data['Gmixed_re'] = mrdm
-        data['Gmixed_im'] = mrdm
+        data['Gmixed_re'] = list(mrdm)
+        data['Gmixed_im'] = list(mrdm)
     if brdm is not None:
         brdm = brdm[::4].flatten().copy()
         re = numpy.real(brdm)
         im = numpy.imag(brdm)
         re[numpy.abs(re)<1e-12] = 0.0
         im[numpy.abs(im)<1e-12] = 0.0
-        data['Gbp_re'] = re
-        data['Gbp_im'] = im
+        data['Gbp_re'] = list(re)
+        data['Gbp_im'] = list(im)
     # if itcf is not None:
         # itcf = itcf[abs(itcf) > 1e-10].flatten()
         # data = pd.DataFrame(itcf)
