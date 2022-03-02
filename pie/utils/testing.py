@@ -73,6 +73,53 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
         init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
     return wfn, init_wfn
 
+def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False):
+    pass
+    # orbs = numpy.arange(nbasis)
+    # coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
+    # # Put in HF det
+    # assert nup == ndown
+    # aufbau_a = numpy.arange(nup)
+    # aufbau_b = numpy.arange(ndown)
+    # nex_a = numpy.zeros((ndet, nup), dtype=numpy.int32)
+    # nex_b = numpy.zeros((ndet, ndown), dtype=numpy.int32)
+    # occ_a[0] = aufbau_a
+    # occ_b[0] = aufbau_b
+    # ndet_per_level = ndet // (nup+ndown)
+    # for nex in range(nup+ndown):
+        # start = nex * ndet_per_level
+        # end   = min((nex+1) * ndet_per_level, ndet)
+        # for idet in range(start, end)
+            # non_unique = 0
+            # found_unique = False
+            # while not found_unique:
+                # new_det = numpy.sort(numpy.random.choice(nbasis, nup, replace=False))
+                # if (new_det == occ_a[:idet]).all(1).any():
+                    # non_unique += 1
+                # else:
+                    # occ_a[idet] = new_det
+                    # found_unique = True
+                # if non_unique > 10:
+                    # occ_a[idet] = new_det
+                    # break
+            # non_unique = 0
+            # found_unique = False
+            # while not found_unique:
+                # new_det = numpy.sort(numpy.random.choice(nbasis, ndown, replace=False))
+                # if (new_det == occ_a[:idet]).all(1).any():
+                    # non_unique += 1
+                # else:
+                    # occ_b[idet] = new_det
+                    # found_unique = True
+                # if non_unique > 10:
+                    # break
+    # wfn = (coeffs, occ_a, occ_b)
+    # if init:
+        # a = numpy.random.rand(nbasis*(nup+ndown))
+        # b = numpy.random.rand(nbasis*(nup+ndown))
+        # init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
+    # return wfn, init_wfn
+
 def get_random_wavefunction(nelec, nbasis):
     na = nelec[0]
     nb = nelec[1]
