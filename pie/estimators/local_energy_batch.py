@@ -382,17 +382,13 @@ def fill_same_spin_contribution_batched(
         ):
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
-    # print(nwalkers, ndet_level)
-    # print(cofactor_matrix.shape)
     accumulator = numpy.zeros((nwalkers, ndet_level), dtype=numpy.complex128)
-    # print(nexcit, cre.shape, anh.shape)
     for iex in range(nexcit):
         for jex in range(nexcit):
             p = cre[:, iex]
             q = anh[:, jex]
             for kex in range(iex+1,nexcit):
                 for lex in range(jex+1,nexcit):
-                    # print(iex,jex,kex,lex)
                     r = cre[:, kex]
                     s = anh[:, lex]
                     get_cofactor_matrix_4_batched(
@@ -424,11 +420,7 @@ def fill_same_spin_contribution_batched_contr(
         ):
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
-    # print(nwalkers, ndet_level)
-    # print(cofactor_matrix.shape)
     accumulator = numpy.zeros((nwalkers, ndet_level), dtype=numpy.complex128)
-    # print(nexcit, cre.shape, anh.shape)
-    import time
     t_cof = 0.0
     t_det = 0.0
     t_slice = 0.0
@@ -437,13 +429,12 @@ def fill_same_spin_contribution_batched_contr(
         for jex in range(nexcit):
             p = cre[:, iex]
             q = anh[:, jex]
-            a = chol_fact[:,q,p]
+            chol_a = chol_fact[:,q,p]
             for kex in range(iex+1,nexcit):
+                r = cre[:, kex]
+                chol_c = chol_fact[:,q,r]
                 for lex in range(jex+1,nexcit):
-                    # print(iex,jex,kex,lex)
-                    r = cre[:, kex]
                     s = anh[:, lex]
-                    start = time.time()
                     get_cofactor_matrix_4_batched(
                                     nwalkers,
                                     ndet_level,
@@ -454,26 +445,17 @@ def fill_same_spin_contribution_batched_contr(
                                     lex,
                                     dets_mat,
                                     cofactor_matrix)
-                    t_cof += time.time() -start
-                    start = time.time()
                     det_cofactor = (-1)**(kex+lex+iex+jex) * numpy.linalg.det(cofactor_matrix)
-                    t_det += time.time() - start
                     # Nw*Nd
-                    start = time.time()
-                    b = chol_fact[:,s,r]
-                    c = chol_fact[:,q,r]
-                    d = chol_fact[:,s,p]
-                    t_slice += time.time() - start
-                    start = time.time()
-                    contribution = numpy.einsum('wJx,wJx->wJ', a, b, optimize=True)
-                    contribution -= numpy.einsum('wJx,wJx->wJ', c, d, optimize=True)
-                    t_eins += time.time() - start
+                    chol_b = chol_fact[:,s,r]
+                    chol_d = chol_fact[:,s,p]
+                    contribution = numpy.einsum('wJx,wJx->wJ', chol_a, chol_b, optimize=True)
+                    contribution -= numpy.einsum('wJx,wJx->wJ', chol_c, chol_d, optimize=True)
                     # contribution = numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,p], chol_fact[:,s,r], optimize=True)
                     # contribution -= numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,r], chol_fact[:,s,p], optimize=True)
                     contribution *= det_cofactor
                     accumulator += contribution
 
-    # print(t_cof, t_det, t_slice, t_eins)
     buffer[:, excit_map[nexcit]] = accumulator
 
 def fill_opp_spin_factors_batched(
@@ -1000,17 +982,16 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     cont3 = 0.0
     for iexcit in range(1, max(na, nb)):
         ndets_a = len(trial.cre_ex_a[iexcit])
+        det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
+        # defined here for reuse
+        cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        get_det_matrix_batched(
+                iexcit,
+                trial.cre_ex_a[iexcit],
+                trial.anh_ex_a[iexcit],
+                walker_batch.G0a,
+                det_mat_a)
         if ndets_a > 0:
-            if iexcit > 2:
-                det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
-                # defined here for reuse
-                cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
-                get_det_matrix_batched(
-                        iexcit,
-                        trial.cre_ex_a[iexcit],
-                        trial.anh_ex_a[iexcit],
-                        walker_batch.G0a,
-                        det_mat_a)
             if iexcit == 1:
                 fill_opp_spin_factors_batched_singles(
                         trial.cre_ex_a[iexcit],
@@ -1067,16 +1048,16 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                         trial.excit_map_a
                                         )
         ndets_b = len(trial.cre_ex_b[iexcit])
+        det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
+        cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        get_det_matrix_batched(
+                iexcit,
+                trial.cre_ex_b[iexcit],
+                trial.anh_ex_b[iexcit],
+                walker_batch.G0b,
+                det_mat_b)
         if ndets_b > 0:
-            if iexcit > 2:
-                det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
-                cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
-                get_det_matrix_batched(
-                        iexcit,
-                        trial.cre_ex_b[iexcit],
-                        trial.anh_ex_b[iexcit],
-                        walker_batch.G0b,
-                        det_mat_b)
+            # if iexcit > 2:
             if iexcit == 1:
                 fill_opp_spin_factors_batched_singles(
                         trial.cre_ex_b[iexcit],
@@ -1138,7 +1119,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     energy_ss = numpy.einsum('wJ,wJ->w', alpha_ss_buffer, c_phasea_ovlpb, optimize=True)
     energy_ss += numpy.einsum('wJ,wJ->w', beta_ss_buffer, c_phaseb_ovlpa, optimize=True)
 
-    # cont3 = (numpy.sum(energy_os + energy_ss, axis=1))*(ovlp0/ovlp)
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
     e2b = cont1 + cont2_J + cont2_K + cont3
 
