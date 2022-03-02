@@ -89,10 +89,10 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                              dtype=numpy.complex128)
         self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
-        # self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
-                                 # dtype=numpy.complex128)
-        # self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
-                                 # dtype=numpy.complex128)
+        self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
+                                 dtype=numpy.complex128)
+        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
+                                 dtype=numpy.complex128)
 
         # Contains overlaps of the current walker with the trial wavefunction.
         greens_function_multi_det(self,trial)
