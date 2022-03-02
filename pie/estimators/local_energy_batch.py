@@ -23,9 +23,12 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial, iw = None):
             return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial, iw = iw)
     elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False):
         return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and not trial.optimized:
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
         return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walker_batch, trial, iw = iw)
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and trial.optimized == True:
+        # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial, iw = iw)
+        return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walker_batch, trial, iw = iw)
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, iw=None):
     assert(iw == None)

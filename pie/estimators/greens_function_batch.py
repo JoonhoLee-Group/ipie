@@ -33,9 +33,12 @@ def get_greens_function(trial):
         compute_greens_function = greens_function_single_det_batch
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         compute_greens_function = greens_function_multi_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and not trial.optimized:
         # compute_greens_function = greens_function_multi_det
         compute_greens_function = greens_function_multi_det_wicks
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks and trial.optimized:
+        # compute_greens_function = greens_function_multi_det
+        compute_greens_function = greens_function_multi_det_wicks_opt
     else:
         compute_greens_function = None
 

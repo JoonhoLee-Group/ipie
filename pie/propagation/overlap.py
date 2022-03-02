@@ -25,9 +25,11 @@ def get_calc_overlap(trial):
         calc_overlap = calc_overlap_single_det_batch
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         calc_overlap = calc_overlap_multi_det
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True:
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and not trial.optimized:
         # calc_overlap = calc_overlap_multi_det
         calc_overlap = calc_overlap_multi_det_wicks
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks and trial.optimized:
+        calc_overlap = calc_overlap_multi_det_wicks_opt
     else:
         calc_overlap = None
 
