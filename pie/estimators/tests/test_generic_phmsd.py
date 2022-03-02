@@ -51,7 +51,7 @@ def test_greens_function_wicks_opt():
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
-    wfn_2 = (ci[::10], oa[::10], ob[::10])
+    wfn_2 = (ci[::50], oa[::50], ob[::50])
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
     trial.calculate_energy(system, ham)
@@ -59,14 +59,31 @@ def test_greens_function_wicks_opt():
     numpy.random.seed(7)
     walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    options = {'hybrid': True}
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
+    prop = Continuous(system, ham, trial, qmc, options=options)
+
+    numpy.random.seed(7)
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
+        nwalkers})
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial, 0)
+        walker_batch_ref.reortho()
+    walker_batch_test.phia = walker_batch_ref.phia
+    walker_batch_test.phib = walker_batch_ref.phib
     nbasis = walker_batch_ref.Ga.shape[-1]
     from pie.propagation.overlap import calc_overlap_multi_det_wicks_opt
-    ovlp_ref = calc_overlap_multi_det_wicks_opt(walker_batch_ref, trial)
-    ovlps = greens_function_multi_det_wicks(walker_batch_ref, trial)
-    assert numpy.allclose(ovlp_ref, ovlps)
-    ovlps_ref = greens_function_multi_det_wicks_opt(walker_batch_test, trial)
+    ovlps_test = greens_function_multi_det_wicks_opt(walker_batch_test, trial)
+    ovlps_ref = greens_function_multi_det_wicks(walker_batch_ref, trial)
+    assert numpy.allclose(ovlps_ref, ovlps_test)
+    # ovlps_ref = greens_function_multi_det_wicks_opt(walker_batch_ref, trial)
     assert numpy.allclose(walker_batch_test.Ga, walker_batch_ref.Ga)
     assert numpy.allclose(walker_batch_test.Gb, walker_batch_ref.Gb)
+    assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_ref.det_ovlpas)
+    assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_ref.det_ovlpbs)
+    assert numpy.allclose(walker_batch_test.CIa, walker_batch_ref.CIa)
+    assert numpy.allclose(walker_batch_test.CIb, walker_batch_ref.CIb)
 
 # Move to propagator tests
 @pytest.mark.unit
