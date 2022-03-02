@@ -43,12 +43,20 @@ class MultiSlater(object):
         self.psia = self.psi[:,:,:system.nup]
         self.psib = self.psi[:,:,system.nup:]
 
-        self.split_trial_local_energy = options.get('split_trial_local_energy', False)
-        self.compute_trial_energy = options.get('compute_trial_energy', True)
+        self.split_trial_local_energy = get_input_value(
+                                            options,
+                                            'split_trial_local_energy',
+                                            default=False,
+                                            verbose=verbose)
+        self.compute_trial_energy = get_input_value(
+                                        options,
+                                        'compute_trial_energy',
+                                        default=True,
+                                        verbose=verbose)
 
-        if verbose:
-            print("# compute_trial_energy = {}".format(self.compute_trial_energy))
-            print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
+        # if verbose:
+            # print("# compute_trial_energy = {}".format(self.compute_trial_energy))
+            # print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
 
         if self.split_trial_local_energy:
             if verbose:
@@ -69,12 +77,15 @@ class MultiSlater(object):
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
 
-        self.ndets = options.get('ndets', len(self.coeffs))
-        if self.verbose:
-            print("# Setting ndets: {}".format(self.ndets))
+        self.ndets = get_input_value(
+                        options,
+                        'ndets',
+                        default=len(self.coeffs),
+                        verbose=verbose)
+        # if self.verbose:
+            # print("# Setting ndets: {}".format(self.ndets))
 
         if self.ndets == 1:
-            # self.psi = self.psi[0]
             self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
                                        system.nup, system.ndown)
             self.G = numpy.array(self.G, dtype = numpy.complex128)
@@ -95,7 +106,17 @@ class MultiSlater(object):
             else:
                 self.init = self.psi.copy()
 
-        self.wicks = options.get('wicks', False)
+        self.wicks = get_input_value(
+                        options,
+                        'wicks',
+                        default=False,
+                        verbose=verbose
+                        )
+        self.optimized = get_input_value(
+                            options,
+                            'optimized',
+                            default=False,
+                            verbose=verbose)
         if self.wicks: # this is for Wick's theorem
         # if True: # this is for Wick's theorem
             if verbose:
