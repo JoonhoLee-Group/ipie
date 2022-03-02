@@ -653,7 +653,7 @@ def fill_opp_spin_factors_batched_triples_chol(
     accumulator += chol_factor[:,u,t] * cofac[:,:,None]
     spin_buffer[:, excit_map[3]] = accumulator
 
-def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial, iw=None):
+def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_batch, trial, iw=None):
     assert iw == None
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
@@ -907,7 +907,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     walker_energies[:,2] = e2b
     return walker_energies
 
-def local_energy_multi_det_trial_wicks_batch_opt_big_mem(system, ham, walker_batch, trial, iw=None):
+def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial, iw=None):
     assert iw == None
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
