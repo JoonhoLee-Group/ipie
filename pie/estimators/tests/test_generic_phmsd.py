@@ -24,6 +24,7 @@ from pie.estimators.greens_function_batch import (
 from pie.estimators.local_energy_batch import (
         local_energy_multi_det_trial_batch,
         local_energy_multi_det_trial_wicks_batch,
+        local_energy_multi_det_trial_wicks_batch_opt_low_mem,
         local_energy_multi_det_trial_wicks_batch_opt,
         fill_opp_spin_factors_batched,
         fill_same_spin_contribution_batched
@@ -55,14 +56,11 @@ def test_greens_function_wicks_opt():
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
     trial.calculate_energy(system, ham)
-    options = {'hybrid': True}
     numpy.random.seed(7)
     walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_ref2 = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     options = {'hybrid': True}
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
         nwalkers})
@@ -72,10 +70,14 @@ def test_greens_function_wicks_opt():
         walker_batch_ref.reortho()
     walker_batch_test.phia = walker_batch_ref.phia
     walker_batch_test.phib = walker_batch_ref.phib
+    walker_batch_ref2.phia = walker_batch_ref.phia
+    walker_batch_ref2.phib = walker_batch_ref.phib
     nbasis = walker_batch_ref.Ga.shape[-1]
     from pie.propagation.overlap import calc_overlap_multi_det_wicks_opt
     ovlps_test = greens_function_multi_det_wicks_opt(walker_batch_test, trial)
     ovlps_ref = greens_function_multi_det_wicks(walker_batch_ref, trial)
+    ovlps_ref2 = greens_function_multi_det(walker_batch_ref2, trial)
+    print(numpy.linalg.norm(walker_batch_ref.Ga-walker_batch_ref2.Ga))
     assert numpy.allclose(ovlps_ref, ovlps_test)
     # ovlps_ref = greens_function_multi_det_wicks_opt(walker_batch_ref, trial)
     assert numpy.allclose(walker_batch_test.Ga, walker_batch_ref.Ga)
@@ -121,7 +123,6 @@ def test_cofactor_matrix_4():
     cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-2, nexcit-2), dtype=numpy.complex128)
     from pie.propagation.wicks_kernels import get_cofactor_matrix_4_batched
     from pie.utils.linalg import minor_mask4
-    # print(minor_mask4(det_mat[0,0], 0, 0, 1, 1))
     import itertools
     for iex, jex, kex, lex in itertools.product(range(nexcit), repeat=4):
         if kex > iex and lex > jex:
@@ -169,9 +170,8 @@ def test_phmsd_local_energy():
     numpy.random.seed(7)
     nmo = 12
     nelec = (7,7)
-    nwalkers = 5
+    nwalkers = 10
     nsteps = 100
-    ndets = 5
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
@@ -183,31 +183,36 @@ def test_phmsd_local_energy():
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
-    # print(trial.ndet_a)
-    # print(trial.ndet_b)
     trial.calculate_energy(system, ham)
-    options = {'hybrid': True}
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    trial.half_rotate(system, ham)
 
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
         nwalkers})
+    options = {'hybrid': True}
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    numpy.random.seed(7)
     for i in range (nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
 
-    greens_function_multi_det_wicks(walker_batch, trial) # compute green's function using Wick's theorem
-    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial)
+    import copy
+    walker_batch_test = copy.deepcopy(walker_batch)
+    walker_batch_test2 = copy.deepcopy(walker_batch)
     greens_function_multi_det(walker_batch, trial)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial)
+    greens_function_multi_det_wicks(walker_batch_test2, trial)
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test, trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham,
+            walker_batch_test, trial)
+    e_wicks_opt_low_mem = local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham,
+            walker_batch_test, trial)
     e_dumb = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
 
-    # print(e_dumb[0])
     assert numpy.allclose(e_dumb, e_wicks)
     assert numpy.allclose(e_dumb, e_wicks_opt)
+    assert numpy.allclose(e_dumb, e_wicks_opt_low_mem)
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
@@ -635,7 +640,7 @@ def test_same_spin_batched():
                 # if jdet == 80:
                     # print(opp_spin[iwalker,jdet], Laa[7,6,0], Lbb[9, 5, 0])
 
-    print("here: ", cont3, sum(opp_spin[0]), sum(ss_alpha[0]), sum(ss_beta[0]), sum(ss_alpha[0]+ss_beta[0]+opp_spin[0]))
+    # print("here: ", cont3, sum(opp_spin[0]), sum(ss_alpha[0]), sum(ss_beta[0]), sum(ss_alpha[0]+ss_beta[0]+opp_spin[0]))
     # print(ss_alpha[1])
     # print(ss_beta[1])
     G0a = walker_batch.G0a
@@ -774,9 +779,9 @@ def test_same_spin_batched():
         # energy_ss += beta_ss_buffer
 
     # print(
-    print(sum(energy_os[0]+energy_aa[0]+energy_bb[0]))
-    print("this: ", sum(energy_os[0]), sum(energy_aa[0]), sum(energy_bb[0]))
-    print("this: ", sum(opp_spin[0]), sum(ss_alpha[0]), sum(ss_beta[0]))
+    # print(sum(energy_os[0]+energy_aa[0]+energy_bb[0]))
+    # print("this: ", sum(energy_os[0]), sum(energy_aa[0]), sum(energy_bb[0]))
+    # print("this: ", sum(opp_spin[0]), sum(ss_alpha[0]), sum(ss_beta[0]))
     # print(energy_os+energy_aa+energy_bb)
     assert numpy.allclose(energy_aa, ss_alpha)
     assert numpy.allclose(energy_bb, ss_beta)
