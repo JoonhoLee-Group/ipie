@@ -868,9 +868,12 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
     ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
     inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
-    G0a = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phia, inv_ovlps_a, trial.psi0a.conj(), optimize=True)
+    walker_batch.Ghalfa = numpy.einsum('wmi,wij->wjm', walker_batch.phia, inv_ovlps_a, optimize=True)
+    G0a = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfa, trial.psi0a.conj(), optimize=True)
+    # something not correct here.
     inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
-    G0b = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phib, inv_ovlps_b, trial.psi0b.conj(), optimize=True)
+    walker_batch.Ghalfb = numpy.einsum('wmi,wij->wjm', walker_batch.phib, inv_ovlps_b, optimize=True)
+    G0b = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfb, trial.psi0b.conj(), optimize=True)
     walker_batch.G0a = G0a
     walker_batch.G0b = G0b
     walker_batch.Q0a = numpy.eye(nbasis)[None, :] - G0a
