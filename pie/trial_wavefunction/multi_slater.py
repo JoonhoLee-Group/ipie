@@ -119,7 +119,7 @@ class MultiSlater(object):
             # This is an overestimate because we don't know number of active
             # electrons in trial from read in.
             # TODO work this out.
-            max_excit = max(nexcit_a, nexcit_b)
+            max_excit = max(nexcit_a, nexcit_b) + 1
             cre_ex_a = [[] for _ in range(max_excit)]
             cre_ex_b = [[] for _ in range(max_excit)]
             anh_ex_a = [[] for _ in range(max_excit)]
