@@ -202,7 +202,8 @@ class MultiSlater(object):
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
-        if self.ortho_expansion: # this is for phmsd
+        self.compute_opdm = options.get('compute_opdm', True)
+        if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
