@@ -80,13 +80,18 @@ def kinetic_spin_real_batch(phi, bt2, H1diag=False):
         einsum = cupy.einsum
     else:
         einsum = numpy.einsum
-    
+
     # Assuming that our walker is in UHF form.
-    if (H1diag):
+    if H1diag:
         phi[:,:] = einsum("ii,wij->ij", bt2,phi)
     else:
-        phi = bt2.dot(phi)
-        phi = phi.transpose(1,0,2)
+        if is_cupy(bt2):
+            phi = bt2.dot(phi)
+            phi = phi.transpose(1,0,2)
+        else:
+            # Loop is 100 times faster on CPU for FeP benchmark
+            for iw in range(phi.shape[0]):
+                phi[iw] = numpy.dot(bt2, phi[iw])
 
     return phi
 
