@@ -435,7 +435,7 @@ def compute_determinants_batched(G0a, G0b, trial):
     dets_a, dets_b = get_dets_triple_excitation_batched(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[3]] = dets_a
     dets_b_full[:,trial.excit_map_b[3]] = dets_b
-    for iexcit in range(4, max(na, nb)):
+    for iexcit in range(4, trial.max_excite+1):
         dets_a, dets_b = get_dets_nfold_excitation_batched(iexcit, G0a, G0b, trial)
         dets_a_full[:,trial.excit_map_a[iexcit]] = dets_a
         dets_b_full[:,trial.excit_map_b[iexcit]] = dets_b
