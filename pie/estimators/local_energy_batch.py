@@ -746,7 +746,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
         beta_os_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
         alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
         beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-        for iexcit in range(1, max(na, nb)):
+        for iexcit in range(1, trial.max_excite+1):
             ndets_a = len(trial.cre_ex_a[iexcit])
             det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
             get_det_matrix_batched(
@@ -994,7 +994,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    for iexcit in range(1, max(na, nb)):
+    for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
         det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
         # defined here for reuse

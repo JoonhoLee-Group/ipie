@@ -920,7 +920,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    for iexcit in range(4, max(na, nb)):
+    for iexcit in range(4, trial.max_excite+1):
         build_CI_nfold_excitation(
             iexcit,
             walker_batch,
