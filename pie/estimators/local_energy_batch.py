@@ -956,10 +956,13 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     nb = walker_batch.ndown
     for x in range(nchol):
         Lmn = ham.chol_vecs[x].reshape((nbasis, nbasis))
-        LGL = numpy.einsum('wsr,pr,sq->wpq', G0a, Lmn, Lmn, optimize=True)
+        # LGL = numpy.einsum('wsr,pr,sq->wpq', G0a, Lmn, Lmn, optimize=True)
+        LGL = [(Lmn @ G0a[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
         cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
 
-        LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
+        # LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
+        # LGL = Lmn.dot(G0b.T).T.dot(Lmn)
+        LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
         cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGb, optimize=True)
 
     cont2_Kaa *= (ovlp0/ovlp)
