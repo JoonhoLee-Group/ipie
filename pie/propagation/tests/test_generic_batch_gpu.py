@@ -3,7 +3,7 @@ import numpy
 from pie.utils.misc import dotdict
 from pie.trial_wavefunction.multi_slater import MultiSlater
 from pie.systems.generic import Generic
-from pie.propagation.operations import kinetic_real
+from pie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from pie.propagation.continuous import Continuous
 from pie.propagation.force_bias import construct_force_bias_batch
 from pie.hamiltonians.generic import Generic as HamGeneric
@@ -41,6 +41,8 @@ def test_hybrid_batch():
     trial = MultiSlater(system, ham, wfn, init=init)
     trial.half_rotate(system, ham)
     trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
     trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
@@ -66,7 +68,6 @@ def test_hybrid_batch():
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
     if not no_gpu:
-        print("casting to cupy")
         prop.cast_to_cupy()
         ham.cast_to_cupy()
         trial.cast_to_cupy()
@@ -77,20 +78,22 @@ def test_hybrid_batch():
     ovlps_batch = []
     for i in range (nsteps):
         ovlps_batch += [prop.compute_greens_function(walker_batch, trial)]
-        for iw in range(walker_batch.nwalkers):
-            kinetic_real(walker_batch.phi[iw], system, prop.propagator.BH1)
+        walker_batch.phia = kinetic_spin_real_batch(walker_batch.phia, prop.propagator.BH1[0])
+        walker_batch.phib = kinetic_spin_real_batch(walker_batch.phib, prop.propagator.BH1[1])
         walker_batch.reortho()
 
-    ovlps_batch = cupy.array(ovlps_batch)
-    ovlps_batch = cupy.asnumpy(ovlps_batch)
-
-    phi_batch = cupy.array(walker_batch.phi)
+    phi_batch = cupy.array(walker_batch.phia)
     phi_batch = cupy.asnumpy(phi_batch)
 
     #assert numpy.allclose(ovlps, cupy.asnumpy(ovlps_batch))
 
     for iw in range(nwalkers):
-        assert numpy.allclose(phi_batch[iw], walkers[iw].phi)
+        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:,:system.nup])
+
+    phi_batch = cupy.array(walker_batch.phib)
+    phi_batch = cupy.asnumpy(phi_batch)
+    for iw in range(nwalkers):
+        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:,system.nup:])
 
 if __name__ == '__main__':
     test_hybrid_batch()
