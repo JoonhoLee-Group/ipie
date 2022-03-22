@@ -52,7 +52,7 @@ class WalkerBatch(object):
         self.detR = [1.0 for iw in range(self.nwalkers)]
         self.detR_shift = [0.0 for iw in range(self.nwalkers)]
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
-        self.log_shift = [0.0 for iw in range(self.nwalkers)]
+        self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
         # Number of propagators to store for back propagation / ITCF.
         num_propg = [walker_opts.get('num_propg', 1) for iw in range(self.nwalkers)]
@@ -95,6 +95,7 @@ class WalkerBatch(object):
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
         self.ot = cupy.asarray(self.ot)
         self.ovlp = cupy.asarray(self.ovlp)
+        self.log_shift = cupy.asarray(self.log_shift)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
