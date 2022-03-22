@@ -1263,26 +1263,27 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
 
-    GhalfaT_batch = walker_batch.Ghalfa.transpose(0,2,1).copy() # nw x nbasis x nocc
-    GhalfbT_batch = walker_batch.Ghalfb.transpose(0,2,1).copy() # nw x nbasis x nocc
+    # GhalfaT_batch = walker_batch.Ghalfa.transpose(0,2,1).copy() # nw x nbasis x nocc
+    # GhalfbT_batch = walker_batch.Ghalfb.transpose(0,2,1).copy() # nw x nbasis x nocc
 
     Ta = zeros((nwalkers, nalpha,nalpha), dtype=numpy.complex128)
     Tb = zeros((nwalkers, nbeta,nbeta), dtype=numpy.complex128)
 
-    exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    # exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    # breakpoint()
     for x in range(nchol):  # write a cython function that calls blas for this.
         rmi_a = trial._rchola[x].reshape((nalpha,nbasis))
         rmi_b = trial._rcholb[x].reshape((nbeta,nbasis))
-        if (isrealobj(trial._rchola)):
-            Ta[:,:,:].real = rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2)
-            Ta[:,:,:].imag = rmi_a.dot(GhalfaT_batch.imag).transpose(1,0,2)
-            Tb[:,:,:].real = rmi_b.dot(GhalfbT_batch.real).transpose(1,0,2)
-            Tb[:,:,:].imag = rmi_b.dot(GhalfbT_batch.imag).transpose(1,0,2)
-        else:
-            Ta[:,:,:] = rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
-            Tb[:,:,:] = rmi_b.dot(GhalfbT_batch).transpose(1,0,2)
+        # if (isrealobj(trial._rchola)):
+            # Ta += rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2) + 1j * rmi_a.dot(GhalfaT_batch.imag).transpose(1,0,2)
+            # Tb += rmi_b.dot(GhalfbT_batch.real).transpose(1,0,2) + 1j * rmi_b.dot(GhalfbT_batch.imag).transpose(1,0,2)
+        # else:
+            # Ta += rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
+            # Tb += rmi_b.dot(GhalfbT_batch).transpose(1,0,2)
+        Ta += walker_batch.Ghalfa @ rmi_a.T
+        Tb += walker_batch.Ghalfb @ rmi_b.T
 
-        exx += einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
+    exx = einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
 
     e2b = 0.5 * (ecoul - exx)
 
