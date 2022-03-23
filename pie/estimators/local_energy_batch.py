@@ -1269,7 +1269,7 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
     Ta = zeros((nwalkers, nalpha,nalpha), dtype=numpy.complex128)
     Tb = zeros((nwalkers, nbeta,nbeta), dtype=numpy.complex128)
 
-    # exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    exx  = zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
     # breakpoint()
     for x in range(nchol):  # write a cython function that calls blas for this.
         rmi_a = trial._rchola[x].reshape((nalpha,nbasis))
@@ -1280,10 +1280,10 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
         # else:
             # Ta += rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
             # Tb += rmi_b.dot(GhalfbT_batch).transpose(1,0,2)
-        Ta += walker_batch.Ghalfa @ rmi_a.T
-        Tb += walker_batch.Ghalfb @ rmi_b.T
+        Ta = walker_batch.Ghalfa @ rmi_a.T
+        Tb = walker_batch.Ghalfb @ rmi_b.T
 
-    exx = einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
+        exx += einsum("wij,wji->w",Ta,Ta,optimize=True) + einsum("wij,wji->w",Tb,Tb,optimize=True)
 
     e2b = 0.5 * (ecoul - exx)
 
