@@ -239,7 +239,7 @@ class GenericContinuous(object):
             VHS = xshifted.real.dot(hamiltonian.chol_vecs) + 1.j * xshifted.imag.dot(hamiltonian.chol_vecs)
         else:
             VHS = xshifted.dot(hamiltonian.chol_vecs)
-        VHS = VHS.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
+        VHS = VHS.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis)
         return  self.isqrt_dt * VHS
 
 def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=False):
