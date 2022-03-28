@@ -1,4 +1,9 @@
-import numpy as np
+try:
+    import cupy as np
+    _gpu = True
+except ImportError:
+    import numpy as np
+    _gpu = False
 import time
 
 from pie.systems.generic import Generic
@@ -70,7 +75,7 @@ def time_ghalf():
             out[iw] = np.dot(b[iw], a[iw].T)
 
     def einsum_based(a, b, out):
-        np.einsum('wij,wmj->wim', b, a, optimize=True, out=out)
+        out = np.einsum('wij,wmj->wim', b, a, optimize=True)
 
     def dot_based(a, b, out):
         nw = a.shape[0]
@@ -102,7 +107,7 @@ def time_gfull():
             out[iw] = np.dot(b.conj(), a[iw])
 
     def einsum_based(a, b, out):
-        np.einsum('mi,win->wmn', b.conj(), a, optimize=True, out=out)
+        out = np.einsum('mi,win->wmn', b.conj(), a, optimize=True)
 
     # Ghalf construction
     for nwalkers in range(1, 40, 5):
@@ -129,6 +134,8 @@ def time_routines():
         ham = HamGeneric(h1e=np.array([h1e,h1e]),
                          chol=chol.reshape((naux,nmo*nmo)).T.copy(),
                          ecore=0)
+        if _gpu:
+            ham.cast_to_cupy()
         trial = MultiSlater(system, ham, wfn)
         trial.psia = trial.psi[0,:,:nocc].copy()
         trial.psib = trial.psi[0,:,nocc:].copy()
@@ -143,8 +150,14 @@ def time_routines():
         print(nwalkers, (time.time() - start)/loop)
 
 if __name__ == '__main__':
+    tmp = np.dot(np.random.random((100,100)), np.eye(100))
+    print(">>>> Overlap <<<<<")
     time_overlap()
+    print(">>>> Dets <<<<<")
     time_dets()
-    # time_ghalf()
-    # time_gfull()
-    # time_routines()
+    print(">>>> Ghalf <<<<<")
+    time_ghalf()
+    print(">>>> Gfull <<<<<")
+    time_gfull()
+    print(">>>> Actual Routines <<<<<")
+    time_routines()
