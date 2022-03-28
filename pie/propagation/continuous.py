@@ -162,6 +162,57 @@ class Continuous(object):
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
 
+    def apply_exponential_batch(self, phi, VHS, debug=False):
+        """Apply exponential propagator of the HS transformation
+        Parameters
+        ----------
+        system :
+            system class
+        phi : numpy array
+            a state
+        VHS : numpy array
+            HS transformation potential
+        Returns
+        -------
+        phi : numpy array
+            Exp(VHS) * phi
+        """
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            copy = cupy.copy
+            copyto = cupy.copyto
+            zeros = cupy.zeros
+            einsum = cupy.einsum
+        else:
+            copy = numpy.copy
+            copyto = numpy.copyto
+            zeros = numpy.zeros
+            einsum = numpy.einsum
+
+        if debug:
+            copy = numpy.copy(phi)
+            c2 = scipy.linalg.expm(VHS).dot(copy)
+
+        # Temporary array for matrix exponentiation.
+        Temp = zeros(phi.shape, dtype=phi.dtype)
+
+        copyto(Temp, phi)
+        if is_cupy(VHS):
+            for n in range(1, self.exp_nmax+1):
+                Temp = einsum('wik,wkj->wij', VHS, Temp, optimize=True) / n
+                phi += Temp
+        else:
+            for iw in range(phi.shape[0]):
+                for n in range(1, self.exp_nmax+1):
+                    Temp[iw] = VHS[iw].dot(Temp[iw]) / n
+                    phi[iw] += Temp[iw]
+
+
+        if debug:
+            print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+        return phi
+
     def two_body_propagator(self, walker, system, hamiltonian, trial):
         """It appliese the two-body propagator
         Parameters
@@ -366,11 +417,11 @@ class Continuous(object):
         self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
         start_time = time.time()
-        for iw in range (walker_batch.nwalkers):
+        # for iw in range (walker_batch.nwalkers):
             # 2.b Apply two-body
-            walker_batch.phia[iw] = self.apply_exponential(walker_batch.phia[iw], VHS[iw])
-            if (walker_batch.ndown > 0 and not walker_batch.rhf):
-                walker_batch.phib[iw] = self.apply_exponential(walker_batch.phib[iw], VHS[iw])
+        walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
+        if (walker_batch.ndown > 0 and not walker_batch.rhf):
+            walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
