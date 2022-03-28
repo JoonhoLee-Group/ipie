@@ -1,5 +1,7 @@
 import numpy
 import sys
+import time
+
 from pie.systems.hubbard_holstein import HubbardHolstein
 from pie.hamiltonians.hubbard import Hubbard
 from pie.hamiltonians.ueg import UEG
@@ -27,9 +29,12 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             if comm.rank == 0:
                 print("# Error: integrals not specfied.")
                 sys.exit()
+        start = time.time()
         hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
                                                            comm=comm,
                                                            verbose=verbose)
+        if verbose:
+            print("# Time to read integrals: {:.6f}".format(time.time()-start))
         ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
     elif ham_opts['name'] == 'Hubbard':
         ham = Hubbard(ham_opts, verbose)
@@ -96,12 +101,12 @@ def get_generic_integrals(filename, comm=None, verbose=False):
         comm.Barrier()
         h1e_mod_shmem = get_shared_array(comm, hcore_shmem.shape, dtype)
         if comm.rank == 0:
-            construct_h1e_mod(chol_shmem.T, hcore_shmem, h1e_mod_shmem)
+            construct_h1e_mod(chol_shmem, hcore_shmem, h1e_mod_shmem)
         comm.Barrier()
         return hcore_shmem, chol_shmem, h1e_mod_shmem, enuc
     else:
         hcore, chol, enuc = read_integrals(filename)
         h1 = numpy.array([hcore, hcore])
         h1e_mod = numpy.zeros(h1.shape, dtype=h1.dtype)
-        construct_h1e_mod(chol.T, h1, h1e_mod)
+        construct_h1e_mod(chol, h1, h1e_mod)
         return h1, chol, h1e_mod, enuc

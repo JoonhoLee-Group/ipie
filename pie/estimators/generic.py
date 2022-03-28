@@ -344,9 +344,9 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
             rmi_b = rcholb[x].reshape((nbeta,nbasis))
-            Ta[:,:].real = rmi_a.dot(GhalfaT.real) 
+            Ta[:,:].real = rmi_a.dot(GhalfaT.real)
             Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
-            Tb[:,:].real = rmi_b.dot(GhalfbT.real) 
+            Tb[:,:].real = rmi_b.dot(GhalfbT.real)
             Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
             exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
     else:
@@ -386,16 +386,18 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
-    
+
     # Xa = numpy.dot(ham.chol_vecs, Ga.ravel())
     # Xb = numpy.dot(ham.chol_vecs, Gb.ravel())
 
     if (numpy.isrealobj(ham.chol_vecs)):
-        Xa = ham.chol_vecs.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
-        Xb = ham.chol_vecs.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
+        # Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
+        # Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
+        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.T.dot(Ga.imag.ravel())
+        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol_vecs.dot(Ga.ravel())
-        Xb = ham.chol_vecs.dot(Gb.ravel())
+        Xa = ham.chol_vecs.T.dot(Ga.ravel())
+        Xb = ham.chol_vecs.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
@@ -419,20 +421,20 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (numpy.isrealobj(ham.chol_vecs)):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[x].reshape((nbasis,nbasis))
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis,nbasis))
             T[:,:].real = GaT.real.dot(Lmn)
             T[:,:].imag = GaT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
             T[:,:].real = GbT.real.dot(Lmn)
             T[:,:].imag = GbT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[x].reshape((nbasis,nbasis))
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis,nbasis))
             T[:,:] = GaT.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
             T[:,:] = GbT.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
 
     e2b = 0.5 * (ecoul - exx)
 

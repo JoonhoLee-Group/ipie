@@ -413,7 +413,7 @@ class Continuous(object):
 
         # Operator terms contributing to propagator.
         start_time = time.time()
-        VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted)
+        VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
         self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
         start_time = time.time()

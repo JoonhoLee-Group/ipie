@@ -60,7 +60,7 @@ def test_phmsd_force_bias():
         denom += ovlp * trial.coeffs[idet].conj()
 
     G /= denom
-    fb_ref[:] = - prop.sqrt_dt*(1.j*numpy.dot(ham.chol_vecs, G.ravel())- prop.mf_shift)
+    fb_ref[:] = - prop.sqrt_dt*(1.j*numpy.dot(ham.chol_vecs.T, G.ravel())- prop.mf_shift)
     
     assert numpy.allclose(fb_ref, fb_slow)
     assert numpy.allclose(fb_ref, fb_multi_det)
