@@ -664,11 +664,12 @@ def test_same_spin_batched():
     c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
     cphase_ab = cphase_a * trial.phase_b
     out = numpy.zeros_like(ovlpb)
-    chol_vecs = ham.chol_vecs.reshape((-1, nbasis, nbasis))
+    chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, -1))
     na = walker_batch.nup
     nb = walker_batch.ndown
-    for ix, Lx in enumerate(chol_vecs):
+    for ix in range(nchol):
         # print(Q0a.shape, G0a.shape, Lx.shape)
+        Lx = chol_vecs[:,:,ix]
         Laa = numpy.einsum('wiq,wpj,ij->wqp', Q0a, G0a, Lx, optimize=True)
         Lbb = numpy.einsum('wiq,wpj,ij->wqp', Q0b, G0b, Lx, optimize=True)
         # Same-spin contributions
