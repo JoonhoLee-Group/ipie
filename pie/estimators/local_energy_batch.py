@@ -662,8 +662,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     CIb = walker_batch.CIb
 
     # contribution 1 (disconnected)
-    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs.T)
-    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs.T)
+    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
+    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
     ecoul = numpy.einsum("wx,wx->w", Xa, Xa, optimize=True)
     ecoul += numpy.einsum("wx,wx->w", Xb, Xb, optimize=True)
     ecoul += 2. * numpy.einsum("wx,wx->w", Xa, Xb, optimize=True)
@@ -672,7 +672,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     Tb = numpy.zeros((nwalkers, nbasis, nbasis), dtype=numpy.complex128)
     exx  = numpy.zeros(nwalkers, dtype=numpy.complex128)  # we will iterate over cholesky index to update Ex energy for alpha and beta
     for x in range(nchol):  # write a cython function that calls blas for this.
-        chol_x = ham.chol_vecs[x].reshape((nbasis, nbasis))
+        chol_x = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
         Ta[:,:,:] = numpy.dot(G0a, chol_x.T)
         Tb[:,:,:] = numpy.dot(G0b, chol_x.T)
         exx += (
@@ -683,8 +683,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     cont1 = 0.5 * (ecoul - exx)
     P0 = G0a + G0b
 
-    LXa = numpy.einsum("wx,xm->wm", Xa, ham.chol_vecs, optimize=True)
-    LXb = numpy.einsum("wx,xm->wm", Xb, ham.chol_vecs, optimize=True)
+    LXa = numpy.einsum("wx,mx->wm", Xa, ham.chol_vecs, optimize=True)
+    LXb = numpy.einsum("wx,mx->wm", Xb, ham.chol_vecs, optimize=True)
     LXa = LXa.reshape((nwalkers, nbasis, nbasis))
     LXb = LXb.reshape((nwalkers, nbasis, nbasis))
 
@@ -715,7 +715,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     na = walker_batch.nup
     nb = walker_batch.ndown
     for x in range(nchol):
-        Lmn = ham.chol_vecs[x].reshape((nbasis, nbasis))
+        Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
         LGL = numpy.einsum('pr,wsr,sq->wpq', Lmn, G0a, Lmn, optimize=True) # merge this with energy 0 eval
         cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
 
@@ -923,8 +923,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
     P0 = G0a + G0b
 
-    LXa = numpy.einsum("wx,xm->wm", Xa, ham.chol_vecs, optimize=True)
-    LXb = numpy.einsum("wx,xm->wm", Xb, ham.chol_vecs, optimize=True)
+    LXa = numpy.einsum("wx,mx->wm", Xa, ham.chol_vecs, optimize=True)
+    LXb = numpy.einsum("wx,mx->wm", Xb, ham.chol_vecs, optimize=True)
     LXa = LXa.reshape((nwalkers, nbasis, nbasis))
     LXb = LXb.reshape((nwalkers, nbasis, nbasis))
 
@@ -955,7 +955,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     na = walker_batch.nup
     nb = walker_batch.ndown
     for x in range(nchol):
-        Lmn = ham.chol_vecs[x].reshape((nbasis, nbasis))
+        Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
         # LGL = numpy.einsum('wsr,pr,sq->wpq', G0a, Lmn, Lmn, optimize=True)
         LGL = [(Lmn @ G0a[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
         cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
