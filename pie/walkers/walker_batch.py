@@ -96,6 +96,7 @@ class WalkerBatch(object):
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
         self.ot = cupy.asarray(self.ot)
         self.ovlp = cupy.asarray(self.ovlp)
+        self.log_shift = cupy.asarray(self.log_shift)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:

@@ -63,11 +63,11 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
         P0 = G0[0] + G0[1]
-        Xa = ham.chol_vecs.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
-        Xb = ham.chol_vecs.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
-
-        LXa = numpy.einsum("x,xm->m", Xa, ham.chol_vecs, optimize=True)
-        LXb = numpy.einsum("x,xm->m", Xb, ham.chol_vecs, optimize=True)
+        Xa = ham.chol_vecs.T.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
+        Xb = ham.chol_vecs.T.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
+        
+        LXa = numpy.einsum("mx,x->m", ham.chol_vecs, Xa, optimize=True)
+        LXb = numpy.einsum("mx,x->m", ham.chol_vecs, Xb, optimize=True)
         LXa = LXa.reshape((nbasis,nbasis))
         LXb = LXb.reshape((nbasis,nbasis))
 
@@ -84,8 +84,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         # Second, Exchange-like term
         cont2_Kaa = 0.0 + 0.0j
         cont2_Kbb = 0.0 + 0.0j
-        for x in range(nchol):
-            Lmn = ham.chol_vecs[x,:].reshape((nbasis, nbasis))
+        for x in range(nchol): 
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
             LGL = Lmn.dot(G0a.T).dot(Lmn)
             cont2_Kaa -= numpy.sum(LGL*QCIGa)
 
@@ -97,8 +97,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,xij->qpx",Q0a, G0a, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,xij->qpx",Q0b, G0b, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
+        Laa = numpy.einsum("iq,pj,ijx->xqp",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,ijx->xqp",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
 
         cont3 = 0.0 + 0.0j
 

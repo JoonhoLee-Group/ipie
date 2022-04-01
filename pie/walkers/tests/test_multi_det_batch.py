@@ -140,8 +140,8 @@ def test_walker_energy():
     greens_function_multi_det(walker, trial)
     e_dumb = local_energy_multi_det_trial_batch(system, ham, walker, trial)
 
-    assert e_wicks[:,0] == pytest.approx(energies)
     assert e_dumb[:,0] == pytest.approx(energies)
+    assert e_wicks[:,0] == pytest.approx(energies)
 
     # e = local_energy_batch(system, ham, walker, trial, iw=0)
     # assert e[:,0] == pytest.approx(energies[0])

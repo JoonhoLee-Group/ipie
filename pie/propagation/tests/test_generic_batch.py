@@ -315,6 +315,48 @@ def test_hybrid_batch():
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
         assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:,nelec[0]:])
 
+@pytest.mark.unit
+def test_vhs():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6,5)
+    nwalkers = 8
+    nsteps = 25
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0)
+    # Test PH type wavefunction.
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
+    trial = MultiSlater(system, ham, wfn, init=init)
+    trial.half_rotate(system, ham)
+    trial.psi = trial.psi[0]
+    trial.psia = trial.psia[0]
+    trial.psib = trial.psib[0]
+
+    numpy.random.seed(7)
+
+    trial.calculate_energy(system, ham)
+    options = {'hybrid': True}
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
+    prop = Continuous(system, ham, trial, qmc, options=options)
+
+    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
+    xshifted = numpy.random.normal(0.0, 1.0,
+            nwalkers*ham.nfields).reshape(nwalkers, ham.nfields)
+    vhs_serial = []
+    for iw in range(nwalkers):
+        vhs_serial.append(prop.propagator.construct_VHS(ham, xshifted[iw]))
+
+    numpy.random.seed(7)
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers': nwalkers})
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    vhs_batch = prop.propagator.construct_VHS_batch(ham, xshifted.T.copy())
+    for iw in range(nwalkers):
+        assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
+
 if __name__ == '__main__':
     test_overlap_rhf_batch()
     test_overlap_batch()

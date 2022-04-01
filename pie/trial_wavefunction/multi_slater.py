@@ -316,8 +316,8 @@ class MultiSlater(object):
         nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]
         self.spin_occs = [numpy.sort(d) for d in dets]
-        self.occa = wfn[1]
-        self.occb = wfn[2]
+        self.occa = numpy.array(wfn[1])
+        self.occb = numpy.array(wfn[2])
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
             self.psi[idet,:,:nup] = I[:,occa]
@@ -476,7 +476,7 @@ class MultiSlater(object):
         na = system.nup
         nb = system.ndown
         M = hamiltonian.nbasis
-        nchol = hamiltonian.chol_vecs.shape[0]
+        nchol = hamiltonian.chol_vecs.shape[-1]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
 
@@ -487,7 +487,7 @@ class MultiSlater(object):
             hr_ndet = 1
 
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
-            chol = hamiltonian.chol_vecs.reshape((nchol,M,M))
+            chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
         else:
             chol = hamiltonian.chol_vecs.toarray().reshape((nchol,M,M))
 
@@ -596,7 +596,7 @@ class MultiSlater(object):
             compute = True
             # Distribute amongst MPI tasks on this node.
             if comm is not None:
-                nwork_per_thread = chol.shape[0] // comm.size
+                nwork_per_thread = hamiltonian.nchol // comm.size
                 if nwork_per_thread == 0:
                     start_n = 0
                     end_n = nchol
@@ -610,7 +610,7 @@ class MultiSlater(object):
                         end_n = nchol
             else:
                 start_n = 0
-                end_n = chol.shape[0]
+                end_n = hamiltonian.nchol
 
             nchol_loc = end_n - start_n
             # if comm.rank == 0:
@@ -618,9 +618,9 @@ class MultiSlater(object):
                 # print(numpy.may_share_memory(chol, chol[:,start_n:end_n]))
             if compute:
                 # Investigate whether these einsums are fast in the future
-                rup = numpy.einsum("mi,xmn->xin", psi[:,:na].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rup = numpy.einsum("mi,mnx->xin", psi[:,:na].conj(), chol[:,:,start_n:end_n], optimize=True)
                 rup = rup.reshape((nchol_loc, na*M))
-                rdn = numpy.einsum("mi,xmn->xin", psi[:,na:].conj(), chol[start_n:end_n,:,:], optimize=True)
+                rdn = numpy.einsum("mi,mnx->xin", psi[:,na:].conj(), chol[:,:,start_n:end_n], optimize=True)
                 rdn = rdn.reshape((nchol_loc, nb*M))
                 self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]

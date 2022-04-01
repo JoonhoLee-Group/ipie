@@ -31,15 +31,16 @@ def construct_force_bias_batch(hamiltonian, walker_batch, trial):
 def construct_force_bias_batch_multi_det_trial(hamiltonian, walker_batch, trial):
     Ga = walker_batch.Ga.reshape(walker_batch.nwalkers, hamiltonian.nbasis**2)
     Gb = walker_batch.Gb.reshape(walker_batch.nwalkers, hamiltonian.nbasis**2)
-    # Cholesky vectors. [nchol, M^2]
+    # Cholesky vectors. [M^2, nchol]
+    # Why are there so many transposes here?
     if numpy.isrealobj(hamiltonian.chol_vecs):
         vbias_batch = numpy.empty((hamiltonian.nchol,walker_batch.nwalkers), dtype=numpy.complex128)
-        vbias_batch.real = hamiltonian.chol_vecs.dot(Ga.T.real + Gb.T.real)
-        vbias_batch.imag = hamiltonian.chol_vecs.dot(Ga.T.imag + Gb.T.imag)
+        vbias_batch.real = hamiltonian.chol_vecs.T.dot(Ga.T.real + Gb.T.real)
+        vbias_batch.imag = hamiltonian.chol_vecs.T.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
         return vbias_batch
     else:
-        vbias_batch_tmp = hamiltonian.chol_vecs.dot(Ga.T+Gb.T)
+        vbias_batch_tmp = hamiltonian.chol_vecs.T.dot(Ga.T+Gb.T)
         vbias_batch_tmp = vbias_batch_tmp.T.copy()
         return vbias_batch_tmp
 

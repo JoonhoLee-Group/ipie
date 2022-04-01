@@ -81,9 +81,8 @@ class Generic(object):
         self._alt_convention = False # chemical potential sign convention
 
         self.ecore = ecore
-        self.chol_vecs = array(chol) # [M^2, nchol]
+        self.chol_vecs = chol # [M^2, nchol]
 
-        self.chol_vecs = self.chol_vecs.T.copy() #[nchol,M^2]
 
         if self.exact_eri:
             if self.verbose:
@@ -95,15 +94,15 @@ class Generic(object):
             self.ij_list_aa = []
             self.ij_list_bb = []
             self.ij_list_ab = []
-            
+
             for i in range(self.nup):
                 for j in range(i, self.nup):
                     self.ij_list_aa += [(i,j)]
-            
+
             for i in range(self.ndown):
                 for j in range(i, self.ndown):
                     self.ij_list_bb += [(i,j)]
-            
+
             for i in range(self.nup):
                 for j in range(self.ndown):
                     self.ij_list_ab += [(i,j)]
@@ -126,13 +125,13 @@ class Generic(object):
 
         self.H1 = array(h1e)
         self.nbasis = h1e.shape[-1]
-        
+
         mem = self.chol_vecs.nbytes / (1024.0**3)
         self.sparse = False
         if verbose:
             print("# Number of orbitals: %d"%self.nbasis)
             print("# Approximate memory required by Cholesky vectors %f GB"%mem)
-        self.nchol = self.chol_vecs.shape[0]
+        self.nchol = self.chol_vecs.shape[-1]
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod
         else:
@@ -143,7 +142,7 @@ class Generic(object):
         # For consistency
         self.vol = 1.0
         self.nfields = self.nchol
-        
+
         if verbose:
             print("# Number of Cholesky vectors: %d"%(self.nchol))
             print("# Number of fields: %d"%(self.nfields))
@@ -155,17 +154,17 @@ class Generic(object):
     def hijkl(self, i, j, k, l):
         ik = i*self.nbasis + k
         jl = j*self.nbasis + l
-        return numpy.dot(self.chol_vecs[:,ik], self.chol_vecs[:,jl])
+        return numpy.dot(self.chol_vecs[ik], self.chol_vecs[jl])
 
     def write_integrals(self, nelec, filename='hamil.h5'):
         if self.sparse:
             write_qmcpack_sparse(self.H1[0],
-                                 self.chol_vecs.T.copy(),
+                                 self.chol_vecs.copy(),
                                  nelec, self.nbasis,
                                  ecuc=self.ecore, filename=filename)
         else:
             write_qmcpack_dense(self.H1[0],
-                                self.chol_vecs.T.copy(),
+                                self.chol_vecs.copy(),
                                 nelec, self.nbasis,
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
@@ -173,7 +172,7 @@ class Generic(object):
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self, verbose = False):
         import cupy
-        
+
         size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
         if verbose:
             expected_bytes = size * 8. # float64
@@ -207,10 +206,12 @@ def read_integrals(integral_file):
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
     # Eqn (17) of [Motta17]_
+    # print("here")
     nbasis = h1e.shape[-1]
-    nchol = chol.shape[0]
-    chol_3 = chol.reshape((nchol, nbasis, nbasis))
-    # assert chol_3.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
-    v0 = 0.5 * einsum('nik,njk->ij', chol_3, chol_3, optimize='optimal')
+    nchol = chol.shape[-1]
+    chol_view = chol.reshape((nbasis, nbasis*nchol))
+    # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
+    v0 = 0.5 * numpy.dot(chol_view, chol_view.T)#einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
+    # print("done", chol_view.shape)
     h1e_mod[0,:,:] = h1e[0] - v0
     h1e_mod[1,:,:] = h1e[1] - v0

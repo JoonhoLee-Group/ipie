@@ -72,10 +72,10 @@ def test_read():
                   chol=chol,
                   ecore=enuc)
     assert ham.ecore == pytest.approx(0.4392816555570978)
-    assert ham.chol_vecs.shape == chol_.T.shape # now two are transposed
+    assert ham.chol_vecs.shape == chol_.shape # now two are transposed
     assert len(ham.H1.shape) == 3
     assert numpy.linalg.norm(ham.H1[0]-h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol_vecs-chol_.T) == pytest.approx(0.0) # now two are transposed
+    assert numpy.linalg.norm(ham.chol_vecs-chol_) == pytest.approx(0.0) # now two are transposed
 
 @pytest.mark.unit
 def test_shmem():
@@ -106,10 +106,10 @@ def test_shmem():
                   ecore=enuc)
     
     assert ham.ecore == pytest.approx(0.4392816555570978)
-    assert ham.chol_vecs.shape == chol_.T.shape # now two are transposed
+    assert ham.chol_vecs.shape == chol_.shape # now two are transposed
     assert len(ham.H1.shape) == 3
     assert numpy.linalg.norm(ham.H1[0]-h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol_vecs-chol_.T) == pytest.approx(0.0) # now two are transposed
+    assert numpy.linalg.norm(ham.chol_vecs-chol_) == pytest.approx(0.0) # now two are transposed
 
 def teardown_module():
     cwd = os.getcwd()

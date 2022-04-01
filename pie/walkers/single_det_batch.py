@@ -63,7 +63,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         greens_function(self, trial)
     
     # This function casts relevant member variables into cupy arrays
-    def cast_to_cupy (self, verbose):
+    def cast_to_cupy(self, verbose=False):
         WalkerBatch.cast_to_cupy(self, verbose)
 
         size = self.Ga.size + self.Gb.size + self.Ghalfa.size + self.Ghalfb.size
