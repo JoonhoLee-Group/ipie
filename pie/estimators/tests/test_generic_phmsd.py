@@ -477,7 +477,7 @@ def test_same_spin_batched():
     greens_function_multi_det_wicks(walker_batch, trial) # compute green's function using Wick's theorem
     same_spin = []
     nbasis = nmo
-    nchol = ham.chol_vecs.shape[0]
+    nchol = ham.chol_vecs.shape[-1]
     for iwalker in range(nwalkers):
         ovlpa0 = walker_batch.det_ovlpas[iwalker,0]
         ovlpb0 = walker_batch.det_ovlpbs[iwalker,0]
@@ -499,11 +499,11 @@ def test_same_spin_batched():
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
         P0 = G0[0] + G0[1]
-        Xa = ham.chol_vecs.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
-        Xb = ham.chol_vecs.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
+        Xa = ham.chol_vecs.T.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
+        Xb = ham.chol_vecs.T.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
 
-        LXa = numpy.einsum("x,xm->m", Xa, ham.chol_vecs, optimize=True)
-        LXb = numpy.einsum("x,xm->m", Xb, ham.chol_vecs, optimize=True)
+        LXa = numpy.einsum("x,mx->m", Xa, ham.chol_vecs, optimize=True)
+        LXb = numpy.einsum("x,mx->m", Xb, ham.chol_vecs, optimize=True)
         LXa = LXa.reshape((nbasis,nbasis))
         LXb = LXb.reshape((nbasis,nbasis))
 
@@ -521,7 +521,7 @@ def test_same_spin_batched():
         cont2_Kaa = 0.0 + 0.0j
         cont2_Kbb = 0.0 + 0.0j
         for x in range(nchol):
-            Lmn = ham.chol_vecs[x,:].reshape((nbasis, nbasis))
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
             LGL = Lmn.dot(G0a.T).dot(Lmn)
             cont2_Kaa -= numpy.sum(LGL*QCIGa)
 
@@ -533,8 +533,8 @@ def test_same_spin_batched():
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,xij->qpx",Q0a, G0a, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,xij->qpx",Q0b, G0b, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
+        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
 
         cont3 = 0.0 + 0.0j
 
@@ -562,11 +562,11 @@ def test_same_spin_batched():
             # contribution 2 (half-connected, two-leg, one-body-like)
             # First, Coulomb-like term
             P0 = G0[0] + G0[1]
-            Xa = ham.chol_vecs.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
-            Xb = ham.chol_vecs.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
+            Xa = ham.chol_vecs.T.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
+            Xb = ham.chol_vecs.T.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
 
-            LXa = numpy.einsum("x,xm->m", Xa, ham.chol_vecs, optimize=True)
-            LXb = numpy.einsum("x,xm->m", Xb, ham.chol_vecs, optimize=True)
+            LXa = numpy.einsum("x,mx->m", Xa, ham.chol_vecs, optimize=True)
+            LXb = numpy.einsum("x,mx->m", Xb, ham.chol_vecs, optimize=True)
             LXa = LXa.reshape((nbasis,nbasis))
             LXb = LXb.reshape((nbasis,nbasis))
 
@@ -584,7 +584,7 @@ def test_same_spin_batched():
             cont2_Kaa = 0.0 + 0.0j
             cont2_Kbb = 0.0 + 0.0j
             for x in range(nchol):
-                Lmn = ham.chol_vecs[x,:].reshape((nbasis, nbasis))
+                Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
                 LGL = Lmn.dot(G0a.T).dot(Lmn)
                 cont2_Kaa -= numpy.sum(LGL*QCIGa)
 
@@ -596,8 +596,8 @@ def test_same_spin_batched():
 
             cont2_K = cont2_Kaa + cont2_Kbb
 
-            Laa = numpy.einsum("iq,pj,xij->qpx",Q0a, G0a, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
-            Lbb = numpy.einsum("iq,pj,xij->qpx",Q0b, G0b, ham.chol_vecs.reshape((nchol, nbasis, nbasis)), optimize=True)
+            Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+            Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
 
             cont3 = 0.0 + 0.0j
 

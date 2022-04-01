@@ -918,8 +918,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     CIb = walker_batch.CIb
 
     # contribution 1 (disconnected)
-    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs.T)
-    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs.T)
+    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
+    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
     cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
     P0 = G0a + G0b
 
