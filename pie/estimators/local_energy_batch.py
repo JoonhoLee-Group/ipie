@@ -97,8 +97,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,ijx->xqp",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,ijx->xqp",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
 
         cont3 = 0.0 + 0.0j
 
@@ -729,7 +729,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
 
     ndets = len(trial.coeffs)
-    chol_vecs = ham.chol_vecs.reshape((nchol, nbasis, nbasis))
+    chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
     energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     cphase_a = trial.coeffs.conj() * trial.phase_a
@@ -739,7 +739,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     c_phasea_ovlpb = cphase_a[None,:] * ovlpb
     c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
     cphase_ab = cphase_a * trial.phase_b
-    for ix, Lx in enumerate(chol_vecs):
+    for ix in range(nchol):
+        Lx = chol_vecs[:,:,ix]
         Laa = numpy.einsum('wiq,wpj,ij->wqp', Q0a, G0a, Lx, optimize=True)
         Lbb = numpy.einsum('wiq,wpj,ij->wqp', Q0b, G0b, Lx, optimize=True)
         alpha_os_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
@@ -975,11 +976,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     Laa = numpy.zeros((nwalkers, nbasis, nbasis, nchol), dtype=numpy.complex128)
     Lbb = numpy.zeros((nwalkers, nbasis, nbasis, nchol), dtype=numpy.complex128)
     # This is **much** faster than the above einsum
-    chol_vecs = ham.chol_vecs.reshape((nchol, nbasis, nbasis))
+    chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
     # start2 = time.time()
     for i in range(nwalkers):
-        Laa[i] = numpy.einsum("iq,pj,xij->qpx", Q0a[i], G0a[i], chol_vecs, optimize=True)
-        Lbb[i] = numpy.einsum("iq,pj,xij->qpx", Q0b[i], G0b[i], chol_vecs, optimize=True)
+        Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0a[i], chol_vecs, optimize=True)
+        Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0b[i], chol_vecs, optimize=True)
     cont3 = 0.0
     # print(time.time()-start)
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
