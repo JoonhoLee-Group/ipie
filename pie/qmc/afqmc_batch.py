@@ -305,6 +305,7 @@ class AFQMCBatch(object):
 
 
 
+        tzero_setup = time.time()
         if psi is not None:
             self.psi = psi
         self.setup_timers()
@@ -318,6 +319,8 @@ class AFQMCBatch(object):
         # Print out zeroth step for convenience.
         if verbose:
             self.estimators.estimators['mixed'].print_step(comm, comm.size, 0, 1)
+
+        self.tsetup += time.time() - tzero_setup
 
         for step in range(1, self.qmc.total_steps + 1):
             start_step = time.time()
@@ -336,13 +339,18 @@ class AFQMCBatch(object):
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
 
+            start_clip = time.time()
             if step > 1:
                 # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
                 wbound = self.psi.walkers_batch.total_weight * 0.10
                 clip(self.psi.walkers_batch.weight, a_min=-wbound,a_max=wbound, out=self.psi.walkers_batch.weight) # in-place clipping
+            self.tprop_clip += time.time() - start_clip
 
+            start_barrier = time.time()
             if step % self.qmc.npop_control == 0:
                 comm.Barrier()
+            self.tprop_barrier += time.time() - start_barrier
+
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
@@ -387,14 +395,15 @@ class AFQMCBatch(object):
                       .format((time.time() - self._init_time)))
                 print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
-                print("# - Step: {:.6f} s / call for {} calls in each of {} blocks".format(self.tstep/(nblocks*nsteps), nsteps, nblocks))
+                print("# - Block: {:.6f} s / block for {} total blocks".format(self.tstep/(nblocks), nblocks))
                 print("# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_fbias/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_vhs/(nblocks*nsteps), nsteps, nblocks))
                 print("#     - Green's Function: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gf/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -          Overlap: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_ovlp/(nblocks*nsteps), nsteps, nblocks))
-                print("#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_update/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format((self.tprop_update+self.tprop_clip)/(nblocks*nsteps), nsteps, nblocks))
                 print("#     -  GEMM operations: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_gemm/(nblocks*nsteps), nsteps, nblocks))
+                print("#     -          Barrier: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tprop_barrier/(nblocks*nsteps), nsteps, nblocks))
                 print("# - Estimators: {:.6f} s / call for {} call(s)".format(self.testim/nblocks, nblocks))
                 print("# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tortho/(nstblz*nblocks), nstblz, nblocks))
                 print("# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(self.tpopc/(npcon*nblocks), npcon, nblocks))
@@ -445,6 +454,8 @@ class AFQMCBatch(object):
         self.tprop_gf = 0.0
         self.tprop_vhs = 0.0
         self.tprop_gemm = 0.0
+        self.tprop_clip = 0.0
+        self.tprop_barrier = 0.0
 
         self.testim = 0
         self.tpopc = 0

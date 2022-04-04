@@ -2,7 +2,10 @@ import itertools
 import numpy
 import scipy.linalg
 from pie.estimators.greens_function import gab_spin, gab_mod
-from pie.propagation.wicks_kernels import get_det_matrix_batched
+try:
+    from pie.propagation.wicks_kernels import get_det_matrix_batched
+except ImportError:
+    pass
 from pie.utils.misc import is_cupy
 
 # Later we will add walker kinds as an input too
