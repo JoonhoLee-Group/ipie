@@ -6,11 +6,14 @@ from pie.propagation.overlap import (
         get_overlap_one_det_wicks,
         compute_determinants_batched
         )
-from pie.propagation.wicks_kernels import (
+try:
+    from pie.propagation.wicks_kernels import (
         get_det_matrix_batched,
         get_cofactor_matrix_batched,
         get_cofactor_matrix_4_batched,
         )
+except ImportError:
+    pass
 from pie.utils.misc import is_cupy
 
 # TODO: should pass hamiltonian here and make it work for all possible types

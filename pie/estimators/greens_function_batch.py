@@ -7,11 +7,14 @@ from pie.propagation.overlap import (
         get_overlap_one_det_wicks,
         compute_determinants_batched
         )
-from pie.propagation.wicks_kernels import (
+try:
+    from pie.propagation.wicks_kernels import (
         get_det_matrix_batched,
         get_cofactor_matrix_batched,
         reduce_to_CI_tensor
         )
+except ImportError:
+    pass
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
