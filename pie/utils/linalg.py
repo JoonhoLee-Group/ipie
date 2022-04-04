@@ -5,6 +5,8 @@ import time
 
 def minor_mask(A, i, j):
     r"""computing matrix minor, i-th row and j-th column removed"""
+    # return numpy.delete(numpy.delete(A,i,axis=0), j, axis=1)
+
     mask = numpy.ones_like(A, dtype=bool)
     mask[i, :] = False
     mask[:, j] = False

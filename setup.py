@@ -12,6 +12,9 @@ from Cython.Build import cythonize
 extensions = [
         Extension("pie.estimators.ueg_kernels",
                   ["pie/estimators/ueg_kernels.pyx"],
+		  include_dirs=[numpy.get_include()]),
+        Extension("pie.propagation.wicks_kernels",
+                  ["pie/propagation/wicks_kernels.pyx"],
 		  include_dirs=[numpy.get_include()])
         ]
 

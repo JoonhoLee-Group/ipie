@@ -4,7 +4,7 @@ import numpy
 import sys
 import time
 from pie.estimators.local_energy import local_energy
-from pie.estimators.greens_function import get_greens_function
+from pie.estimators.greens_function_batch import get_greens_function
 from pie.propagation.overlap import get_calc_overlap
 from pie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from pie.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
@@ -90,6 +90,22 @@ class Continuous(object):
         self.tfbias = 0.0
         self.tovlp = 0.0
         self.tupdate = 0.0
+        self.tupdate1 = 0.0
+        self.tupdate2 = 0.0
+        self.tupdate3 = 0.0
+        self.tupdate4 = 0.0
+        self.tupdate5 = 0.0
+        self.tupdate6 = 0.0
+        self.tupdate7 = 0.0
+        self.tupdate8 = 0.0
+        self.tupdate9 = 0.0
+        self.tupdate10 = 0.0
+        self.tupdate11 = 0.0
+        self.tupdate12 = 0.0
+        self.tupdate13 = 0.0
+        self.tupdate14 = 0.0
+        self.tupdate15 = 0.0
+        self.tupdate16 = 0.0
         self.tgf = 0.0
         self.tvhs = 0.0
         self.tgemm = 0.0
@@ -97,16 +113,18 @@ class Continuous(object):
     def cast_to_cupy (self, verbose = False):
         import cupy
         size = self.propagator.mf_shift.size + self.propagator.vbias_batch.size + self.propagator.BH1.size
+        size += 1 # for ebound
         if verbose:
             expected_bytes = size * 16. # assuming complex128
-            print("# propagators.Continuous: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# propagators.Continuous: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
         self.propagator.mf_shift = cupy.asarray(self.propagator.mf_shift)
         self.propagator.vbias_batch = cupy.asarray(self.propagator.vbias_batch)
         self.propagator.BH1 = cupy.asarray(self.propagator.BH1)
+        self.ebound = cupy.asarray(self.ebound)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# propagators.Continuous: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# propagators.Continuous: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
 
     @property
     def mf_const_fac(self):
@@ -319,18 +337,20 @@ class Continuous(object):
         return ehyb
 
     def apply_bound_hybrid_batch(self, ehyb, eshift): # shift is a number but ehyb is not
+        if is_cupy(ehyb): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            clip = cupy.clip
+        else:
+            clip = numpy.clip
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return ehyb
-        eoriginal = ehyb.copy()
-        idx = ehyb.real > eshift.real + self.ebound
-        ehyb[idx] = eshift.real+self.ebound+1j*ehyb[idx].imag
-        self.nhe_trig += numpy.sum(idx)
-        idx = ehyb.real < eshift.real - self.ebound
-        ehyb[idx] = eshift.real-self.ebound+1j*ehyb[idx].imag
-        self.nhe_trig += numpy.sum(idx)
+        emax = eshift.real + self.ebound
+        emin = eshift.real - self.ebound
+        clip(ehyb.real, a_min=emin,a_max=emax, out=ehyb.real) # in-place clipping
         return ehyb
 
     def apply_bound_local_energy(self, eloc, eshift):
@@ -348,7 +368,44 @@ class Continuous(object):
         else:
             eloc_bounded = eloc
         return eloc_bounded
-    
+
+    def apply_exponential_batch(self, phi, VHS):
+        """Apply exponential propagator of the HS transformation
+        Parameters
+        ----------
+        system :
+            system class
+        phi : numpy array
+            a state
+        VHS : numpy array
+            HS transformation potential
+        Returns
+        -------
+        phi : numpy array
+            Exp(VHS) * phi
+        """
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            copy = cupy.copy
+            copyto = cupy.copyto
+            zeros = cupy.zeros
+            einsum = cupy.einsum
+        else:
+            copy = numpy.copy
+            copyto = numpy.copyto
+            zeros = numpy.zeros
+            einsum = numpy.einsum
+
+        # Temporary array for matrix exponentiation.
+        Temp = zeros(phi.shape, dtype=phi.dtype)
+        copyto(Temp, phi)
+        for n in range(1, self.exp_nmax+1):
+            Temp = einsum("wmn,wni->wmi",VHS, Temp, optimize=True)
+            Temp /= n
+            phi += Temp
+        return phi
+
     def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
         """It applies the two-body propagator to a batch of walkers
         Parameters
@@ -417,11 +474,16 @@ class Continuous(object):
         self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
         start_time = time.time()
-        # for iw in range (walker_batch.nwalkers):
-            # 2.b Apply two-body
-        walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
-        if (walker_batch.ndown > 0 and not walker_batch.rhf):
-            walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
+        if is_cupy(trial.psi):
+            walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
+            if (walker_batch.ndown > 0 and not walker_batch.rhf):
+                walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
+        else:
+            for iw in range (walker_batch.nwalkers):
+                # 2.b Apply two-body
+                walker_batch.phia[iw] = self.apply_exponential(walker_batch.phia[iw], VHS[iw])
+                if (walker_batch.ndown > 0 and not walker_batch.rhf):
+                    walker_batch.phib[iw] = self.apply_exponential(walker_batch.phib[iw], VHS[iw])
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -483,6 +545,7 @@ class Continuous(object):
             array = cupy.array
             abs = cupy.abs
             angle = cupy.angle
+            clip = cupy.clip
         else:
             log = numpy.log
             exp = numpy.exp
@@ -492,6 +555,7 @@ class Continuous(object):
             array = numpy.array
             abs = numpy.abs
             angle = numpy.angle
+            clip = numpy.clip
 
         ovlp_ratio = ovlp_new / ovlp
         hybrid_energy = -(log(ovlp_ratio) + cfb + cmf)/self.dt
@@ -505,18 +569,21 @@ class Continuous(object):
         # (magn, phase) = cmath.polar(importance_function)
         walker_batch.hybrid_energy = hybrid_energy
 
-        tobeinstantlykilled = isinf(magn)
         tosurvive = isfinite(magn)
-        
-        walker_batch.ot[tobeinstantlykilled] = ovlp_new[tobeinstantlykilled]
-        walker_batch.weight[tobeinstantlykilled].fill(0.0)
+
+        # disabling this because it seems unnecessary
+        # tobeinstantlykilled = isinf(magn)
+        # magn[tobeinstantlykilled] = 0.0
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         cosine_fac = cos(dtheta)
-        cosine_fac[cosine_fac < 0.0] = 0.0
-        walker_batch.weight[tosurvive] = walker_batch.weight[tosurvive] * magn[tosurvive] * cosine_fac[tosurvive]
-        walker_batch.ot[tosurvive] = ovlp_new[tosurvive]
-        walker_batch.ovlp[tosurvive] = ovlp_new[tosurvive]
+        
+        clip(cosine_fac, a_min=0.0,a_max=None, out=cosine_fac) # in-place clipping
+        # cosine_fac[cosine_fac < 0.0] = 0.0
+        walker_batch.weight = walker_batch.weight * magn * cosine_fac
+        walker_batch.ot = ovlp_new
+        walker_batch.ovlp = ovlp_new
+
 
 #       TODO: make it a proper walker batching algorithm when we add back propagation
         if walker_batch.field_configs is not None:

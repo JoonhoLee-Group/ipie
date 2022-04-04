@@ -12,7 +12,8 @@ from pie.estimators.thermal import particle_number, one_rdm_from_G
 from pie.estimators.local_energy import local_energy
 from pie.estimators.local_energy_batch import local_energy_batch
 
-from pie.estimators.greens_function import gab_mod_ovlp, gab_mod, greens_function
+from pie.estimators.greens_function import gab_mod_ovlp, gab_mod
+from pie.estimators.greens_function_batch import greens_function
 
 from pie.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from pie.utils.misc import dotdict, is_cupy

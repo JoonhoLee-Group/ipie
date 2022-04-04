@@ -6,7 +6,7 @@ from pie.walkers.stack import FieldConfig
 from pie.walkers.walker_batch import WalkerBatch
 from pie.utils.misc import get_numeric_names
 from pie.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from pie.estimators.greens_function import greens_function
+from pie.estimators.greens_function_batch import greens_function
 from pie.propagation.overlap import calc_overlap_single_det, get_calc_overlap
 
 class SingleDetWalkerBatch(WalkerBatch):
@@ -71,7 +71,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         size += self.ovlp.size
         if verbose:
             expected_bytes = size * 16.
-            print("# SingleDetWalkerBatch: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# SingleDetWalkerBatch: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         import cupy
         self.ot = cupy.asarray(self.ot)
@@ -84,4 +84,4 @@ class SingleDetWalkerBatch(WalkerBatch):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# SingleDetWalkerBatch: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# SingleDetWalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))

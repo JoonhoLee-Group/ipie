@@ -5,7 +5,7 @@ from pie.estimators.local_energy import local_energy_multi_det
 from pie.walkers.walker_batch import WalkerBatch
 from pie.utils.misc import get_numeric_names
 from pie.propagation.overlap import get_calc_overlap
-from pie.estimators.greens_function import greens_function_multi_det
+from pie.estimators.greens_function_batch import greens_function_multi_det
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
     """Single-det walker for multi-det trials.
@@ -89,10 +89,10 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                              dtype=numpy.complex128)
         self.Gb = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                              dtype=numpy.complex128)
-        # self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
-        #                          dtype=numpy.complex128)
-        # self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
-        #                          dtype=numpy.complex128)
+        self.Ghalfa = numpy.zeros(shape=(nwalkers, system.nup, hamiltonian.nbasis),
+                                 dtype=numpy.complex128)
+        self.Ghalfb = numpy.zeros(shape=(nwalkers, system.ndown, hamiltonian.nbasis),
+                                 dtype=numpy.complex128)
 
         # Contains overlaps of the current walker with the trial wavefunction.
         greens_function_multi_det(self,trial)

@@ -39,14 +39,24 @@ class MultiSlater(object):
                 self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
             self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
             self.ortho_expansion = False
-        
+
         self.psia = self.psi[:,:,:system.nup]
         self.psib = self.psi[:,:,system.nup:]
 
-        self.split_trial_local_energy = options.get('split_trial_local_energy', False)
+        self.split_trial_local_energy = get_input_value(
+                                            options,
+                                            'split_trial_local_energy',
+                                            default=False,
+                                            verbose=verbose)
+        self.compute_trial_energy = get_input_value(
+                                        options,
+                                        'compute_trial_energy',
+                                        default=True,
+                                        verbose=verbose)
 
-        if verbose:
-            print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
+        # if verbose:
+            # print("# compute_trial_energy = {}".format(self.compute_trial_energy))
+            # print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
 
         if self.split_trial_local_energy:
             if verbose:
@@ -67,12 +77,15 @@ class MultiSlater(object):
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
 
-        self.ndets = options.get('ndets', len(self.coeffs))
-        if self.verbose:
-            print("# Setting ndets: {}".format(self.ndets))
+        self.ndets = get_input_value(
+                        options,
+                        'ndets',
+                        default=len(self.coeffs),
+                        verbose=verbose)
+        # if self.verbose:
+            # print("# Setting ndets: {}".format(self.ndets))
 
         if self.ndets == 1:
-            # self.psi = self.psi[0]
             self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0],
                                        system.nup, system.ndown)
             self.G = numpy.array(self.G, dtype = numpy.complex128)
@@ -93,8 +106,19 @@ class MultiSlater(object):
             else:
                 self.init = self.psi.copy()
 
-        self.wicks = options.get('wicks', False)
+        self.wicks = get_input_value(
+                        options,
+                        'wicks',
+                        default=False,
+                        verbose=verbose
+                        )
+        self.optimized = get_input_value(
+                            options,
+                            'optimized',
+                            default=False,
+                            verbose=verbose)
         if self.wicks: # this is for Wick's theorem
+        # if True: # this is for Wick's theorem
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
@@ -109,15 +133,27 @@ class MultiSlater(object):
             self.anh_a = [[]] # one empty list as a member to account for the reference state
             self.cre_b = [[]] # one empty list as a member to account for the reference state
             self.anh_b = [[]] # one empty list as a member to account for the reference state
-            self.phase_a = [1.0] # 1.0 is for the reference state
-            self.phase_b = [1.0] # 1.0 is for the reference state
+            self.phase_a = numpy.ones(self.ndets) # 1.0 is for the reference state
+            self.phase_b = numpy.ones(self.ndets) # 1.0 is for the reference state
+            nexcit_a = system.nup
+            nexcit_b = system.ndown
+            # This is an overestimate because we don't know number of active
+            # electrons in trial from read in.
+            # TODO work this out.
+            max_excit = max(nexcit_a, nexcit_b) + 1
+            cre_ex_a = [[] for _ in range(max_excit)]
+            cre_ex_b = [[] for _ in range(max_excit)]
+            anh_ex_a = [[] for _ in range(max_excit)]
+            anh_ex_b = [[] for _ in range(max_excit)]
+            excit_map_a = [[] for _ in range(max_excit)]
+            excit_map_b = [[] for _ in range(max_excit)]
             for j in range(1, self.ndets):
                 dja = self.occa[j]
                 djb = self.occb[j]
-                
+
                 anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
                 cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
-                
+
                 anh_b = list(set(djb)-set(d0b))
                 cre_b = list(set(d0b)-set(djb))
 
@@ -126,25 +162,48 @@ class MultiSlater(object):
                 anh_a.sort()
                 anh_b.sort()
 
+                # anh_a = numpy.array(anh_a)
+                # cre_a = numpy.array(cre_a)
+                # anh_b = numpy.array(anh_b)
+                # cre_b = numpy.array(cre_b)
+
                 self.anh_a += [anh_a]
                 self.anh_b += [anh_b]
                 self.cre_a += [cre_a]
                 self.cre_b += [cre_b]
+                anh_ex_a[len(anh_a)].append(anh_a)
+                anh_ex_b[len(anh_b)].append(anh_b)
+                cre_ex_a[len(cre_a)].append(cre_a)
+                cre_ex_b[len(cre_b)].append(cre_b)
+                excit_map_a[len(anh_a)].append(j)
+                excit_map_b[len(anh_b)].append(j)
 
                 perm_a = get_perm(anh_a, cre_a, d0a, dja)
                 perm_b = get_perm(anh_b, cre_b, d0b, djb)
-                
-                if (perm_a):
-                    self.phase_a += [-1]
-                else:
-                    self.phase_a += [+1]
 
-                if (perm_b):
-                    self.phase_b += [-1]
+                if perm_a:
+                    self.phase_a[j] = -1
                 else:
-                    self.phase_b += [+1]
+                    self.phase_a[j] = +1
 
-        if self.ortho_expansion: # this is for phmsd
+                if perm_b:
+                    self.phase_b[j] = -1
+                else:
+                    self.phase_b[j] = +1
+
+            self.ndet_a = [len(ex) for ex in cre_ex_a]
+            self.ndet_b = [len(ex) for ex in cre_ex_b]
+            self.max_excite_a = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_a))
+            self.max_excite_b = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_b))
+            self.max_excite = max(self.max_excite_a, self.max_excite_b)
+            self.cre_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a]
+            self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
+            self.anh_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a]
+            self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
+            self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
+            self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
+        self.compute_opdm = options.get('compute_opdm', True)
+        if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
@@ -175,7 +234,7 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial_wavefunction.MultiSlater.")
-    
+
     def local_energy_2body(self, system, hamiltonian):
         """Compute walkers two-body local energy
 
@@ -361,7 +420,7 @@ class MultiSlater(object):
             size += (self.occa.size + self.occb.size)/2. # to account for the fact that these are float64, not complex128
         if verbose:
             expected_bytes = size * 16.
-            print("# trial_wavefunction.MultiSlater: expected to allocate {} GB".format(expected_bytes/1024**3))
+            print("# trial_wavefunction.MultiSlater: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.psi = cupy.asarray(self.psi)
         self.coeffs = cupy.asarray(self.coeffs)
@@ -378,7 +437,7 @@ class MultiSlater(object):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# trial_wavefunction.MultiSlater: using {} GB out of {} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print("# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0
@@ -420,7 +479,7 @@ class MultiSlater(object):
         nchol = hamiltonian.chol_vecs.shape[-1]
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
-        
+
         hr_ndet = self.ndets
         if (self.ortho_expansion):
             if self.verbose:
@@ -505,7 +564,7 @@ class MultiSlater(object):
                             VT = numpy.diag(numpy.sqrt(s)).dot(VT)
 
                             UVT_ab += [(U, VT)]
-                    
+
                     r_ab = numpy.array(r_ab)
                     r_ab = numpy.mean(r_ab)
 

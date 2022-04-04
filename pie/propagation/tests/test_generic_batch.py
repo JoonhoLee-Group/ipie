@@ -15,7 +15,7 @@ from pie.utils.testing import (
         get_random_nomsd,
         get_random_phmsd
         )
-from pie.estimators.greens_function import greens_function_single_det_batch
+from pie.estimators.greens_function_batch import greens_function_single_det_batch
 from pie.propagation.overlap import calc_overlap_single_det_batch
 
 @pytest.mark.unit

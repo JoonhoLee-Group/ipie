@@ -11,7 +11,7 @@ from pie.propagation.overlap import calc_overlap_single_det
 from pie.estimators.greens_function import gab
 from pie.estimators.local_energy import local_energy
 from pie.estimators.local_energy_batch import local_energy_batch
-from pie.estimators.greens_function import greens_function_single_det
+from pie.estimators.greens_function_batch import greens_function_single_det
 
 @pytest.mark.unit
 def test_buff_size_batch():

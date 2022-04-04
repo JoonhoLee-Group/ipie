@@ -17,7 +17,7 @@ from pie.utils.testing import (
         )
 from pie.estimators.local_energy import local_energy_generic_cholesky_opt
 from pie.estimators.local_energy_batch import local_energy_single_det_batch, local_energy_single_det_rhf_batch
-from pie.estimators.greens_function import greens_function_single_det_batch
+from pie.estimators.greens_function_batch import greens_function_single_det_batch
 from pie.propagation.overlap import calc_overlap_single_det_batch
 
 @pytest.mark.unit

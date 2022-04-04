@@ -75,12 +75,20 @@ def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
         if system.name == 'Generic':
             if (trial.ndets == 1 or trial.ortho_expansion):
                 trial.half_rotate(system, hamiltonian, scomm)
-        rediag = options.get('recompute_ci', False)
+        rediag = get_input_value(
+                options,
+                'recompute_ci',
+                default=False,
+                alias=['rediag'],
+                verbose=verbose)
         if rediag:
             if comm.rank == 0:
                 if verbose:
                     print("# Recomputing trial wavefunction ci coeffs.")
-                coeffs = trial.recompute_ci_coeffs(system)
+                coeffs = trial.recompute_ci_coeffs(
+                                system.nup,
+                                system.ndown,
+                                hamiltonian)
             else:
                 coeffs = None
             coeffs = comm.bcast(coeffs, root=0)

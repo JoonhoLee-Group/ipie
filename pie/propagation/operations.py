@@ -86,12 +86,9 @@ def kinetic_spin_real_batch(phi, bt2, H1diag=False):
         phi[:,:] = einsum("ii,wij->ij", bt2,phi)
     else:
         if is_cupy(bt2):
-            #print(phi.shape)
-            #phi = bt2.dot(phi)
-            #phi = phi.transpose(1,0,2)
             phi = einsum('ik,wkj->wij', bt2, phi, optimize=True)
         else:
-            # Loop is 100 times faster on CPU for FeP benchmark
+            # Loop is O(10x) times faster on CPU for FeP benchmark
             for iw in range(phi.shape[0]):
                 phi[iw] = numpy.dot(bt2, phi[iw])
 

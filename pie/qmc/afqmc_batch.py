@@ -182,8 +182,11 @@ class AFQMCBatch(object):
             )
         mem = get_node_mem()
         if comm.rank == 0:
-            self.trial.calculate_energy(self.system, self.hamiltonian)
-            print("# Trial wfn energy is {}".format(self.trial.energy))
+            if self.trial.compute_trial_energy:
+                self.trial.calculate_energy(self.system, self.hamiltonian)
+                print("# Trial wfn energy is {}".format(self.trial.energy))
+            else:
+                print("# WARNING: skipping trial energy calculation is requested.")
         comm.barrier()
         prop_opt = options.get('propagator', {})
         if comm.rank == 0:
@@ -259,7 +262,7 @@ class AFQMCBatch(object):
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
-            print("# Available memory on the node is {} MB".format(mem_avail))
+            print("# Available memory on the node is {:4.3f} GB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -282,16 +285,20 @@ class AFQMCBatch(object):
             import cupy
             assert(cupy.is_available())
             zeros = cupy.zeros
-            abs = cupy.abs
             ndarray = cupy.ndarray
             array = cupy.asnumpy
+            abs = cupy.abs
             sum = cupy.sum
+            min = cupy.min
+            clip = cupy.clip
         else:
             zeros = numpy.zeros
             ndarray = numpy.ndarray
             array = numpy.array
             abs = numpy.abs
             sum = numpy.sum
+            min = numpy.min
+            clip = numpy.clip
 
         #import warnings
         #warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
@@ -329,16 +336,10 @@ class AFQMCBatch(object):
             self.tprop_vhs = self.propagators.tvhs
             self.tprop_gemm = self.propagators.tgemm
 
-            rescale_idx = abs(self.psi.walkers_batch.weight) > self.psi.walkers_batch.total_weight * 0.10
             if step > 1:
-                nrescales = sum(rescale_idx)
-                if type(nrescales) == ndarray:
-                    nrescales = array(nrescales)
-                    nrescales = int(nrescales[()])
-                if (nrescales > 0):
-                    new_weights = zeros(nrescales, dtype = numpy.float64)
-                    new_weights.fill(self.psi.walkers_batch.total_weight * 0.10)
-                    self.psi.walkers_batch.weight[rescale_idx] = new_weights
+                # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
+                wbound = self.psi.walkers_batch.total_weight * 0.10
+                clip(self.psi.walkers_batch.weight, a_min=-wbound,a_max=wbound, out=self.psi.walkers_batch.weight) # in-place clipping
 
             if step % self.qmc.npop_control == 0:
                 comm.Barrier()
