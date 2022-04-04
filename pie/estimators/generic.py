@@ -69,18 +69,18 @@ def local_energy_generic_pno(system, G, Ghalf=None, eri=None, C0=None,\
 
         theta_i = Ga[i,:]
         theta_j = Ga[j,:]
-        
+
         thetaT_i = GTa[i,:]
         thetaT_j = GTa[j,:]
 
         thetaU = numpy.einsum("p,pk->k", theta_i,U)
         thetaV = numpy.einsum("p,kp->k", theta_j,VT)
-        
+
         thetaTU = numpy.einsum("p,pk->k", thetaT_i,U)
         thetaTV = numpy.einsum("p,kp->k", thetaT_j,VT)
 
         eJaa += c * (numpy.dot(thetaU, thetaV) - numpy.dot(thetaTU, thetaTV))
-        
+
         thetaU = numpy.einsum("p,pk->k", theta_j,U)
         thetaV = numpy.einsum("p,kp->k", theta_i,VT)
         thetaTU = numpy.einsum("p,pk->k", thetaT_j,U)
@@ -106,7 +106,7 @@ def local_energy_generic_pno(system, G, Ghalf=None, eri=None, C0=None,\
         thetaTU = numpy.einsum("p,pk->k", thetaT_i,U)
         thetaTV = numpy.einsum("p,kp->k", thetaT_j,VT)
         eJbb += c * (numpy.dot(thetaU, thetaV) - numpy.dot(thetaTU, thetaTV))
-        
+
         thetaU = numpy.einsum("p,pk->k", theta_j,U)
         thetaV = numpy.einsum("p,kp->k", theta_i,VT)
         thetaTU = numpy.einsum("p,pk->k", thetaT_j,U)
@@ -158,10 +158,10 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
 def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     """
-    Internal function for computing exchange two-electron integral energy 
+    Internal function for computing exchange two-electron integral energy
     of batched walkers. The stacked batching ends up being about 30% faster
     than simple loop over walkers.
-    
+
     Parameters
     ----------
     rchol_a: :class:`numpy.ndarray`
@@ -174,7 +174,7 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
         beta-spin half-rotated Greens function of size (nbasis, nbeta * nwalker)
     Returns
     -------
-    exx: numpy.ndarary 
+    exx: numpy.ndarary
         vector of exchange contributions for each walker
     """
     naux = rchol_a.shape[0]
@@ -335,7 +335,7 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
 
     GhalfaT = Ghalfa.T.copy()
     GhalfbT = Ghalfb.T.copy()
-    
+
     Ta = zeros((nalpha,nalpha), dtype=complex128)
     Tb = zeros((nbeta,nbeta), dtype=complex128)
 
@@ -344,9 +344,9 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
             rmi_b = rcholb[x].reshape((nbeta,nbasis))
-            Ta[:,:].real = rmi_a.dot(GhalfaT.real) 
+            Ta[:,:].real = rmi_a.dot(GhalfaT.real)
             Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
-            Tb[:,:].real = rmi_b.dot(GhalfbT.real) 
+            Tb[:,:].real = rmi_b.dot(GhalfbT.real)
             Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
             exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
     else:
@@ -371,7 +371,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     system : :class:`Generic`
         generic system information
     ham : :class:`Generic`
-        ab-initio hamiltonian information 
+        ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
 
@@ -386,16 +386,18 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
-    
+
     # Xa = numpy.dot(ham.chol_vecs, Ga.ravel())
     # Xb = numpy.dot(ham.chol_vecs, Gb.ravel())
 
     if (numpy.isrealobj(ham.chol_vecs)):
-        Xa = ham.chol_vecs.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
-        Xb = ham.chol_vecs.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
+        # Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
+        # Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
+        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.T.dot(Ga.imag.ravel())
+        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol_vecs.dot(Ga.ravel())
-        Xb = ham.chol_vecs.dot(Gb.ravel())
+        Xa = ham.chol_vecs.T.dot(Ga.ravel())
+        Xb = ham.chol_vecs.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa,Xa)
     ecoul += numpy.dot(Xb,Xb)
@@ -419,20 +421,20 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (numpy.isrealobj(ham.chol_vecs)):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[x].reshape((nbasis,nbasis))
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis,nbasis))
             T[:,:].real = GaT.real.dot(Lmn)
             T[:,:].imag = GaT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
             T[:,:].real = GbT.real.dot(Lmn)
             T[:,:].imag = GbT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[x].reshape((nbasis,nbasis))
+            Lmn = ham.chol_vecs[:,x].reshape((nbasis,nbasis))
             T[:,:] = GaT.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
             T[:,:] = GbT.dot(Lmn)
-            exx += numpy.trace(T.dot(T)) 
+            exx += numpy.trace(T.dot(T))
 
     e2b = 0.5 * (ecoul - exx)
 
@@ -488,9 +490,9 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
     theta = numpy.zeros((naux,nsamples), dtype=numpy.int64)
     for i in range(nsamples):
         theta[:,i] = (2*numpy.random.randint(0,2,size=(naux))-1)
-    
+
     if (control):
-        
+
         ra = rchol_a.dot(theta).T * numpy.sqrt(1.0/nsamples)
         rb = rchol_b.dot(theta).T * numpy.sqrt(1.0/nsamples)
 
@@ -499,7 +501,7 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
 
         Ta = numpy.zeros((nsamples, nalpha, nalpha), dtype=rchol_a.dtype)
         Tb = numpy.zeros((nsamples, nbeta, nbeta), dtype=rchol_b.dtype)
-        
+
         G0aT = C0[:,:system.nup]
         G0bT = C0[:,system.nup:]
 
@@ -514,10 +516,10 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
             Tb0[x] = rmi_b.dot(G0bT)
             Ta[x] = rmi_a.dot(GaT)
             Tb[x] = rmi_b.dot(GbT)
-        
+
         exxa_hf = numpy.tensordot(Ta0, Ta0, axes=((0,1,2),(0,2,1)))
         exxb_hf = numpy.tensordot(Tb0, Tb0, axes=((0,1,2),(0,2,1)))
-        
+
         exxa_corr = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
         exxb_corr = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
 
@@ -535,7 +537,7 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
         rb = numpy.einsum("ipX,Xs->ips",rchol_b, theta, optimize=True) * numpy.sqrt(1.0/nsamples)
         Grb = numpy.einsum("kq,lqx->lkx", Gb, rb, optimize=True)
         exxb = numpy.tensordot(Grb, Grb, axes=((0,1,2),(1,0,2)))
-        
+
     exx = exxa + exxb
     e2b = 0.5 * (ecoul - exx)
 

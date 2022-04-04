@@ -41,11 +41,12 @@ def setup_calculation(input_options):
     return (afqmc, comm)
 
 def get_driver(options, comm):
+    verbosity = options.get('verbosity', 1)
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
-    batched = get_input_value(qmc_opts, 'batched', default=False)
-    verbosity = options.get('verbosity', 1)
+    batched = get_input_value(qmc_opts, 'batched', default=False,
+            verbose=verbosity)
     if beta is not None:
         afqmc = ThermalAFQMC(comm, options=options,
                              parallel=comm.size>1,

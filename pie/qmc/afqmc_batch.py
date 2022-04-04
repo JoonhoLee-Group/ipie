@@ -110,11 +110,10 @@ class AFQMCBatch(object):
         self.rank = comm.rank
         self._init_time = time.time()
         self.run_time = time.asctime()
-        
+
         qmc_opt = get_input_value(options, 'qmc', default={},
                                   alias=['qmc_options'],
                                   verbose=self.verbosity>1)
-        gpu = get_input_value(qmc_opt, 'gpu', default=False, verbose=self.verbosity>1)
 
         self.shared_comm = comm
 
@@ -223,12 +222,7 @@ class AFQMCBatch(object):
                 exit()
             ngpus = cupy.cuda.runtime.getDeviceCount()
             props = cupy.cuda.runtime.getDeviceProperties(0)
-            name = props['name'].decode()
-            device = cupy.cuda.Device(0) 
             if comm.rank == 0:
-                print("# {} GPUs are available".format(ngpus))
-                print("# Device name: {}".format(name))
-                print("# Compute capability: {}".format(device.compute_capability))
                 if (ngpus > comm.size):
                     print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
 
@@ -252,6 +246,16 @@ class AFQMCBatch(object):
             if comm.rank == 0:
                 print("# Casting arrays in walkers_batch")
             self.psi.walkers_batch.cast_to_cupy(verbose)
+        else:
+            if comm.rank == 0:
+                try:
+                    import cupy
+                    _have_cupy = True
+                except:
+                    _have_cupy = False
+                print("# NOTE: cupy available but qmc.gpu == False.")
+                print("#       If this is unintended set gpu option in qmc"
+                      "  section.")
 
         if comm.rank == 0:
             mem_avail = get_node_mem()
