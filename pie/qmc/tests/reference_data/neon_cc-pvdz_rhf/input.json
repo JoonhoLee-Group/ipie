@@ -16,6 +16,9 @@
     "trial": {
         "filename": "afqmc.h5"
     },
+    "walkers": {
+        "pop_control": "comb"
+    },
     "estimators": {
         "back_propagation": {
             "tau_bp": 0.1,
