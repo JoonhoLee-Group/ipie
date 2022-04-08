@@ -1,2 +1,2 @@
 include versioneer.py
-include pie/_version.py
+include ipie/_version.py

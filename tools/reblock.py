@@ -11,11 +11,11 @@ import pandas as pd
 import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pie.analysis.blocking import (
+from ipie.analysis.blocking import (
         analyse_estimates,
         average_fp
         )
-from pie.analysis.extraction import extract_data_sets
+from ipie.analysis.extraction import extract_data_sets
 import glob
 
 

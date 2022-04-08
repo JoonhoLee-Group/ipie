@@ -1,37 +1,37 @@
-pie\.propagation package
+ipie\.propagation package
 ==========================
 
 Submodules
 ----------
 
-pie\.propagation\.generic module
+ipie\.propagation\.generic module
 ----------------------------------
 
-.. automodule:: pie.propagation.generic
+.. automodule:: ipie.propagation.generic
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.propagation\.hubbard module
+ipie\.propagation\.hubbard module
 ----------------------------------
 
-.. automodule:: pie.propagation.hubbard
+.. automodule:: ipie.propagation.hubbard
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.propagation\.operations module
+ipie\.propagation\.operations module
 -------------------------------------
 
-.. automodule:: pie.propagation.operations
+.. automodule:: ipie.propagation.operations
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.propagation\.utils module
+ipie\.propagation\.utils module
 --------------------------------
 
-.. automodule:: pie.propagation.utils
+.. automodule:: ipie.propagation.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,7 +40,7 @@ pie\.propagation\.utils module
 Module contents
 ---------------
 
-.. automodule:: pie.propagation
+.. automodule:: ipie.propagation
     :members:
     :undoc-members:
     :show-inheritance:

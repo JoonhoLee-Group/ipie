@@ -1,29 +1,29 @@
-pie\.walkers package
+ipie\.walkers package
 ======================
 
 Submodules
 ----------
 
-pie\.walkers\.handler module
+ipie\.walkers\.handler module
 ------------------------------
 
-.. automodule:: pie.walkers.handler
+.. automodule:: ipie.walkers.handler
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.walkers\.multi\_ghf module
+ipie\.walkers\.multi\_ghf module
 ---------------------------------
 
-.. automodule:: pie.walkers.multi_ghf
+.. automodule:: ipie.walkers.multi_ghf
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.walkers\.single\_det module
+ipie\.walkers\.single\_det module
 ----------------------------------
 
-.. automodule:: pie.walkers.single_det
+.. automodule:: ipie.walkers.single_det
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pie\.walkers\.single\_det module
 Module contents
 ---------------
 
-.. automodule:: pie.walkers
+.. automodule:: ipie.walkers
     :members:
     :undoc-members:
     :show-inheritance:

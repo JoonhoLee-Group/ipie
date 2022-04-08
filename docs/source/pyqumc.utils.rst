@@ -1,37 +1,37 @@
-pie\.utils package
+ipie\.utils package
 ====================
 
 Submodules
 ----------
 
-pie\.utils\.fft module
+ipie\.utils\.fft module
 ------------------------
 
-.. automodule:: pie.utils.fft
+.. automodule:: ipie.utils.fft
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.utils\.io module
+ipie\.utils\.io module
 -----------------------
 
-.. automodule:: pie.utils.io
+.. automodule:: ipie.utils.io
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.utils\.linalg module
+ipie\.utils\.linalg module
 ---------------------------
 
-.. automodule:: pie.utils.linalg
+.. automodule:: ipie.utils.linalg
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.utils\.misc module
+ipie\.utils\.misc module
 -------------------------
 
-.. automodule:: pie.utils.misc
+.. automodule:: ipie.utils.misc
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,7 +40,7 @@ pie\.utils\.misc module
 Module contents
 ---------------
 
-.. automodule:: pie.utils
+.. automodule:: ipie.utils
     :members:
     :undoc-members:
     :show-inheritance:
