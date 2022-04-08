@@ -8,7 +8,7 @@ from ipie.analysis.extraction import (
         )
 from ipie.qmc.calc import setup_calculation
 from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.qmc.afqmc import AFQMC
+from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater

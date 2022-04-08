@@ -8,15 +8,15 @@ from ipie.propagation.utils import get_propagator_driver
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.estimators.local_energy import local_energy
+from ipie.legacy.estimators.local_energy import local_energy
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.mpi import get_shared_comm
 from ipie.utils.io import  get_input_value
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.handler import Walkers
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.handler import Walkers
 from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,

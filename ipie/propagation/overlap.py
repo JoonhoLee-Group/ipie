@@ -1,7 +1,7 @@
 import itertools
 import numpy
 import scipy.linalg
-from ipie.estimators.greens_function import gab_spin, gab_mod
+from ipie.legacy.estimators.greens_function import gab_mod
 try:
     from ipie.propagation.wicks_kernels import get_det_matrix_batched
 except ImportError:

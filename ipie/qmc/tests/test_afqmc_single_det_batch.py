@@ -6,15 +6,16 @@ from ipie.analysis.extraction import (
         extract_mixed_estimates,
         extract_rdm
         )
+from ipie.legacy.qmc.afqmc import AFQMC
+from ipie.legacy.systems.ueg import UEG
+from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
+from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
+
 from ipie.qmc.calc import setup_calculation
 from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.systems.ueg import UEG
-from ipie.hamiltonians.ueg import UEG as HamUEG
 from ipie.utils.testing import generate_hamiltonian
-from ipie.trial_wavefunction.hartree_fock import HartreeFock
 
 steps = 25
 blocks = 7

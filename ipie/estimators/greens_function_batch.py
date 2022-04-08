@@ -2,7 +2,7 @@ import numpy
 import scipy.linalg
 from ipie.utils.linalg import  minor_mask
 from ipie.utils.misc import  is_cupy
-from ipie.estimators.greens_function import gab_mod, gab_spin
+from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
 from ipie.propagation.overlap import (
         get_overlap_one_det_wicks,
         compute_determinants_batched

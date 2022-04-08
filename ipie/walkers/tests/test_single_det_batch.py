@@ -1,17 +1,18 @@
 import numpy
 import pytest
-from ipie.hamiltonians.hubbard import Hubbard
-from ipie.systems.generic import Generic
-from ipie.propagation.hubbard import Hirsch
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.utils.misc import dotdict
+
+from ipie.legacy.hamiltonians.hubbard import Hubbard
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.greens_function import gab
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+
 from ipie.propagation.overlap import calc_overlap_single_det
-from ipie.estimators.greens_function import gab
-from ipie.estimators.local_energy import local_energy
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.estimators.greens_function_batch import greens_function_single_det
+from ipie.utils.misc import dotdict
 
 @pytest.mark.unit
 def test_buff_size_batch():

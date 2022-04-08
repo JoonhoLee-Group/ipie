@@ -1,12 +1,8 @@
 import numpy
 import sys
-from ipie.trial_wavefunction.free_electron import FreeElectron
-from ipie.trial_wavefunction.hubbard_uhf  import HubbardUHF
-from ipie.trial_wavefunction.coherent_state  import CoherentState
-from ipie.trial_wavefunction.hartree_fock import HartreeFock
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.io import read_qmcpack_wfn_hdf, get_input_value
-from ipie.estimators.greens_function import gab_spin
+from ipie.legacy.estimators.greens_function import gab_spin
 
 def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
                            comm=None, scomm=None, verbose=0):
@@ -93,37 +89,6 @@ def get_trial_wavefunction(system, hamiltonian, options={}, mf=None,
                 coeffs = None
             coeffs = comm.bcast(coeffs, root=0)
             trial.coeffs = coeffs
-    elif wfn_type == 'hartree_fock':
-        trial = HartreeFock(system, hamiltonian, options, verbose=verbose)
-    elif wfn_type == 'free_electron':
-        if comm.rank == 0:
-            wfn = FreeElectron(system, options, verbose)
-            psi = wfn.psi
-        else:
-            psi = None
-        psi = comm.bcast(psi)
-        nmo = psi.shape[0]
-        nel = psi.shape[1]
-        trial = MultiSlater(system, hamiltonian, (numpy.array([1.0]), psi.reshape(1,nmo,nel)),
-                            options=options, verbose=verbose)
-    elif wfn_type.lower() in ['hubbard_uhf', 'uhf']:
-        if comm.rank == 0:
-            wfn = HubbardUHF(system, hamiltonian, options, verbose)
-            psi = wfn.psi
-        else:
-            psi = None
-        psi = comm.bcast(psi)
-        nmo = psi.shape[0]
-        nel = psi.shape[1]
-        trial = MultiSlater(system, hamiltonian, (numpy.array([1.0]), psi.reshape(1,nmo,nel)),
-                            options=options, verbose=verbose)
-
-    elif wfn_type.lower() == 'coherent_state':
-        if comm.rank == 0:
-            trial = CoherentState(system, options=options, verbose=verbose)
-        else:
-            trial = None
-        trial = comm.bcast(trial)
     else:
         print("Unknown trial wavefunction type.")
         sys.exit()

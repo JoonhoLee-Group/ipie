@@ -6,16 +6,16 @@ from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.multi_det import MultiDetWalker
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
         get_random_phmsd
         )
-from ipie.estimators.local_energy import local_energy_generic_cholesky_opt
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.estimators.local_energy_batch import local_energy_single_det_batch, local_energy_single_det_batch_einsum
 
 try:

@@ -1,11 +1,11 @@
 import numpy
 import scipy.linalg
 import time
-from ipie.estimators.local_energy import local_energy
-from ipie.estimators.local_energy import (
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
-from ipie.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
+from ipie.legacy.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
 from ipie.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
 from ipie.utils.io import (
         get_input_value,

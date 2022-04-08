@@ -14,7 +14,7 @@ from ipie.utils.io import (
         write_qmcpack_dense,
         write_qmcpack_wfn
         )
-from ipie.estimators.greens_function import gab
+from ipie.legacy.estimators.greens_function import gab
 from ipie.estimators.generic import (
         local_energy_generic_cholesky, core_contribution_cholesky
     )

@@ -10,8 +10,8 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-        Extension("ipie.estimators.ueg_kernels",
-                  ["ipie/estimators/ueg_kernels.pyx"],
+        Extension("ipie.legacy.estimators.ueg_kernels",
+                  ["ipie/legacy/estimators/ueg_kernels.pyx"],
 		  include_dirs=[numpy.get_include()]),
         Extension("ipie.propagation.wicks_kernels",
                   ["ipie/propagation/wicks_kernels.pyx"],
