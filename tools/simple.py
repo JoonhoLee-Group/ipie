@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pie.analysis import blocking
+from ipie.analysis import blocking
 import glob
 import sys
 import pandas as pd

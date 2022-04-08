@@ -1,14 +1,14 @@
-from pie.qmc.afqmc import AFQMC
+from ipie.qmc.afqmc import AFQMC
 import numpy
-from pie.qmc.options import QMCOpts
-from pie.propagation.utils import get_propagator_driver
-from pie.hamiltonians.utils import get_hamiltonian
-from pie.trial_wavefunction.utils import get_trial_wavefunction
-from pie.estimators.local_energy import local_energy
-from pie.systems.generic import Generic
-from pie.utils.mpi import get_shared_comm
-from pie.utils.io import  get_input_value
-from pie.walkers.single_det import SingleDetWalker
+from ipie.qmc.options import QMCOpts
+from ipie.propagation.utils import get_propagator_driver
+from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.estimators.local_energy import local_energy
+from ipie.systems.generic import Generic
+from ipie.utils.mpi import get_shared_comm
+from ipie.utils.io import  get_input_value
+from ipie.walkers.single_det import SingleDetWalker
 
 import mpi4py
 mpi4py.rc.recv_mprobe = False

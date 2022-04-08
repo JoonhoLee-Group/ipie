@@ -10,7 +10,7 @@ import pandas as pd
 import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pie.analysis.blocking_nopyblock import analyse_estimates
+from ipie.analysis.blocking_nopyblock import analyse_estimates
 import glob
 
 

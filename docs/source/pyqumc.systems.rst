@@ -1,29 +1,29 @@
-pie\.systems package
+ipie\.systems package
 ======================
 
 Submodules
 ----------
 
-pie\.systems\.generic module
+ipie\.systems\.generic module
 ------------------------------
 
-.. automodule:: pie.systems.generic
+.. automodule:: ipie.systems.generic
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.systems\.hubbard module
+ipie\.systems\.hubbard module
 ------------------------------
 
-.. automodule:: pie.systems.hubbard
+.. automodule:: ipie.systems.hubbard
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.systems\.utils module
+ipie\.systems\.utils module
 ----------------------------
 
-.. automodule:: pie.systems.utils
+.. automodule:: ipie.systems.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pie\.systems\.utils module
 Module contents
 ---------------
 
-.. automodule:: pie.systems
+.. automodule:: ipie.systems
     :members:
     :undoc-members:
     :show-inheritance:

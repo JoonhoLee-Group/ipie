@@ -1,7 +1,7 @@
-pie
+ipie
 =====
 
 .. toctree::
    :maxdepth: 4
 
-   pie
+   ipie

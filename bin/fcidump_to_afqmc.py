@@ -5,9 +5,9 @@ import scipy.sparse
 import sys
 import time
 import numpy
-from pie.utils.io import write_qmcpack_dense
-from pie.utils.hamiltonian_converter import read_fcidump
-from pie.utils.linalg import modified_cholesky
+from ipie.utils.io import write_qmcpack_dense
+from ipie.utils.hamiltonian_converter import read_fcidump
+from ipie.utils.linalg import modified_cholesky
 
 
 def parse_args(args):
@@ -29,7 +29,7 @@ def parse_args(args):
                         default=None, help='Input FCIDUMP file.')
     parser.add_argument('-o', '--output', dest='output_file',
                         type=str, default='fcidump.h5',
-                        help='Output file name for pie data.')
+                        help='Output file name for ipie data.')
     parser.add_argument('--write-complex', dest='write_complex',
                         action='store_true', default=False,
                         help='Output integrals in complex format.')
