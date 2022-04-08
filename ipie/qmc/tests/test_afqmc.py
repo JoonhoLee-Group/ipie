@@ -26,6 +26,9 @@ def test_constructor():
                 'blocks': 10,
                 'rng_seed': 8,
             },
+            'walkers': {
+                'pop_control': 'comb'
+            },
             'estimates': {
                 'mixed': {
                     'energy_eval_freq': 1
@@ -69,6 +72,9 @@ def test_ueg():
             },
             'hamiltonian': {
                 'name': "UEG",
+            },
+            'walkers': {
+                'pop_control': 'comb'
             },
             'estimates': {
                 'mixed': {
@@ -117,6 +123,9 @@ def test_hubbard():
                 'name': "Generic",
                 'nup': 7,
                 'ndown': 7,
+            },
+            'walkers': {
+                'pop_control': 'comb'
             },
             'hamiltonian': {
                 'name': "Hubbard",
@@ -167,6 +176,9 @@ def test_hubbard_complex():
                 'nup': 7,
                 'ndown': 7,
             },
+            'walkers': {
+                'pop_control': 'comb'
+            },
             'hamiltonian': {
                 'name': "Hubbard",
                 'nx': 4,
@@ -212,6 +224,9 @@ def test_generic():
                 'blocks': 10,
                 'rng_seed': 8,
             },
+            'walkers': {
+                'pop_control': 'comb'
+            },
             'estimates': {
                 'mixed': {
                     'energy_eval_freq': 1
@@ -255,6 +270,9 @@ def test_generic_single_det():
             },
             'trial': {
                 'name': 'MultiSlater'
+            },
+            'walkers': {
+                'pop_control': 'comb'
             },
             'estimator': {
                 'back_propagated': {

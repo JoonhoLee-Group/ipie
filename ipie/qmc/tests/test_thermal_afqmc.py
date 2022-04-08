@@ -38,6 +38,7 @@ def test_ueg():
             },
             'walkers': {
                 'low_rank': True,
+                'pop_control': 'comb',
                 'low_rank_thresh': 1e-6
             },
         }

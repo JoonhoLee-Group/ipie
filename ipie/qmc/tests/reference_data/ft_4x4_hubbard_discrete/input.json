@@ -20,6 +20,9 @@
     "trial": {
         "name": "one_body"
     },
+    "walkers": {
+        "pop_control": "comb"
+    },
     "propagator": {
         "hubbard_stratonovich": "discrete"
     },
