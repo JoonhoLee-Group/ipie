@@ -3,7 +3,7 @@
         "name": "Generic",
         "nup": 5,
         "ndown": 5,
-        "integrals": "../h10_cc-pvtz_pair_branch/afqmc.h5"
+        "integrals": "afqmc.h5"
     },
     "qmc": {
         "dt": 0.005,
@@ -15,7 +15,7 @@
         "pop_control_freq": 5
     },
     "trial": {
-        "filename": "../h10_cc-pvtz_pair_branch/afqmc.h5"
+        "filename": "afqmc.h5"
     },
     "walkers": {
         "population_control": "pair_branch"
