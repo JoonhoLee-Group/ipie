@@ -1,4 +1,3 @@
-import glob
 import numpy as np
 import json
 import os
@@ -21,9 +20,19 @@ except ImportError:
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
 
-_data_dir  = os.path.abspath(os.path.dirname(__file__)) + '/reference_data'
-_test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
-_tests     = [(d+'/input.json',d+'/reference.json') for d in _test_dirs]
+_data_dir  = os.path.abspath(os.path.dirname(__file__)) + '/reference_data/'
+# glob is a bit dangerous.
+# _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
+_test_dirs = [
+        "4x4_hubbard_discrete",
+        "ft_4x4_hubbard_discrete",
+        "ft_ueg_ecut1.0_rs1.0",
+        "h10_cc-pvtz_batched",
+        "h10_cc-pvtz_pair_branch",
+        "neon_cc-pvdz_rhf",
+        "ueg_ecut2.5_rs2.0_ne14"
+        ]
+_tests     = [(_data_dir+d+'/input.json',_data_dir+d+'/reference.json') for d in _test_dirs]
 
 def compare_test_data(ref, test):
     for k, v in ref.items():
