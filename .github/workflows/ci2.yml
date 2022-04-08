@@ -33,6 +33,7 @@ jobs:
         mpiexec -n 2 python -m pytest pie/walkers/tests/test_handler.py
     - name: Test Integration
       run: |
+      timeout-minutes: 5
         pip install pytest-mpi
         mpirun -np 4 python -m pytest --with-mpi pie/qmc/tests/test_mpi_integration.py
         ./tools/run_examples.sh
