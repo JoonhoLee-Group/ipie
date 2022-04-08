@@ -11,7 +11,7 @@ void compute_density_matrix(
     );
 
 void fill_diagonal_term(
-    u_int64_t det,
+    u_int64_t *det,
     double ci_coeff,
     int* occs,
     double* density_matrix,

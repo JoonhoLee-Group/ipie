@@ -9,6 +9,7 @@ from pie.lib.wicks.wicks_helper import (
         decode_det,
         get_ia,
         get_perm_ia,
+        print_bitstring,
         compute_opdm
         )
 
@@ -16,10 +17,11 @@ from pie.lib.wicks.wicks_helper import (
 @pytest.mark.parametrize(
         "test_input,expected",
         [
-            (([], [0,1,2,3]), '0b10101010'),
-            (([0,3], [0,1,2,3]), '0b11101011'),
-            (([1], [0,1,2,3]), '0b10101110'),
-            (([], [0,1]), '0b1010')
+            (([], [0,1,2,3]), ['0b10101010', '0b0']),
+            (([0,3], [0,1,2,3]), ['0b11101011', '0b0']),
+            (([1], [0,1,2,3]), ['0b10101110', '0b0']),
+            (([], [0,1]), ['0b1010', '0b0']),
+            (([1,35], [0,34]), ['0b110', '0b1100000'])
         ]
             )
 def test_encode_det(test_input, expected):
@@ -27,7 +29,10 @@ def test_encode_det(test_input, expected):
     a = np.array(a, dtype=np.int32)
     b = np.array(b, dtype=np.int32)
     det = encode_det(a, b)
-    assert bin(det) == expected
+    for i in range(len(det)):
+        # print(i, bin(det[i]), expected[i])
+        # # print(i, bin(det[i]), expected[i])
+        assert bin(det[i]) == expected[i]
 
 @pytest.mark.unit
 def test_encode_dets():
@@ -40,9 +45,9 @@ def test_encode_dets():
             dtype=np.int32
             )
     dets = encode_dets(occsa, occsb)
-    for i in range(2):
+    for i in range(len(occsa)):
         d = encode_det(occsa[i], occsb[i])
-        assert dets[i] == d
+        assert (dets[i] == d).all()
 
 
 
@@ -50,39 +55,44 @@ def test_encode_dets():
 @pytest.mark.parametrize(
         "test_input,expected",
         [
-            (15, 4),
-            (37, 3),
-            (1001, 7)
+            ([15,0], 4),
+            ([37,0], 3),
+            ([1001,0], 7)
         ]
             )
 def test_count_set_bits(test_input, expected):
-    nset = count_set_bits(test_input)
+    nset = count_set_bits(np.array(test_input, dtype=np.uint64))
     assert nset == expected
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
         "test_input,expected",
         [
-            ((2, 1), 1),
-            ((12, 3), 2),
+            # (([2,0], [1,0]), 1),
+            # (([12,0], [3,0]), 2),
+            (([1688832680394751, 2], [1125899906842623, 0]), 2)
         ]
             )
 def test_get_excitation_level(test_input, expected):
     # print(bin(test_input[0]), bin(test_input[1]))
     # print(bin(test_input[0]^test_input[1]))
-    nset = get_excitation_level(test_input[0], test_input[1])
+    nset = get_excitation_level(
+            np.array(test_input[0], dtype=np.uint64),
+            np.array(test_input[1], dtype=np.uint64)
+            )
     assert nset == expected
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
         "test_input,expected",
         [
-            (12, [2,3]),
-            (5, [0,2]),
+            (np.array([12,0], dtype=np.uint64), [2,3]),
+            (np.array([5,0], dtype=np.uint64), [0,2]),
         ]
             )
 def test_decode_det(test_input, expected):
     out = np.zeros(len(expected), dtype=np.int32)
+    # print(out.size, out.shape, expected, np.array(expected).shape)
     decode_det(test_input, out)
     assert (out == expected).all()
 
@@ -103,15 +113,37 @@ def test_get_ia():
     assert (ia == [3, 0]).all()
 
 @pytest.mark.unit
-def test_get_perm_ia():
+@pytest.mark.parametrize(
+        "test_input,expected",
+        [
+            ([[], [0,1], [3,0]], -1),
+            ([[0,14//2], [0,9//2], [14, 8]], -1),
+            ([[0,4//2], [1,13//2], [13, 17]], 1),
+        ]
+            )
+def test_get_perm_ia(test_input, expected):
     # perm(0^3|0101>) = -1
     # |0101> = 1010 (binary)
+    o1, o2, ia = test_input
     ket = encode_det(
-            np.array([], dtype=np.int32),
-            np.array([0,1], dtype=np.int32)
+            np.array(o1, dtype=np.int32),
+            np.array(o2, dtype=np.int32)
             )
-    perm = get_perm_ia(ket, 3, 0)
-    assert perm == -1
+    print(bin(ket[0]), o1, o2, ia, 2*np.array(ia))
+    perm = get_perm_ia(ket, ia[0], ia[1])
+    assert perm == expected
+
+@pytest.mark.unit
+def test_get_perm_ia_long():
+    # perm(0^3|0101>) = -1
+    # |0101> = 1010 (binary)
+    ket = np.array([3236962232172543, 0], dtype=np.uint64)
+    out = np.zeros(50, dtype=np.int32)
+    decode_det(ket, out)
+    print(out)
+    print(bin(ket[0]), 51, 47)
+    perm = get_perm_ia(ket, 51, 47)
+    assert perm == 1
 
 @pytest.mark.unit
 def test_compute_opdm():
