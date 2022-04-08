@@ -132,7 +132,8 @@ class Walkers(object):
         else:
             dtype = int
         self.pcont_method = get_input_value(walker_opts, 'population_control',
-                                            default='comb')
+                                            default='pair_branch',
+                                            verbose=verbose)
         self.min_weight = walker_opts.get('min_weight', 0.1)
         self.max_weight = walker_opts.get('max_weight', 4.0)
         if verbose:
