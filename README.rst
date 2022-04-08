@@ -1,23 +1,23 @@
 =====
-PIE
+IPIE
 =====
 
-PIE stands for **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
+IPIE stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
-PIE inherits a lot of QMC features from pauxy.
+IPIE inherits a lot of QMC features from pauxy.
 
-.. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
-    :target: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml/badge.svg
+    :target: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml
 
-.. image:: http://readthedocs.org/projects/pie/badge/?version=latest
-    :target: http://pie.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/ipie/badge/?version=latest
+    :target: http://ipie.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
-    :target: http://github.com/linusjoonho/pie/blob/master/LICENSE
+    :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
 
 Features
 --------
-pie can currently:
+ipie can currently:
 
 - estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
 - perform phaseless and constrained path AFQMC.
@@ -32,9 +32,9 @@ Clone the repository
 
 ::
 
-    $ git clone https://github.com/linusjoonho/pie.git
+    $ git clone https://github.com/linusjoonho/ipie.git
 
-and run the following in the top-level pie directory
+and run the following in the top-level ipie directory
 
 ::
 
@@ -63,7 +63,7 @@ To perform error analysis you will also need `pyblock <https://github.com/jsspen
 Running the Test Suite
 ----------------------
 
-pie contains unit tests and some longer driver tests that can be run using pytest by
+ipie contains unit tests and some longer driver tests that can be run using pytest by
 running:
 
 ::
@@ -73,14 +73,14 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 `.github/workflows/ci2.yml` for more details.
 
-.. image:: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml/badge.svg
-    :target: https://github.com/linusjoonho/pie/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml/badge.svg
+    :target: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml
 
 Documentation
 -------------
 
 Documentation and tutorials are available at
-`readthedocs <https://pie.readthedocs.org>`_.
+`readthedocs <https://ipie.readthedocs.org>`_.
 
-.. image:: http://readthedocs.org/projects/pie/badge/?version=latest
-    :target: http://pie.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/ipie/badge/?version=latest
+    :target: http://ipie.readthedocs.io/en/latest/?badge=latest

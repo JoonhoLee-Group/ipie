@@ -1,29 +1,29 @@
-pie\.qmc package
+ipie\.qmc package
 ==================
 
 Submodules
 ----------
 
-pie\.qmc\.afqmc module
+ipie\.qmc\.afqmc module
 ------------------------
 
-.. automodule:: pie.qmc.afqmc
+.. automodule:: ipie.qmc.afqmc
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.qmc\.calc module
+ipie\.qmc\.calc module
 -----------------------
 
-.. automodule:: pie.qmc.calc
+.. automodule:: ipie.qmc.calc
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.qmc\.options module
+ipie\.qmc\.options module
 --------------------------
 
-.. automodule:: pie.qmc.options
+.. automodule:: ipie.qmc.options
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pie\.qmc\.options module
 Module contents
 ---------------
 
-.. automodule:: pie.qmc
+.. automodule:: ipie.qmc
     :members:
     :undoc-members:
     :show-inheritance:

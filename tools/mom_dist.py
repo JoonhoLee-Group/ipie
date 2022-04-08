@@ -11,10 +11,10 @@ import pandas as pd
 import numpy
 from numpy import linalg
 import json
-from pie.analysis.blocking import reblock_rdm
+from ipie.analysis.blocking import reblock_rdm
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pie.analysis.blocking import analyse_estimates
+from ipie.analysis.blocking import analyse_estimates
 import glob
 
 

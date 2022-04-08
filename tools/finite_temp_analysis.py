@@ -7,8 +7,8 @@ try:
 except ImportError:
     pass
 import sys
-from pie.analysis.thermal import analyse_energy, find_chem_pot
-from pie.analysis.extraction import get_sys_param
+from ipie.analysis.thermal import analyse_energy, find_chem_pot
+from ipie.analysis.extraction import get_sys_param
 import scipy.optimize
 
 import argparse
@@ -18,7 +18,7 @@ import pandas as pd
 import json
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, 'analysis'))
-from pie.analysis.blocking import analyse_estimates
+from ipie.analysis.blocking import analyse_estimates
 import glob
 
 

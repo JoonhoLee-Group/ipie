@@ -21,13 +21,13 @@ The pyscf scf script is given below (scf.py in the current directory):
 The important point is to specify the `chkfile` option.
 
 Once the scf converges we need to generate the wavefunction and integrals using the
-`pyscf_to_pie.py` script found in `pie/tools/pyscf`.
+`pyscf_to_ipie.py` script found in `ipie/tools/pyscf`.
 
 .. code-block:: bash
 
-    python /path/to/pie/tools/pyscf/pyscf_to_pie.py -i 'scf.chk' -j 'input.json'
+    python /path/to/ipie/tools/pyscf/pyscf_to_ipie.py -i 'scf.chk' -j 'input.json'
 
-You should find a file called `afqmc.h5` and pie input file `input.json` created from
+You should find a file called `afqmc.h5` and ipie input file `input.json` created from
 information in `afqmc.h5`.
 
 .. code-block:: json
@@ -59,19 +59,19 @@ Run the AFQMC calculation by:
 
 .. code-block:: bash
 
-    mpirun -np N python /path/to/pie/bin/pie.py input.json
+    mpirun -np N python /path/to/ipie/bin/ipie.py input.json
 
 See the documentation for more input options and the converter:
 
 .. code-block:: bash
 
-    python /path/to/pie/tools/pyscf/pyscf_to_pie.py --help
+    python /path/to/ipie/tools/pyscf/pyscf_to_ipie.py --help
 
 The data can be analysed using
 
 .. code-block:: bash
 
-    python /path/to/pie/tools/reblock.py -s 1.0 -f estimates.0.h5
+    python /path/to/ipie/tools/reblock.py -s 1.0 -f estimates.0.h5
 
 which will print a data table whose value for the total energy should be roughly
 -5.38331344 +/- 0.0014386. This can be compared to value of -5.3819  +/- 0.0006 from the

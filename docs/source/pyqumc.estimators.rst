@@ -1,45 +1,45 @@
-pie\.estimators package
+ipie\.estimators package
 =========================
 
 Submodules
 ----------
 
-pie\.estimators\.back\_propagation module
+ipie\.estimators\.back\_propagation module
 -------------------------------------------
 
-.. automodule:: pie.estimators.back_propagation
+.. automodule:: ipie.estimators.back_propagation
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.estimators\.handler module
+ipie\.estimators\.handler module
 ---------------------------------
 
-.. automodule:: pie.estimators.handler
+.. automodule:: ipie.estimators.handler
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.estimators\.itcf module
+ipie\.estimators\.itcf module
 ------------------------------
 
-.. automodule:: pie.estimators.itcf
+.. automodule:: ipie.estimators.itcf
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.estimators\.mixed module
+ipie\.estimators\.mixed module
 -------------------------------
 
-.. automodule:: pie.estimators.mixed
+.. automodule:: ipie.estimators.mixed
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.estimators\.utils module
+ipie\.estimators\.utils module
 -------------------------------
 
-.. automodule:: pie.estimators.utils
+.. automodule:: ipie.estimators.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -48,7 +48,7 @@ pie\.estimators\.utils module
 Module contents
 ---------------
 
-.. automodule:: pie.yestimators
+.. automodule:: ipie.estimators
     :members:
     :undoc-members:
     :show-inheritance:
