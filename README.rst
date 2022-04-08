@@ -2,7 +2,7 @@
 IPIE
 =====
 
-IPIE stands for **I**ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
+IPIE stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
 IPIE inherits a lot of QMC features from pauxy.
 
