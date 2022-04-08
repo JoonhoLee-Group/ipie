@@ -77,6 +77,7 @@ class WalkerBatchHandler(object):
 
         self.pcont_method = get_input_value(walker_opts, 'population_control',
                                             default='pair_branch',
+                                            alias=['pop_control'],
                                             verbose=verbose)
         self.min_weight = walker_opts.get('min_weight', 0.1)
         self.max_weight = walker_opts.get('max_weight', 4.0)
