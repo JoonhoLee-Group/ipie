@@ -10,7 +10,7 @@ To add a test first:
    reproducible.
 #. Run your example with 4 MPI tasks.
 #. Run script `pie/qmc/tests/reference_data/save_benchmark.py` which should generate a file `benchmark.json`.
-#. Run `mpirun -np 4 python -m pytest --with-mpi test_integration.py` from the
+#. Run `mpirun -np 4 python -m pytest --with-mpi test_mpi_integration.py` from the
    pie/qmc/tests directory and make sure your test passes.
 #. Git add input.json, afqmc.h5 (if applicable) and benchmark.json and commit. DO NOT ADD
    estimates.*.h5.
