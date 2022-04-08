@@ -132,6 +132,7 @@ class Walkers(object):
         else:
             dtype = int
         self.pcont_method = get_input_value(walker_opts, 'population_control',
+                                            alias=['pop_control'],
                                             default='pair_branch',
                                             verbose=verbose)
         self.min_weight = walker_opts.get('min_weight', 0.1)
