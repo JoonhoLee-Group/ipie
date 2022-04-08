@@ -87,12 +87,16 @@ def read_input(input_file, comm, verbose=False):
     if comm.rank == 0:
         if verbose:
             print('# Initialising pie simulation from %s'%input_file)
-        with open(input_file) as inp:
-            options = json.load(inp)
-        inp.close()
+        try:
+            with open(input_file) as inp:
+                options = json.load(inp)
+        except FileNotFoundError:
+            options = None
     else:
         options = None
     options = comm.bcast(options, root=0)
+    if options == None:
+        raise FileNotFoundError
 
     return options
 
