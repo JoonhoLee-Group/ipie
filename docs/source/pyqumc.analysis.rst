@@ -1,29 +1,29 @@
-pie\.analysis package
+ipie\.analysis package
 =======================
 
 Submodules
 ----------
 
-pie\.analysis\.blocking module
+ipie\.analysis\.blocking module
 --------------------------------
 
-.. automodule:: pie.analysis.blocking
+.. automodule:: ipie.analysis.blocking
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.analysis\.correlation module
+ipie\.analysis\.correlation module
 -----------------------------------
 
-.. automodule:: pie.analysis.correlation
+.. automodule:: ipie.analysis.correlation
     :members:
     :undoc-members:
     :show-inheritance:
 
-pie\.analysis\.extraction module
+ipie\.analysis\.extraction module
 ----------------------------------
 
-.. automodule:: pie.analysis.extraction
+.. automodule:: ipie.analysis.extraction
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ pie\.analysis\.extraction module
 Module contents
 ---------------
 
-.. automodule:: pie.analysis
+.. automodule:: ipie.analysis
     :members:
     :undoc-members:
     :show-inheritance:

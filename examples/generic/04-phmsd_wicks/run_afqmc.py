@@ -3,25 +3,25 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 import numpy
 import pytest
-from pie.qmc.options import QMCOpts
-from pie.propagation.utils import get_propagator_driver
-from pie.hamiltonians.utils import get_hamiltonian
-from pie.trial_wavefunction.utils import get_trial_wavefunction
-from pie.estimators.local_energy import local_energy, local_energy_G, local_energy_generic_cholesky
-from pie.estimators.local_energy_batch import local_energy_multi_det_trial_batch
-from pie.estimators.greens_function import greens_function_multi_det_wicks
-from pie.systems.generic import Generic
-from pie.utils.mpi import get_shared_comm
-from pie.utils.linalg import minor_mask, minor_mask4
-from pie.utils.io import  get_input_value
-from pie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from pie.qmc.afqmc_batch import AFQMCBatch
-from pie.qmc.afqmc import AFQMC
-from pie.analysis.extraction import (
+from ipie.qmc.options import QMCOpts
+from ipie.propagation.utils import get_propagator_driver
+from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.estimators.local_energy import local_energy, local_energy_G, local_energy_generic_cholesky
+from ipie.estimators.local_energy_batch import local_energy_multi_det_trial_batch
+from ipie.estimators.greens_function import greens_function_multi_det_wicks
+from ipie.systems.generic import Generic
+from ipie.utils.mpi import get_shared_comm
+from ipie.utils.linalg import minor_mask, minor_mask4
+from ipie.utils.io import  get_input_value
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.afqmc import AFQMC
+from ipie.analysis.extraction import (
         extract_mixed_estimates,
         )
-from pie.propagation.overlap import get_calc_overlap, calc_overlap_multi_det
-from pie.estimators.greens_function import gab_spin, greens_function_multi_det
+from ipie.propagation.overlap import get_calc_overlap, calc_overlap_multi_det
+from ipie.estimators.greens_function import gab_spin, greens_function_multi_det
 import mpi4py
 mpi4py.rc.recv_mprobe = False
 from mpi4py import MPI

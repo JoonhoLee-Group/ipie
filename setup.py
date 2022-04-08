@@ -10,11 +10,11 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-        Extension("pie.estimators.ueg_kernels",
-                  ["pie/estimators/ueg_kernels.pyx"],
+        Extension("ipie.estimators.ueg_kernels",
+                  ["ipie/estimators/ueg_kernels.pyx"],
 		  include_dirs=[numpy.get_include()]),
-        Extension("pie.propagation.wicks_kernels",
-                  ["pie/propagation/wicks_kernels.pyx"],
+        Extension("ipie.propagation.wicks_kernels",
+                  ["ipie/propagation/wicks_kernels.pyx"],
 		  include_dirs=[numpy.get_include()])
         ]
 
@@ -26,10 +26,10 @@ def load_requirements(fname):
         return [str(ir.requirement) for ir in reqs]
 
 setup(
-    name='pie',
+    name='ipie',
     version=versioneer.get_version(),
-    author='PIE developers',
-    url='http://github.com/linusjoonho/pie',
+    author='ipie developers',
+    url='http://github.com/linusjoonho/ipie',
     packages=find_packages(exclude=['examples', 'docs', 'tests', 'tools', 'setup.py']),
     license='Apache 2.0',
     description='Python implementations of Imaginary-time Evolution algorithms',

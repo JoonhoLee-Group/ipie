@@ -6,14 +6,14 @@ except ImportError:
     _gpu = False
 import time
 
-from pie.systems.generic import Generic
-from pie.hamiltonians.generic import Generic as HamGeneric
-from pie.walkers.single_det_batch import SingleDetWalkerBatch
-from pie.walkers.single_det import SingleDetWalker
-from pie.utils.testing import get_random_nomsd
+from ipie.systems.generic import Generic
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.single_det import SingleDetWalker
+from ipie.utils.testing import get_random_nomsd
 
-from pie.estimators.greens_function import greens_function_single_det, greens_function_single_det_batch
-from pie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.estimators.greens_function import greens_function_single_det, greens_function_single_det_batch
+from ipie.trial_wavefunction.multi_slater import MultiSlater
 
 divide = 5
 

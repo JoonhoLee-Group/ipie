@@ -2,9 +2,9 @@ import numpy
 import h5py
 import scipy.sparse
 from pyscf import gto, scf, mcscf, fci, ao2mo, lib
-from pie.systems.generic import Generic
-from pie.utils.from_pyscf import generate_integrals
-from pie.utils.io import (
+from ipie.systems.generic import Generic
+from ipie.utils.from_pyscf import generate_integrals
+from ipie.utils.io import (
         write_qmcpack_wfn,
         write_qmcpack_dense,
         write_input
