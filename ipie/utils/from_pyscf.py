@@ -19,7 +19,7 @@ from ipie.estimators.generic import (
         local_energy_generic_cholesky, core_contribution_cholesky
     )
 
-def dump_pie(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
+def dump_ipie(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
                verbose=True, wfn_file='afqmc.h5',
                chol_cut=1e-5, sparse_zero=1e-16, cas=None,
                ortho_ao=True, ao=False, sparse=False):

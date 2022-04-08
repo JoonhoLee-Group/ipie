@@ -61,7 +61,7 @@ def main(args):
     """
 
     options = parse_args(args)
-    dump_pie(chkfile=options.input_scf, hamil_file=options.output,
+    dump_ipie(chkfile=options.input_scf, hamil_file=options.output,
                wfn_file=options.wfn, chol_cut=options.thresh,
                sparse=options.sparse, sparse_zero=options.sparse_zero, ortho_ao=options.oao, ao=options.ao)
     write_input(options.json_input, options.output, options.wfn, options.bp)

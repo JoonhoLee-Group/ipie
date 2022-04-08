@@ -6,7 +6,7 @@ try:
             integrals_from_scf,
             integrals_from_chkfile,
             get_pyscf_wfn,
-            dump_pie
+            dump_ipie
             )
     no_pyscf = False
 except (ImportError, OSError, ValueError):
@@ -45,13 +45,13 @@ def test_from_chkfile():
 
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
-def test_pyscf_to_pie():
+def test_pyscf_to_ipie():
     atom = gto.M(atom=[('H', 1.5*i, 0, 0) for i in range(0,4)],
                  basis='sto-6g', verbose=0, parse_arg=False)
     mf = scf.RHF(atom)
     mf.chkfile = 'scf.chk'
     mf.kernel()
-    dump_pie(chkfile='scf.chk', hamil_file='afqmc.h5', sparse=True)
+    dump_ipie(chkfile='scf.chk', hamil_file='afqmc.h5', sparse=True)
     wfn = read_qmcpack_wfn_hdf('afqmc.h5')
     h1e, chol, ecore, nmo, na, nb = from_qmcpack_sparse('afqmc.h5')
     write_input('input.json', 'afqmc.h5', 'afqmc.h5')
