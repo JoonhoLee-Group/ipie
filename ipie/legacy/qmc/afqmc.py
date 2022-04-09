@@ -10,7 +10,7 @@ import copy
 import h5py
 from ipie.legacy.estimators.handler import Estimators
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.propagation.utils import get_propagator_driver
+from ipie.legacy.propagation.utils import get_propagator_driver
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
 from ipie.legacy.systems.utils import get_system

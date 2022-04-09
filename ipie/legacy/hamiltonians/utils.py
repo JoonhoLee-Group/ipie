@@ -27,9 +27,11 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     elif ham_opts['name'] == 'UEG':
         ham = UEG(system, ham_opts, verbose)
     else:
-        if comm.rank == 0:
-            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
-            sys.exit()
+        import ipie.hamiltonians.utils
+        ham = ipie.hamiltonians.utils.get_hamiltonian(system, ham_opts, verbose, comm)
+        # if comm.rank == 0:
+        #     print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
+        #     sys.exit()
         # ham = None
 
     return ham
