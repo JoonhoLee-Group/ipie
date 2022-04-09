@@ -93,7 +93,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
     return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
     
-def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
+def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -107,7 +107,7 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     G : :class:`numpy.ndarray`
         Walker's "green's function"
     Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function"
+        Walker's half-rotated "green's function" shape is nocc x nbasis
     rchol : :class:`numpy.ndarray`
         trial's half-rotated choleksy vectors
 
@@ -138,12 +138,11 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
 
     complex128 = numpy.complex128
 
-    e1b = sum(ham.H1[0]*Ga) + sum(ham.H1[1]*Gb)
+    e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
     nalpha, nbeta = system.nup, system.ndown
-    nbasis = ham.nbasis
+    nbasis = Ghalfa.shape[-1]
     if rchola is not None:
         naux = rchola.shape[0]
-
     if (isrealobj(rchola) and isrealobj(rcholb)):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.j * rcholb.dot(Ghalfb.imag.ravel())
@@ -155,7 +154,7 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     ecoul += dot(Xb,Xb)
     ecoul += 2*dot(Xa,Xb)
 
-    GhalfaT = Ghalfa.T.copy()
+    GhalfaT = Ghalfa.T.copy() # nbasis x nocc
     GhalfbT = Ghalfb.T.copy()
 
     Ta = zeros((nalpha,nalpha), dtype=complex128)
@@ -181,7 +180,7 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
 
     e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+    return (e1b + e2b + ecore, e1b + ecore, e2b)
 
 def core_contribution(system, Gcore):
     hc_a = (numpy.einsum('pqrs,pq->rs', system.h2e, Gcore[0]) -

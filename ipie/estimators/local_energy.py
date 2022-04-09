@@ -17,9 +17,9 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
             if hamiltonian.exact_eri:
                 return local_energy_generic_opt(system, G, Ghalf=Ghalf, eri=trial._eri)
             else:
-                return local_energy_generic_cholesky_opt(system, hamiltonian, Ga = G[0], Gb= G[1],
-                                                         Ghalfa=Ghalf[0],Ghalfb=Ghalf[1],
-                                                         rchola=trial._rchola, rcholb=trial._rcholb)
+                return local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=Ghalf[0],Ghalfb=Ghalf[1],
+                                                        rH1a=trial._rH1a, rH1b=trial._rH1b,
+                                                        rchola=trial._rchola, rcholb=trial._rcholb)
         else:
             return local_energy_generic_cholesky(system, hamiltonian, G)
     else:

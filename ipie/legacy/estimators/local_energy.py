@@ -7,13 +7,13 @@ except ImportError as e:
 from ipie.legacy.estimators.hubbard import local_energy_hubbard, local_energy_hubbard_ghf,\
                                      local_energy_hubbard_holstein
 from ipie.estimators.generic import (
-    local_energy_generic_opt,
-    local_energy_generic_cholesky_opt,
+    local_energy_generic_opt
 )
 from ipie.legacy.estimators.generic import (
     local_energy_generic,
     local_energy_generic_pno,
     local_energy_generic_cholesky,
+    local_energy_generic_cholesky_opt,
     local_energy_generic_cholesky_opt_stochastic
 )
 from ipie.legacy.estimators.thermal import particle_number, one_rdm_from_G

@@ -1247,12 +1247,14 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
     nbasis = walker_batch.Ghalfa.shape[-1]
     nchol = hamiltonian.nchol
 
-    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
-    Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
-    e1b = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
+    # Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    # Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
+    # e1b = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+
+    e1b = walker_batch.Ghalfa.dot(trial._rH1a.ravel()) + walker_batch.Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
         Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
@@ -1317,10 +1319,12 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial, 
     nbasis = hamiltonian.nbasis
     nchol = hamiltonian.nchol
 
-    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
-    e1b = 2.0 * Ga.dot(hamiltonian.H1[0].ravel()) + hamiltonian.ecore
+    # Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    # e1b = 2.0 * Ga.dot(hamiltonian.H1[0].ravel()) + hamiltonian.ecore
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+
+    e1b = 2.0 * walker_batch.Ghalfa.dot(trial._rH1a.ravel()) + hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
         Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers

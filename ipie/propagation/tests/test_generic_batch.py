@@ -67,7 +67,7 @@ def test_overlap_rhf_batch():
     assert numpy.allclose(ovlp_gf, ot)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
 
 @pytest.mark.unit
@@ -115,8 +115,8 @@ def test_overlap_batch():
     assert numpy.allclose(ovlp_gf, ot)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
 
@@ -169,7 +169,7 @@ def test_two_body_rhf_batch():
         prop.compute_greens_function(walker_batch, trial)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
 
 @pytest.mark.unit
@@ -217,8 +217,8 @@ def test_two_body_batch():
         prop.compute_greens_function(walker_batch, trial)
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
 
@@ -266,7 +266,9 @@ def test_hybrid_rhf_batch():
         walker_batch.reortho()
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
+        assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
 
 @pytest.mark.unit
@@ -311,8 +313,10 @@ def test_hybrid_batch():
         walker_batch.reortho()
 
     for iw in range(nwalkers):
-        assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
+        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
+        assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
+        assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
         assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:,nelec[0]:])
 
