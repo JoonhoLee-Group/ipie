@@ -3,7 +3,7 @@ import copy
 import numpy
 import math
 import scipy.linalg
-from ipie.propagation.operations import kinetic_real, local_energy_bound
+from ipie.legacy.propagation.operations import kinetic_real, local_energy_bound
 from ipie.legacy.utils.fft import fft_wavefunction, ifft_wavefunction
 from ipie.utils.linalg import reortho
 from ipie.legacy.walkers.multi_ghf import MultiGHFWalker

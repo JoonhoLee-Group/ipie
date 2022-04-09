@@ -4,8 +4,8 @@ import numpy
 import scipy.sparse.linalg
 import time
 import sys
-from ipie.propagation.operations import local_energy_bound
 from ipie.utils.linalg import exponentiate_matrix, reortho
+from ipie.legacy.propagation.operations import local_energy_bound
 from ipie.legacy.walkers.single_det import SingleDetWalker
 
 class PlaneWave(object):

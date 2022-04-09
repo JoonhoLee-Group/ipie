@@ -24,7 +24,6 @@ class MultiSlater(object):
             print ("# Parsing input options for trial_wavefunction.MultiSlater.")
         init_time = time.time()
         self.name = "MultiSlater"
-        self.type = "MultiSlater"
         # TODO : Fix for MSD.
         # This is for the overlap trial
         if len(wfn) == 3:
@@ -48,11 +47,6 @@ class MultiSlater(object):
                                         'compute_trial_energy',
                                         default=True,
                                         verbose=verbose)
-
-        # self.le_psi = self.psi.copy()
-        # self.le_coeffs = self.coeffs.copy()
-        # self.le_ortho_expansion = self.ortho_expansion
-
         if self.verbose:
             if self.ortho_expansion:
                 print("# Assuming orthogonal trial wavefunction expansion.")
@@ -184,7 +178,9 @@ class MultiSlater(object):
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
+
         self.compute_opdm = options.get('compute_opdm', True)
+
         if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
