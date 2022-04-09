@@ -3,7 +3,7 @@ import os
 import pytest
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.propagation.generic import GenericContinuous
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.utils.misc import dotdict

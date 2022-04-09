@@ -41,8 +41,10 @@ class WalkerBatch(object):
         else:
             self.phib = None
 
-        self.ot = numpy.array([1.0 for iw in range(self.nwalkers)])
         self.ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
+        self.sgn_ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
+        self.log_ovlp = numpy.array([0.0 for iw in range(self.nwalkers)])
+
         # in case we use local energy approximation to the propagation
         self.eloc = numpy.array([0.0 for iw in range(self.nwalkers)])
 
@@ -68,7 +70,7 @@ class WalkerBatch(object):
         # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
         #                    "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
         #                    "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
-        self.buff_names = ["weight", "unscaled_weight", "phase", "phia", "phib", "hybrid_energy", "ot", "ovlp"]
+        self.buff_names = ["weight", "unscaled_weight", "phase", "phia", "phib", "hybrid_energy", "ovlp", "sgn_ovlp", "log_ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
 
     # This function casts relevant member variables into cupy arrays
@@ -80,8 +82,9 @@ class WalkerBatch(object):
         if (self.ndown >0 and not self.rhf):
             size += self.phib.size
         size += self.hybrid_energy.size
-        size += self.ot.size
         size += self.ovlp.size
+        size += self.sgn_ovlp.size
+        size += self.log_ovlp.size
         if verbose:
             expected_bytes = size * 16.
             print("# WalkerBatch: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
@@ -94,8 +97,9 @@ class WalkerBatch(object):
         if (self.ndown >0 and not self.rhf):
             self.phib = cupy.asarray(self.phib)
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
-        self.ot = cupy.asarray(self.ot)
         self.ovlp = cupy.asarray(self.ovlp)
+        self.sgn_ovlp = cupy.asarray(self.sgn_ovlp)
+        self.log_ovlp = cupy.asarray(self.log_ovlp)
         self.log_shift = cupy.asarray(self.log_shift)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
@@ -301,7 +305,6 @@ class WalkerBatch(object):
             detR += [exp(log_det-self.detR_shift[iw])]
             self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
-            self.ot[iw] = self.ot[iw] / detR[iw]
-            self.ovlp[iw] = self.ot[iw]
+            self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
         return detR

@@ -4,7 +4,7 @@ from ipie.systems.generic import Generic
 from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.propagation.continuous import Continuous
-from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
 from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.walkers.single_det import SingleDetWalker

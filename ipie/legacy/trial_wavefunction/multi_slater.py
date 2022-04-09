@@ -2,7 +2,7 @@ import numpy
 import scipy.linalg
 import time
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.estimators.local_energy import (
+from ipie.legacy.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
 from ipie.legacy.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
@@ -24,6 +24,7 @@ class MultiSlater(object):
             print ("# Parsing input options for trial_wavefunction.MultiSlater.")
         init_time = time.time()
         self.name = "MultiSlater"
+        self.type = "MultiSlater"
         # TODO : Fix for MSD.
         # This is for the overlap trial
         if len(wfn) == 3:
@@ -42,11 +43,33 @@ class MultiSlater(object):
         self.psia = self.psi[:,:,:system.nup]
         self.psib = self.psi[:,:,system.nup:]
 
+        self.split_trial_local_energy = get_input_value(
+                                            options,
+                                            'split_trial_local_energy',
+                                            default=False,
+                                            verbose=verbose)
         self.compute_trial_energy = get_input_value(
                                         options,
                                         'compute_trial_energy',
                                         default=True,
                                         verbose=verbose)
+
+        # if verbose:
+            # print("# compute_trial_energy = {}".format(self.compute_trial_energy))
+            # print("# split_trial_local_energy = {}".format(self.split_trial_local_energy))
+
+        if self.split_trial_local_energy:
+            if verbose:
+                print("# taking the determinant with the largest coefficient as the local energy trial")
+            imax = numpy.argmax(numpy.abs(self.coeffs))
+            self.le_coeffs = numpy.array([self.coeffs[imax]], dtype=numpy.complex128)
+            self.le_psi = numpy.array([self.psi[imax,:,:]], dtype=self.psi.dtype)
+            self.le_ortho_expansion = self.ortho_expansion
+        else:
+            self.le_psi = self.psi.copy()
+            self.le_coeffs = self.coeffs.copy()
+            self.le_ortho_expansion = self.ortho_expansion
+
         if self.verbose:
             if self.ortho_expansion:
                 print("# Assuming orthogonal trial wavefunction expansion.")
@@ -95,6 +118,7 @@ class MultiSlater(object):
                             default=False,
                             verbose=verbose)
         if self.wicks: # this is for Wick's theorem
+        # if True: # this is for Wick's theorem
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
@@ -178,9 +202,7 @@ class MultiSlater(object):
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
-
         self.compute_opdm = options.get('compute_opdm', True)
-
         if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
@@ -199,9 +221,12 @@ class MultiSlater(object):
         self._rchol = None
         self._rchola = None
         self._rcholb = None
+        self._UVT = None
         self._eri = None
         self._mem_required = 0.0
-
+        self.ecoul0 = None
+        self.exxa0 = None
+        self.exxb0 = None
         write_wfn = options.get('write_wavefunction', False)
         output_file = options.get('output_file', 'wfn.h5')
 
@@ -209,6 +234,52 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial_wavefunction.MultiSlater.")
+
+    def local_energy_2body(self, system, hamiltonian):
+        """Compute walkers two-body local energy
+
+        Parameters
+        ----------
+        system : object
+            System object.
+
+        Returns
+        -------
+        (E, T, V) : tuple
+            Mixed estimates for walker's energy components.
+        """
+
+        nalpha, nbeta = system.nup, system.ndown
+        nbasis = hamiltonian.nbasis
+        naux = self._rchol.shape[1]
+
+        Ga, Gb = self.Ghalf[0], self.Ghalf[1]
+        Xa = self._rchol[:nalpha*nbasis].T.dot(Ga.ravel())
+        Xb = self._rchol[nalpha*nbasis:].T.dot(Gb.ravel())
+        ecoul = numpy.dot(Xa,Xa)
+        ecoul += numpy.dot(Xb,Xb)
+        ecoul += 2*numpy.dot(Xa,Xb)
+        rchol_a, rchol_b = self._rchol[:nalpha*nbasis], self._rchol[nalpha*nbasis:]
+
+        rchol_a = rchol_a.T
+        rchol_b = rchol_b.T
+        Ta = numpy.zeros((naux, nalpha, nalpha), dtype=rchol_a.dtype)
+        Tb = numpy.zeros((naux, nbeta, nbeta), dtype=rchol_b.dtype)
+        GaT = Ga.T
+        GbT = Gb.T
+        for x in range(naux):
+            rmi_a = rchol_a[x].reshape((nalpha,nbasis))
+            Ta[x] = rmi_a.dot(GaT)
+            rmi_b = rchol_b[x].reshape((nbeta,nbasis))
+            Tb[x] = rmi_b.dot(GbT)
+        exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(0,2,1)))
+        exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(0,2,1)))
+
+        exx = exxa + exxb
+        e2b = 0.5 * (ecoul - exx)
+
+        return ecoul, exxa, exxb
+
 
     def calculate_energy(self, system, hamiltonian):
         if self.verbose:
@@ -433,6 +504,75 @@ class MultiSlater(object):
                 self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
                 self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
 
+                if (hamiltonian.pno):
+                    thresh_pno = hamiltonian.thresh_pno
+                    UVT_aa = []
+                    UVT_bb = []
+                    UVT_ab = []
+
+                    nocca = system.nup
+                    noccb = system.ndown
+                    nvira = hamiltonian.nbasis - system.nup
+                    nvirb = hamiltonian.nbasis - system.ndown
+
+                    r_aa = []
+                    for i in range(na):
+                        for j in range(i, na):
+                            Vab = vipjq_aa[i,:,j,:]
+                            U, s, VT = numpy.linalg.svd(Vab)
+                            idx = s > thresh_pno
+                            U = U[:,idx]
+                            s = s[idx]
+                            r_aa += [s.shape[0] / float(hamiltonian.nbasis)]
+                            VT = VT[idx,:]
+                            U = U.dot(numpy.diag(numpy.sqrt(s)))
+                            VT = numpy.diag(numpy.sqrt(s)).dot(VT)
+                            UVT_aa += [(U, VT)]
+                    r_aa = numpy.array(r_aa)
+                    r_aa = numpy.mean(r_aa)
+
+
+                    r_bb = []
+                    for i in range(nb):
+                        for j in range(i, nb):
+                            Vab = vipjq_bb[i,:,j,:]
+                            U, s, VT = numpy.linalg.svd(Vab)
+                            idx = s > thresh_pno
+                            U = U[:,idx]
+                            s = s[idx]
+                            r_bb += [s.shape[0] / float(hamiltonian.nbasis)]
+                            VT = VT[idx,:]
+                            U = U.dot(numpy.diag(numpy.sqrt(s)))
+                            VT = numpy.diag(numpy.sqrt(s)).dot(VT)
+
+                            UVT_bb += [(U, VT)]
+
+                    r_bb = numpy.array(r_bb)
+                    r_bb = numpy.mean(r_bb)
+
+                    r_ab = []
+                    for i in range(na):
+                        for j in range(nb):
+                            Vab = vipjq_ab[i,:,j,:]
+                            U, s, VT = numpy.linalg.svd(Vab)
+                            idx = s > thresh_pno
+                            U = U[:,idx]
+                            s = s[idx]
+                            r_ab += [s.shape[0] / float(hamiltonian.nbasis)]
+                            VT = VT[idx,:]
+                            U = U.dot(numpy.diag(numpy.sqrt(s)))
+                            VT = numpy.diag(numpy.sqrt(s)).dot(VT)
+
+                            UVT_ab += [(U, VT)]
+
+                    r_ab = numpy.array(r_ab)
+                    r_ab = numpy.mean(r_ab)
+
+                    self._UVT = [UVT_aa, UVT_bb, UVT_ab]
+                    self._eri = None
+                    if self.verbose:
+                        print("# Average number of orbitals (relative to total) for aa, bb, ab = {}, {}, {}".format(r_aa, r_bb, r_ab))
+
             if self.verbose:
                 print("# Memory required by exact ERIs: "
                       " {:.4f} GB.".format(self._mem_required))
@@ -492,6 +632,9 @@ class MultiSlater(object):
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
         if comm is not None:
             comm.barrier()
+
+        if(hamiltonian.control_variate):
+            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
 
     def rot_chol(self, idet=0, spin=None):
         """Helper function"""

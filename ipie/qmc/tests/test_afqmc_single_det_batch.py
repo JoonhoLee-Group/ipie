@@ -15,6 +15,7 @@ from ipie.qmc.calc import setup_calculation
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.utils.testing import generate_hamiltonian
 
 steps = 25
@@ -102,11 +103,12 @@ def test_generic_single_det_batch():
     numpy.random.seed(seed)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     sys = Generic(nelec=nelec) 
-    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+    legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
+
     comm = MPI.COMM_WORLD
-    afqmc = AFQMC(comm=comm, system=sys, hamiltonian = ham, options=options)
+    afqmc = AFQMC(comm=comm, system=sys, hamiltonian = legacyham, options=options)
     afqmc.estimators.estimators['mixed'].print_header()
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)

@@ -8,14 +8,18 @@ import uuid
 from math import exp
 import copy
 import h5py
-from ipie.estimators.handler import Estimators
-from ipie.estimators.local_energy_batch import local_energy_batch
-from ipie.propagation.utils import get_propagator_driver
+
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
+
 from ipie.systems.utils import get_system
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.walkers.walker_batch_handler import WalkerBatchHandler
+from ipie.estimators.handler import Estimators
+from ipie.estimators.local_energy_batch import local_energy_batch
+from ipie.propagation.utils import get_propagator_driver
+
 from ipie.utils.misc import (
         get_git_revision_hash,
         get_sys_info,
@@ -23,7 +27,6 @@ from ipie.utils.misc import (
         )
 from ipie.utils.io import  to_json, serialise, get_input_value
 from ipie.utils.mpi import get_shared_comm
-from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 from ipie.utils.misc import is_cupy
 
 
@@ -302,8 +305,6 @@ class AFQMCBatch(object):
 
         #import warnings
         #warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
-
-
 
         tzero_setup = time.time()
         if psi is not None:

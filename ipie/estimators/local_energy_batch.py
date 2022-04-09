@@ -1,6 +1,7 @@
 import time
 import numpy
-from ipie.legacy.estimators.local_energy import local_energy_G, local_energy_generic_cholesky
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
+from ipie.estimators.local_energy import local_energy_G
 from ipie.utils.linalg import minor_mask, minor_mask4
 from ipie.propagation.overlap import (
         get_overlap_one_det_wicks,
@@ -49,7 +50,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial, i
         ovlpa0 = walker_batch.det_ovlpas[iwalker,0]
         ovlpb0 = walker_batch.det_ovlpbs[iwalker,0]
         ovlp0 = ovlpa0 * ovlpb0
-        ovlp = walker_batch.ot[iwalker]
+        ovlp = walker_batch.ovlp[iwalker]
 
         # useful variables
         G0a = walker_batch.G0a[iwalker]
@@ -654,7 +655,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     ovlpa0 = walker_batch.det_ovlpas[:,0]
     ovlpb0 = walker_batch.det_ovlpbs[:,0]
     ovlp0 = ovlpa0 * ovlpb0
-    ovlp = walker_batch.ot
+    ovlp = walker_batch.ovlp
 
     # useful variables
     G0a = walker_batch.G0a
@@ -911,7 +912,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     ovlpa0 = walker_batch.det_ovlpas[:,0]
     ovlpb0 = walker_batch.det_ovlpbs[:,0]
     ovlp0 = ovlpa0 * ovlpb0
-    ovlp = walker_batch.ot
+    ovlp = walker_batch.ovlp
 
     # useful variables
     G0a = walker_batch.G0a

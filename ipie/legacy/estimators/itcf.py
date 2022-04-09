@@ -19,7 +19,7 @@ from ipie.propagation.generic import (
         back_propagate_generic,
         construct_propagator_matrix_generic
 )
-from ipie.propagation.operations import propagate_single
+from ipie.legacy.propagation.operations import propagate_single
 from ipie.utils.linalg import reortho
 import sys
 

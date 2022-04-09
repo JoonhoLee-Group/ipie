@@ -392,9 +392,7 @@ class Continuous(object):
         cosine_fac = cos(dtheta)
         
         clip(cosine_fac, a_min=0.0,a_max=None, out=cosine_fac) # in-place clipping
-        # cosine_fac[cosine_fac < 0.0] = 0.0
         walker_batch.weight = walker_batch.weight * magn * cosine_fac
-        walker_batch.ot = ovlp_new
         walker_batch.ovlp = ovlp_new
 
 

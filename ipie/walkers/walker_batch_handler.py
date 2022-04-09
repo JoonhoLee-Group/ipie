@@ -571,13 +571,13 @@ class WalkerBatchHandler(object):
         self.walkers_batch.total_weight = total_weight
 
     def get_write_buffer(self):
-        buff = numpy.concatenate([[self.walkers_batch.weight], [self.walkers_batch.phase], [self.walkers_batch.ot], self.walkers_batch.phi.ravel()])
+        buff = numpy.concatenate([[self.walkers_batch.weight], [self.walkers_batch.phase], [self.walkers_batch.ovlp], self.walkers_batch.phi.ravel()])
         return buff
 
     def set_walkers_batch_from_buffer(self, buff):
         self.walkers_batch.weight = buff[0:self.nwalkers]
         self.walkers_batch.phase = buff[self.nwalkers:self.nwalkers*2]
-        self.walkers_batch.ot = buff[self.nwalkers*2:self.nwalkers*3]
+        self.walkers_batch.ovlp = buff[self.nwalkers*2:self.nwalkers*3]
         self.walkers_batch.phi = buff[self.nwalkers*3:].reshape(self.walkers_batch.phi.shape)
 
     def write_walkers_batch(self, comm):

@@ -10,9 +10,6 @@ import scipy.linalg
 import time
 import warnings
 
-from ipie.legacy.estimators.back_propagation import BackPropagation
-from ipie.legacy.estimators.itcf import ITCF
-
 from ipie.estimators.mixed import Mixed
 from ipie.utils.io import get_input_value
 
@@ -82,31 +79,9 @@ class Estimators(object):
         dtype = complex
         self.estimators['mixed'] = Mixed(mixed, system, hamiltonian, root, self.filename,
                                          qmc, trial, dtype)
-        bp = get_input_value(estimates, 'back_propagation', default=None,
-                              alias=['back_propagated'],
-                              verbose=verbose)
-        self.back_propagation = bp is not None
-        if self.back_propagation:
-            self.estimators['back_prop'] = BackPropagation(bp, root, self.filename,
-                                                           qmc, system, trial,
-                                                           dtype, BT2)
-            self.nprop_tot = self.estimators['back_prop'].nmax
-            self.nbp = self.estimators['back_prop'].nmax
-            if verbose:
-                print("# Performing back propagation.")
-                print("# Total number of back propagation steps: "
-                      "{:d}.".format(self.nprop_tot))
-        else:
-            self.nprop_tot = None
-            self.nbp = None
-        # 2. Imaginary time correlation functions.
-        itcf = estimates.get('itcf', None)
-        self.calc_itcf = itcf is not None
-        if self.calc_itcf:
-            itcf['stack_size'] = estimates.get('stack_size',1)
-            self.estimators['itcf'] = ITCF(itcf, qmc, trial, root, self.filename,
-                                           system, dtype, BT2)
-            self.nprop_tot = self.estimators['itcf'].nprop_tot
+        self.nprop_tot = None
+        self.nbp = None
+
         if verbose:
             print ("# Finished settting up estimator object.")
 

@@ -11,7 +11,7 @@ import time
 import warnings
 from ipie.legacy.estimators.back_propagation import BackPropagation
 from ipie.legacy.estimators.itcf import ITCF
-from ipie.estimators.mixed import Mixed
+from ipie.legacy.estimators.mixed import Mixed
 from ipie.utils.io import get_input_value
 
 
