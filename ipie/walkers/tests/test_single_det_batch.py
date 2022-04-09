@@ -121,7 +121,7 @@ def test_reortho_batch():
 
     assert walker.ot == pytest.approx(ovlp)
     assert walker.ot == pytest.approx(ovlp_batch[0])
-    assert walker.ot == pytest.approx(walkers_batch.ot[0])
+    assert walker.ot == pytest.approx(walkers_batch.ovlp[0])
 
     eloc = local_energy(system, ham, walker, trial)
     detR = walker.reortho(trial)
@@ -136,8 +136,8 @@ def test_reortho_batch():
 
     assert eloc_batch[0] == pytest.approx(eloc)
     assert eloc_batch[0] == pytest.approx(eloc_new_batch[0])
-    assert detR_batch[0]*walkers_batch.ot[0] == pytest.approx(ovlp_batch[0])
-    assert detR_batch[0]*walkers_batch.ot[0] == pytest.approx(ovlp)
+    assert detR_batch[0]*walkers_batch.ovlp[0] == pytest.approx(ovlp_batch[0])
+    assert detR_batch[0]*walkers_batch.ovlp[0] == pytest.approx(ovlp)
 
 if __name__=="__main__":
     test_overlap_batch()

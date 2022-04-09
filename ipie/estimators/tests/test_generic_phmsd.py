@@ -482,7 +482,7 @@ def test_same_spin_batched():
         ovlpa0 = walker_batch.det_ovlpas[iwalker,0]
         ovlpb0 = walker_batch.det_ovlpbs[iwalker,0]
         ovlp0 = ovlpa0 * ovlpb0
-        ovlp = walker_batch.ot[iwalker]
+        ovlp = walker_batch.ovlp[iwalker]
 
         # useful variables
         G0a = walker_batch.G0a[iwalker]
@@ -545,7 +545,7 @@ def test_same_spin_batched():
             ovlpa0 = walker_batch.det_ovlpas[iwalker,0]
             ovlpb0 = walker_batch.det_ovlpbs[iwalker,0]
             ovlp0 = ovlpa0 * ovlpb0
-            ovlp = walker_batch.ot[iwalker]
+            ovlp = walker_batch.ovlp[iwalker]
 
             # useful variables
             G0a = walker_batch.G0a[iwalker]

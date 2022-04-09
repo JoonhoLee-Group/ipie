@@ -157,7 +157,7 @@ class Mixed(object):
 
         self.estimates[self.names.uweight] += sum(walker_batch.unscaled_weight)
         self.estimates[self.names.weight] += sum(walker_batch.weight)
-        self.estimates[self.names.ovlp] += sum(walker_batch.weight * abs(walker_batch.ot))
+        self.estimates[self.names.ovlp] += sum(walker_batch.weight * abs(walker_batch.ovlp))
         self.estimates[self.names.ehyb] += sum(walker_batch.weight * walker_batch.hybrid_energy)
 
     def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
