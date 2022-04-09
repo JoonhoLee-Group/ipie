@@ -15,9 +15,9 @@ from ipie.utils.io import (
         write_qmcpack_wfn
         )
 from ipie.legacy.estimators.greens_function import gab
-from ipie.estimators.generic import (
-        local_energy_generic_cholesky, core_contribution_cholesky
-    )
+
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky
+from ipie.estimators.generic import core_contribution_cholesky
 
 def dump_ipie(chkfile=None, mol=None, mf=None, hamil_file='afqmc.h5',
                verbose=True, wfn_file='afqmc.h5',
