@@ -70,14 +70,49 @@ class Generic(object):
             print("# Parsing input options for hamiltonians.Generic.")
         self.name = "Generic"
         self.verbose = verbose
+        self.stochastic_ri = options.get("stochastic_ri", False)
+        self.pno = options.get("pno", False)
+        self.thresh_pno = options.get("thresh_pno", 1e-6)
         self.exact_eri = options.get("exact_eri", False)
+        self.control_variate = options.get("control_variate", False)
+        if (self.stochastic_ri):
+            self.control_variate = False
+        self.mu = options.get("chemical_potential", 0.0)
+        self._alt_convention = False # chemical potential sign convention
 
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
 
+
         if self.exact_eri:
             if self.verbose:
-                print("# exact_eri is used for the local energy evaluation")
+                print("# exact_eri is true for local energy")
+
+        if self.pno:
+            if self.verbose:
+                print("# pno is true for local energy with a threshold of {}".format(self.thresh_pno))
+            self.ij_list_aa = []
+            self.ij_list_bb = []
+            self.ij_list_ab = []
+
+            for i in range(self.nup):
+                for j in range(i, self.nup):
+                    self.ij_list_aa += [(i,j)]
+
+            for i in range(self.ndown):
+                for j in range(i, self.ndown):
+                    self.ij_list_bb += [(i,j)]
+
+            for i in range(self.nup):
+                for j in range(self.ndown):
+                    self.ij_list_ab += [(i,j)]
+
+        if self.stochastic_ri:
+            self.nsamples = nsamples
+            if self.verbose:
+                print("# stochastic_ri is true for local energy with {} samples".format(self.nsamples))
+                print("# control_variate = {}".format(self.control_variate))
+
 
         if isrealobj(self.chol_vecs.dtype):
             if verbose:

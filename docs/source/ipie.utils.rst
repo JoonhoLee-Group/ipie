@@ -7,7 +7,7 @@ Submodules
 ipie\.utils\.fft module
 ------------------------
 
-.. automodule:: ipie.utils.fft
+.. automodule:: ipie.legacy.utils.fft
     :members:
     :undoc-members:
     :show-inheritance:

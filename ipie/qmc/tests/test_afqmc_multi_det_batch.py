@@ -8,7 +8,11 @@ from ipie.analysis.extraction import (
         )
 from ipie.qmc.calc import setup_calculation
 from ipie.qmc.afqmc_batch import AFQMCBatch
+
 from ipie.legacy.qmc.afqmc import AFQMC
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
+
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
@@ -109,9 +113,15 @@ def test_generic_multi_det_batch():
     numpy.random.seed(seed)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     sys = Generic(nelec=nelec) 
-    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+    ham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                   ecore=enuc)
+
+    trial = LegacyMultiSlater(sys, ham, wfn, init=init)
+    if (ndets == 1):
+        trial.half_rotate(sys, ham)
+        trial.psi = trial.psi[0]
+
     numpy.random.seed(seed)
 
     comm = MPI.COMM_WORLD

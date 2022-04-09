@@ -2,7 +2,9 @@ import numpy
 import sys
 import time
 
-from ipie.hamiltonians.generic import Generic, read_integrals, construct_h1e_mod
+from ipie.hamiltonians.generic import read_integrals, construct_h1e_mod
+from ipie.hamiltonians.utils import get_generic_integrals
+from ipie.legacy.hamiltonians.generic import Generic
 from ipie.legacy.hamiltonians.ueg import UEG
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.utils.mpi import get_shared_array, have_shared_mem
@@ -26,12 +28,23 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         ham = Hubbard(ham_opts, verbose)
     elif ham_opts['name'] == 'UEG':
         ham = UEG(system, ham_opts, verbose)
+    elif ham_opts['name'] == 'Generic':
+        filename = ham_opts.get('integrals', None)
+        if filename is None:
+            if comm.rank == 0:
+                print("# Error: integrals not specfied.")
+                sys.exit()
+        start = time.time()
+        hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
+                                                           comm=comm,
+                                                           verbose=verbose)
+        if verbose:
+            print("# Time to read integrals: {:.6f}".format(time.time()-start))
+        ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
     else:
-        import ipie.hamiltonians.utils
-        ham = ipie.hamiltonians.utils.get_hamiltonian(system, ham_opts, verbose, comm)
-        # if comm.rank == 0:
-        #     print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
-        #     sys.exit()
-        # ham = None
+        if comm.rank == 0:
+            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
+            sys.exit()
+        ham = None
 
     return ham

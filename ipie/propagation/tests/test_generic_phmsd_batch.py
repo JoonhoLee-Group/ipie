@@ -2,11 +2,13 @@ import pytest
 import numpy
 from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
 from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.force_bias import construct_force_bias_batch, construct_force_bias_batch_multi_det_trial, construct_force_bias_batch_single_det
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.legacy.walkers.single_det import SingleDetWalker
@@ -37,10 +39,16 @@ def test_phmsd_force_bias_batch():
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                      ecore=0)
+    legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
     trial = MultiSlater(system, ham, wfn, init=init, options = {'wicks':True})
     trial.half_rotate(system, ham)
+
+    legacytrial = LegacyMultiSlater(system, legacyham, wfn, init=init, options = {'wicks':True})
+    legacytrial.half_rotate(system, legacyham)
 
     numpy.random.seed(7)
 
@@ -49,7 +57,7 @@ def test_phmsd_force_bias_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
     prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
-    walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
+    walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
 
     # fb_slow = prop.construct_force_bias_slow(ham, walker, trial)
     # fb_multi_det = prop.construct_force_bias_multi_det(ham, walker, trial)
@@ -100,7 +108,12 @@ def test_phmsd_greens_function_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
     prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
-    walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
+    legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0)
+    legacytrial = LegacyMultiSlater(system, legacyham, wfn, init=init, options = {'wicks':True})
+
+    walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
 
     greens_function_multi_det(walker_batch, trial)
@@ -139,7 +152,12 @@ def test_phmsd_overlap_batch():
 
     trial.calculate_energy(system, ham)
 
-    walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
+    legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0)
+    legacytrial = LegacyMultiSlater(system, legacyham, wfn, init=init, options = {'wicks':True})
+
+    walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
 
     ovlps0 = calc_overlap_multi_det(walker_batch, trial)
@@ -312,7 +330,12 @@ def test_phmsd_propagation_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
     prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
-    walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
+    legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0)
+    legacytrial = LegacyMultiSlater(system, legacyham, wfn, init=init, options = {'wicks':True})
+
+    walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
     fb_ref = numpy.zeros((nwalkers, nchols), dtype=numpy.complex128)
     for iw in range(nwalkers):
         fb_ref[iw,:] = prop.propagator.construct_force_bias(ham, walkers[iw], trial)
