@@ -6,9 +6,9 @@ import numpy
 import scipy.linalg
 import sys
 import time
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.walkers.stack import FieldConfig
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.legacy.walkers.stack import FieldConfig
 from ipie.utils.io import get_input_value
 from ipie.utils.misc import update_stack
 from mpi4py import MPI

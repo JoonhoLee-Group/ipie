@@ -30,7 +30,7 @@ jobs:
         python -m pytest
     - name: mpi test
       run: |
-        mpiexec -n 2 python -m pytest ipie/walkers/tests/test_handler.py
+        mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
     - name: Test Integration
       run: |
         pip install pytest-mpi

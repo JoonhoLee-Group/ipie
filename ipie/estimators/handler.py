@@ -9,9 +9,11 @@ import os
 import scipy.linalg
 import time
 import warnings
-from ipie.estimators.back_propagation import BackPropagation
+
+from ipie.legacy.estimators.back_propagation import BackPropagation
+from ipie.legacy.estimators.itcf import ITCF
+
 from ipie.estimators.mixed import Mixed
-from ipie.estimators.itcf import ITCF
 from ipie.utils.io import get_input_value
 
 
@@ -140,27 +142,6 @@ class Estimators(object):
         for k, e in self.estimators.items():
             e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
-    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
-        """Update estimators
-
-        Parameters
-        ----------
-        system : system object in general.
-            Container for model input options.
-        qmc : :class:`ipie.state.QMCOpts` object.
-            Container for qmc input options.
-        trial : :class:`ipie.trial_wavefunction.X' object
-            Trial wavefunction class.
-        psi : :class:`ipie.walkers.Walkers` object
-            CPMC wavefunction.
-        step : int
-            Current simulation step
-        free_projection : bool
-            True if doing free projection.
-        """
-        for k, e in self.estimators.items():
-            e.update(qmc, system, hamiltonian, trial, psi, step, free_projection)
-
     def update_batch(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators with bached psi
 
@@ -172,7 +153,7 @@ class Estimators(object):
             Container for qmc input options.
         trial : :class:`ipie.trial_wavefunction.X' object
             Trial wavefunction class.
-        psi : :class:`ipie.walkers.WalkersBatch` object
+        psi : :class:`ipie.legacy.walkers.WalkersBatch` object
             CPMC wavefunction.
         step : int
             Current simulation step

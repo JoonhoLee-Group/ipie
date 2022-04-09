@@ -14,15 +14,15 @@ try:
     parallel = True
 except ImportError:
     parallel = False
-from ipie.qmc.afqmc import AFQMC
+
 from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.estimators.handler import Estimators
 from ipie.utils.io import  to_json, get_input_value
 from ipie.utils.misc import serialise
-from ipie.walkers.handler import Walkers
 from ipie.qmc.comm import FakeComm
 
+from ipie.legacy.walkers.handler import Walkers
+from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
 
 def init_communicator():
     if parallel:
@@ -45,25 +45,16 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
-    batched = get_input_value(qmc_opts, 'batched', default=False,
+    batched = get_input_value(qmc_opts, 'batched', default=True,
             verbose=verbosity)
-    if beta is not None:
-        afqmc = ThermalAFQMC(comm, options=options,
-                             parallel=comm.size>1,
-                             verbose=verbosity)
+    
+    if beta is not None or batched == False:
+        return legacy_get_driver(options,comm)
     else:
-        if batched:
-            if (comm.rank == 0):
-                print("# Batched AFQMC driver is used")
-            afqmc = AFQMCBatch(comm, options=options,
-                          parallel=comm.size>1,
-                          verbose=verbosity)
-        else:
-            if (comm.rank == 0):
-                print("# Non-batched AFQMC driver is used")
-            afqmc = AFQMC(comm, options=options,
-                          parallel=comm.size>1,
-                          verbose=verbosity)
+        afqmc = AFQMCBatch(comm, options=options,
+            parallel=comm.size>1,
+            verbose=verbosity)
+
     return afqmc
 
 def read_input(input_file, comm, verbose=False):

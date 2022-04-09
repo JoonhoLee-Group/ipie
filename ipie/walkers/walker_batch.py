@@ -1,7 +1,7 @@
 import numpy
 import scipy
 import sys
-from ipie.walkers.stack import FieldConfig
+from ipie.legacy.walkers.stack import FieldConfig
 from ipie.utils.misc import is_cupy
 
 class WalkerBatch(object):

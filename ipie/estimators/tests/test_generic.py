@@ -5,9 +5,11 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.estimators.generic import (
         local_energy_generic_opt,
-        local_energy_generic_cholesky,
         local_energy_generic_cholesky_opt,
-        local_energy_generic_cholesky_opt_batched
+        )
+from ipie.legacy.estimators.generic import (
+        local_energy_generic_cholesky_opt_batched,
+        local_energy_generic_cholesky,
         )
 from ipie.utils.testing import (
         generate_hamiltonian,

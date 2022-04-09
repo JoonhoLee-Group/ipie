@@ -8,10 +8,10 @@ Usage: srun -n 144 -N 4 python find_chem_pot.py
 import numpy
 from mpi4py import MPI
 import sys
-from ipie.qmc.thermal_afqmc import ThermalAFQMC
-from ipie.systems.ueg import UEG
+from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
+from ipie.legacy.systems.ueg import UEG
 from ipie.qmc.options import QMCOpts
-from ipie.trial_density_matrices.onebody import OneBody
+from ipie.legacy.trial_density_matrices.onebody import OneBody
 from ipie.analysis.thermal import analyse_energy
 
 

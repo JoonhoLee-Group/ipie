@@ -4,12 +4,13 @@ from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.multi_det import MultiDetWalker
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
@@ -45,7 +46,7 @@ def test_overlap_rhf_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -93,7 +94,7 @@ def test_overlap_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -146,7 +147,7 @@ def test_two_body_rhf_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -195,7 +196,7 @@ def test_two_body_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -246,7 +247,7 @@ def test_hybrid_rhf_batch():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     
@@ -293,7 +294,7 @@ def test_hybrid_batch():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -340,7 +341,7 @@ def test_vhs():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     xshifted = numpy.random.normal(0.0, 1.0,

@@ -4,19 +4,20 @@ from ipie.utils.misc import dotdict
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.options import QMCOpts
 from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.utils import get_propagator_driver
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.estimators.local_energy import local_energy
+from ipie.legacy.estimators.local_energy import local_energy
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.mpi import get_shared_comm
 from ipie.utils.io import  get_input_value
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.handler import Walkers
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.handler import Walkers
 from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
@@ -66,7 +67,7 @@ def test_pair_branch_batch():
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
     handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
 
     for i in range (nsteps):
@@ -127,7 +128,7 @@ def test_comb_batch():
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
     handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
 
     for i in range (nsteps):

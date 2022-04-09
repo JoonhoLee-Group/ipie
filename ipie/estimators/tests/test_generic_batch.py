@@ -1,21 +1,24 @@
 import pytest
 import numpy
+
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
+
+from ipie.propagation.continuous import Continuous
 from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
-from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.walkers.single_det import SingleDetWalker
-from ipie.walkers.multi_det import MultiDetWalker
 from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd,
         get_random_phmsd
         )
-from ipie.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.estimators.local_energy_batch import local_energy_single_det_batch, local_energy_single_det_rhf_batch
 from ipie.estimators.greens_function_batch import greens_function_single_det_batch
 from ipie.propagation.overlap import calc_overlap_single_det_batch
@@ -44,7 +47,7 @@ def test_greens_function_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -92,7 +95,7 @@ def test_local_energy_single_det_batch():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):
@@ -156,7 +159,7 @@ def test_local_energy_single_det_batch_rhf():
     numpy.random.seed(7)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
     for i in range (nsteps):

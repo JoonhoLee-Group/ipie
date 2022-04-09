@@ -12,9 +12,9 @@ from ipie.utils.testing import (
         get_random_nomsd,
         get_random_phmsd
         )
-from ipie.walkers.multi_det import MultiDetWalker
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.estimators.greens_function import gab_spin, gab
+from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.legacy.estimators.greens_function import gab_spin, gab
 
 from ipie.estimators.greens_function_batch import (
         greens_function_multi_det_wicks,
@@ -30,7 +30,7 @@ from ipie.estimators.local_energy_batch import (
         fill_same_spin_contribution_batched
         )
 
-from ipie.estimators.local_energy import local_energy_multi_det
+from ipie.legacy.estimators.local_energy import local_energy_multi_det
 from ipie.propagation.overlap import (
         get_overlap_one_det_wicks,
         get_det_matrix_batched,

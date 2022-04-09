@@ -2,9 +2,6 @@ import numpy
 import sys
 import time
 
-from ipie.systems.hubbard_holstein import HubbardHolstein
-from ipie.hamiltonians.hubbard import Hubbard
-from ipie.hamiltonians.ueg import UEG
 from ipie.hamiltonians.generic import Generic, read_integrals, construct_h1e_mod
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
@@ -36,10 +33,6 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         if verbose:
             print("# Time to read integrals: {:.6f}".format(time.time()-start))
         ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
-    elif ham_opts['name'] == 'Hubbard':
-        ham = Hubbard(ham_opts, verbose)
-    elif ham_opts['name'] == 'UEG':
-        ham = UEG(system, ham_opts, verbose)
     else:
         if comm.rank == 0:
             print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
