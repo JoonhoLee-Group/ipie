@@ -146,7 +146,8 @@ def greens_function_single_det_batch(walker_batch, trial):
     sign_a, log_ovlp_a = slogdet(ovlp_a)
 
     walker_batch.Ghalfa = einsum("wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True)
-    walker_batch.Ga = einsum("mi,win->wmn",trial.psia.conj(), walker_batch.Ghalfa, optimize=True)
+    if (not trial.half_rotated):
+        walker_batch.Ga = einsum("mi,win->wmn",trial.psia.conj(), walker_batch.Ghalfa, optimize=True)
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = einsum("wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize = True)
@@ -154,7 +155,8 @@ def greens_function_single_det_batch(walker_batch, trial):
 
         sign_b, log_ovlp_b = slogdet(ovlp_b)
         walker_batch.Ghalfb = einsum("wij,wmj->wim", ovlp_inv_b, walker_batch.phib, optimize=True)
-        walker_batch.Gb = einsum("mi,win->wmn",trial.psib.conj(), walker_batch.Ghalfb, optimize=True)
+        if (not trial.half_rotated):
+            walker_batch.Gb = einsum("mi,win->wmn",trial.psib.conj(), walker_batch.Ghalfb, optimize=True)
         ot = sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
         ot = sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift)
@@ -162,7 +164,6 @@ def greens_function_single_det_batch(walker_batch, trial):
         ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
 
     return ot
-
 
 def greens_function_multi_det(walker_batch, trial):
     """Compute walker's green's function.

@@ -196,6 +196,7 @@ class MultiSlater(object):
         self._nbeta = system.ndown
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
+        self.half_rotated = False
         self._rchol = None
         self._rH1a = None # rotated H1
         self._rH1b = None # rotated H1
@@ -411,6 +412,7 @@ class MultiSlater(object):
                           init=init)
 
     def half_rotate(self, system, hamiltonian, comm=None):
+        self.half_rotated = True
         # Half rotated cholesky vectors (by trial wavefunction or a reference wfn in the case of PHMSD).
         na = system.nup
         nb = system.ndown
@@ -464,7 +466,7 @@ class MultiSlater(object):
             self._rH1b[idet] = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
 
         self._rH1a = self._rH1a.reshape(na,M)
-        self._rH1b = self._rH1a.reshape(nb,M)
+        self._rH1b = self._rH1b.reshape(nb,M)
 
         for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()

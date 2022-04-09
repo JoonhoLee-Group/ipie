@@ -143,7 +143,6 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
     nbasis = Ghalfa.shape[-1]
     if rchola is not None:
         naux = rchola.shape[0]
-
     if (isrealobj(rchola) and isrealobj(rcholb)):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.j * rcholb.dot(Ghalfb.imag.ravel())

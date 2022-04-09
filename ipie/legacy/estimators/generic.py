@@ -428,3 +428,92 @@ ecoul0 = None, exxa0 = None, exxb0 = None):
 
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
+def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
+    r"""Calculate local for generic two-body hamiltonian.
+
+    This uses the cholesky decomposed two-electron integrals.
+
+    Parameters
+    ----------
+    system : :class:`Generic`
+        System information for Generic.
+    ham : :class:`Abinitio`
+        Contains necessary hamiltonian information
+    G : :class:`numpy.ndarray`
+        Walker's "green's function"
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nocc x nbasis
+    rchol : :class:`numpy.ndarray`
+        trial's half-rotated choleksy vectors
+
+    Returns
+    -------
+    (E, T, V): tuple
+        Local, kinetic and potential energies.
+    """
+    # Element wise multiplication.
+    if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        array = cupy.array
+        zeros = cupy.zeros
+        sum = cupy.sum
+        dot = cupy.dot
+        trace = cupy.trace
+        einsum = cupy.einsum
+        isrealobj = cupy.isrealobj
+    else:
+        array = numpy.array
+        zeros = numpy.zeros
+        einsum = numpy.einsum
+        trace = numpy.trace
+        sum = numpy.sum
+        dot = numpy.dot
+        isrealobj = numpy.isrealobj
+
+    complex128 = numpy.complex128
+
+    e1b = sum(ham.H1[0]*Ga) + sum(ham.H1[1]*Gb)
+    nalpha, nbeta = system.nup, system.ndown
+    nbasis = ham.nbasis
+    if rchola is not None:
+        naux = rchola.shape[0]
+
+    if (isrealobj(rchola) and isrealobj(rcholb)):
+        Xa = rchola.dot(Ghalfa.real.ravel()) + 1.j * rchola.dot(Ghalfa.imag.ravel())
+        Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.j * rcholb.dot(Ghalfb.imag.ravel())
+    else:
+        Xa = rchola.dot(Ghalfa.ravel())
+        Xb = rcholb.dot(Ghalfb.ravel())
+
+    ecoul = dot(Xa,Xa)
+    ecoul += dot(Xb,Xb)
+    ecoul += 2*dot(Xa,Xb)
+
+    GhalfaT = Ghalfa.T.copy() # nbasis x nocc
+    GhalfbT = Ghalfb.T.copy()
+
+    Ta = zeros((nalpha,nalpha), dtype=complex128)
+    Tb = zeros((nbeta,nbeta), dtype=complex128)
+
+    exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    if (isrealobj(rchola) and isrealobj(rcholb)):
+        for x in range(naux):  # write a cython function that calls blas for this.
+            rmi_a = rchola[x].reshape((nalpha,nbasis))
+            rmi_b = rcholb[x].reshape((nbeta,nbasis))
+            Ta[:,:].real = rmi_a.dot(GhalfaT.real)
+            Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
+            Tb[:,:].real = rmi_b.dot(GhalfbT.real)
+            Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
+            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
+    else:
+        for x in range(naux):  # write a cython function that calls blas for this.
+            rmi_a = rchola[x].reshape((nalpha,nbasis))
+            rmi_b = rcholb[x].reshape((nbeta,nbasis))
+            Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
+            Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
+            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
+
+    e2b = 0.5 * (ecoul - exx)
+
+    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
