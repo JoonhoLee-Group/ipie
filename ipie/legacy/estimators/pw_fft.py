@@ -8,12 +8,11 @@ try:
 except ImportError:
     pass
 
-import time
 from ipie.legacy.estimators.ueg import coulomb_greens_function
-from ipie.estimators.utils import convolve
+from ipie.legacy.estimators.utils import convolve
+
 import numpy
 import itertools
-import scipy.signal
 
 def local_energy_pw_fft(system, G, Ghalf, trial, two_rdm=None):
     """Local energy computation for uniform electron gas
