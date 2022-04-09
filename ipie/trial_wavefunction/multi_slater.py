@@ -197,6 +197,8 @@ class MultiSlater(object):
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
         self._rchol = None
+        self._rH1a = None # rotated H1
+        self._rH1b = None # rotated H1
         self._rchola = None
         self._rcholb = None
         self._eri = None
@@ -341,6 +343,12 @@ class MultiSlater(object):
             size += self._rchola.size/2. + self._rcholb.size/2.
         else:
             size += self._rchola.size + self._rcholb.size
+        
+        if (numpy.isrealobj(self._rH1a)):
+            size += self._rH1a.size/2. + self._rH1b.size/2.
+        else:
+            size += self._rH1a.size + self._rH1b.size
+
         if (type(self.G) == numpy.ndarray):
             size += self.G.size
         if (self.Ghalf != None):
@@ -355,6 +363,8 @@ class MultiSlater(object):
         self.coeffs = cupy.asarray(self.coeffs)
         self._rchola = cupy.asarray(self._rchola)
         self._rcholb = cupy.asarray(self._rcholb)
+        self._rH1a = cupy.asarray(self._rH1a)
+        self._rH1b = cupy.asarray(self._rH1b)
         if (type(self.G) == numpy.ndarray):
             self.G = cupy.asarray(self.G)
         if (self.Ghalf != None):
@@ -415,6 +425,8 @@ class MultiSlater(object):
                 print("# Only performing half-rotation of the reference determinant")
             hr_ndet = 1
 
+        assert(hr_ndet == 1)
+
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
             chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
         else:
@@ -438,13 +450,22 @@ class MultiSlater(object):
                       " {:.4f} GB.".format(self._mem_required))
             if comm is not None:
                 comm.barrier()
-        # else:
-        # shape = (hr_ndet*(M*(na+nb)), nchol)
-        # self._rchol = get_shared_array(comm, shape, numpy.complex128)
+
         shape_a = (nchol, hr_ndet*(M*(na)))
         shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
+        
+        self._rH1a = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
+        self._rH1b = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
+
+        for idet, psi in enumerate(self.psi[:hr_ndet]):
+            self._rH1a[idet] = psi[:,:na].conj().T.dot(hamiltonian.H1[0])
+            self._rH1b[idet] = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
+
+        self._rH1a = self._rH1a.reshape(na,M)
+        self._rH1b = self._rH1a.reshape(nb,M)
+
         for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
             if self.verbose:
@@ -484,8 +505,9 @@ class MultiSlater(object):
                 rdn = rdn.reshape((nchol_loc, nb*M))
                 self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
-
+        
             self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
+            self._mem_required += (self._rH1a.nbytes + self._rH1b.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
