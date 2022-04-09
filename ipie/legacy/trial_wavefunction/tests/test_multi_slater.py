@@ -5,7 +5,7 @@
 # import sys
 # from ipie.estimators.mixed import variational_energy_multi_det, local_energy
 # from ipie.legacy.estimators.greens_function import gab
-# from ipie.estimators.ci import get_hmatel, simple_fci
+# from ipie.legacy.estimators.ci import get_hmatel, simple_fci
 # from ipie.systems.generic import Generic
 # from ipie.legacy.systems.ueg import UEG
 # from ipie.utils.io import (

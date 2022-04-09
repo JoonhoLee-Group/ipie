@@ -17,7 +17,7 @@ from ipie.legacy.estimators.generic import (
     local_energy_generic_cholesky_opt_stochastic
 )
 from ipie.legacy.estimators.thermal import particle_number, one_rdm_from_G
-from ipie.estimators.ci import get_hmatel
+from ipie.legacy.estimators.ci import get_hmatel
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
     assert len(G) == 2

@@ -3,7 +3,7 @@ import cmath
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from ipie.estimators.ci import simple_fci_bose_fermi, simple_fci
+from ipie.legacy.estimators.ci import simple_fci_bose_fermi, simple_fci
 from ipie.legacy.estimators.hubbard import local_energy_hubbard_holstein, local_energy_hubbard
 from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
 from ipie.utils.linalg import reortho

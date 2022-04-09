@@ -5,7 +5,7 @@ import pytest
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.estimators.ci import simple_fci
+from ipie.legacy.estimators.ci import simple_fci
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.utils.misc import dotdict

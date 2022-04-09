@@ -6,7 +6,7 @@ from ipie.legacy.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
 from ipie.legacy.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
-from ipie.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
+from ipie.legacy.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
 from ipie.utils.io import (
         get_input_value,
         write_qmcpack_wfn

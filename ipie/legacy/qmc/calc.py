@@ -56,6 +56,7 @@ def get_driver(options, comm):
         afqmc = AFQMC(comm, options=options,
                       parallel=comm.size>1,
                       verbose=verbosity)
+
     return afqmc
 
 def read_input(input_file, comm, verbose=False):

@@ -22,6 +22,7 @@ from ipie.utils.misc import serialise
 from ipie.qmc.comm import FakeComm
 
 from ipie.legacy.walkers.handler import Walkers
+from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
 
 def init_communicator():
     if parallel:
@@ -44,12 +45,16 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
-    batched = get_input_value(qmc_opts, 'batched', default=False,
+    batched = get_input_value(qmc_opts, 'batched', default=True,
             verbose=verbosity)
-    assert(batched == True)
-    afqmc = AFQMCBatch(comm, options=options,
+    
+    if beta is not None or batched == False:
+        return legacy_get_driver(options,comm)
+    else:
+        afqmc = AFQMCBatch(comm, options=options,
             parallel=comm.size>1,
             verbose=verbosity)
+
     return afqmc
 
 def read_input(input_file, comm, verbose=False):
