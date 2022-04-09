@@ -4,6 +4,7 @@ from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.force_bias import construct_force_bias_batch, construct_force_bias_batch_multi_det_trial, construct_force_bias_batch_single_det
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
@@ -46,7 +47,7 @@ def test_phmsd_force_bias_batch():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
 
@@ -97,7 +98,7 @@ def test_phmsd_greens_function_batch():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
@@ -309,7 +310,7 @@ def test_phmsd_propagation_batch():
     trial.calculate_energy(system, ham)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
 
     walkers = [MultiDetWalker(system, ham, trial) for iw in range(nwalkers)]
     fb_ref = numpy.zeros((nwalkers, nchols), dtype=numpy.complex128)

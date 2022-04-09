@@ -9,7 +9,7 @@ from ipie.legacy.estimators.back_propagation import BackPropagation
 from ipie.legacy.walkers.handler import Walkers
 
 from ipie.utils.misc import dotdict
-from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous
 
 @pytest.mark.unit
 def test_back_prop():

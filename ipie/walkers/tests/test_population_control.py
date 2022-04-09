@@ -4,6 +4,7 @@ from ipie.utils.misc import dotdict
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.options import QMCOpts
 from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.utils import get_propagator_driver
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.multi_slater import MultiSlater
@@ -66,7 +67,7 @@ def test_pair_branch_batch():
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
     handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
 
     for i in range (nsteps):
@@ -127,7 +128,7 @@ def test_comb_batch():
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
+    prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
     handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
 
     for i in range (nsteps):

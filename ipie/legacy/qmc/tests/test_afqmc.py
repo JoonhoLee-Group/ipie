@@ -25,6 +25,7 @@ def test_constructor():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
+                'batched':False
             },
             'walkers': {
                 'pop_control': 'comb'
@@ -62,6 +63,7 @@ def test_ueg():
                 'num_steps': 10,
                 'blocks': 5,
                 'rng_seed': 8,
+                'batched':False
             },
             'system': {
                 'name': "UEG",
@@ -117,7 +119,8 @@ def test_hubbard():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
-                'nwalkers': 10
+                'nwalkers': 10,
+                'batched':False
             },
             'system':{
                 'name': "Generic",
@@ -170,6 +173,7 @@ def test_hubbard_complex():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
+                'batched':False
             },
             'system':{
                 'name': 'Generic',
@@ -223,6 +227,7 @@ def test_generic():
                 'steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
+                'batched':False
             },
             'walkers': {
                 'pop_control': 'comb'
@@ -267,6 +272,7 @@ def test_generic_single_det():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
+                'batched':False
             },
             'trial': {
                 'name': 'MultiSlater'

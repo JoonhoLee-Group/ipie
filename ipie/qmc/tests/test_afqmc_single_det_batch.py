@@ -85,6 +85,7 @@ def test_generic_single_det_batch():
                 'stabilise_freq': stabilise_freq,
                 'blocks': blocks,
                 'rng_seed': seed,
+                'batched': False
             },
             'estimates': {
                 'mixed': {

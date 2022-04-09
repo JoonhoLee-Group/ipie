@@ -5,7 +5,7 @@ from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.propagation.generic import GenericContinuous
-from ipie.propagation.continuous import Continuous
+from ipie.legacy.propagation.continuous import Continuous
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
         generate_hamiltonian,

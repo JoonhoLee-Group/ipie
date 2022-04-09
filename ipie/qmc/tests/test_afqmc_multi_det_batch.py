@@ -92,6 +92,7 @@ def test_generic_multi_det_batch():
                 'pop_control_freq':pop_control_freq,
                 'blocks': blocks,
                 'rng_seed': seed,
+                'batched': False
             },
             'estimates': {
                 'mixed': {
