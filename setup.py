@@ -15,7 +15,10 @@ extensions = [
 		  include_dirs=[numpy.get_include()]),
         Extension("ipie.propagation.wicks_kernels",
                   ["ipie/propagation/wicks_kernels.pyx"],
-		  include_dirs=[numpy.get_include()])
+		  include_dirs=[numpy.get_include()]),
+        Extension("ipie.utils.pack",
+                  ["ipie/utils/pack.pyx"],
+          include_dirs=[numpy.get_include()])
         ]
 
 def load_requirements(fname):
