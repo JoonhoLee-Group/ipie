@@ -134,6 +134,9 @@ class GenericContinuous(object):
         else:
             isrealobj = numpy.isrealobj
 
+        if (hamiltonian.mixed_precision): # cast it to float
+            xshifted = xshifted.astype(numpy.complex64)
+
         if (hamiltonian.symmetry):
             if isrealobj(hamiltonian.chol_vecs):
                 VHS_packed = hamiltonian.chol_packed.dot(xshifted.real) + 1.j * hamiltonian.chol_packed.dot(xshifted.imag)
@@ -141,8 +144,11 @@ class GenericContinuous(object):
                 VHS_packed = hamiltonian.chol_packed.dot(xshifted)
             # (nb, nb, nw) -> (nw, nb, nb)
             VHS_packed = VHS_packed.T.reshape(self.nwalkers, hamiltonian.chol_packed.shape[0]).copy()
+            
+            if (hamiltonian.mixed_precision): # cast it to double
+                VHS_packed = VHS_packed.astype(numpy.complex128)
+
             VHS = numpy.zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_packed.dtype)
-            # for iw in range(self.nwalkers):
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
         else:
             if isrealobj(hamiltonian.chol_vecs):
@@ -152,4 +158,7 @@ class GenericContinuous(object):
             # (nb, nb, nw) -> (nw, nb, nb)
             VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
 
+            if (hamiltonian.mixed_precision): # cast it to double
+                VHS = VHS.astype(numpy.complex128)
+            
         return  self.isqrt_dt * VHS

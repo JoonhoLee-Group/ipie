@@ -70,6 +70,7 @@ class Generic(object):
         self.name = "Generic"
         self.verbose = verbose
         self.exact_eri = options.get("exact_eri", False)
+        self.mixed_precision = options.get("mixed_precision", False)
 
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
@@ -81,6 +82,10 @@ class Generic(object):
         if self.exact_eri:
             if self.verbose:
                 print("# exact_eri is used for the local energy evaluation")
+
+        if self.mixed_precision:
+            if self.verbose:
+                print("# mixed_precision is used for the propagation")
 
         if isrealobj(self.chol_vecs.dtype):
             if verbose:
@@ -142,13 +147,20 @@ class Generic(object):
         import cupy
 
         size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
+        if self.symmetry:
+            size += self.chol_packed.size
+            size -= self.chol_vecs.size
+
         if verbose:
             expected_bytes = size * 8. # float64
             print("# hamiltonians.generic: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
-        self.chol_vecs = cupy.asarray(self.chol_vecs)
+        if self.symmetry:
+            self.chol_packed = cupy.asarray(self.chol_packed)
+        else:
+            self.chol_vecs = cupy.asarray(self.chol_vecs)
 
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
@@ -174,12 +186,10 @@ def read_integrals(integral_file):
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
     # Eqn (17) of [Motta17]_
-    # print("here")
     nbasis = h1e.shape[-1]
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis*nchol))
     # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
     v0 = 0.5 * numpy.dot(chol_view, chol_view.T)#einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
-    # print("done", chol_view.shape)
     h1e_mod[0,:,:] = h1e[0] - v0
     h1e_mod[1,:,:] = h1e[1] - v0

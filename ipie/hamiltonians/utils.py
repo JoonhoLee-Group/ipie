@@ -65,6 +65,13 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
 
         ham.sym_idx = numpy.triu_indices(nbsf)
         ham.chol_vecs = ham.chol_vecs.reshape((nbsf*nbsf,nchol))
+
+        if (ham.mixed_precision):
+            ham.chol_packed = ham.chol_packed.astype(numpy.float32)
+        mem = ham.chol_packed.nbytes / (1024.0**3)
+        if verbose:
+            print("# Approximate memory required by packed Cholesky vectors %f GB"%mem)
+
     else:
         if comm.rank == 0:
             print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))

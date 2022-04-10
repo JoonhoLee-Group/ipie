@@ -37,11 +37,48 @@ def unpack_VHS(
 
     return
 
+def unpack_VHS_sp(
+        long[:] idx_i,
+        long[:] idx_j,
+        float complex[:] VHS_packed,
+        float complex[:,:] VHS):
+
+    cdef long i, j
+    cdef long nbsf, nut
+    nbsf = VHS.shape[0]
+    nut = round(nbsf *(nbsf+1)/2)
+
+    for i in range(nut):
+        VHS[idx_i[i],idx_j[i]] = VHS_packed[i]
+        VHS[idx_j[i],idx_i[i]] = VHS_packed[i]
+
+    return
+
+
 def unpack_VHS_batch(
         long[:] idx_i,
         long[:] idx_j,
         double complex[:,:] VHS_packed,
         double complex[:,:,:] VHS):
+
+    cdef long i, iw
+    cdef long nbsf, nut, nwalkers
+    nwalkers = VHS.shape[0]
+    nbsf = VHS.shape[1]
+    nut = round(nbsf *(nbsf+1)/2)
+
+    for iw in range(nwalkers):
+        for i in range(nut):
+            VHS[iw, idx_i[i],idx_j[i]] = VHS_packed[iw,i]
+            VHS[iw, idx_j[i],idx_i[i]] = VHS_packed[iw,i]
+
+    return
+
+def unpack_VHS_batch_sp(
+        long[:] idx_i,
+        long[:] idx_j,
+        float complex[:,:] VHS_packed,
+        float complex[:,:,:] VHS):
 
     cdef long i, iw
     cdef long nbsf, nut, nwalkers
