@@ -1,14 +1,13 @@
-import ast
 import h5py
 import numpy
+
 array = numpy.array
 zeros = numpy.zeros
 einsum = numpy.einsum
 isrealobj = numpy.isrealobj
+
 import sys
-import scipy.linalg
 import time
-from ipie.utils.linalg import modified_cholesky
 from ipie.utils.io import (
         from_qmcpack_sparse,
         from_qmcpack_dense,
@@ -74,6 +73,10 @@ class Generic(object):
 
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
+
+        self.symmetry = False
+        self.chol_packed = None # [M*(M+1)/2, nchol] if used
+        self.sym_idx = None
 
         if self.exact_eri:
             if self.verbose:

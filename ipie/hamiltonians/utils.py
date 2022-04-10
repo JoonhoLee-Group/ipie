@@ -4,6 +4,7 @@ import time
 
 from ipie.hamiltonians.generic import Generic, read_integrals, construct_h1e_mod
 from ipie.utils.mpi import get_shared_array, have_shared_mem
+from ipie.utils.pack import pack_cholesky
 
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     """Wrapper to select hamiltonian class
@@ -33,11 +34,41 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         if verbose:
             print("# Time to read integrals: {:.6f}".format(time.time()-start))
         ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
+        
+        ham.symmetry = True
+        nbsf = hcore.shape[-1]
+        nchol = ham.chol_vecs.shape[-1]
+        idx = numpy.triu_indices(nbsf)
+
+        ham.chol_vecs = ham.chol_vecs.reshape((nbsf,nbsf,nchol))
+        
+        shmem = have_shared_mem(comm)
+        if shmem:
+            if comm.rank == 0:
+                cp_shape = (nbsf*(nbsf+1)//2, nchol)
+                dtype = ham.chol_vecs.dtype
+            else:
+                cp_shape = None
+                dtype = None
+
+            shape = comm.bcast(cp_shape, root=0)
+            dtype = comm.bcast(dtype, root=0)
+            ham.chol_packed = get_shared_array(comm, shape, dtype)
+            if comm.rank == 0:
+                pack_cholesky(idx[0],idx[1], ham.chol_packed, ham.chol_vecs)
+            comm.Barrier()
+        else:
+            dtype = ham.chol_vecs.dtype
+            cp_shape = (nbsf*(nbsf+1)//2, nchol)
+            ham.chol_packed = numpy.zeros(cp_shape, dtype=dtype)
+            pack_cholesky(idx[0],idx[1], ham.chol_packed, ham.chol_vecs)
+
+        ham.sym_idx = numpy.triu_indices(nbsf)
+        ham.chol_vecs = ham.chol_vecs.reshape((nbsf*nbsf,nchol))
     else:
         if comm.rank == 0:
             print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
             sys.exit()
-        # ham = None
 
     return ham
 

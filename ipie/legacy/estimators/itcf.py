@@ -7,21 +7,21 @@ try:
 except ImportError:
     mpi_sum = None
 import scipy.linalg
-from ipie.legacy.estimators.greens_function import gab, gab_multi_ghf
 from ipie.estimators.utils import H5EstimatorHelper
+from ipie.utils.linalg import reortho
+
+from ipie.legacy.estimators.greens_function import gab, gab_multi_ghf
 from ipie.legacy.propagation.hubbard import (
     back_propagate_single_ghf,
     construct_propagator_matrix,
     construct_propagator_matrix_ghf,
     back_propagate_single
 )
-from ipie.propagation.generic import (
+from ipie.legacy.propagation.generic import (
         back_propagate_generic,
         construct_propagator_matrix_generic
 )
 from ipie.legacy.propagation.operations import propagate_single
-from ipie.utils.linalg import reortho
-import sys
 
 class ITCF(object):
     """Class for computing ITCF estimates.
