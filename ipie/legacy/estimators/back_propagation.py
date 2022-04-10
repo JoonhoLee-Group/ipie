@@ -12,7 +12,7 @@ from ipie.estimators.utils import H5EstimatorHelper
 from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.estimators.ekt import ekt_1p_fock_opt, ekt_1h_fock_opt
-from ipie.propagation.generic import back_propagate_generic
+from ipie.legacy.propagation.generic import back_propagate_generic
 from ipie.legacy.propagation.planewave import back_propagate_planewave
 import ipie.legacy.propagation.hubbard
 

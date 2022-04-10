@@ -4,7 +4,6 @@ import pytest
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.propagation.generic import GenericContinuous
 from ipie.propagation.continuous import Continuous
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
@@ -462,8 +461,8 @@ def test_same_spin_batched():
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
     # trial.calculate_energy(system, ham)
     options = {'hybrid': True}
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    # qmc = dotdict({'dt': 0.005, 'nstblz': 5})
+    # prop = Continuous(system, ham, trial, qmc, options=options)
 
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
