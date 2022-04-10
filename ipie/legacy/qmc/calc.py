@@ -44,8 +44,8 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
-    batched = get_input_value(qmc_opts, 'batched', default=False,
-            verbose=verbosity)
+    batched = get_input_value(qmc_opts, 'batched', default=True)#,
+            # verbose=verbosity)
     if beta is not None:
         afqmc = ThermalAFQMC(comm, options=options,
                              parallel=comm.size>1,
