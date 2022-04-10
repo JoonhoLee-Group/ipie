@@ -417,7 +417,7 @@ class MultiSlater(object):
         na = system.nup
         nb = system.ndown
         M = hamiltonian.nbasis
-        nchol = hamiltonian.chol_vecs.shape[-1]
+        nchol = hamiltonian.nchol
         if self.verbose:
             print("# Constructing half rotated Cholesky vectors.")
 
