@@ -4,6 +4,7 @@ from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_e
 from ipie.estimators.generic import (
     local_energy_generic_opt,
     local_energy_generic_cholesky_opt,
+    local_energy_generic_cholesky_opt_correlation,
     local_energy_generic_cholesky
 )
 
@@ -17,9 +18,8 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
             if hamiltonian.exact_eri:
                 return local_energy_generic_opt(system, G, Ghalf=Ghalf, eri=trial._eri)
             else:
-                return local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=Ghalf[0],Ghalfb=Ghalf[1],
-                                                        rH1a=trial._rH1a, rH1b=trial._rH1b,
-                                                        rchola=trial._rchola, rcholb=trial._rcholb)
+                # return local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=Ghalf[0], Ghalfb=Ghalf[1], trial=trial)
+                return local_energy_generic_cholesky_opt_correlation(system, hamiltonian.ecore, Ghalfa=Ghalf[0], Ghalfb=Ghalf[1], trial=trial)
         else:
             return local_energy_generic_cholesky(system, hamiltonian, G)
     else:

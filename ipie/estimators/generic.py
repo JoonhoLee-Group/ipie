@@ -92,8 +92,36 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
 
     return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
+
+def local_energy_generic_cholesky_opt_correlation(system, ecore, Ghalfa, Ghalfb, trial):
+    if is_cupy(trial._rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        sum = cupy.sum
+    else:
+        sum = numpy.sum
+
+    dGhalfa = Ghalfa - trial.psia.T
+    dGhalfb = Ghalfb - trial.psib.T
+
+    # dGhalfa = dGhalfa.astype(numpy.complex64)
+    # dGhalfb = dGhalfb.astype(numpy.complex64)
+    # trial._rchola = trial._rchola.astype(numpy.float32)
+    # trial._rcholb = trial._rcholb.astype(numpy.float32)
+    (detot,de1,de2) = local_energy_generic_cholesky_opt(system, ecore, dGhalfa, dGhalfb, trial)
+    # trial._rchola = trial._rchola.astype(numpy.float64)
+    # trial._rcholb = trial._rcholb.astype(numpy.float64)
+    # dGhalfa = dGhalfa.astype(numpy.complex128)
+    # dGhalfb = dGhalfb.astype(numpy.complex128)
+
+    e1 = de1 - ecore + trial.e1b
+    e2 = de2 - trial.e2b + sum(trial._F0a*Ghalfa) + sum(trial._F0b*Ghalfb) 
+    etot = e1+e2
+
+    return (etot, e1, e2)
     
-def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b, rchola, rcholb):
+# def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b, rchola, rcholb):
+def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -116,6 +144,12 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
     (E, T, V): tuple
         Local, kinetic and potential energies.
     """
+    
+    rchola = trial._rchola
+    rcholb = trial._rcholb
+    rH1a = trial._rH1a
+    rH1b = trial._rH1b
+
     # Element wise multiplication.
     if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
@@ -136,8 +170,6 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
         dot = numpy.dot
         isrealobj = numpy.isrealobj
 
-    complex128 = numpy.complex128
-
     e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = Ghalfa.shape[-1]
@@ -157,8 +189,8 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
     GhalfaT = Ghalfa.T.copy() # nbasis x nocc
     GhalfbT = Ghalfb.T.copy()
 
-    Ta = zeros((nalpha,nalpha), dtype=complex128)
-    Tb = zeros((nbeta,nbeta), dtype=complex128)
+    Ta = zeros((nalpha,nalpha), dtype=GhalfaT.dtype)
+    Tb = zeros((nbeta,nbeta), dtype=GhalfbT.dtype)
 
     exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (isrealobj(rchola) and isrealobj(rcholb)):

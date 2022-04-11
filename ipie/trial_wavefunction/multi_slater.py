@@ -5,6 +5,10 @@ from ipie.legacy.estimators.local_energy import local_energy
 from ipie.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
+from ipie.estimators.generic import (
+    local_energy_generic_cholesky_opt,
+)
+
 from ipie.legacy.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
 from ipie.legacy.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
 from ipie.utils.io import (
@@ -192,11 +196,11 @@ class MultiSlater(object):
 
         self.error = False
         self.initialisation_time = time.time() - init_time
+        self.half_rotated = False
         self._nalpha = system.nup
         self._nbeta = system.ndown
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
-        self.half_rotated = False
         self._rchol = None
         self._rH1a = None # rotated H1
         self._rH1b = None # rotated H1
@@ -225,9 +229,10 @@ class MultiSlater(object):
                                                  self.coeffs)
                     )
         else:
-            (self.energy, self.e1b, self.e2b) = (
-                    variational_energy(system, hamiltonian, self)
-                    )
+            # (self.energy, self.e1b, self.e2b) = (
+            #         variational_energy(system, hamiltonian, self)
+            #         )
+           (self.energy, self.e1b, self.e2b) = local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=self.Ghalf[0], Ghalfb=self.Ghalf[1], trial=self)
         if self.verbose:
             print("# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                    %(self.energy.real, self.e1b.real, self.e2b.real))
@@ -516,6 +521,26 @@ class MultiSlater(object):
                 print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
         if comm is not None:
             comm.barrier()
+
+        # storing intermediates for correlation energy
+        # shape_a = (nchol, hr_ndet*(M*(na)))
+        self._rchola = self._rchola.reshape(hamiltonian.nchol,na,M)
+        self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb,M)
+        Xa = numpy.einsum("mi,xim->x",self.psi[0][:,:na], self._rchola, optimize=True)
+        Xb = numpy.einsum("mi,xim->x",self.psi[0][:,na:], self._rcholb, optimize=True)
+        X = Xa + Xb
+        J0a = numpy.einsum("x,xim->im",X, self._rchola, optimize=True) # occ x M
+        J0b = numpy.einsum("x,xim->im",X, self._rcholb, optimize=True) # occ x M
+        Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
+        Kb = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
+        K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
+        K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
+
+        self._F0a = J0a - K0a
+        self._F0b = J0b - K0b
+        self._rchola = self._rchola.reshape(hamiltonian.nchol,na*M)
+        self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)
+
 
     def rot_chol(self, idet=0, spin=None):
         """Helper function"""
