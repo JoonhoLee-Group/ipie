@@ -3,8 +3,7 @@ from ipie.legacy.estimators.ci import get_hmatel
 from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
 from ipie.estimators.generic import (
     local_energy_generic_opt,
-    local_energy_generic_cholesky_opt,
-    local_energy_generic_cholesky_opt_correlation,
+    half_rotated_cholesky_dG,
     local_energy_generic_cholesky
 )
 
@@ -19,7 +18,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
                 return local_energy_generic_opt(system, G, Ghalf=Ghalf, eri=trial._eri)
             else:
                 # return local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=Ghalf[0], Ghalfb=Ghalf[1], trial=trial)
-                return local_energy_generic_cholesky_opt_correlation(system, hamiltonian.ecore, Ghalfa=Ghalf[0], Ghalfb=Ghalf[1], trial=trial)
+                return half_rotated_cholesky_dG(system, hamiltonian.ecore, Ghalfa=Ghalf[0], Ghalfb=Ghalf[1], trial=trial)
         else:
             return local_energy_generic_cholesky(system, hamiltonian, G)
     else:

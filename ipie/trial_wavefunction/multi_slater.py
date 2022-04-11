@@ -6,7 +6,8 @@ from ipie.estimators.local_energy import (
         variational_energy, variational_energy_ortho_det
         )
 from ipie.estimators.generic import (
-    local_energy_generic_cholesky_opt,
+    half_rotated_cholesky_jk,
+    half_rotated_cholesky_hcore
 )
 
 from ipie.legacy.estimators.greens_function import gab, gab_spin, gab_mod, gab_mod_ovlp
@@ -28,6 +29,7 @@ class MultiSlater(object):
             print ("# Parsing input options for trial_wavefunction.MultiSlater.")
         init_time = time.time()
         self.name = "MultiSlater"
+        self.mixed_precision = hamiltonian.mixed_precision
         # TODO : Fix for MSD.
         # This is for the overlap trial
         if len(wfn) == 3:
@@ -229,10 +231,16 @@ class MultiSlater(object):
                                                  self.coeffs)
                     )
         else:
-            # (self.energy, self.e1b, self.e2b) = (
-            #         variational_energy(system, hamiltonian, self)
-            #         )
-           (self.energy, self.e1b, self.e2b) = local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=self.Ghalf[0], Ghalfb=self.Ghalf[1], trial=self)
+           # (self.energy, self.e1b, self.e2b) = local_energy_generic_cholesky_opt(system, hamiltonian.ecore, Ghalfa=self.Ghalf[0], Ghalfb=self.Ghalf[1], trial=self)
+           self.e1b = numpy.sum(self.Ghalf[0]*self._rH1a0) + numpy.sum(self.Ghalf[1]*self._rH1b0) + hamiltonian.ecore
+           self.ej, self.ek = half_rotated_cholesky_jk(system, self.Ghalf[0], self.Ghalf[1], trial=self)
+           self.e2b = self.ej+ self.ek
+           self.energy = self.e1b + self.e2b
+
+           # this is for the correlation energy trick
+           self.e1b_corr = half_rotated_cholesky_hcore(system, self.Ghalf[0], self.Ghalf[1], trial=self) + hamiltonian.ecore
+           self.e2b_corr = self.ej+ self.ek
+
         if self.verbose:
             print("# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                    %(self.energy.real, self.e1b.real, self.e2b.real))
@@ -463,15 +471,15 @@ class MultiSlater(object):
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
         
-        self._rH1a = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
-        self._rH1b = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
+        self._rH1a0 = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
+        self._rH1b0 = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
 
         for idet, psi in enumerate(self.psi[:hr_ndet]):
-            self._rH1a[idet] = psi[:,:na].conj().T.dot(hamiltonian.H1[0])
-            self._rH1b[idet] = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
+            self._rH1a0[idet] = psi[:,:na].conj().T.dot(hamiltonian.H1[0])
+            self._rH1b0[idet] = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
 
-        self._rH1a = self._rH1a.reshape(na,M)
-        self._rH1b = self._rH1b.reshape(nb,M)
+        self._rH1a0 = self._rH1a0.reshape(na,M)
+        self._rH1b0 = self._rH1b0.reshape(nb,M)
 
         for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
@@ -514,7 +522,7 @@ class MultiSlater(object):
                 self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
         
             self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
-            self._mem_required += (self._rH1a.nbytes + self._rH1b.nbytes) / (1024.0**3.0)
+            self._mem_required += (self._rH1a0.nbytes + self._rH1b0.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print("# Memory required by half-rotated integrals: "
                       " {:.4f} GB.".format(self._mem_required))
@@ -535,11 +543,21 @@ class MultiSlater(object):
         Kb = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
         K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
         K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
+        
+        self._rH1a = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
+        self._rH1b = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
+        
+        self._rH1a = self._rH1a0 + J0a - K0a
+        self._rH1b = self._rH1b0 + J0b - K0b
 
-        self._rH1a += J0a - K0a
-        self._rH1b += J0b - K0b
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na*M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)
+
+        self._vbias0 = self._rchola.dot(self.psi[0][:,:na].T.ravel()) + self._rchola.dot(self.psi[0][:,na:].T.ravel())
+
+        if self.mixed_precision:
+            self._rchola = self._rchola.astype(numpy.float32)
+            self._rcholb = self._rcholb.astype(numpy.float32)
 
 
     def rot_chol(self, idet=0, spin=None):
