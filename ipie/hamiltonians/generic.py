@@ -71,6 +71,13 @@ class Generic(object):
         self.verbose = verbose
         self.exact_eri = options.get("exact_eri", False)
         self.mixed_precision = options.get("mixed_precision", False)
+        self.density_diff = options.get("density_diff", False)
+
+        if self.mixed_precision:
+            if not self.density_diff:
+                self.density_diff = True
+                if self.verbose:
+                    print("# density_diff is switched on for more stable mixed precision")
 
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
@@ -82,6 +89,10 @@ class Generic(object):
         if self.exact_eri:
             if self.verbose:
                 print("# exact_eri is used for the local energy evaluation")
+
+        if self.density_diff:
+            if self.verbose:
+                print("# density_diff is used for the force bias and the local energy evaluation")
 
         if self.mixed_precision:
             if self.verbose:

@@ -94,7 +94,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
 
 # density difference trick
-def half_rotated_cholesky_dG(system, ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     if is_cupy(trial._rchola): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
@@ -105,23 +105,28 @@ def half_rotated_cholesky_dG(system, ecore, Ghalfa, Ghalfb, trial):
     dGhalfa = Ghalfa - trial.psia.T
     dGhalfb = Ghalfb - trial.psib.T
 
+    de1 = sum(trial._rH1a*dGhalfa) + sum(trial._rH1b*dGhalfb) + ecore
+    dde2 = sum(trial._rFa_corr*Ghalfa) + sum(trial._rFb_corr*Ghalfb)
+
     if trial.mixed_precision:
         dGhalfa = dGhalfa.astype(numpy.complex64)
         dGhalfb = dGhalfb.astype(numpy.complex64)
-    
-    (detot,de1,de2) = half_rotated_choleksy(system, ecore, dGhalfa, dGhalfb, trial)
-    
+
+    deJ, deK = half_rotated_cholesky_jk(system, dGhalfa, dGhalfb, trial)
+    de2 = deJ+deK
+
     if trial.mixed_precision:
         dGhalfa = dGhalfa.astype(numpy.complex128)
         dGhalfb = dGhalfb.astype(numpy.complex128)
 
-    e1 = de1 - ecore + trial.e1b_corr
-    e2 = de2 - trial.e2b_corr
+    e1 = de1 - ecore + trial.e1b
+    e2 = de2 + dde2 - trial.e2b
+
     etot = e1+e2
 
     return (etot, e1, e2)
 
-def half_rotated_choleksy(system, ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the half-rotated cholesky decomposed two-electron integrals.
@@ -165,6 +170,7 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
 
     e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
     return e1b
+
 def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     
     rchola = trial._rchola

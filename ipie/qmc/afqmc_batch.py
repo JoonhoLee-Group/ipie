@@ -190,6 +190,11 @@ class AFQMCBatch(object):
                 print("# Trial wfn energy is {}".format(self.trial.energy))
             else:
                 print("# WARNING: skipping trial energy calculation is requested.")
+
+        if self.trial.compute_trial_energy:
+            self.trial.e1b = comm.bcast(self.trial.e1b, root=0)
+            self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
+
         comm.barrier()
         prop_opt = options.get('propagator', {})
         if comm.rank == 0:

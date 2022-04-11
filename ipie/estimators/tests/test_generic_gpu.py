@@ -5,7 +5,7 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.estimators.generic import (
         local_energy_generic_opt,
-        local_energy_generic_cholesky_opt,
+        local_energy_cholesky_opt,
         )
 from ipie.legacy.estimators.generic import (
         local_energy_generic_cholesky,
@@ -41,7 +41,7 @@ def test_local_energy_cholesky_opt():
         ham.cast_to_cupy()
         trial.cast_to_cupy()
 
-    e = local_energy_generic_cholesky_opt(system, ham, trial.G[0], trial.G[1], trial.Ghalf[0],trial.Ghalf[1], trial._rchola, trial._rcholb)
+    e = local_energy_cholesky_opt(system, ham.ecore, trial.Ghalf[0],trial.Ghalf[1], trial)
     
     if not no_gpu:
         e = cupy.array(e)

@@ -5,7 +5,7 @@ from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.propagation.planewave import PlaneWave
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
 
 

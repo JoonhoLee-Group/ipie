@@ -38,7 +38,8 @@ def compare_test_data(ref, test):
     for k, v in ref.items():
         if k == 'sys_info':
             continue
-        assert np.linalg.norm(np.array(ref[k]) - np.array(test[k])) < 1e-10
+        print(k, np.array(ref[k]) - np.array(test[k]))
+        assert np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
 
 def run_test_system(input_file, benchmark_file):
     comm = MPI.COMM_WORLD
