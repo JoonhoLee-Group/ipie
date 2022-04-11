@@ -541,8 +541,9 @@ class MultiSlater(object):
         X = Xa + Xb
         J0a = numpy.einsum("x,xim->im",X, self._rchola, optimize=True) # occ x M
         J0b = numpy.einsum("x,xim->im",X, self._rcholb, optimize=True) # occ x M
+
         Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
-        Kb = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
+        Kb = numpy.einsum("xim,xin->mn",self._rcholb, self._rcholb)
         K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
         K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
         
@@ -553,6 +554,10 @@ class MultiSlater(object):
         self._rH1b_corr = self._rH1b + J0b - K0b
         self._rFa_corr = J0a - K0a
         self._rFb_corr = J0b - K0b
+        # self._rJa_corr = J0a
+        # self._rJb_corr = J0b
+        # self._rKa_corr = K0a
+        # self._rKb_corr = K0b
 
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na*M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)

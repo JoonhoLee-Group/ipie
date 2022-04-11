@@ -124,6 +124,8 @@ def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
 
     etot = e1+e2
 
+    etot0, e10, e20  = local_energy_cholesky_opt(system,ecore,Ghalfa,Ghalfb, trial)
+
     return (etot, e1, e2)
 
 def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
