@@ -5,7 +5,7 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.estimators.generic import (
         local_energy_generic_opt,
-        local_energy_generic_cholesky_opt,
+        local_energy_cholesky_opt,
         )
 from ipie.legacy.estimators.generic import (
         local_energy_generic_cholesky_opt_batched,
@@ -64,7 +64,7 @@ def test_local_energy_cholesky_opt():
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = MultiSlater(system, ham, wfn)
     trial.half_rotate(system, ham)
-    e = local_energy_generic_cholesky_opt(system, ham.ecore, trial.Ghalf[0],trial.Ghalf[1], trial._rH1a, trial._rH1b, trial._rchola, trial._rcholb)
+    e = local_energy_cholesky_opt(system, ham.ecore, trial.Ghalf[0],trial.Ghalf[1], trial)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)

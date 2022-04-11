@@ -123,10 +123,11 @@ def test_local_energy_single_det_batch():
     energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
 
     for iw in range(nwalkers):
-        energy = local_energy_single_det_batch(system, ham, walker_batch, trial, iw = iw)
+        # unnecessary test
+        # energy = local_energy_single_det_batch(system, ham, walker_batch, trial, iw = iw)
+        # assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
         assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:,nelec[0]:])
-        assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(etots[iw], energies[iw,0])
         assert numpy.allclose(e1s[iw], energies[iw,1])
         assert numpy.allclose(e2s[iw], energies[iw,2])

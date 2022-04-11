@@ -92,11 +92,46 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
 
     return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
-    
-def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b, rchola, rcholb):
+
+# density difference trick
+def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
+    if is_cupy(trial._rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        sum = cupy.sum
+    else:
+        sum = numpy.sum
+
+    dGhalfa = Ghalfa - trial.psia.T
+    dGhalfb = Ghalfb - trial.psib.T
+
+    de1 = sum(trial._rH1a*dGhalfa) + sum(trial._rH1b*dGhalfb) + ecore
+    dde2 = sum(trial._rFa_corr*Ghalfa) + sum(trial._rFb_corr*Ghalfb)
+
+    if trial.mixed_precision:
+        dGhalfa = dGhalfa.astype(numpy.complex64)
+        dGhalfb = dGhalfb.astype(numpy.complex64)
+
+    deJ, deK = half_rotated_cholesky_jk(system, dGhalfa, dGhalfb, trial)
+    de2 = deJ+deK
+
+    if trial.mixed_precision:
+        dGhalfa = dGhalfa.astype(numpy.complex128)
+        dGhalfb = dGhalfb.astype(numpy.complex128)
+
+    e1 = de1 - ecore + trial.e1b
+    e2 = de2 + dde2 - trial.e2b
+
+    etot = e1+e2
+
+    etot0, e10, e20  = local_energy_cholesky_opt(system,ecore,Ghalfa,Ghalfb, trial)
+
+    return (etot, e1, e2)
+
+def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
-    This uses the cholesky decomposed two-electron integrals.
+    This uses the half-rotated cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
@@ -116,29 +151,47 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
     (E, T, V): tuple
         Local, kinetic and potential energies.
     """
+
+    e1b = half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial)
+    eJ,eK = half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial)
+    e2b = eJ+eK
+
+    return (e1b + e2b + ecore, e1b + ecore, e2b)
+
+def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
+    rH1a = trial._rH1a
+    rH1b = trial._rH1b
+
+    # Element wise multiplication.
+    if is_cupy(rH1a): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        sum = cupy.sum
+    else:
+        sum = numpy.sum
+
+    e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
+    return e1b
+
+def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
+    
+    rchola = trial._rchola
+    rcholb = trial._rcholb
+
     # Element wise multiplication.
     if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
-        array = cupy.array
         zeros = cupy.zeros
-        sum = cupy.sum
         dot = cupy.dot
         trace = cupy.trace
-        einsum = cupy.einsum
         isrealobj = cupy.isrealobj
     else:
-        array = numpy.array
         zeros = numpy.zeros
-        einsum = numpy.einsum
         trace = numpy.trace
-        sum = numpy.sum
         dot = numpy.dot
         isrealobj = numpy.isrealobj
 
-    complex128 = numpy.complex128
-
-    e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
     nalpha, nbeta = system.nup, system.ndown
     nbasis = Ghalfa.shape[-1]
     if rchola is not None:
@@ -157,10 +210,10 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
     GhalfaT = Ghalfa.T.copy() # nbasis x nocc
     GhalfbT = Ghalfb.T.copy()
 
-    Ta = zeros((nalpha,nalpha), dtype=complex128)
-    Tb = zeros((nbeta,nbeta), dtype=complex128)
+    Ta = zeros((nalpha,nalpha), dtype=GhalfaT.dtype)
+    Tb = zeros((nbeta,nbeta), dtype=GhalfbT.dtype)
 
-    exx  = 0.j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    exx  = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (isrealobj(rchola) and isrealobj(rcholb)):
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
@@ -178,9 +231,9 @@ def local_energy_generic_cholesky_opt(system, ecore, Ghalfa, Ghalfb, rH1a, rH1b,
             Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
             exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
 
-    e2b = 0.5 * (ecoul - exx)
+    # e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + ecore, e1b + ecore, e2b)
+    return 0.5 * ecoul, -0.5 * exx # JK energy
 
 def core_contribution(system, Gcore):
     hc_a = (numpy.einsum('pqrs,pq->rs', system.h2e, Gcore[0]) -

@@ -40,6 +40,7 @@ class Hubbard(object):
     def __init__(self, options, verbose=False):
         if verbose:
             print("# Parsing input options.")
+        self.mixed_precision = False
         self.t = options.get('t', 1.0)
         self.U = options['U']
         self.nx = options['nx']
