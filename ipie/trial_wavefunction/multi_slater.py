@@ -536,8 +536,8 @@ class MultiSlater(object):
         K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
         K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
 
-        self._F0a = J0a - K0a
-        self._F0b = J0b - K0b
+        self._rH1a += J0a - K0a
+        self._rH1b += J0b - K0b
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na*M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)
 

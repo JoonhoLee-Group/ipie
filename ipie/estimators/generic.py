@@ -115,7 +115,7 @@ def local_energy_generic_cholesky_opt_correlation(system, ecore, Ghalfa, Ghalfb,
     # dGhalfb = dGhalfb.astype(numpy.complex128)
 
     e1 = de1 - ecore + trial.e1b
-    e2 = de2 - trial.e2b + sum(trial._F0a*Ghalfa) + sum(trial._F0b*Ghalfb) 
+    e2 = de2 - trial.e2b# + sum(trial._F0a*Ghalfa) + sum(trial._F0b*Ghalfb) 
     etot = e1+e2
 
     return (etot, e1, e2)
