@@ -12,6 +12,7 @@ from pie.utils.io import (
         write_qmcpack_wfn
         )
 from pie.utils.mpi import get_shared_array
+from pie.lib.wicks import wicks_helper
 
 import numpy
 
@@ -112,6 +113,12 @@ class MultiSlater(object):
                         default=False,
                         verbose=verbose
                         )
+        self.use_wicks_helper = get_input_value(
+                        options,
+                        'use_wicks_helper',
+                        default=True,
+                        verbose=verbose
+                        )
         self.optimized = get_input_value(
                             options,
                             'optimized',
@@ -207,7 +214,16 @@ class MultiSlater(object):
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
-            self.G = self.compute_1rdm(hamiltonian.nbasis)
+            dets = wicks_helper.encode_dets(self.occa, self.occb)
+            if self.use_wicks_helper:
+                phases = wicks_helper.convert_phase(self.occa, self.occb)
+                self.G = wicks_helper.compute_opdm(
+                        phases*self.coeffs,
+                        dets,
+                        hamiltonian.nbasis,
+                        system.ne)
+            else:
+                self.G = self.compute_1rdm(hamiltonian.nbasis)
             end = time.time()
             if verbose:
                 print("# Time to compute 1-RDM: {} s".format(end - start))
