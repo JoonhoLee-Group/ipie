@@ -186,10 +186,12 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
         dot = cupy.dot
         trace = cupy.trace
         isrealobj = cupy.isrealobj
+        einsum = cupy.einsum
     else:
         zeros = numpy.zeros
         trace = numpy.trace
         dot = numpy.dot
+        einsum = numpy.einsum
         isrealobj = numpy.isrealobj
 
     nalpha, nbeta = system.nup, system.ndown
@@ -222,14 +224,15 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
             Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
             Tb[:,:].real = rmi_b.dot(GhalfbT.real)
             Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
-            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
+            # exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
+            exx += einsum("ij,ji->",Ta,Ta) + einsum("ij,ji->",Tb,Tb)
     else:
         for x in range(naux):  # write a cython function that calls blas for this.
             rmi_a = rchola[x].reshape((nalpha,nbasis))
             rmi_b = rcholb[x].reshape((nbeta,nbasis))
             Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
             Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
-            exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
+            exx += einsum("ij,ji->",Ta,Ta) + einsum("ij,ji->",Tb,Tb)
 
     # e2b = 0.5 * (ecoul - exx)
 
