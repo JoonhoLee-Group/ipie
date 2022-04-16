@@ -252,13 +252,13 @@ class MultiSlater(object):
         ndets = len(wfn[0])
         ne = nup + ndown
         self.psi = numpy.zeros((ndets,nbasis,ne),
-                                dtype=numpy.complex128)
+                                dtype=numpy.float64)
         if self.verbose:
             print("# Creating trial wavefunction from CI-like expansion.")
         if orbs is None:
             if self.verbose:
                 print("# Assuming RHF reference.")
-            I = numpy.eye(nbasis, dtype=numpy.complex128)
+            I = numpy.eye(nbasis, dtype=numpy.float64)
         # Store alpha electrons first followed by beta electrons.
         nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]

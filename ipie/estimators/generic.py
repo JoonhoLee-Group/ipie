@@ -151,7 +151,6 @@ def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     (E, T, V): tuple
         Local, kinetic and potential energies.
     """
-
     e1b = half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial)
     eJ,eK = half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial)
     e2b = eJ+eK

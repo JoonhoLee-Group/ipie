@@ -93,7 +93,9 @@ class WalkerBatchHandler(object):
                       "issues.")
         
         if not self.walker_type == "thermal":
-            walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phia.size + self.walkers_batch.phib.size
+            walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phia.size 
+            if (not self.walkers_batch.rhf):
+                walker_batch_size += self.walkers_batch.phib.size
         if self.write_freq > 0:
             self.write_restart = True
             self.dsets = []
