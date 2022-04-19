@@ -71,7 +71,7 @@ class Generic(object):
         self.verbose = verbose
         self.exact_eri = options.get("exact_eri", False)
         self.mixed_precision = options.get("mixed_precision", False)
-        self.density_diff = options.get("density_diff", True)
+        self.density_diff = options.get("density_diff", False)
 
         if self.mixed_precision:
             if not self.density_diff:
