@@ -182,13 +182,12 @@ def exx_kernel_real(rchol, Ghalf):
     nbasis = Ghalf.shape[1]
 
     exx = 0 + 0j
-    GhalfT = Ghalf.T
-    Greal = GhalfT.real.copy()
-    Gimag = GhalfT.imag.copy()
+    Greal = Ghalf.real.copy()
+    Gimag = Ghalf.imag.copy()
     # Fix this with gpu env
     for jx in range(naux):
         rmi = rchol[jx].reshape((nocc, nbasis))
-        T = rmi.dot(Greal) + 1.j * rmi.dot(Gimag)
+        T = rmi.dot(Greal.T) + 1.j * rmi.dot(Gimag.T)
         exx += numpy.dot(T.ravel(), T.T.ravel())
     return exx
 
