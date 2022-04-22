@@ -280,7 +280,7 @@ def get_sys_info(sha1, branch, uuid, nranks):
                 info['{:s}'.format(lib)]['BLAS'] = {'lib': ' '.join(np_lib),
                                                     'path': ' '.join(lib_dir)}
             elif lib == 'mpi4py':
-                mpicc = l.get_config()['mpicc']
+                mpicc = l.get_config().get('mpicc', 'none')
                 print("# - mpicc: {:s}".format(mpicc))
                 info['{:s}'.format(lib)]['mpicc'] = mpicc
             elif lib == 'cupy':
