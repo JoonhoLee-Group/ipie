@@ -48,7 +48,7 @@ class WalkerBatchHandler(object):
             print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
 
         assert(trial.name == 'MultiSlater')
-        
+
         if (trial.ndets == 1):
             if verbose:
                 print("# Using single det walker with a single det trial.")
@@ -57,14 +57,14 @@ class WalkerBatchHandler(object):
                 trial.psi = trial.psi[0]
                 trial.psia = trial.psia[0]
                 trial.psib = trial.psib[0]
-            self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial, 
+            self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial,
                                 nwalkers = self.nwalkers, walker_opts=walker_opts,
                                 index=0, nprop_tot=nprop_tot,nbp=nbp)
         elif (trial.ndets > 1):
             if verbose:
                 print("# Using single det walker with a multi det trial.")
             self.walker_type = 'SD'
-            self.walkers_batch = MultiDetTrialWalkerBatch(system, hamiltonian, trial, 
+            self.walkers_batch = MultiDetTrialWalkerBatch(system, hamiltonian, trial,
                                 nwalkers = self.nwalkers, walker_opts=walker_opts,
                                 index=0, nprop_tot=nprop_tot,nbp=nbp)
 
@@ -79,9 +79,11 @@ class WalkerBatchHandler(object):
                                             default='pair_branch',
                                             alias=['pop_control'],
                                             verbose=verbose)
+        self.reconfiguration_counter = 0
+        self.reconfiguration_freq = walker_opts.get('reconfiguration_freq', 50)
         self.min_weight = walker_opts.get('min_weight', 0.1)
         self.max_weight = walker_opts.get('max_weight', 4.0)
-        
+
         if verbose:
             print("# Using {} population control "
                   "algorithm.".format(self.pcont_method))
@@ -91,7 +93,7 @@ class WalkerBatchHandler(object):
                 # TODO: FDM FIX THIS
                 print(" # Warning: Walker buffer size > 2GB. May run into MPI"
                       "issues.")
-        
+
         if not self.walker_type == "thermal":
             walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phia.size 
             if (not self.walkers_batch.rhf):
@@ -120,7 +122,7 @@ class WalkerBatchHandler(object):
 
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
-        
+
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
 
@@ -183,7 +185,7 @@ class WalkerBatchHandler(object):
         self.send_time += time.time() - self.start_time_const
 
     def pop_control(self, comm):
-        if is_cupy(self.walkers_batch.weight): 
+        if is_cupy(self.walkers_batch.weight):
             import cupy
             array = cupy.asnumpy
         else:
@@ -229,6 +231,11 @@ class WalkerBatchHandler(object):
         elif self.pcont_method == "pair_branch":
             # self.pair_branch(comm)
             self.pair_branch_fast(comm)
+        elif self.pcont_method == "stochastic_reconfiguration":
+            self.reconfiguration_counter += 1
+            if self.reconfiguration_counter % self.reconfiguration_freq == 0:
+                self.stochastic_reconfiguration(comm)
+                self.reconfiguration_counter = 0
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
@@ -246,12 +253,12 @@ class WalkerBatchHandler(object):
         # walker objects in memory. We don't want future changes in a given
         # element of psi having unintended consequences.
         # todo : add phase to walker for free projection
-        if is_cupy(self.walkers_batch.weight): 
+        if is_cupy(self.walkers_batch.weight):
             import cupy
             array = cupy.asnumpy
         else:
             array = numpy.array
-        
+
         self.start_time()
         if comm.rank == 0:
             parent_ix = numpy.zeros(len(weights), dtype='i')
@@ -348,7 +355,7 @@ class WalkerBatchHandler(object):
         self.add_non_communication()
 
     def pair_branch_fast(self, comm):
-        if is_cupy(self.walkers_batch.weight): 
+        if is_cupy(self.walkers_batch.weight):
             import cupy
             abs = cupy.abs
             array = cupy.asnumpy
@@ -436,7 +443,7 @@ class WalkerBatchHandler(object):
             total_weight = 0
         self.add_non_communication()
         self.start_time()
-        
+
         data = numpy.empty([self.walkers_batch.nwalkers, 4], dtype=numpy.float64)
         comm.Scatter(glob_inf, data, root=0)
 
@@ -568,6 +575,57 @@ class WalkerBatchHandler(object):
         for r in reqs:
             r.wait()
         self.add_communication()
+
+    def stochastic_reconfiguration(self, comm):
+        if is_cupy(self.walkers_batch.weight):
+            import cupy
+            abs = cupy.abs
+            array = cupy.asnumpy
+        else:
+            abs = numpy.abs
+            array = numpy.array
+
+        # gather all walker information on the root
+        self.start_time()
+        nwalkers = self.walkers_batch.nwalkers
+        local_buffer = array([ self.walkers_batch.get_buffer(i) for i in range(nwalkers) ])
+        walker_len = local_buffer[0].shape[0]
+        global_buffer = None
+        if comm.rank == 0:
+            global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
+        self.add_non_communication()
+
+        self.start_time()
+        comm.Gather(local_buffer, global_buffer, root=0)
+        self.add_communication()
+
+        # perform sr on the root
+        new_global_buffer = None
+        self.start_time()
+        if comm.rank == 0:
+            new_global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
+            cumulative_weights = numpy.cumsum(abs(global_buffer[:, :, 0]))
+            total_weight = cumulative_weights[-1]
+            new_average_weight = total_weight / nwalkers / comm.size
+            zeta = numpy.random.rand()
+            for i in range(comm.size * nwalkers):
+                z = (i + zeta) / nwalkers / comm.size
+                new_i = numpy.searchsorted(cumulative_weights, z * total_weight)
+                new_global_buffer[i//nwalkers, i%nwalkers] = global_buffer[new_i//nwalkers, new_i%nwalkers]
+                new_global_buffer[i//nwalkers, i%nwalkers, 0] = new_average_weight
+
+        self.add_non_communication()
+
+        # distribute information of newly selected walkers
+        self.start_time()
+        comm.Scatter(new_global_buffer, local_buffer, root=0)
+        self.add_communication()
+
+        # set walkers using distributed information
+        self.start_time()
+        for i in range(nwalkers):
+            self.walkers_batch.set_buffer(i, local_buffer[i])
+        self.add_non_communication()
 
     def set_total_weight(self, total_weight):
         self.walkers_batch.total_weight = total_weight
