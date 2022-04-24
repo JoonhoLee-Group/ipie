@@ -63,7 +63,7 @@ class Generic(object):
         integrals.
     """
 
-    def __init__(self, h1e, chol, ecore, h1e_mod=None, options = {},
+    def __init__(self, h1e, chol, ecore, h1e_mod=None, chol_packed = None, options = {},
                  verbose=False, write_ints=False):
         if verbose:
             print("# Parsing input options for hamiltonians.Generic.")
@@ -72,19 +72,29 @@ class Generic(object):
         self.exact_eri = options.get("exact_eri", False)
         self.mixed_precision = options.get("mixed_precision", False)
         self.density_diff = options.get("density_diff", False)
+        self.symmetry = options.get("symmetry", True)
+
+
+        self.ecore = ecore
+        self.chol_vecs = chol # [M^2, nchol]
+
+        if self.symmetry:
+            self.chol_packed = chol_packed
+            nbsf = h1e.shape[1]
+            self.sym_idx = numpy.triu_indices(nbsf)
+        else:
+            self.chol_packed = None # [M*(M+1)/2, nchol] if used
+            self.sym_idx = None
 
         if self.mixed_precision:
             if not self.density_diff:
                 self.density_diff = True
                 if self.verbose:
                     print("# density_diff is switched on for more stable mixed precision")
-
-        self.ecore = ecore
-        self.chol_vecs = chol # [M^2, nchol]
-
-        self.symmetry = False
-        self.chol_packed = None # [M*(M+1)/2, nchol] if used
-        self.sym_idx = None
+            if self.symmetry:
+                self.chol_packed = self.chol_packed.astype(numpy.float32)
+            else:
+                self.chol_vecs = self.chol_vecs.astype(numpy.float32) # [M^2, nchol]
 
         if self.exact_eri:
             if self.verbose:

@@ -38,7 +38,7 @@ def test_phmsd_force_bias_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     legacyham = LegacyHamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                      ecore=0)
@@ -96,7 +96,7 @@ def test_phmsd_greens_function_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
     trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
@@ -143,7 +143,7 @@ def test_phmsd_overlap_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
     trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
@@ -318,7 +318,7 @@ def test_phmsd_propagation_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
     trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})

@@ -42,7 +42,7 @@ def test_pair_branch_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)
@@ -103,7 +103,7 @@ def test_comb_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)
@@ -161,7 +161,7 @@ def test_stochastic_reconfiguration_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)

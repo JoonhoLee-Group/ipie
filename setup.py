@@ -12,14 +12,22 @@ from Cython.Build import cythonize
 extensions = [
         Extension("ipie.legacy.estimators.ueg_kernels",
                   ["ipie/legacy/estimators/ueg_kernels.pyx"],
+			   extra_compile_args=["-O3"],
 		  include_dirs=[numpy.get_include()]),
         Extension("ipie.propagation.wicks_kernels",
                   ["ipie/propagation/wicks_kernels.pyx"],
+			   extra_compile_args=["-O3"],
 		  include_dirs=[numpy.get_include()]),
         Extension("ipie.utils.pack",
                   ["ipie/utils/pack.pyx"],
+			   extra_compile_args=["-O3"],
+          include_dirs=[numpy.get_include()]),
+        Extension("ipie.estimators.opt_local_energy",
+                  ["ipie/estimators/opt_local_energy.pyx"],
+			   extra_compile_args=["-O3"],
           include_dirs=[numpy.get_include()])
         ]
+
 
 def load_requirements(fname):
     reqs = parse_requirements(fname, session="test")

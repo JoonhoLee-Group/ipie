@@ -47,7 +47,7 @@ def test_greens_function_wicks_opt():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
@@ -175,7 +175,7 @@ def test_phmsd_local_energy():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     # wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5, init=True)
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
@@ -453,7 +453,7 @@ def test_same_spin_batched():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     # wfn_2 = ([ci[0],ci[9]], [oa[0], oa[9]], [ob[0], ob[9]])

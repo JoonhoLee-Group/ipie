@@ -33,45 +33,46 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
                                                            verbose=verbose)
         if verbose:
             print("# Time to read integrals: {:.6f}".format(time.time()-start))
-        ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
-        
-        ham.symmetry = True
+
+
+        start = time.time()
+
         nbsf = hcore.shape[-1]
-        nchol = ham.chol_vecs.shape[-1]
+        nchol = chol.shape[-1]
         idx = numpy.triu_indices(nbsf)
 
-        ham.chol_vecs = ham.chol_vecs.reshape((nbsf,nbsf,nchol))
+        chol = chol.reshape((nbsf,nbsf,nchol))
         
         shmem = have_shared_mem(comm)
         if shmem:
             if comm.rank == 0:
                 cp_shape = (nbsf*(nbsf+1)//2, nchol)
-                dtype = ham.chol_vecs.dtype
+                dtype = chol.dtype
             else:
                 cp_shape = None
                 dtype = None
 
             shape = comm.bcast(cp_shape, root=0)
             dtype = comm.bcast(dtype, root=0)
-            ham.chol_packed = get_shared_array(comm, shape, dtype)
+            chol_packed = get_shared_array(comm, shape, dtype)
             if comm.rank == 0:
-                pack_cholesky(idx[0],idx[1], ham.chol_packed, ham.chol_vecs)
+                pack_cholesky(idx[0],idx[1], chol_packed, chol)
             comm.Barrier()
         else:
-            dtype = ham.chol_vecs.dtype
+            dtype = chol.dtype
             cp_shape = (nbsf*(nbsf+1)//2, nchol)
-            ham.chol_packed = numpy.zeros(cp_shape, dtype=dtype)
-            pack_cholesky(idx[0],idx[1], ham.chol_packed, ham.chol_vecs)
+            chol_packed = numpy.zeros(cp_shape, dtype=dtype)
+            pack_cholesky(idx[0],idx[1], chol_packed, chol)
 
-        ham.sym_idx = numpy.triu_indices(nbsf)
-        ham.chol_vecs = ham.chol_vecs.reshape((nbsf*nbsf,nchol))
+        chol = chol.reshape((nbsf*nbsf,nchol))
+        
+        if verbose:
+            print("# Time to pack Cholesky vectors: {:.6f}".format(time.time()-start))
 
-        if (ham.mixed_precision):
-            ham.chol_packed = ham.chol_packed.astype(numpy.float32)
+        ham = Generic(h1e = hcore, chol=chol, chol_packed=chol_packed, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
         mem = ham.chol_packed.nbytes / (1024.0**3)
         if verbose:
             print("# Approximate memory required by packed Cholesky vectors %f GB"%mem)
-
     else:
         if comm.rank == 0:
             print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
