@@ -1311,7 +1311,7 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
                 Ta[:,:].imag = rmi_a.dot(GhalfaT_batch[iw].imag)
             else:
                 Ta[:,:] = rmi_a.dot(GhalfaT_batch[iw])
-            exx[iw] += 2.*einsum("ij,ji->",Ta,Ta)
+            exx[iw] += einsum("ij,ji->",Ta,Ta)
 
     e2b = ecoul - exx
 
