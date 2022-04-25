@@ -1,7 +1,7 @@
 import numpy
 from ipie.utils.misc import is_cupy
 
-def construct_force_bias_batch(hamiltonian, walker_batch, trial, mpi_handler):
+def construct_force_bias_batch(hamiltonian, walker_batch, trial, mpi_handler=None):
     """Compute optimal force bias.
 
     Uses rotated Green's function.

@@ -73,7 +73,7 @@ class Generic(object):
         self.mixed_precision = options.get("mixed_precision", False)
         self.density_diff = options.get("density_diff", False)
         self.symmetry = options.get("symmetry", True)
-
+        self.chunked = False # chunking disabled by default
 
         self.ecore = ecore
         self.chol_vecs = chol # [M^2, nchol]
