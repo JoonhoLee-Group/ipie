@@ -5,13 +5,8 @@ from ipie.utils.misc import is_cupy
 from numba import jit
 
 @jit(nopython=True,fastmath=True)
-def exx_kernel_batch(rchola, Ghalfa_batch):
-    # if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
-    #     import cupy
-    #     assert(cupy.is_available())
-    #     zeros = cupy.zeros
-    #     dot = cupy.dot
-    # else:
+def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
+    # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
 
@@ -31,6 +26,91 @@ def exx_kernel_batch(rchola, Ghalfa_batch):
             exx[iw] += dot(T.ravel(), T.T.ravel())
     exx *= 0.5
     return exx
+
+@jit(nopython=True,fastmath=True)
+def exx_kernel_batch_complex_rchol(rchola, Ghalfa_batch):
+    # sort out cupy later
+    zeros = numpy.zeros
+    dot = numpy.dot
+
+    naux = rchola.shape[0]
+    nwalkers = Ghalfa_batch.shape[0]
+    nocc = Ghalfa_batch.shape[1]
+    nbsf = Ghalfa_batch.shape[2]
+
+    T = zeros((nocc,nocc), dtype=numpy.complex128)
+    exx = zeros((nwalkers), dtype=numpy.complex128)
+    for iw in range(nwalkers):
+        Ghalfa = Ghalfa_batch[iw]
+        for jx in range(naux):
+            rcholx = rchola[jx].reshape(nocc,nbsf)
+            T = rcholx.dot(Ghalfa.T)
+            exx[iw] += dot(T.ravel(), T.T.ravel())
+    exx *= 0.5
+    return exx
+
+@jit(nopython=True,fastmath=True)
+def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
+    # sort out cupy later
+    zeros = numpy.zeros
+    dot = numpy.dot
+    nwalkers = Ghalfa_batch.shape[0]
+    Ghalfa_batch_real = Ghalfa_batch.real.copy()
+    Ghalfa_batch_imag = Ghalfa_batch.imag.copy()
+    X = rchola.dot(Ghalfa_batch_real.T) + 1.j * rchola.dot(Ghalfa_batch_imag.T) # naux x nwalkers
+    ecoul = zeros (nwalkers, dtype = numpy.complex128)
+    X = X.T.copy()
+    for iw in range(nwalkers):
+        ecoul[iw] += 2. * dot(X[iw],X[iw])
+
+    return ecoul
+
+@jit(nopython=True,fastmath=True)
+def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch):
+    # sort out cupy later
+    zeros = numpy.zeros
+    dot = numpy.dot
+    nwalkers = Ghalfa_batch.shape[0]
+    Ghalfa_batch_real = Ghalfa_batch.real.copy()
+    Ghalfa_batch_imag = Ghalfa_batch.imag.copy()
+    Ghalfb_batch_real = Ghalfb_batch.real.copy()
+    Ghalfb_batch_imag = Ghalfb_batch.imag.copy()
+    X = rchola.dot(Ghalfa_batch_real.T) + 1.j * rchola.dot(Ghalfa_batch_imag.T) # naux x nwalkers
+    X += rcholb.dot(Ghalfb_batch_real.T) + 1.j * rcholb.dot(Ghalfb_batch_imag.T) # naux x nwalkers
+    ecoul = zeros (nwalkers, dtype = numpy.complex128)
+    X = X.T.copy()
+    for iw in range(nwalkers):
+        ecoul[iw] += dot(X[iw],X[iw])
+    ecoul *= 0.5
+    return ecoul
+
+@jit(nopython=True,fastmath=True)
+def ecoul_kernel_batch_complex_rchol_rhf(rchola, Ghalfa_batch):
+    # sort out cupy later
+    zeros = numpy.zeros
+    dot = numpy.dot
+
+    X = rchola.dot(Ghalfa_batch.T)
+    ecoul = zeros (nwalkers, dtype = numpy.complex128)
+    X = X.T.copy()
+    for iw in range(nwalkers):
+        ecoul[iw] += 2. * dot(X[iw],X[iw])
+    return ecoul
+
+@jit(nopython=True,fastmath=True)
+def ecoul_kernel_batch_complex_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch):
+    # sort out cupy later
+    zeros = numpy.zeros
+    dot = numpy.dot
+
+    X = rchola.dot(Ghalfa_batch.T)
+    X += rcholb.dot(Ghalfb_batch.T)
+    ecoul = zeros (nwalkers, dtype = numpy.complex128)
+    X = X.T.copy()
+    for iw in range(nwalkers):
+        ecoul[iw] += dot(X[iw],X[iw])
+    ecoul *= 0.5
+    return ecoul
 
 def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial):
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
@@ -139,14 +219,16 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
     e1b = 2.0 * walker_batch.Ghalfa.dot(trial._rH1a.ravel()) + hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
+        ecoul = ecoul_kernel_batch_real_rchol_rhf(trial._rchola, walker_batch.Ghalfa)
     else:
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
-
-    ecoul = 2. * einsum("xw,xw->w", Xa, Xa, optimize=True)
+        ecoul = ecoul_kernel_batch_complex_rchol_rhf(trial._rchola, walker_batch.Ghalfa)
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    exx = 2. * exx_kernel_batch (trial._rchola, walker_batch.Ghalfa)
+    
+    if (isrealobj(trial._rchola)):
+        exx = 2. * exx_kernel_batch_real_rchol (trial._rchola, walker_batch.Ghalfa)
+    else:
+        exx = 2. * exx_kernel_batch_complex_rchol (trial._rchola, walker_batch.Ghalfa)
 
     e2b = ecoul - exx
 
@@ -184,20 +266,16 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
     e1b += hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
-        Xb = trial._rcholb.dot(walker_batch.Ghalfb.real.T) + 1.j * trial._rcholb.dot(walker_batch.Ghalfb.imag.T) # naux x nwalkers
+        ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, walker_batch.Ghalfa, walker_batch.Ghalfb)
     else:
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
-        Xb = trial._rchola.dot(walker_batch.Ghalfb.T)
-    
-    ecoul = einsum("xw,xw->w", Xa, Xa, optimize=True) 
-    ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
-    ecoul += 2.*einsum("xw,xw->w", Xa, Xb, optimize=True)
-    ecoul *= 0.5
+        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, walker_batch.Ghalfa, walker_batch.Ghalfb)
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
-    exx = exx_kernel_batch (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch (trial._rcholb, walker_batch.Ghalfb)
+    if (isrealobj(trial._rchola)):
+        exx = exx_kernel_batch_real_rchol (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_real_rchol (trial._rcholb, walker_batch.Ghalfb)
+    else:
+        exx = exx_kernel_batch_complex_rchol (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_complex_rchol (trial._rcholb, walker_batch.Ghalfb)
 
     e2b = ecoul - exx
 
