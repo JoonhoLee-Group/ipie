@@ -12,7 +12,7 @@ from ipie.utils.testing import (
         get_random_phmsd
         )
 from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.legacy.estimators.greens_function import gab_spin, gab
 
 from ipie.estimators.greens_function_batch import (

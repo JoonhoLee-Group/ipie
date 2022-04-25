@@ -6,9 +6,11 @@ import numpy
 import scipy.linalg
 import sys
 import time
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.legacy.walkers.stack import FieldConfig
+
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+
 from ipie.utils.io import get_input_value
 from ipie.utils.misc import update_stack
 from mpi4py import MPI
@@ -31,17 +33,19 @@ class WalkerBatchHandler(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, hamiltonian, trial, qmc, walker_opts={}, verbose=False,
-                 comm=None, nprop_tot=None, nbp=None):
+    def __init__(self, system, hamiltonian, trial, qmc, walker_opts={},
+                 mpi_handler=None, nprop_tot=None, nbp=None, verbose=False):
         self.nwalkers = qmc.nwalkers
         self.ntot_walkers = qmc.ntot_walkers
         self.write_freq = walker_opts.get('write_freq', 0)
         self.write_file = walker_opts.get('write_file', 'restart.h5')
         self.read_file = walker_opts.get('read_file', None)
-        if comm is None:
+
+        if mpi_handler is None:
             rank = 0
         else:
-            rank = comm.rank
+            rank = mpi_handler.comm.rank
+            
         if verbose:
             print("# Setting up walkers.handler_batch.Walkers.")
             print("# qmc.nwalkers = {}".format(self.nwalkers))
@@ -59,14 +63,14 @@ class WalkerBatchHandler(object):
                 trial.psib = trial.psib[0]
             self.walkers_batch = SingleDetWalkerBatch(system, hamiltonian, trial,
                                 nwalkers = self.nwalkers, walker_opts=walker_opts,
-                                index=0, nprop_tot=nprop_tot,nbp=nbp)
+                                index=0, nprop_tot=nprop_tot,nbp=nbp, mpi_handler = mpi_handler)
         elif (trial.ndets > 1):
             if verbose:
                 print("# Using single det walker with a multi det trial.")
             self.walker_type = 'SD'
             self.walkers_batch = MultiDetTrialWalkerBatch(system, hamiltonian, trial,
                                 nwalkers = self.nwalkers, walker_opts=walker_opts,
-                                index=0, nprop_tot=nprop_tot,nbp=nbp)
+                                index=0, nprop_tot=nprop_tot,nbp=nbp, mpi_handler=mpi_handler)
 
         self.buff_size = self.walkers_batch.buff_size
 
@@ -101,7 +105,7 @@ class WalkerBatchHandler(object):
         if self.write_freq > 0:
             self.write_restart = True
             self.dsets = []
-            with h5py.File(self.write_file,'w',driver='mpio',comm=comm) as fh5:
+            with h5py.File(self.write_file,'w',driver='mpio',comm=mpi_handler.comm) as fh5:
                 fh5.create_dataset('walker_batch_%d'%mpi.rank, (walker_batch_size,),
                                    dtype=numpy.complex128)
         else:
@@ -109,7 +113,7 @@ class WalkerBatchHandler(object):
         if self.read_file is not None:
             if verbose:
                 print("# Reading walkers from %s file series."%self.read_file)
-            self.read_walkers(comm)
+            self.read_walkers(mpi_handler.comm)
 
         self.target_weight = qmc.ntot_walkers
         # self.nw = qmc.nwalkers

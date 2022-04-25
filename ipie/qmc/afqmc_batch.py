@@ -26,7 +26,7 @@ from ipie.utils.misc import (
         get_node_mem
         )
 from ipie.utils.io import  to_json, serialise, get_input_value
-from ipie.utils.mpi import get_shared_comm
+from ipie.utils.mpi import MPIHandler
 from ipie.utils.misc import is_cupy
 
 
@@ -118,7 +118,8 @@ class AFQMCBatch(object):
                                   alias=['qmc_options'],
                                   verbose=self.verbosity>1)
 
-        self.shared_comm = comm
+        self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
+        self.shared_comm = self.mpi_handler.shared_comm
 
         # 2. Calculation objects.
         if system is not None:
@@ -218,10 +219,18 @@ class AFQMCBatch(object):
             print("# Getting WalkerBatchHandler")
         self.psi = WalkerBatchHandler(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
-                           verbose=verbose,
+                           mpi_handler=self.mpi_handler,
                            nprop_tot=self.estimators.nprop_tot,
                            nbp=self.estimators.nbp,
-                           comm=comm)
+                           verbose=verbose)
+
+        if (self.mpi_handler.nmembers > 1):
+            if comm.rank == 0:
+                print("# Chunking hamiltonian.")
+            self.hamiltonian.chunk(self.mpi_handler)
+            if comm.rank == 0:
+                print("# Chunking trial.")
+            self.trial.chunk(self.mpi_handler)
 
         if (self.qmc.gpu):
             try:

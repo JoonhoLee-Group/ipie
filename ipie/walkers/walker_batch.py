@@ -24,11 +24,13 @@ class WalkerBatch(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0, nprop_tot=None, nbp=None):
+    def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0, nprop_tot=None, nbp=None, mpi_handler=None):
         self.nwalkers = nwalkers
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0
+        self.mpi_handler = mpi_handler
+
         self.rhf = walker_opts.get('rhf', False)
 
         self.weight = numpy.array([walker_opts.get('weight', 1.0) for iw in range(self.nwalkers)])

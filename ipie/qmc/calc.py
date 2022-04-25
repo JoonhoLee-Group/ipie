@@ -45,6 +45,8 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
+    if comm.rank != 0:
+        verbosity = 0
     batched = get_input_value(qmc_opts, 'batched', default=True,
             verbose=verbosity)
     

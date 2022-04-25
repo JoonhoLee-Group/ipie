@@ -21,10 +21,6 @@ extensions = [
         Extension("ipie.utils.pack",
                   ["ipie/utils/pack.pyx"],
 			   extra_compile_args=["-O3"],
-          include_dirs=[numpy.get_include()]),
-        Extension("ipie.estimators.opt_local_energy",
-                  ["ipie/estimators/opt_local_energy.pyx"],
-			   extra_compile_args=["-O3"],
           include_dirs=[numpy.get_include()])
         ]
 

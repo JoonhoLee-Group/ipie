@@ -15,7 +15,7 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.mpi import get_shared_comm
 from ipie.utils.io import  get_input_value
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.walkers.handler import Walkers
 from ipie.utils.testing import (

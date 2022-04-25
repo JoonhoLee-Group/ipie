@@ -9,8 +9,8 @@ from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.propagation.force_bias import construct_force_bias_batch, construct_force_bias_batch_multi_det_trial, construct_force_bias_batch_single_det
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.propagation.overlap import (

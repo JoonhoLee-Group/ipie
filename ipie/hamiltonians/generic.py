@@ -163,14 +163,59 @@ class Generic(object):
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
 
+    def chunk (self, handler, verbose=False):
+        self.chunked = True # Boolean to indicate that chunked cholesky is available
+
+        chol_idxs = [i for i in range(self.nchol)]
+        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
+
+
+        if self.symmetry:
+            if handler.srank == 0: # creating copies for every rank = 0!!!!
+                self.chol_packed = self.chol_packed.T.copy() # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = handler.scatter_group(self.chol_packed) # distribute over chol
+
+            if handler.comm.rank == 0:
+                self.chol_packed = self.chol_packed.T.copy() # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = self.chol_packed_chunk.T.copy() # [M^2, chol_chunk]
+
+            tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
+            assert(self.chol_packed.size == tot_size)
+        else:
+            if handler.comm.rank == 0:
+                self.chol_vecs = self.chol_vecs.T.copy() # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = handler.scatter_group(self.chol_vecs) # distribute over chol
+
+            if handler.comm.rank == 0:
+                self.chol_vecs = self.chol_vecs.T.copy() # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = self.chol_vecs_chunk.T.copy() # [M^2, chol_chunk]
+
+            tot_size = handler.allreduce_group(self.chol_vecs_chunk.size)
+            assert(self.chol_vecs.size == tot_size)
+
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self, verbose = False):
         import cupy
 
-        size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
-        if self.symmetry:
-            size += self.chol_packed.size
-            size -= self.chol_vecs.size
+        size = self.H1.size + self.h1e_mod.size
+        if (self.chunked):
+            if self.symmetry:
+                size += self.chol_packed_chunk.size
+            else:
+                size += self.chol_vecs_chunk.size
+        else:
+            if self.symmetry:
+                size += self.chol_packed.size
+            else:
+                size += self.chol_vecs.size
 
         if verbose:
             expected_bytes = size * 8. # float64
@@ -178,10 +223,17 @@ class Generic(object):
 
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
-        if self.symmetry:
-            self.chol_packed = cupy.asarray(self.chol_packed)
+
+        if (self.chunked):
+            if self.symmetry:
+                self.chol_packed_chunk = cupy.asarray(self.chol_packed_chunk)
+            else:
+                self.chol_vecs_chunk = cupy.asarray(self.chol_vecs_chunk)
         else:
-            self.chol_vecs = cupy.asarray(self.chol_vecs)
+            if self.symmetry:
+                self.chol_packed = cupy.asarray(self.chol_packed)
+            else:
+                self.chol_vecs = cupy.asarray(self.chol_vecs)
 
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
