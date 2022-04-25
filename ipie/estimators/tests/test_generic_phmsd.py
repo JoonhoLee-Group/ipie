@@ -21,7 +21,8 @@ from ipie.estimators.greens_function_batch import (
         greens_function_multi_det_wicks_opt
         )
 from ipie.estimators.local_energy_batch import (
-        local_energy_multi_det_trial_batch,
+        local_energy_multi_det_trial_batch)
+from ipie.estimators.local_energy_wicks import (
         local_energy_multi_det_trial_wicks_batch,
         local_energy_multi_det_trial_wicks_batch_opt_low_mem,
         local_energy_multi_det_trial_wicks_batch_opt,

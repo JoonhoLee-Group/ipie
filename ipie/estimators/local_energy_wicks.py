@@ -1,6 +1,7 @@
 import time
 import numpy
-from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
+from ipie.estimators.generic import local_energy_generic_cholesky
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch_einsum
 from ipie.utils.linalg import minor_mask, minor_mask4
 from ipie.propagation.overlap import (
         get_overlap_one_det_wicks,

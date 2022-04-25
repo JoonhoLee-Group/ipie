@@ -16,7 +16,7 @@ from ipie.utils.testing import (
         get_random_phmsd
         )
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-from ipie.estimators.local_energy_batch import local_energy_single_det_batch, local_energy_single_det_batch_einsum
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch, local_energy_single_det_batch_einsum
 
 try:
     import cupy

@@ -19,7 +19,9 @@ from ipie.utils.testing import (
         get_random_nomsd,
         get_random_phmsd
         )
-from ipie.estimators.local_energy_batch import local_energy_single_det_batch, local_energy_single_det_rhf_batch
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch,\
+                                            local_energy_single_det_rhf_batch,\
+                                            local_energy_single_det_uhf_batch
 from ipie.estimators.greens_function_batch import greens_function_single_det_batch
 from ipie.propagation.overlap import calc_overlap_single_det_batch
 from ipie.utils.pack import pack_cholesky
@@ -122,6 +124,9 @@ def test_local_energy_single_det_batch():
         walker_batch.reortho()
 
     energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    energies_uhf = local_energy_single_det_uhf_batch(system, ham, walker_batch, trial)
+
+    assert numpy.allclose(energies,energies_uhf)
 
     for iw in range(nwalkers):
         # unnecessary test
