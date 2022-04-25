@@ -1,6 +1,7 @@
 import sys
 import numpy
 from ipie.utils.misc import is_cupy
+from numba import jit
 
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
 
@@ -170,8 +171,41 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
     e1b = sum(rH1a*Ghalfa) + sum(rH1b*Ghalfb)
     return e1b
 
+@jit(nopython=True, fastmath=True)
+def exx_kernel_real(rchol, Ghalf):
+    naux = rchol.shape[0]
+    nwalkers = Ghalf.shape[0]
+    nocc = Ghalf.shape[0]
+    nbasis = Ghalf.shape[1]
+
+    exx = 0 + 0j
+    Greal = Ghalf.real.copy()
+    Gimag = Ghalf.imag.copy()
+    # Fix this with gpu env
+    for jx in range(naux):
+        rmi = rchol[jx].reshape((nocc, nbasis))
+        T = rmi.dot(Greal.T) + 1.j * rmi.dot(Gimag.T)
+        exx += numpy.dot(T.ravel(), T.T.ravel())
+    return exx
+
+@jit(nopython=True, fastmath=True)
+def exx_kernel_imag(rchol, Ghalf):
+    naux = rchol.shape[0]
+    nwalkers = Ghalf.shape[0]
+    nocc = Ghalf.shape[0]
+    nbasis = Ghalf.shape[1]
+
+    exx = 0 + 0j
+    GhalfT = Ghalf.T.copy()
+    # Fix this with gpu env
+    for jx in range(naux):
+        rmi = rchol[jx].reshape((nocc, nbasis))
+        T = rmi.dot(GhalfT)
+        exx += numpy.dot(T.ravel(), T.T.ravel())
+    return exx
+
 def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
-    
+
     rchola = trial._rchola
     rcholb = trial._rcholb
 
@@ -205,33 +239,11 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     ecoul = dot(Xa,Xa)
     ecoul += dot(Xb,Xb)
     ecoul += 2*dot(Xa,Xb)
-
-    GhalfaT = Ghalfa.T.copy() # nbasis x nocc
-    GhalfbT = Ghalfb.T.copy()
-
-    Ta = zeros((nalpha,nalpha), dtype=GhalfaT.dtype)
-    Tb = zeros((nbeta,nbeta), dtype=GhalfbT.dtype)
-
     exx  = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (isrealobj(rchola) and isrealobj(rcholb)):
-        for x in range(naux):  # write a cython function that calls blas for this.
-            rmi_a = rchola[x].reshape((nalpha,nbasis))
-            rmi_b = rcholb[x].reshape((nbeta,nbasis))
-            Ta[:,:].real = rmi_a.dot(GhalfaT.real)
-            Ta[:,:].imag = rmi_a.dot(GhalfaT.imag)  # this is a (nalpha, nalpha)
-            Tb[:,:].real = rmi_b.dot(GhalfbT.real)
-            Tb[:,:].imag = rmi_b.dot(GhalfbT.imag) # this is (nbeta, nbeta)
-            # exx += trace(Ta.dot(Ta)) + trace(Tb.dot(Tb))
-            exx += einsum("ij,ji->",Ta,Ta) + einsum("ij,ji->",Tb,Tb)
+        exx = exx_kernel_real(rchola, Ghalfa) + exx_kernel_real(rcholb, Ghalfb)
     else:
-        for x in range(naux):  # write a cython function that calls blas for this.
-            rmi_a = rchola[x].reshape((nalpha,nbasis))
-            rmi_b = rcholb[x].reshape((nbeta,nbasis))
-            Ta[:,:] = rmi_a.dot(GhalfaT)  # this is a (nalpha, nalpha)
-            Tb[:,:] = rmi_b.dot(GhalfbT)  # this is (nbeta, nbeta)
-            exx += einsum("ij,ji->",Ta,Ta) + einsum("ij,ji->",Tb,Tb)
-
-    # e2b = 0.5 * (ecoul - exx)
+        exx = exx_kernel_imag(rchola, Ghalfa) + exx_kernel_imag(rcholb, Ghalfb)
 
     return 0.5 * ecoul, -0.5 * exx # JK energy
 
