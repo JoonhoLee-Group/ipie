@@ -27,10 +27,12 @@ _test_dirs = [
         "4x4_hubbard_discrete",
         "ft_4x4_hubbard_discrete",
         "ft_ueg_ecut1.0_rs1.0",
+        "ueg_ecut2.5_rs2.0_ne14",
         "h10_cc-pvtz_batched",
         "h10_cc-pvtz_pair_branch",
         "neon_cc-pvdz_rhf",
-        "ueg_ecut2.5_rs2.0_ne14"
+	   "benzene_cc-pvdz_batched",
+	   "benzene_cc-pvdz_chunked"
         ]
 _tests     = [(_data_dir+d+'/input.json',_data_dir+d+'/reference.json') for d in _test_dirs]
 
