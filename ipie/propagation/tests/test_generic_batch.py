@@ -5,7 +5,6 @@ from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch

@@ -12,7 +12,6 @@ from ipie.propagation.continuous import Continuous
 from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
-from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.testing import (
         generate_hamiltonian,

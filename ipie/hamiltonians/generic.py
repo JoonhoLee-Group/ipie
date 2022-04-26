@@ -14,8 +14,6 @@ from ipie.utils.io import (
         write_qmcpack_sparse,
         write_qmcpack_dense,
         )
-from ipie.utils.mpi import get_shared_array, have_shared_mem
-
 
 class Generic(object):
     """Ab-initio Hamiltonian.
@@ -177,12 +175,12 @@ class Generic(object):
 
             self.chol_packed_chunk = handler.scatter_group(self.chol_packed) # distribute over chol
 
-            if handler.comm.rank == 0:
+            if handler.srank == 0:
                 self.chol_packed = self.chol_packed.T.copy() # [M^2, chol]
             handler.comm.barrier()
 
             self.chol_packed_chunk = self.chol_packed_chunk.T.copy() # [M^2, chol_chunk]
-
+            
             tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
             assert(self.chol_packed.size == tot_size)
         else:

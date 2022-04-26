@@ -31,6 +31,8 @@ jobs:
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
+        mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
     - name: Test Integration
       run: |
         pip install pytest-mpi
