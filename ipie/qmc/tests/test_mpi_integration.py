@@ -31,8 +31,8 @@ _test_dirs = [
         "h10_cc-pvtz_batched",
         "h10_cc-pvtz_pair_branch",
         "neon_cc-pvdz_rhf",
-	   "benzene_cc-pvdz_batched",
-	   "benzene_cc-pvdz_chunked"
+	   # "benzene_cc-pvdz_batched", # disabling
+	   # "benzene_cc-pvdz_chunked"
         ]
 _tests     = [(_data_dir+d+'/input.json',_data_dir+d+'/reference.json') for d in _test_dirs]
 
