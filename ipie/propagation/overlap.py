@@ -228,23 +228,29 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
         Oalpha = numpy.dot(psi0a.conj().T, phia)
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
+        theta_a = scipy.linalg.inv(Oalpha.T) @ phia.T
 
         phib = walker_batch.phib[iw]
         Obeta = numpy.dot(psi0b.conj().T, phib)
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
+        theta_b = scipy.linalg.inv(Obeta.T) @ phib.T
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
-
-        G0a, G0Ha = gab_mod(psi0a, phia)
-        G0b, G0Hb = gab_mod(psi0b, phib)
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
         for jdet in range(1, trial.ndets):
             nex_a = len(trial.anh_a[jdet])
             nex_b = len(trial.anh_b[jdet])
-            ovlp_a, ovlp_b = get_overlap_one_det_wicks(nex_a, trial.cre_a[jdet], trial.anh_a[jdet], G0a,\
-                nex_b, trial.cre_b[jdet], trial.anh_b[jdet], G0b)
+            ovlp_a, ovlp_b = get_overlap_one_det_wicks(
+                                nex_a,
+                                trial.cre_a[jdet],
+                                trial.anh_a[jdet],
+                                theta_a,
+                                nex_b,
+                                trial.cre_b[jdet],
+                                trial.anh_b[jdet],
+                                theta_b)
 
             tmp = trial.coeffs[jdet].conj() * ovlp_a * ovlp_b * trial.phase_a[jdet] * trial.phase_b[jdet]
             ovlp += tmp
@@ -473,12 +479,12 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
     signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
     ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
     inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
-    G0a = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phia, inv_ovlps_a, trial.psi0a.conj(), optimize=True)
+    theta_a = numpy.einsum('wmi,wij->wjm', walker_batch.phia, inv_ovlps_a, optimize=True)
     inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
-    G0b = numpy.einsum('wmi,wij,nj->wnm', walker_batch.phib, inv_ovlps_b, trial.psi0b.conj(), optimize=True)
+    theta_b = numpy.einsum('wmi,wij->wjm', walker_batch.phib, inv_ovlps_b, optimize=True)
     # Use low level excitation optimizations
     ovlps = numpy.array(ovlps, dtype = numpy.complex128)
-    dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
+    dets_a_full, dets_b_full = compute_determinants_batched(theta_a, theta_b, trial)
 
     dets_full = ovlps0[:,None] * dets_a_full * dets_b_full
     # This could be precomputed?
