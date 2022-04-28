@@ -7,6 +7,7 @@ from ipie.propagation.overlap import (
         get_overlap_one_det_wicks,
         compute_determinants_batched
         )
+from numba import jit
 try:
     from ipie.propagation.wicks_kernels import (
         get_det_matrix_batched,
@@ -895,15 +896,22 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     walker_energies[:,2] = e2b
     return walker_energies
 
-def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial):
-    import time
-    start = time.time()
+def local_energy_multi_det_wicks_jit(system, ham, walker_batch, trial):
+    # cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
+    # start = time.time()
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
     Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
     e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
+    reference_energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    walker_energies = numpy.zeros_like(reference_energies)
+    walker_energies[:,0] = e1b + reference_energies[:,2]
+    walker_energies[:,1] = e1b
+    walker_energies[:,2] = reference_energies[:,2]
+    if trial.ndets == 1:
+        return walker_energies
 
     ovlpa0 = walker_batch.det_ovlpas[:,0]
     ovlpb0 = walker_batch.det_ovlpbs[:,0]
@@ -917,13 +925,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     Q0b = walker_batch.Q0b
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
+    P0 = G0a + G0b
 
     # contribution 1 (disconnected)
     Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
     Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
-    cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
-    P0 = G0a + G0b
-
     LXa = numpy.einsum("wx,mx->wm", Xa, ham.chol_vecs, optimize=True)
     LXb = numpy.einsum("wx,mx->wm", Xb, ham.chol_vecs, optimize=True)
     LXa = LXa.reshape((nwalkers, nbasis, nbasis))
@@ -955,16 +961,316 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     cont2_Kbb = numpy.zeros(nwalkers, dtype=numpy.complex128)
     na = walker_batch.nup
     nb = walker_batch.ndown
+    cont2_Kaa, cont2_Kbb = build_exchange_contribution(
+                                    ham.chol_vecs,
+                                    G0a, G0b,
+                                    QCIGa, QCIGb)
+    cont2_Kaa *= (ovlp0/ovlp)
+    cont2_Kbb *= (ovlp0/ovlp)
+
+    cont2_K = cont2_Kaa + cont2_Kbb
+    dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
+
+    ndets = len(trial.coeffs)
+    chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
+    energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    cphase_a = trial.coeffs.conj() * trial.phase_a
+    cphase_b = trial.coeffs.conj() * trial.phase_b
+    ovlpa = dets_a_full * trial.phase_a[None,:]
+    ovlpb = dets_b_full * trial.phase_b[None,:]
+    c_phasea_ovlpb = cphase_a[None,:] * ovlpb
+    c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
+    cphase_ab = cphase_a * trial.phase_b
+    for ix in range(nchol):
+        Lx = chol_vecs[:,:,ix]
+        Laa = numpy.einsum('wiq,wpj,ij->wqp', Q0a, G0a, Lx, optimize=True)
+        Lbb = numpy.einsum('wiq,wpj,ij->wqp', Q0b, G0b, Lx, optimize=True)
+        alpha_os_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+        beta_os_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+        alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+        beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+        for iexcit in range(1, trial.max_excite+1):
+            ndets_a = len(trial.cre_ex_a[iexcit])
+            det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
+            get_det_matrix_batched(
+                    iexcit,
+                    trial.cre_ex_a[iexcit],
+                    trial.anh_ex_a[iexcit],
+                    walker_batch.G0a,
+                    det_mat_a)
+            # defined here for reuse
+            cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+            if ndets_a > 0:
+                if iexcit == 1:
+                    fill_opp_spin_factors_batched_singles(
+                            trial.cre_ex_a[iexcit],
+                            trial.anh_ex_a[iexcit],
+                            trial.excit_map_a,
+                            Laa,
+                            alpha_os_buffer
+                            )
+                elif iexcit == 2:
+                    fill_opp_spin_factors_batched_doubles(
+                            trial.cre_ex_a[iexcit],
+                            trial.anh_ex_a[iexcit],
+                            trial.excit_map_a,
+                            G0a,
+                            Laa,
+                            alpha_os_buffer
+                            )
+                elif iexcit == 3:
+                    fill_opp_spin_factors_batched_triples(
+                            trial.cre_ex_a[iexcit],
+                            trial.anh_ex_a[iexcit],
+                            trial.excit_map_a,
+                            G0a,
+                            Laa,
+                            alpha_os_buffer
+                            )
+                else:
+                    fill_opp_spin_factors_batched(
+                                    iexcit,
+                                    trial.cre_ex_a[iexcit],
+                                    trial.anh_ex_a[iexcit],
+                                    trial.excit_map_a,
+                                    det_mat_a,
+                                    cofactor_matrix_a,
+                                    Laa,
+                                    alpha_os_buffer)
+            if iexcit >= 2 and ndets_a > 0:
+                if iexcit == 2:
+                    get_same_spin_double_contribution_batched(
+                            trial.cre_ex_a[iexcit],
+                            trial.anh_ex_a[iexcit],
+                            alpha_ss_buffer,
+                            trial.excit_map_a,
+                            Laa)
+                else:
+                    fill_same_spin_contribution_batched(
+                                        iexcit,
+                                        trial.cre_ex_a[iexcit],
+                                        trial.anh_ex_a[iexcit],
+                                        det_mat_a,
+                                        cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                                        Laa,
+                                        alpha_ss_buffer,
+                                        trial.excit_map_a
+                                        )
+            ndets_b = len(trial.cre_ex_b[iexcit])
+            det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
+            get_det_matrix_batched(
+                    iexcit,
+                    trial.cre_ex_b[iexcit],
+                    trial.anh_ex_b[iexcit],
+                    walker_batch.G0b,
+                    det_mat_b)
+            cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+            if ndets_b > 0:
+                if iexcit == 1:
+                    fill_opp_spin_factors_batched_singles(
+                            trial.cre_ex_b[iexcit],
+                            trial.anh_ex_b[iexcit],
+                            trial.excit_map_b,
+                            Lbb,
+                            beta_os_buffer
+                            )
+                elif iexcit == 2:
+                    fill_opp_spin_factors_batched_doubles(
+                            trial.cre_ex_b[iexcit],
+                            trial.anh_ex_b[iexcit],
+                            trial.excit_map_b,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer
+                            )
+                elif iexcit == 3:
+                    fill_opp_spin_factors_batched_triples(
+                            trial.cre_ex_b[iexcit],
+                            trial.anh_ex_b[iexcit],
+                            trial.excit_map_b,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer
+                            )
+                else:
+                    fill_opp_spin_factors_batched(
+                                    iexcit,
+                                    trial.cre_ex_b[iexcit],
+                                    trial.anh_ex_b[iexcit],
+                                    trial.excit_map_b,
+                                    det_mat_b,
+                                    cofactor_matrix_b,
+                                    Lbb,
+                                    beta_os_buffer)
+            if iexcit >= 2 and ndets_b > 0:
+                if iexcit == 2:
+                    get_same_spin_double_contribution_batched(
+                            trial.cre_ex_b[iexcit],
+                            trial.anh_ex_b[iexcit],
+                            beta_ss_buffer,
+                            trial.excit_map_b,
+                            Lbb)
+                else:
+                    fill_same_spin_contribution_batched(
+                                        iexcit,
+                                        trial.cre_ex_b[iexcit],
+                                        trial.anh_ex_b[iexcit],
+                                        det_mat_b,
+                                        cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                                        Lbb,
+                                        beta_ss_buffer,
+                                        trial.excit_map_b
+                                        )
+
+        # accumulating over x (cholesky vector)
+        energy_os += numpy.einsum('wJ,J->wJ', alpha_os_buffer*beta_os_buffer, cphase_ab, optimize=True)
+        energy_ss += numpy.einsum('wJ,wJ->wJ', alpha_ss_buffer, c_phasea_ovlpb, optimize=True)
+        energy_ss += numpy.einsum('wJ,wJ->wJ', beta_ss_buffer, c_phaseb_ovlpa, optimize=True)
+
+    cont3 = (numpy.sum(energy_os + energy_ss, axis=1))*(ovlp0/ovlp)
+    e2b = cont2_J + cont2_K + cont3
+
+    walker_energies[:,0] += e2b
+    # walker_energies[:,1] = e1b
+    walker_energies[:,2] += e2b
+    return walker_energies
+
+
+@jit(nopython=True, fastmath=True)
+def build_exchange_contribution(chol_vecs, G0a, G0b, QCIGa, QCIGb):
+    nchol = chol_vecs.shape[-1]
+    nbasis = G0a.shape[-1]
+    nwalkers = G0a.shape[0]
+    cont2_Kaa = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    cont2_Kbb = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    G0a_real = G0a.real.copy()
+    G0a_imag = G0a.imag.copy()
+    G0b_real = G0b.real.copy()
+    G0b_imag = G0b.imag.copy()
+    QCIGa_real = QCIGa.real.copy()
+    QCIGa_imag = QCIGa.imag.copy()
     for x in range(nchol):
-        Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
-        # LGL = numpy.einsum('wsr,pr,sq->wpq', G0a, Lmn, Lmn, optimize=True)
-        LGL = [(Lmn @ G0a[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
+        Lmn = chol_vecs[:,x].copy().reshape((nbasis, nbasis))
+        # print(Lmn.dtype, G0a_real.dtype)
+        # LGL = Lmn.dot(G0a_real.T).dot(Lmn) + 1j * Lmn.dot(G0a_imag.T).dot(Lmn)
+        LGL = [(Lmn @ G0a_real[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # cont2_Kaa[iw] -= numpy.sum(LGL * QCIGa) #
+        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa_real, optimize=True)
+        cont2_Kaa += numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
+        Lmn = chol_vecs[:,x].copy().reshape((nbasis, nbasis))
+        # print(Lmn.dtype, G0a_real.dtype)
+        # LGL = Lmn.dot(G0a_real.T).dot(Lmn) + 1j * Lmn.dot(G0a_imag.T).dot(Lmn)
+        LGL = [(Lmn @ G0a_real[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # cont2_Kaa[iw] -= numpy.sum(LGL * QCIGa) #
+        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa_real, optimize=True)
+        cont2_Kbb += numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
 
         # LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
         # LGL = Lmn.dot(G0b.T).T.dot(Lmn)
-        LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGb, optimize=True)
+        # LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # cont2_Kbb = numpy.einsum('wpq,wpq->w', LGL, QCIGb, optimize=True)
+        # LGL = Lmn.dot(G0b_real.T).dot(Lmn) + 1j * Lmn.dot(G0b_imag.T).dot(Lmn)
+        # cont2_Kaa[iw] -= numpy.sum(LGL * QCIGb) #numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
+
+    return cont2_Kaa, cont2_Kbb
+
+@jit(nopython=True, fastmath=True)
+def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
+    naux = chol.shape[-1]
+    nbsf = Q0a.shape[1]
+    G0a_real = G0a.real.copy()
+    G0a_imag = G0a.imag.copy()
+    G0b_real = G0b.real.copy()
+    G0b_imag = G0b.imag.copy()
+    for x in range(naux):
+        Lx = chol[:,:,x].copy()
+        T1 = Lx.dot(G0a_real.T) + 1j*Lx.dot(G0a_imag.T)
+        Laa[:,:,x] = Q0a.T.dot(T1)
+        T1 = Lx.dot(G0b_real.T) + 1j*Lx.dot(G0b_imag.T)
+        Lbb[:,:,x] = Q0b.T.dot(T1)
+
+def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial):
+    import time
+    start = time.time()
+    nwalkers = walker_batch.nwalkers
+    nbasis = ham.nbasis
+    nchol = ham.nchol
+    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
+
+    ovlpa0 = walker_batch.det_ovlpas[:,0]
+    ovlpb0 = walker_batch.det_ovlpbs[:,0]
+    ovlp0 = ovlpa0 * ovlpb0
+    ovlp = walker_batch.ovlp
+
+    # useful variables
+    G0a = walker_batch.G0a
+    G0b = walker_batch.G0b
+    Q0a = walker_batch.Q0a
+    Q0b = walker_batch.Q0b
+    CIa = walker_batch.CIa
+    CIb = walker_batch.CIb
+
+    # contribution 1 (disconnected)
+    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
+    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
+    # cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
+    start = time.time()
+    cont1 = local_energy_single_det_batch(system, ham, walker_batch, trial)[:,2]
+    print("e0: ", time.time()-start)
+    P0 = G0a + G0b
+
+    LXa = numpy.einsum("wx,mx->wm", Xa, ham.chol_vecs, optimize=True)
+    LXb = numpy.einsum("wx,mx->wm", Xb, ham.chol_vecs, optimize=True)
+    LXa = LXa.reshape((nwalkers, nbasis, nbasis))
+    LXb = LXb.reshape((nwalkers, nbasis, nbasis))
+
+    # useful intermediate
+    QCIGa = numpy.einsum(
+                'wpr,wrs,wsq->wpq',
+                walker_batch.Q0a,
+                walker_batch.CIa,
+                G0a,
+                optimize=True)
+    QCIGb = numpy.einsum(
+                'wpr,wrs,wsq->wpq',
+                walker_batch.Q0b,
+                walker_batch.CIb,
+                G0b,
+                optimize=True)
+
+    cont2_Jaa = numpy.einsum('wpq,wpq->w', QCIGa, LXa, optimize=True)
+    cont2_Jbb = numpy.einsum('wpq,wpq->w', QCIGb, LXb, optimize=True)
+    cont2_Jab = numpy.einsum('wpq,wpq->w', QCIGa, LXb, optimize=True)
+    cont2_Jba = numpy.einsum('wpq,wpq->w', QCIGb, LXa, optimize=True)
+    cont2_J = cont2_Jaa + cont2_Jbb + cont2_Jab + cont2_Jba
+    cont2_J *= (ovlp0/ovlp)
+
+    # Second, Exchange-like term
+    na = walker_batch.nup
+    nb = walker_batch.ndown
+
+    start = time.time()
+    cont2_Kaa, cont2_Kbb = build_exchange_contribution(
+                                    ham.chol_vecs,
+                                    G0a, G0b,
+                                    QCIGa, QCIGb)
+    print("LGL new: ", time.time()-start)
+    start = time.time()
+    # for x in range(nchol):
+        # Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
+        # # LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
+        # # LGL = Lmn.dot(G0b.T).T.dot(Lmn)
+        # LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
+        # # LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
+        # # LGL = Lmn.dot(G0b.T).T.dot(Lmn)
+        # LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
+    # print("LGL old: ", time.time()-start)
 
     cont2_Kaa *= (ovlp0/ovlp)
     cont2_Kbb *= (ovlp0/ovlp)
@@ -977,12 +1283,21 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     Lbb = numpy.zeros((nwalkers, nbasis, nbasis, nchol), dtype=numpy.complex128)
     # This is **much** faster than the above einsum
     chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
-    # start2 = time.time()
+    start = time.time()
     for i in range(nwalkers):
         Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0a[i], chol_vecs, optimize=True)
         Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0b[i], chol_vecs, optimize=True)
     cont3 = 0.0
-    # print(time.time()-start)
+    print("L: ", time.time()-start)
+    start = time.time()
+    for iw in range(nwalkers):
+        build_Laa(
+                Q0a[iw], Q0b[iw],
+                G0a[iw], G0b[iw],
+                chol_vecs,
+                Laa[iw], Lbb[iw])
+    print("L 3indx new: ", time.time()-start)
+    print(Q0a.shape, chol_vecs.shape)
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
     ndets = len(trial.coeffs)
     energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
