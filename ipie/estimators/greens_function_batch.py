@@ -263,6 +263,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
         G0b, G0Hb = gab_mod(trial.psi0b, phib)
         walker_batch.G0a[iw] = G0a
         walker_batch.G0b[iw] = G0b
+        walker_batch.G0halfa[iw] = G0Ha
+        walker_batch.G0halfb[iw] = G0Hb
         walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
         walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
 
@@ -394,8 +396,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                         walker_batch.CIb[iw,q,p] += c_phaseb_ovlpa * (-1)**(iex+jex) * numpy.linalg.det(cofactor)
 
         # contribution 2 (connected diagrams)
-        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0a)
-        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0b)
+        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0Ha)
+        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0Hb)
 
         # multiplying everything by reference overlap
         ovlp *= ovlp0
@@ -936,13 +938,13 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
                             'wpr,wrs,wsq->wpq',
                             walker_batch.Q0a,
                             walker_batch.CIa,
-                            G0a,
+                            walker_batch.Ghalfa,
                             optimize=True)
     walker_batch.Gb += numpy.einsum(
                             'wpr,wrs,wsq->wpq',
                             walker_batch.Q0b,
                             walker_batch.CIb,
-                            G0b,
+                            walker_batch.Ghalfb,
                             optimize=True)
 
     # multiplying everything by reference overlap
