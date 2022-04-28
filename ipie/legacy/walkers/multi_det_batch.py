@@ -69,8 +69,12 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             # self.Ghalf0b = numpy.zeros(shape=(self.nwalkers, system.ndown,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            self.CIa = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
-            self.CIb = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
+            self.CIa = numpy.zeros(
+                    shape=(self.nwalkers, hamiltonian.nbasis, system.nup),
+                    dtype=numpy.complex128)
+            self.CIb = numpy.zeros(
+                    shape=(self.nwalkers, hamiltonian.nbasis, system.ndown),
+                    dtype=numpy.complex128)
         # else:
         self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
                                      hamiltonian.nbasis), dtype=numpy.complex128)
