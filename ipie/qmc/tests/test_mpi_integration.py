@@ -49,7 +49,7 @@ def run_test_system(input_file, benchmark_file):
     if input_dict['system'].get('integrals') is not None:
         input_dict['system']['integrals'] = input_file[:-10] + 'afqmc.h5'
         input_dict['trial']['filename'] = input_file[:-10] + 'afqmc.h5'
-    elif input_dict['hamiltonian'].get('integrals') is not None:
+    elif ('hamiltonian' in input_dict) and (input_dict['hamiltonian'].get('integrals') is not None):
         input_dict['hamiltonian']['integrals'] = input_file[:-10] + 'afqmc.h5'
         input_dict['trial']['filename'] = input_file[:-10] + 'afqmc.h5'
     afqmc = get_driver(input_dict, comm)
