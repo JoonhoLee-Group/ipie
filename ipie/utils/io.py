@@ -588,13 +588,14 @@ def write_input(filename, hamil, wfn, bp=False, options={}):
             'nwalkers': 640,
             'nsteps': 25,
             'blocks': 50000,
-            'batched': True
+            'batched': True,
+            "pop_control_freq": 5,
+            "stabilise_freq": 5
             },
         'trial': {
             'filename': wfn
             },
-        'estimators': {
-            }
+        'estimators': {}
         }
     if bp:
         basic['estimators']['back_propagated'] = {

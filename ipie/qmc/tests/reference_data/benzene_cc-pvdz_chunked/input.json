@@ -14,7 +14,9 @@
         "blocks": 10,
         "batched": true,
 	   "rng_seed": 7,
-	   "nmembers": 2
+	   "nmembers": 2,
+        "pop_control_freq": 1,
+        "stabilise_freq": 10
     },
     "trial": {
         "filename": "afqmc.h5"

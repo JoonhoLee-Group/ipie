@@ -11,6 +11,7 @@
         "blocks": 10,
         "nsteps": 10,
         "rng_seed": 10,
+        "stabilise_freq": 10,
         "pop_control_freq": 5
     },
     "trial": {
