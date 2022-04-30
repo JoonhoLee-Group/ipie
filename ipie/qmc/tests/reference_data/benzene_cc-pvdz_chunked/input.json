@@ -1,0 +1,23 @@
+{
+    "system": {
+        "nup": 21,
+        "ndown": 21
+    },
+    "hamiltonian": {
+        "name": "Generic",
+        "integrals": "afqmc.h5"
+    },
+    "qmc": {
+        "dt": 0.005,
+        "nwalkers": 64,
+        "nsteps": 25,
+        "blocks": 10,
+        "batched": true,
+	   "rng_seed": 7,
+	   "nmembers": 2
+    },
+    "trial": {
+        "filename": "afqmc.h5"
+    },
+    "estimators": {}
+}

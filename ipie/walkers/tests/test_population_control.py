@@ -12,10 +12,10 @@ from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.utils.mpi import get_shared_comm
+from ipie.utils.mpi import get_shared_comm, MPIHandler
 from ipie.utils.io import  get_input_value
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.walkers.handler import Walkers
 from ipie.utils.testing import (
@@ -33,6 +33,8 @@ def test_pair_branch_batch():
     numpy.random.seed(7)
     comm = MPI.COMM_WORLD
 
+    mpi_handler = MPIHandler(comm)
+
     nelec = (5,5)
     nwalkers = 10
     nsteps = 10
@@ -42,7 +44,7 @@ def test_pair_branch_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)
@@ -58,7 +60,7 @@ def test_pair_branch_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False)
 
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
@@ -94,6 +96,8 @@ def test_comb_batch():
     numpy.random.seed(7)
     comm = MPI.COMM_WORLD
 
+    mpi_handler = MPIHandler(comm)
+
     nelec = (5,5)
     nwalkers = 10
     nsteps = 10
@@ -103,7 +107,7 @@ def test_comb_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)
@@ -119,7 +123,7 @@ def test_comb_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False)
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)
         handler_batch.walkers_batch.reortho()
@@ -152,6 +156,8 @@ def test_stochastic_reconfiguration_batch():
     numpy.random.seed(7)
     comm = MPI.COMM_WORLD
 
+    mpi_handler = MPIHandler(comm)
+
     nelec = (5,5)
     nwalkers = 10
     nsteps = 10
@@ -161,7 +167,7 @@ def test_stochastic_reconfiguration_batch():
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0, options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(sys, ham, wfn, init=init)
@@ -177,7 +183,7 @@ def test_stochastic_reconfiguration_batch():
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'nwalkers': nwalkers, 'batched': True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler_batch = WalkerBatchHandler(sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False)
 
     for i in range (nsteps):
         prop.propagate_walker_batch(handler_batch.walkers_batch, sys, ham, trial, trial.energy)

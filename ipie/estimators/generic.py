@@ -172,7 +172,7 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
     return e1b
 
 @jit(nopython=True, fastmath=True)
-def exx_kernel_real(rchol, Ghalf):
+def exx_kernel_rchol_real(rchol, Ghalf):
     naux = rchol.shape[0]
     nwalkers = Ghalf.shape[0]
     nocc = Ghalf.shape[0]
@@ -189,7 +189,7 @@ def exx_kernel_real(rchol, Ghalf):
     return exx
 
 @jit(nopython=True, fastmath=True)
-def exx_kernel_imag(rchol, Ghalf):
+def exx_kernel_rchol_complex(rchol, Ghalf):
     naux = rchol.shape[0]
     nwalkers = Ghalf.shape[0]
     nocc = Ghalf.shape[0]
@@ -241,9 +241,9 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     ecoul += 2*dot(Xa,Xb)
     exx  = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if (isrealobj(rchola) and isrealobj(rcholb)):
-        exx = exx_kernel_real(rchola, Ghalfa) + exx_kernel_real(rcholb, Ghalfb)
+        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        exx = exx_kernel_imag(rchola, Ghalfa) + exx_kernel_imag(rcholb, Ghalfb)
+        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
 
     return 0.5 * ecoul, -0.5 * exx # JK energy
 

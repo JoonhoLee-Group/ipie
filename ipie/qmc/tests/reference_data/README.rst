@@ -9,7 +9,7 @@ To add a test first:
    be relatively fast to run and make sure you set the `rng_seed` so the results are
    reproducible.
 #. Run your example with 4 MPI tasks.
-#. Run script `ipie/qmc/tests/reference_data/save_benchmark.py` which should generate a file `benchmark.json`.
+#. Run script `ipie/qmc/tests/reference_data/save_benchmark.py` which should generate a file `reference.json`.
 #. Add test directory to `ipie/qmc/tests/test_mpi_integration.py` list of tests.
 #. Run `mpirun -np 4 python -m pytest --with-mpi test_mpi_integration.py` from the
    ipie/qmc/tests directory and make sure your test passes.

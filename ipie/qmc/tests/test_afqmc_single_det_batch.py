@@ -59,7 +59,7 @@ def test_generic_single_det_batch():
     sys = Generic(nelec=nelec) 
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                  ecore=enuc)
+                  ecore=enuc, options = {"symmetry":False})
     ham.density_diff = False
     comm = MPI.COMM_WORLD
     afqmc = AFQMCBatch(comm=comm, system=sys, hamiltonian = ham, options=options)
@@ -170,7 +170,7 @@ def test_generic_single_det_batch_density_diff():
     sys = Generic(nelec=nelec) 
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                   chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                  ecore=enuc)
+                  ecore=enuc, options = {"symmetry":False})
     ham.density_diff=True
     comm = MPI.COMM_WORLD
     afqmc = AFQMCBatch(comm=comm, system=sys, hamiltonian = ham, options=options)

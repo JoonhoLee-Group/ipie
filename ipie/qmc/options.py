@@ -81,7 +81,7 @@ class QMCOpts(object):
         Estimate for mean energy for continuous Hubbard-Stratonovich transformation.
     """
 
-    def __init__(self, inputs, system, comm_size=1, verbose=False):
+    def __init__(self, inputs, system, verbose=False):
         self.nwalkers = get_input_value(inputs, 'num_walkers',
                                         default=10, alias=['nwalkers'],
                                         verbose=verbose)

@@ -345,6 +345,21 @@ class MultiSlater(object):
         P[1] /= denom
 
         return P
+    
+    def chunk (self, handler, verbose=False):
+        self.chunked = True # Boolean to indicate that chunked cholesky is available
+
+        if (handler.scomm.rank == 0): # Creating copy for every rank == 0
+            self._rchola = self._rchola.copy()
+            self._rcholb = self._rcholb.copy()
+
+        self._rchola_chunk = handler.scatter_group(self._rchola) # distribute over chol
+        self._rcholb_chunk = handler.scatter_group(self._rcholb) # distribute over chol
+
+        tot_size = handler.allreduce_group(self._rchola_chunk.size)
+        assert(self._rchola.size == tot_size)
+        tot_size = handler.allreduce_group(self._rcholb_chunk.size)
+        assert(self._rcholb.size == tot_size)
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self, verbose = False):

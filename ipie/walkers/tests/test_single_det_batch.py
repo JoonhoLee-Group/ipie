@@ -5,7 +5,7 @@ from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.estimators.greens_function import gab
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 from ipie.propagation.overlap import calc_overlap_single_det
 from ipie.systems.generic import Generic
