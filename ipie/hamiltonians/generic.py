@@ -240,7 +240,6 @@ class Generic(object):
 
 def read_integrals(integral_file):
     try:
-        print("sparse")
         (h1e, schol_vecs, ecore, nbasis, nup, ndown) = (
                 from_qmcpack_sparse(integral_file)
                 )
