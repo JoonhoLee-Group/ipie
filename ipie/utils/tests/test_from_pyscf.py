@@ -24,7 +24,7 @@ def test_from_pyscf():
     atom = gto.M(atom='Ne 0 0 0', basis='sto-3g', verbose=0, parse_arg=False)
     mf = scf.RHF(atom)
     mf.kernel()
-    h1e, chol, nelec, enuc = integrals_from_scf(mf, verbose=0, chol_cut=1e-5)
+    h1e, chol, nelec, enuc, cas_idx = integrals_from_scf(mf, verbose=0, chol_cut=1e-5)
     assert chol.shape[0] == 15
     assert chol.shape[1] == 25
     assert nelec == (5,5)
@@ -38,7 +38,7 @@ def test_from_chkfile():
     mf = scf.RHF(atom)
     mf.chkfile = 'scf.chk'
     mf.kernel()
-    h1e, chol, nelec, enuc = integrals_from_chkfile('scf.chk', verbose=0, chol_cut=1e-5)
+    h1e, chol, nelec, enuc, cas_idx = integrals_from_chkfile('scf.chk', verbose=0, chol_cut=1e-5)
     assert h1e.shape == (10,10)
     assert chol.shape == (19,100)
     assert nelec == (5,5)
