@@ -34,7 +34,7 @@ def parse_args(args):
     parser.add_argument('-sz', '--sparse_zero', dest='sparse_zero', type=float,
                         default=1e-16, help='Sparsity threshold')
     parser.add_argument('-c', '--cas',
-                            help='Specify a CAS in the form of N,M.',
+                            help='Specify a CAS in the form of nelec,norb.',
                             type=lambda s: [int(item) for item in s.split(',')],
                             default=None)
     parser.add_argument('-b', '--back-prop', dest='bp', action='store_true',

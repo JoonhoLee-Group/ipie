@@ -186,14 +186,16 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     enuc = mol.energy_nuc()
     # Step 3. (Optionally) freeze core / virtuals.
     nelec = mol.nelec
+    
     cas_idx = [0,0,nbasis]
     if cas is not None:
         nfzc = (sum(mol.nelec)-cas[0])//2
         ncas = cas[1]
         nfzv = nbasis - ncas - nfzc
-        h1e, chol_vecs, enuc = freeze_core(h1e, chol_vecs, X, enuc, nfzc, ncas,
-                                           verbose)
-        h1e = h1e[0]
+        if nfzc > 0:
+            h1e, chol_vecs, enuc = freeze_core(h1e, chol_vecs, X, enuc, nfzc, ncas,
+                                               verbose)
+            h1e = h1e[0]
         nelec = (mol.nelec[0]-nfzc, mol.nelec[1]-nfzc)
         mol.nelec = nelec
         orbs = numpy.identity(h1e.shape[-1])
@@ -205,15 +207,16 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
 def freeze_core(h1e, chol, X, ecore, nc, ncas, verbose=True):
     # 1. Construct one-body hamiltonian
     nbasis = h1e.shape[-1]
-    chol = chol.reshape((-1,nbasis,nbasis))
     nchol = chol.shape[0]
+    chol = chol.reshape((nchol,nbasis,nbasis))
     ham = dotdict({'H1': numpy.array([h1e,h1e]),
-                      'chol_vecs': chol.reshape((-1,nbasis*nbasis)),
+                      'chol_vecs': chol.T.copy().reshape((nbasis*nbasis,nchol)),
                       'nchol': nchol,
                       'ecore': ecore,
                       'nbasis': nbasis})
+    # HP: system.nup or system.ndown won't be used in local_energy_generic_cholesky, hence zeros are used here
     system = dotdict({'nup': 0,
-                      'ndown': 0})  # HP: system.nup or system.ndown won't be used in al_energy_generic_cholesky, hence zeros are used here
+                      'ndown': 0})
     if (len(X.shape) == 2):
         psi_a = numpy.identity(nbasis)[:,:nc]
         psi_b = numpy.identity(nbasis)[:,:nc]
@@ -239,7 +242,7 @@ def freeze_core(h1e, chol, X, ecore, nc, ncas, verbose=True):
         print(" # Number of active orbitals: %d"%ncas)
         print(" # Freezing %d core electrons and %d virtuals."
               %(2*nc, nbasis-nc-ncas))
-        print(" # Frozen core energy : %13.8e"%ecore.real)
+        print(" # Frozen core energy : %15.12f"%ecore.real)
     return h1e, chol, ecore
 
 def ao2mo_chol(eri, C, verbose=False):

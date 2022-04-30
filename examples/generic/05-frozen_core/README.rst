@@ -27,7 +27,7 @@ Once the scf converges we need to generate the wavefunction and integrals using 
 
 .. code-block:: bash
 
-    python /path/to/ipie/tools/pyscf/pyscf_to_ipie.py -i 'scf.chk' -j 'input.json' -c 5,8
+    python /path/to/ipie/tools/pyscf/pyscf_to_ipie.py -i 'scf.chk' -j 'input.json' -c 5,8 -oao 0
 
 There are 7 electrons and 9 basis functions. Freezing the 5 core orbitals (1s2s2p) results in a CAS(5,8).
 You should find a file called `afqmc.h5` and ipie input file `input.json` created from
