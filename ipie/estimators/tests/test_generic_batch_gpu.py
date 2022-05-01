@@ -18,6 +18,8 @@ from ipie.utils.testing import (
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.estimators.local_energy_sd import local_energy_single_det_batch, local_energy_single_det_batch_einsum
 
+from ipie.utils.pack import pack_cholesky
+
 try:
     import cupy
     no_gpu = not cupy.is_available()
@@ -33,9 +35,21 @@ def test_local_energy_single_det_batch():
     nwalkers = 10
     nsteps = 25
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+
+    chol = chol.reshape((-1,nmo*nmo)).T.copy()
+
+    nchol = chol.shape[-1]
+    chol = chol.reshape((nmo,nmo,nchol))
+
+    idx = numpy.triu_indices(nmo)
+    cp_shape = (nmo*(nmo+1)//2, chol.shape[-1])
+    chol_packed = numpy.zeros(cp_shape, dtype = chol.dtype)
+    pack_cholesky(idx[0],idx[1], chol_packed, chol)
+    chol = chol.reshape((nmo*nmo,nchol))
+
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
-                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                      chol=chol, chol_packed = chol_packed,
                      ecore=0)
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
