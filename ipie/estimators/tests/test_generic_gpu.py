@@ -15,6 +15,9 @@ from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_nomsd
         )
+
+from ipie.utils.pack import pack_cholesky
+
 try:
     import cupy
     no_gpu = not cupy.is_available()
@@ -29,9 +32,22 @@ def test_local_energy_cholesky_opt():
     nmo = 24
     nelec = (4,2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+
+    chol = chol.reshape((-1,nmo*nmo)).T.copy()
+
+    nchol = chol.shape[-1]
+    chol = chol.reshape((nmo,nmo,nchol))
+
+    idx = numpy.triu_indices(nmo)
+    cp_shape = (nmo*(nmo+1)//2, chol.shape[-1])
+    chol_packed = numpy.zeros(cp_shape, dtype = chol.dtype)
+    pack_cholesky(idx[0],idx[1], chol_packed, chol)
+    chol = chol.reshape((nmo*nmo,nchol))
+
+
     system = Generic(nelec=nelec) 
     ham = HamGeneric (h1e=numpy.array([h1e, h1e]),
-                  chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                  chol=chol, chol_packed = chol_packed,
                   ecore=enuc)
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = MultiSlater(system, ham, wfn)
