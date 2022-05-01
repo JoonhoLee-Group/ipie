@@ -35,7 +35,7 @@ jobs:
         mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
         mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
     - name: Test Integration
-      timeout-minutes: 1
+      timeout-minutes: 4
       run: |
         pip install pytest-mpi
         mpirun -np 4 python -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
