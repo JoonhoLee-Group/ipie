@@ -77,14 +77,15 @@ def test_local_energy_single_det_batch():
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
         walker_batch.reortho()
 
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
     energies_einsum = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)
+    walker_batch.Ghalfa = cupy.asnumpy(walker_batch.Ghalfa)
+    walker_batch.Ghalfb = cupy.asnumpy(walker_batch.Ghalfb)
+    trial._rchola = cupy.asnumpy(trial._rchola)
+    trial._rcholb = cupy.asnumpy(trial._rcholb)
+    trial._rH1a = cupy.asnumpy(trial._rH1a)
+    trial._rH1b = cupy.asnumpy(trial._rH1b)
+    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
 
     assert numpy.allclose(energies, energies_einsum)
-    for iw in range(nwalkers):
-        energy = local_energy_single_det_batch(system, ham, walker_batch, trial, iw = iw)
-        assert numpy.allclose(energy, energies[iw])
-        assert numpy.allclose(energy, energies_einsum[iw])
-    print("done")
 if __name__ == '__main__':
     test_local_energy_single_det_batch()
