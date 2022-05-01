@@ -6,7 +6,8 @@ jobs:
   build:
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        #python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: [ '3.7' ]
     runs-on:  ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -28,14 +29,14 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n 6
-    - name: mpi test
-      run: |
-        mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
-        mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
-        mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
+        #python -m pytest -n 6
+    #- name: mpi test
+      #run: |
+        #mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        #mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
+        #mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
     - name: Test Integration
-      timeout-minutes: 4
+      timeout-minutes: 2
       run: |
         pip install pytest-mpi
         mpirun -np 4 python -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
