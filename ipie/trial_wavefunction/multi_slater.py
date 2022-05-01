@@ -548,35 +548,34 @@ class MultiSlater(object):
             comm.barrier()
 
         # storing intermediates for correlation energy
-        # shape_a = (nchol, hr_ndet*(M*(na)))
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na,M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb,M)
-        Xa = numpy.einsum("mi,xim->x",self.psi[0][:,:na], self._rchola, optimize=True)
-        Xb = numpy.einsum("mi,xim->x",self.psi[0][:,na:], self._rcholb, optimize=True)
-        X = Xa + Xb
-        J0a = numpy.einsum("x,xim->im",X, self._rchola, optimize=True) # occ x M
-        J0b = numpy.einsum("x,xim->im",X, self._rcholb, optimize=True) # occ x M
 
-        Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
-        Kb = numpy.einsum("xim,xin->mn",self._rcholb, self._rcholb)
-        K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
-        K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
-        
-        self._rH1a_corr = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
-        self._rH1b_corr = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
-        
-        self._rH1a_corr = self._rH1a + J0a - K0a
-        self._rH1b_corr = self._rH1b + J0b - K0b
-        self._rFa_corr = J0a - K0a
-        self._rFb_corr = J0b - K0b
-        # self._rJa_corr = J0a
-        # self._rJb_corr = J0b
-        # self._rKa_corr = K0a
-        # self._rKb_corr = K0b
+        if (hamiltonian.density_diff):
+            start_time = time.time()
+            Xa = numpy.einsum("mi,xim->x",self.psi[0][:,:na], self._rchola, optimize=True)
+            Xb = numpy.einsum("mi,xim->x",self.psi[0][:,na:], self._rcholb, optimize=True)
+            X = Xa + Xb
+            J0a = numpy.einsum("x,xim->im",X, self._rchola, optimize=True) # occ x M
+            J0b = numpy.einsum("x,xim->im",X, self._rcholb, optimize=True) # occ x M
+
+            Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
+            Kb = numpy.einsum("xim,xin->mn",self._rcholb, self._rcholb)
+            K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
+            K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
+            
+            self._rH1a_corr = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
+            self._rH1b_corr = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
+            
+            self._rH1a_corr = self._rH1a + J0a - K0a
+            self._rH1b_corr = self._rH1b + J0b - K0b
+            self._rFa_corr = J0a - K0a
+            self._rFb_corr = J0b - K0b
+            if self.verbose:
+                print("# Time to form intermediates for the density difference trick: {} s.".format(time.time()-start_time))
 
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na*M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)
-
 
         if self.mixed_precision:
             self._vbias0 = self._rchola.dot(self.psi[0][:,:na].T.ravel()) + self._rchola.dot(self.psi[0][:,na:].T.ravel())
