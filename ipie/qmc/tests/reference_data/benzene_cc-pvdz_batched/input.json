@@ -11,8 +11,8 @@
     },
     "qmc": {
         "dt": 0.005,
-        "nwalkers": 64,
-        "nsteps": 25,
+        "nwalkers": 10,
+        "nsteps": 5,
         "blocks": 10,
         "batched": true,
         "pop_control_freq": 1,
