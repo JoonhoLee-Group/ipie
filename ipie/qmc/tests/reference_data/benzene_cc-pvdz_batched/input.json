@@ -1,5 +1,7 @@
 {
     "system": {
+        "name": "Generic",
+        "integrals": "afqmc.h5",
         "nup": 21,
         "ndown": 21
     },
@@ -15,7 +17,7 @@
         "batched": true,
         "pop_control_freq": 1,
         "stabilise_freq": 10,
-	   "rng_seed": 7
+        "rng_seed": 7
     },
     "trial": {
         "filename": "afqmc.h5"
