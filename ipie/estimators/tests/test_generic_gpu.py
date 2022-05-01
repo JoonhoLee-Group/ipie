@@ -44,7 +44,6 @@ def test_local_energy_cholesky_opt():
     pack_cholesky(idx[0],idx[1], chol_packed, chol)
     chol = chol.reshape((nmo*nmo,nchol))
 
-
     system = Generic(nelec=nelec) 
     ham = HamGeneric (h1e=numpy.array([h1e, h1e]),
                   chol=chol, chol_packed = chol_packed,
