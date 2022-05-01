@@ -45,7 +45,7 @@ def compare_test_data(ref, test):
         if k == 'sys_info':
             continue
         print(k, np.array(ref[k]) - np.array(test[k]))
-        assert np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
+        return np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
 
 def run_test_system(input_file, benchmark_file):
     comm = MPI.COMM_WORLD
@@ -63,8 +63,11 @@ def run_test_system(input_file, benchmark_file):
         test_data = extract_test_data_hdf5(output_file)
         with open(benchmark_file, 'r') as f:
             ref_data = json.load(f)
-        compare_test_data(ref_data, test_data)
-    comm.barrier()
+        _passed = compare_test_data(ref_data, test_data)
+    else:
+        _passed = None
+    passed = comm.bcast(_passed)
+    assert passed
 
 @pytest.mark.mpi
 @pytest.mark.skipif(serial_test, reason="Test should be run on multiple cores.")
