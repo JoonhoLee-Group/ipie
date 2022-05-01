@@ -27,6 +27,8 @@ def parse_args(args):
                         default='afqmc.h5', help='Output file Hamiltonian.')
     parser.add_argument('-w', '--wavefile', dest='wfn', type=str,
                         default='afqmc.h5', help='Output file name for qmcpack trial.')
+    parser.add_argument('-e', '--estimates', dest='est', type=str,
+                        default='estimates.0.h5', help='Output file name for estimates.')
     parser.add_argument('-t', '--thresh', dest='thresh', type=float,
                         default=1e-5, help='Cholesky convergence threshold.')
     parser.add_argument('-s', '--sparse', dest='sparse', action='store_true',
@@ -70,7 +72,7 @@ def main(args):
     dump_ipie(chkfile=options.input_scf, hamil_file=options.output,
                verbose=options.verbose, wfn_file=options.wfn, chol_cut=options.thresh,
                sparse=options.sparse, cas=options.cas, sparse_zero=options.sparse_zero, ortho_ao=options.oao, ao=options.ao)
-    write_input(options.json_input, options.output, options.wfn, options.bp)
+    write_input(options.json_input, options.output, options.wfn, options.est, options.bp)
 
 if __name__ == '__main__':
 
