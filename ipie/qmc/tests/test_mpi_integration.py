@@ -34,8 +34,8 @@ _test_dirs = [
         # "ueg_ecut2.5_rs2.0_ne14",
         # "h10_cc-pvtz_batched",
         # "h10_cc-pvtz_pair_branch",
-        "neon_cc-pvdz_rhf",
-        # "benzene_cc-pvdz_batched", # disabling
+        # "neon_cc-pvdz_rhf",
+        "benzene_cc-pvdz_batched", # disabling
         # "benzene_cc-pvdz_chunked"
         ]
 _tests     = [(_data_dir+d+'/input.json',_data_dir+d+'/reference.json') for d in _test_dirs]
