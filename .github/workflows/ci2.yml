@@ -27,6 +27,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
+        pip install pytest-xdist
         python -m pytest -n 6
     - name: mpi test
       run: |
