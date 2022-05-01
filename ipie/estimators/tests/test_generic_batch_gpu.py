@@ -85,6 +85,6 @@ def test_local_energy_single_det_batch():
         energy = local_energy_single_det_batch(system, ham, walker_batch, trial, iw = iw)
         assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(energy, energies_einsum[iw])
-
+    print("done")
 if __name__ == '__main__':
     test_local_energy_single_det_batch()

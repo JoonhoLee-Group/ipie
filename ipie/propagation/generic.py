@@ -1,8 +1,9 @@
 import time
+import math
 import numpy
 import scipy.linalg
 from ipie.utils.misc import is_cupy
-from ipie.utils.pack_numba import unpack_VHS_batch
+from ipie.utils.pack_numba import unpack_VHS_batch, unpack_VHS_batch_gpu
 
 class GenericContinuous(object):
     """Propagator for generic many-electron Hamiltonian.
@@ -127,12 +128,16 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(xshifted): # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
             assert(cupy.is_available())
             isrealobj = cupy.isrealobj
+            zeros = cupy.zeros
+            iscupy = True
         else:
             isrealobj = numpy.isrealobj
+            zeros = numpy.zeros
+            iscupy = False
 
         if (hamiltonian.mixed_precision): # cast it to float
             xshifted = xshifted.astype(numpy.complex64)
@@ -148,8 +153,15 @@ class GenericContinuous(object):
             if (hamiltonian.mixed_precision): # cast it to double
                 VHS_packed = VHS_packed.astype(numpy.complex128)
 
-            VHS = numpy.zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_packed.dtype)
-            unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
+            VHS = zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_packed.dtype)
+            if iscupy:
+                threadsperblock = 512
+                nbsf = hamiltonian.nbasis
+                nut = round(nbsf *(nbsf+1)/2)
+                blockspergrid = math.ceil(self.nwalkers*nut / threadsperblock)
+                unpack_VHS_batch_gpu[blockspergrid, threadsperblock](hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS)
+            else:
+                unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
         else:
             if isrealobj(hamiltonian.chol_vecs):
                 VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag)
