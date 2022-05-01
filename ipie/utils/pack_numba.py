@@ -1,7 +1,11 @@
 import numpy
 from numba import jit
+try:
+    from numba import cuda
+except:
+    pass
 
-def cuda_jit(rectype):
+def cuda_jit(argtype):
     try:
         import cupy
         assert(cupy.is_available())
@@ -13,7 +17,7 @@ def cuda_jit(rectype):
         if not iscupyavail:
             # Return the function unchanged, not decorated.
             return func
-        return cuda.jit(func, rectype)
+        return cuda.jit(func, argtype)
     return decorator
 
 @jit(nopython=True, fastmath=True)
@@ -28,8 +32,8 @@ def unpack_VHS_batch(idx_i,idx_j,VHS_packed,VHS):
             VHS[iw, idx_j[i],idx_i[i]] = VHS_packed[iw,i]
 
     return
-from numba import cuda
-@cuda.jit('void(int32[:],int32[:],complex128[:,:],complex128[:,:,:])')
+
+@cuda_jit('void(int32[:],int32[:],complex128[:,:],complex128[:,:,:])')
 def unpack_VHS_batch_gpu(idx_i,idx_j,VHS_packed,VHS):
     nwalkers = VHS.shape[0]
     nbsf = VHS.shape[1]

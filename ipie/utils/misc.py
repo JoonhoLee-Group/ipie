@@ -293,7 +293,7 @@ def get_sys_info(sha1, branch, uuid, nranks):
                 print("# - GPU Type: {:s}".format(str(cu_info['name'])[1:]))
                 print("# - GPU Mem: {:.3f} GB".format(cu_info['totalGlobalMem']/(1024**3.0)))
                 print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
-        except ModuleNotFoundError:
+        except (ModuleNotFoundError,ImportError):
             print("# Package {:s} not found.".format(lib))
     return info
 

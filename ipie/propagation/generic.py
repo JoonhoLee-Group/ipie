@@ -3,7 +3,11 @@ import math
 import numpy
 import scipy.linalg
 from ipie.utils.misc import is_cupy
-from ipie.utils.pack_numba import unpack_VHS_batch, unpack_VHS_batch_gpu
+from ipie.utils.pack_numba import unpack_VHS_batch
+try:
+    from ipie.utils.pack_numba import unpack_VHS_batch_gpu
+except:
+    pass
 
 class GenericContinuous(object):
     """Propagator for generic many-electron Hamiltonian.
