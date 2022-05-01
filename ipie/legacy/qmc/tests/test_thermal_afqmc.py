@@ -23,6 +23,8 @@ def test_ueg():
                 'nblocks': 1,
                 'nwalkers': 10,
                 'beta': 0.5,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'model': {
                 'name': "UEG",

@@ -103,11 +103,11 @@ class QMCOpts(object):
                                       verbose=verbose)
         self.total_steps = self.nsteps * self.nblocks
         self.nstblz = get_input_value(inputs, 'stabilise_freq',
-                                      default=10,
+                                      default=5,
                                       alias=['nstabilise', 'reortho'],
                                       verbose=verbose)
         self.npop_control = get_input_value(inputs, 'pop_control_freq',
-                                            default=1,
+                                            default=5,
                                             alias=['npop_control',
                                                    'pop_control'],
                                             verbose=verbose)

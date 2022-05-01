@@ -244,15 +244,17 @@ def read_integrals(integral_file):
                 from_qmcpack_sparse(integral_file)
                 )
         chol_vecs = schol_vecs.toarray()
+        return h1e, chol_vecs, ecore
     except KeyError:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = (
                 from_qmcpack_dense(integral_file)
                 )
+        return h1e, chol_vecs, ecore
     except OSError:
         print("# Unknown Hamiltonian file {}.".format(integral_file))
     except:
         print("# Unknown Hamiltonian file format.")
-    return h1e, chol_vecs, ecore
+    return None
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.

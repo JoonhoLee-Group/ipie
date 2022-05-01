@@ -31,8 +31,8 @@ _test_dirs = [
         "h10_cc-pvtz_batched",
         "h10_cc-pvtz_pair_branch",
         "neon_cc-pvdz_rhf",
-	   "benzene_cc-pvdz_batched",
-	   "benzene_cc-pvdz_chunked"
+        # "benzene_cc-pvdz_batched", # disabling
+        # "benzene_cc-pvdz_chunked"
         ]
 _tests     = [(_data_dir+d+'/input.json',_data_dir+d+'/reference.json') for d in _test_dirs]
 
@@ -48,6 +48,9 @@ def run_test_system(input_file, benchmark_file):
     input_dict = read_input(input_file, comm)
     if input_dict['system'].get('integrals') is not None:
         input_dict['system']['integrals'] = input_file[:-10] + 'afqmc.h5'
+        input_dict['trial']['filename'] = input_file[:-10] + 'afqmc.h5'
+    elif ('hamiltonian' in input_dict) and (input_dict['hamiltonian'].get('integrals') is not None):
+        input_dict['hamiltonian']['integrals'] = input_file[:-10] + 'afqmc.h5'
         input_dict['trial']['filename'] = input_file[:-10] + 'afqmc.h5'
     afqmc = get_driver(input_dict, comm)
     afqmc.run(comm=comm)
