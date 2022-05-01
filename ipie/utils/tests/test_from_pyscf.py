@@ -55,7 +55,7 @@ def test_pyscf_to_ipie():
     dump_ipie(chkfile='scf.chk', hamil_file='afqmc.h5', sparse=True)
     wfn = read_qmcpack_wfn_hdf('afqmc.h5')
     h1e, chol, ecore, nmo, na, nb = from_qmcpack_sparse('afqmc.h5')
-    write_input('input.json', 'afqmc.h5', 'afqmc.h5')
+    write_input('input.json', 'afqmc.h5', 'afqmc.h5', 'estimates.test_from_pyscf.h5')
 
 def teardown_module(self):
     cwd = os.getcwd()
