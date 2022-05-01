@@ -3,6 +3,7 @@ import json
 import os
 from mpi4py import MPI
 import pytest
+import uuid
 
 from ipie.analysis.extraction import extract_test_data_hdf5
 from ipie.qmc.calc import (
@@ -19,6 +20,9 @@ except ImportError:
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
+# Unique filename to avoid name collision when running through CI.
+test_id = str(uuid.uuid1())
+output_file = 'estimates_{}.h5'.format(test_id)
 
 _data_dir  = os.path.abspath(os.path.dirname(__file__)) + '/reference_data/'
 # glob is a bit dangerous.
@@ -52,10 +56,11 @@ def run_test_system(input_file, benchmark_file):
     elif ('hamiltonian' in input_dict) and (input_dict['hamiltonian'].get('integrals') is not None):
         input_dict['hamiltonian']['integrals'] = input_file[:-10] + 'afqmc.h5'
         input_dict['trial']['filename'] = input_file[:-10] + 'afqmc.h5'
+    input_dict['estimators']['filename'] = output_file
     afqmc = get_driver(input_dict, comm)
     afqmc.run(comm=comm)
     if comm.rank == 0:
-        test_data = extract_test_data_hdf5('estimates.0.h5')
+        test_data = extract_test_data_hdf5(output_file)
         with open(benchmark_file, 'r') as f:
             ref_data = json.load(f)
         compare_test_data(ref_data, test_data)
@@ -70,7 +75,7 @@ def test_system_mpi(input_dir, benchmark_dir):
 
 def teardown_module():
     cwd = os.getcwd()
-    files = ['estimates.0.h5']
+    files = [output_file]
     for f in files:
         try:
             os.remove(cwd+'/'+f)
