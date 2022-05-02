@@ -60,9 +60,10 @@ def run_test_system(input_file, benchmark_file):
     afqmc = get_driver(input_dict, comm)
     afqmc.run(comm=comm)
     if comm.rank == 0:
-        test_data = extract_test_data_hdf5(output_file)
         with open(benchmark_file, 'r') as f:
             ref_data = json.load(f)
+        skip_val = ref_data.get('extract_skip_value', 10)
+        test_data = extract_test_data_hdf5(output_file, skip=skip_val)
         _passed = compare_test_data(ref_data, test_data)
     else:
         _passed = None
