@@ -167,7 +167,7 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
             
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm, gpu=self.qmc.gpu)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
                                          self.system)
