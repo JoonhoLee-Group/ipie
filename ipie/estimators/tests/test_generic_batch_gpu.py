@@ -16,7 +16,7 @@ from ipie.utils.testing import (
         get_random_phmsd
         )
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-from ipie.estimators.local_energy_sd import local_energy_single_det_batch, local_energy_single_det_batch_einsum
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch, local_energy_single_det_batch_gpu
 
 from ipie.utils.pack import pack_cholesky
 
@@ -77,7 +77,7 @@ def test_local_energy_single_det_batch():
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
         walker_batch.reortho()
 
-    energies_einsum = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)
+    energies_einsum = local_energy_single_det_batch_gpu(system, ham, walker_batch, trial)
     walker_batch.Ghalfa = cupy.asnumpy(walker_batch.Ghalfa)
     walker_batch.Ghalfb = cupy.asnumpy(walker_batch.Ghalfb)
     trial._rchola = cupy.asnumpy(trial._rchola)
