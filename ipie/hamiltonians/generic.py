@@ -80,6 +80,8 @@ class Generic(object):
             self.chol_packed = chol_packed
             nbsf = h1e.shape[1]
             self.sym_idx = numpy.triu_indices(nbsf)
+            self.sym_idx_i = self.sym_idx[0].copy()
+            self.sym_idx_j = self.sym_idx[1].copy()
         else:
             self.chol_packed = None # [M*(M+1)/2, nchol] if used
             self.sym_idx = None
@@ -215,12 +217,19 @@ class Generic(object):
             else:
                 size += self.chol_vecs.size
 
+        if self.symmetry:
+            size += self.sym_idx_i.size
+            size += self.sym_idx_j.size
+
         if verbose:
             expected_bytes = size * 8. # float64
             print("# hamiltonians.generic: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
 
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
+        if self.symmetry:
+            self.sym_idx_i = cupy.asarray(self.sym_idx_i)
+            self.sym_idx_j = cupy.asarray(self.sym_idx_j)
 
         if (self.chunked):
             if self.symmetry:

@@ -4,6 +4,7 @@ from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import local_energy_single_det_rhf_batch,\
                                             local_energy_single_det_uhf_batch,\
                                             local_energy_single_det_batch_einsum,\
+                                            local_energy_single_det_batch_gpu,\
                                             local_energy_single_det_batch
 from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked
 from ipie.estimators.local_energy_wicks import local_energy_multi_det_trial_wicks_batch,\
@@ -17,14 +18,14 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
 
     if (walker_batch.name == "SingleDetWalkerBatch"):
         if (is_cupy(walker_batch.phia)):
-            return local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial)
+            return local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial)
         elif (walker_batch.rhf):
             return local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial)
         else:
             if (hamiltonian.chunked):
                 return local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial)
             else:
-                return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial)
+                return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
                 # \TODO switch to this
                 # return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
     elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False):

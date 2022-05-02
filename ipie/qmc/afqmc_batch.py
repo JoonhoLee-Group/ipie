@@ -167,7 +167,7 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
             
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm, gpu=self.qmc.gpu)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
                                          self.system)
@@ -246,10 +246,10 @@ class AFQMCBatch(object):
                 if (ngpus > comm.size):
                     print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
 
-            if (ngpus < comm.size):
-                if comm.rank == 0:
-                    print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
-                exit()
+            #if (ngpus < comm.size):
+            #    if comm.rank == 0:
+            #        print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
+            #    exit()
             
             if comm.rank == 0:
                 print("# Casting numpy arrays to cupy arrays")
