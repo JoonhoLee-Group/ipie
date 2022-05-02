@@ -13,7 +13,7 @@
         "rng_seed": 7,
         "stabilise_freq": 10,
         "pop_control_freq": 5,
-	   "batched": false
+        "batched": false
     },
     "trial": {
         "filename": "afqmc.h5"

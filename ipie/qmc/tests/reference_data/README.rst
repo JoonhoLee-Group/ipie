@@ -3,6 +3,8 @@ MPI Integration Tests Reference Data
 
 To add a test first:
 
+**IMPORTANT: Make tests short < 10 seconds**
+
 #. Create a descriptive folder name for the system / qmc algorithm in question and cd into
    it.
 #. Create input.json and afqmc.h5 in wavefunction / hamiltonian needed. Your test should
