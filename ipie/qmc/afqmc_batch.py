@@ -246,10 +246,10 @@ class AFQMCBatch(object):
                 if (ngpus > comm.size):
                     print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
 
-            if (ngpus < comm.size):
-                if comm.rank == 0:
-                    print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
-                exit()
+            #if (ngpus < comm.size):
+            #    if comm.rank == 0:
+            #        print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
+            #    exit()
             
             if comm.rank == 0:
                 print("# Casting numpy arrays to cupy arrays")

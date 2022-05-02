@@ -25,7 +25,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
             if (hamiltonian.chunked):
                 return local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial)
             else:
-                return local_energy_single_det_batch(system, hamiltonian, walker_batch, trial)
+                return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
                 # \TODO switch to this
                 # return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
     elif (walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False):
