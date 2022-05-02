@@ -262,7 +262,6 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
     nalpha = walker_batch.Ghalfa.shape[1]
     nbeta = walker_batch.Ghalfb.shape[1]
     nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
