@@ -296,12 +296,14 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
+        dot = cupy.dot
         einsum = cupy.einsum
         zeros = cupy.zeros
         isrealobj = cupy.isrealobj
     else:
         einsum = numpy.einsum
         zeros = numpy.zeros
+        dot = cupy.dot
         isrealobj = numpy.isrealobj
 
     nwalkers = walker_batch.Ghalfa.shape[0]
@@ -310,6 +312,7 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     nbasis = walker_batch.Ghalfa.shape[-1]
     nchol = hamiltonian.nchol
 
+    free_bytes, total_bytes = cupy.cuda.Device().mem_info
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
 
@@ -326,22 +329,22 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
     ecoul += 2. * einsum("xw,xw->w", Xa, Xb, optimize=True)
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers*nalpha, nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers*nbeta, nbasis)
 
-    trial._rchola = trial._rchola.reshape(nchol, nalpha, nbasis)
-    trial._rcholb = trial._rcholb.reshape(nchol, nbeta, nbasis)
+    free_bytes, total_bytes = cupy.cuda.Device().mem_info
+    trial._rchola = trial._rchola.reshape(nchol*nalpha, nbasis)
+    trial._rcholb = trial._rcholb.reshape(nchol*nbeta, nbasis)
 
-    Txij = einsum("xim,wjm->wxji", trial._rchola, walker_batch.Ghalfa)
-    exx  = einsum("wxji,wxij->w",Txij,Txij)
-    Txij = einsum("xim,wjm->wxji", trial._rcholb, walker_batch.Ghalfb)
-    exx += einsum("wxji,wxij->w",Txij,Txij)
-
-    # exx = einsum("xim,xjn,win,wjm->w",trial._rchola, trial._rchola, walker_batch.Ghalfa, walker_batch.Ghalfa, optimize=True)\
-    #     + einsum("xim,xjn,win,wjm->w",trial._rcholb, trial._rcholb, walker_batch.Ghalfb, walker_batch.Ghalfb, optimize=True)
+    Txij = dot(trial._rchola, walker_batch.Ghalfa.T).reshape((nchol, nalpha, nwalkers, nalpha))# [xi,m] [wj,m] -> xiwj 
+    exx  = einsum("xiwj,xjwi->w", Txij, Txij)
+    Txij = dot(trial._rcholb, walker_batch.Ghalfb.T).reshape((nchol, nbeta, nwalkers, nbeta))# [xi,m] [wj,m] -> xiwj  
+    exx  = einsum("xiwj,xjwi->w", Txij, Txij)
 
     trial._rchola = trial._rchola.reshape(nchol, nalpha*nbasis)
     trial._rcholb = trial._rcholb.reshape(nchol, nbeta*nbasis)
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
 
     e2b = 0.5 * (ecoul - exx)
 
