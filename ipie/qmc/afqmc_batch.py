@@ -120,7 +120,6 @@ class AFQMCBatch(object):
 
         self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
         self.shared_comm = self.mpi_handler.shared_comm
-
         # 2. Calculation objects.
         if system is not None:
             self.system = system
@@ -146,6 +145,22 @@ class AFQMCBatch(object):
 
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        if self.qmc.gpu:
+            try:
+                import cupy
+                assert(cupy.is_available())
+            except:
+                if comm.rank == 0:
+                    print("# cupy is unavailble but GPU calculation is requested")
+                exit()
+            ngpus = cupy.cuda.runtime.getDeviceCount()
+            props = cupy.cuda.runtime.getDeviceProperties(0)
+            cupy.cuda.runtime.setDevice(self.shared_comm.rank)
+            if comm.rank == 0:
+                if ngpus > comm.size:
+                    print("# There are unused GPUs ({} MPI tasks but {} GPUs). "
+                          " Check if this is really what you wanted.".format(comm.size,ngpus))
+
         if (self.qmc.nwalkers == None):
             assert(self.qmc.nwalkers_per_task is not None)
             self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
@@ -233,24 +248,6 @@ class AFQMCBatch(object):
             self.trial.chunk(self.mpi_handler)
 
         if (self.qmc.gpu):
-            try:
-                import cupy
-                assert(cupy.is_available())
-            except:
-                if comm.rank == 0:
-                    print("# cupy is unavailble but GPU calculation is requested")
-                exit()
-            ngpus = cupy.cuda.runtime.getDeviceCount()
-            props = cupy.cuda.runtime.getDeviceProperties(0)
-            if comm.rank == 0:
-                if (ngpus > comm.size):
-                    print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
-
-            #if (ngpus < comm.size):
-            #    if comm.rank == 0:
-            #        print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
-            #    exit()
-            
             if comm.rank == 0:
                 print("# Casting numpy arrays to cupy arrays")
 

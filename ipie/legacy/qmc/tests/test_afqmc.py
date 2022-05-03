@@ -338,7 +338,14 @@ def test_generic_single_det():
 
 def teardown_module(self):
     cwd = os.getcwd()
-    files = ['estimates.0.h5']
+    files = [
+            'estimates.test_generic_single_det.h5',
+            'estimates.test_constructor.h5',
+            'estimates.test_ueg.h5',
+            'estimates.test_hubbard.h5',
+            'estimates.test_hubbard_complex.h5',
+            'estimates.test_hubbard_complex.h5'
+            ]
     for f in files:
         try:
             os.remove(cwd+'/'+f)

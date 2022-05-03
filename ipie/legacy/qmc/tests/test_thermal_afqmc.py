@@ -40,6 +40,9 @@ def test_ueg():
             'trial': {
                 'name': 'one_body'
             },
+            'estimates': {
+                'filename': 'estimates.test_thermal_ueg.h5'
+            },
             'walkers': {
                 'low_rank': True,
                 'pop_control': 'comb',
@@ -60,7 +63,7 @@ def test_ueg():
 
 def teardown_module(self):
     cwd = os.getcwd()
-    files = ['estimates.0.h5']
+    files = ['estimates.test_thermal_ueg.h5']
     for f in files:
         try:
             os.remove(cwd+'/'+f)
