@@ -244,7 +244,10 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
         exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
         exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
-
+    
+    if is_cupy(rchola): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
     return 0.5 * ecoul, -0.5 * exx # JK energy
 
 def core_contribution(system, Gcore):

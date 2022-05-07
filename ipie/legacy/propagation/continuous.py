@@ -155,9 +155,14 @@ class Continuous(object):
         for n in range(1, self.exp_nmax+1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
-            
+
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+        
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
+
         return phi
 
     def two_body_propagator(self, walker, system, hamiltonian, trial):
