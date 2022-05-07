@@ -58,6 +58,12 @@ def kinetic_real(phi, system, bt2, H1diag=False):
         phi[:,:nup] = bt2[0].dot(phi[:,:nup])
         phi[:,nup:] = bt2[1].dot(phi[:,nup:])
 
+    if is_cupy(bt2[0]): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+
+    return
+
 def kinetic_spin_real_batch(phi, bt2, H1diag=False):
     r"""Propagate by the kinetic term by direct matrix multiplication. Only one spin component. Assuming phi is a batch.
 

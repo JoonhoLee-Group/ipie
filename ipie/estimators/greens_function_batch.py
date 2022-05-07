@@ -104,6 +104,9 @@ def greens_function_single_det(walker_batch, trial):
             det += [sign_a*exp(log_ovlp_a-walker_batch.log_shift)]
 
     det = array(det, dtype=numpy.complex128)
+    
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
 
     return det
 
@@ -162,7 +165,11 @@ def greens_function_single_det_batch(walker_batch, trial):
         ot = sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift)
     elif ndown == 0:
         ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
-
+    
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+    
     return ot
 
 def greens_function_multi_det(walker_batch, trial):

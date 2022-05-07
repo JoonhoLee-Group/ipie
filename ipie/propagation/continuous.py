@@ -155,6 +155,9 @@ class Continuous(object):
                     Temp[iw] = VHS[iw].dot(Temp[iw]) / n
                     phi[iw] += Temp[iw]
 
+        if is_cupy(VHS):
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
@@ -197,7 +200,11 @@ class Continuous(object):
         for n in range(1, self.exp_nmax+1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
-            
+
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
+
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
