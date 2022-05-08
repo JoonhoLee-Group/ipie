@@ -193,17 +193,19 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(xshifted): # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
             assert(cupy.is_available())
             isrealobj = cupy.isrealobj
             zeros_like = cupy.zeros_like
             zeros = cupy.zeros
             # where = cupy.where
+            iscupy = True
         else:
             isrealobj = numpy.isrealobj
             zeros_like = numpy.zeros_like
             zeros = numpy.zeros
+            iscupy = False
         
         where = numpy.where
         
@@ -220,7 +222,7 @@ class GenericContinuous(object):
 
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
-        
+
         VHS_send = chol_packed_chunk.dot(xshifted[idxs,:].real) + 1.j * chol_packed_chunk.dot(xshifted[idxs,:].imag)
         VHS_recv = zeros_like(VHS_send)
 
@@ -252,6 +254,12 @@ class GenericContinuous(object):
 
         VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(self.nwalkers, chol_packed_chunk.shape[0]).copy()
         VHS = zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_recv.dtype)
-        unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
+        if iscupy:
+            threadsperblock = 512
+            nut = len(hamiltonian.sym_idx_i)
+            blockspergrid = math.ceil(self.nwalkers*nut / threadsperblock)
+            unpack_VHS_batch_gpu[blockspergrid, threadsperblock](hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS)
+        else:
+            unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
             
         return  VHS

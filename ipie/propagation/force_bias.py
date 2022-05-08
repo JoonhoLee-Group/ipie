@@ -176,13 +176,12 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walker_batch, tri
         empty = cupy.empty
         zeros_like = cupy.zeros_like
         zeros = cupy.zeros
-        where = cupy.where
     else:
         isrealobj = numpy.isrealobj
         empty = numpy.empty
         zeros_like = numpy.zeros_like
         zeros = numpy.zeros
-        where = numpy.where
+    where = numpy.where
 
     assert(hamiltonian.chunked)
     assert(isrealobj(trial._rchola))

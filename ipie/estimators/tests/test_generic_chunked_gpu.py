@@ -20,7 +20,7 @@ from ipie.estimators.local_energy_sd import local_energy_single_det_batch,\
 
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.estimators.local_energy_sd import local_energy_single_det_batch, local_energy_single_det_batch_gpu
-from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked
+from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked, local_energy_single_det_uhf_batch_chunked_gpu
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.misc import dotdict, is_cupy
 from ipie.utils.mpi import get_shared_array, have_shared_mem
@@ -87,7 +87,7 @@ def test_generic_chunked_gpu():
     options = {'hybrid': True}
     prop = Continuous(system, ham, trial, qmc, options=options)
 
-    mpi_handler = MPIHandler(comm,options={"nmembers":3}, verbose=(rank==0))
+    mpi_handler = MPIHandler(comm,options={"nmembers":2}, verbose=(rank==0))
     if comm.rank == 0:
         print("# Chunking hamiltonian.")
     ham.chunk(mpi_handler)
@@ -110,11 +110,9 @@ def test_generic_chunked_gpu():
     trial._rchola = cupy.asarray(trial._rchola)
     trial._rcholb = cupy.asarray(trial._rcholb)
     energies_einsum = local_energy_single_det_batch_gpu(system, ham, walker_batch, trial)
-    energies_chunked = local_energy_single_det_uhf_batch_chunked(system, ham, walker_batch, trial)
+    energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(system, ham, walker_batch, trial)
 
     assert(numpy.allclose(energies_einsum, energies_chunked))
-
-
 
 if __name__ == '__main__':
     test_generic_chunked_gpu()

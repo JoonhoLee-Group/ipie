@@ -106,6 +106,7 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
 def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb):
     import cupy
     einsum = cupy.einsum
+    isrealobj = cupy.isrealobj
 
     if (isrealobj(rchola_chunk)):
         Xa = rchola_chunk.dot(Ghalfa.real.T) + 1.j * rchola_chunk.dot(Ghalfa.imag.T) # naux x nwalkers
@@ -125,11 +126,13 @@ def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
 def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
     import cupy
     einsum = cupy.einsum
-
-    Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    nwalkers = Ghalfa.shape[0]
+    nalpha = Ghalfa.shape[1]
+    nbasis = Ghalfa.shape[2]
+    nchol = rchola_chunk.shape[0]
     rchola_chunk = rchola_chunk.reshape(nchol, nalpha, nbasis)
 
-    Txij = einsum("xim,wjm->wxji", rchola_chunk, walker_batch.Ghalfa)
+    Txij = einsum("xim,wjm->wxji", rchola_chunk, Ghalfa)
     rchola_chunk = rchola_chunk.reshape(nchol, nalpha*nbasis)
 
     exx  = einsum("wxji,wxij->w",Txij,Txij)
