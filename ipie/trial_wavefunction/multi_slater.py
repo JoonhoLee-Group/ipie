@@ -371,9 +371,15 @@ class MultiSlater(object):
         else:
             size += self.psi.size
         if (numpy.isrealobj(self._rchola)):
-            size += self._rchola.size/2. + self._rcholb.size/2.
+            if (self.chunked):
+                size += self._rchola_chunk.size/2. + self._rcholb_chunk.size/2.
+            else:
+                size += self._rchola.size/2. + self._rcholb.size/2.
         else:
-            size += self._rchola.size + self._rcholb.size
+            if (self.chunked):
+                size += self._rchola_chunk.size + self._rcholb_chunk.size
+            else:
+                size += self._rchola.size + self._rcholb.size
         
         if (numpy.isrealobj(self._rH1a)):
             size += self._rH1a.size/2. + self._rH1b.size/2.
@@ -392,8 +398,14 @@ class MultiSlater(object):
 
         self.psi = cupy.asarray(self.psi)
         self.coeffs = cupy.asarray(self.coeffs)
-        self._rchola = cupy.asarray(self._rchola)
-        self._rcholb = cupy.asarray(self._rcholb)
+        
+        if (self.chunked):
+            self._rchola_chunk = cupy.asarray(self._rchola_chunk)
+            self._rcholb_chunk = cupy.asarray(self._rcholb_chunk)
+        else:
+            self._rchola = cupy.asarray(self._rchola)
+            self._rcholb = cupy.asarray(self._rcholb)
+
         self._rH1a = cupy.asarray(self._rH1a)
         self._rH1b = cupy.asarray(self._rH1b)
         if (type(self.G) == numpy.ndarray):
@@ -406,8 +418,10 @@ class MultiSlater(object):
             self.occb = cupy.asarray(self.occb)
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
+
         if verbose:
             print("# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0

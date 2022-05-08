@@ -337,9 +337,6 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     Txij = einsum("xim,wjm->wxji", trial._rcholb, walker_batch.Ghalfb)
     exx += einsum("wxji,wxij->w",Txij,Txij)
 
-    # exx = einsum("xim,xjn,win,wjm->w",trial._rchola, trial._rchola, walker_batch.Ghalfa, walker_batch.Ghalfa, optimize=True)\
-    #     + einsum("xim,xjn,win,wjm->w",trial._rcholb, trial._rcholb, walker_batch.Ghalfb, walker_batch.Ghalfb, optimize=True)
-
     trial._rchola = trial._rchola.reshape(nchol, nalpha*nbasis)
     trial._rcholb = trial._rcholb.reshape(nchol, nbeta*nbasis)
 

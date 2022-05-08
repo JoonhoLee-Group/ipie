@@ -199,12 +199,13 @@ class GenericContinuous(object):
             isrealobj = cupy.isrealobj
             zeros_like = cupy.zeros_like
             zeros = cupy.zeros
-            where = cupy.where
+            # where = cupy.where
         else:
             isrealobj = numpy.isrealobj
             zeros_like = numpy.zeros_like
             zeros = numpy.zeros
-            where = numpy.where
+        
+        where = numpy.where
         
         assert(hamiltonian.chunked)
         assert(hamiltonian.symmetry)

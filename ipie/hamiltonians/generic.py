@@ -169,7 +169,6 @@ class Generic(object):
         chol_idxs = [i for i in range(self.nchol)]
         self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
 
-
         if self.symmetry:
             if handler.srank == 0: # creating copies for every rank = 0!!!!
                 self.chol_packed = self.chol_packed.T.copy() # [chol, M^2]
