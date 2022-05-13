@@ -88,20 +88,19 @@ def greens_function_single_det(walker_batch, trial):
     det = []
 
     for iw in range(walker_batch.nwalkers):
-        # ovlp = dot(walker_batch.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
         ovlp = dot(walker_batch.phia[iw].T, trial.psi[:,:nup].conj())
         ovlp_inv = inv(ovlp)
-        # walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phi[iw][:,:nup].T)
         walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phia[iw].T)
-        # walker_batch.Ga[iw] = dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
+        if not trial.half_rotated:
+            walker_batch.Ga[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfa[iw])
         sign_a, log_ovlp_a = slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0 and not walker_batch.rhf:
-            # ovlp = dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
             ovlp = dot(walker_batch.phib[iw].T, trial.psi[:,nup:].conj())
             sign_b, log_ovlp_b = slogdet(ovlp)
             walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phib[iw].T)
-            # walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
+            if not trial.half_rotated:
+                walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
             det += [sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
         elif ndown > 0 and walker_batch.rhf:
             det += [sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift[iw])]
