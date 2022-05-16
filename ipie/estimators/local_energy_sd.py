@@ -387,59 +387,59 @@ def local_energy_single_det_batch_gpu(
     nbasis = walker_batch.Ghalfa.shape[-1]
     nchol = hamiltonian.nchol
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+    Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+    Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
 
-    e1b = walker_batch.Ghalfa.dot(trial._rH1a.ravel()) + walker_batch.Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
+    e1b = Ghalfa.dot(trial._rH1a.ravel()) + Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
-        Xb = trial._rcholb.dot(walker_batch.Ghalfb.real.T) + 1.j * trial._rcholb.dot(walker_batch.Ghalfb.imag.T) # naux x nwalkers
+        Xa = trial._rchola.dot(Ghalfa.real.T) + 1.j * trial._rchola.dot(Ghalfa.imag.T) # naux x nwalkers
+        Xb = trial._rcholb.dot(Ghalfb.real.T) + 1.j * trial._rcholb.dot(Ghalfb.imag.T) # naux x nwalkers
     else:
-        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
-        Xb = trial._rcholb.dot(walker_batch.Ghalfb.T)
+        Xa = trial._rchola.dot(Ghalfa.T)
+        Xb = trial._rcholb.dot(Ghalfb.T)
 
     ecoul = einsum("xw,xw->w", Xa, Xa, optimize=True)
     ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
     ecoul += 2. * einsum("xw,xw->w", Xa, Xb, optimize=True)
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
-
-    trial._rchola = trial._rchola.reshape(nchol, nalpha, nbasis)
-    trial._rcholb = trial._rcholb.reshape(nchol, nbeta, nbasis)
-    # trial._rchola = trial._rchola.reshape(nchol*nalpha, nbasis)
-    # trial._rcholb = trial._rcholb.reshape(nchol*nbeta, nbasis)
-    nocc = max(nalpha, nbeta)
-    mem_needed = 16 * nwalkers * nocc * nocc * nchol / (1024.0**3.0)
+    max_nocc = max(nalpha, nbeta)
+    mem_needed = 16 * nwalkers * max_nocc * max_nocc * nchol / (1024.0**3.0)
     num_chunks = max(1, ceil(mem_needed / max_mem))
-    chunk_size = (nchol + num_chunks - 1) // num_chunks
+    chunk_size = ceil(nchol / num_chunks)
 
-    buff = zeros(shape=(nwalkers*chunk_size*nocc*nocc), dtype=complex128)
+    # Buffer for large intermediate tensor
+    buff = zeros(shape=(nwalkers*chunk_size*max_nocc*max_nocc), dtype=complex128)
     nchol_chunk = chunk_size
     nchol_left = nchol
-    # print(mem_needed, num_chunks, chunk_size, buff.shape)
     exx = zeros(nwalkers, dtype=complex128)
+    Ghalfa = walker_batch.Ghalfa.reshape((nwalkers*nalpha, nbasis))
+    Ghalfb = walker_batch.Ghalfb.reshape((nwalkers*nbeta, nbasis))
     for i in range(num_chunks):
         nchol_chunk = min(nchol_chunk, nchol_left)
         chol_sls = slice(i*chunk_size, i*chunk_size + nchol_chunk)
         size = nwalkers * nchol_chunk * nalpha * nalpha
-        Txij = buff[:size].reshape((nwalkers, nchol_chunk, nalpha, nalpha),)
-        Txij[:] = einsum("xim,wjm->wxji", trial._rchola[chol_sls], walker_batch.Ghalfa)
-        kernels.exchange_reduction(Txij, exx)
+        # alpha-alpha
+        Txij = buff[:size].reshape((nchol_chunk*nalpha, nwalkers*nalpha))
+        rchol = trial._rchola[chol_sls].reshape((nchol_chunk*nalpha, nbasis))
+        dot(rchol, Ghalfa.T, out=Txij)
+        Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
+        # exx += einsum('xiwj,xjwi->w', Txij, Txij)
+        kernels.exchange_reduction_new(Txij, exx)
+        # beta-beta
         size = nwalkers * nchol_chunk * nbeta * nbeta
-        Txij = buff[:size].reshape((nwalkers, nchol_chunk, nbeta, nbeta))
-        Txij[:] = einsum("xim,wjm->wxij", trial._rcholb[chol_sls], walker_batch.Ghalfb)
-        kernels.exchange_reduction(Txij, exx)
+        Txij = buff[:size].reshape((nchol_chunk*nbeta, nwalkers*nbeta))
+        rchol = trial._rcholb[chol_sls].reshape((nchol_chunk*nbeta, nbasis))
+        dot(rchol, Ghalfa.T, out=Txij)
+        Txij = Txij.reshape((nchol_chunk, nbeta, nwalkers, nbeta))
+        kernels.exchange_reduction_new(Txij, exx)
+        # exx += einsum('xiwj,xjwi->w', Txij, Txij)
         nchol_left -= chunk_size
-
-    trial._rchola = trial._rchola.reshape(nchol, nalpha*nbasis)
-    trial._rcholb = trial._rcholb.reshape(nchol, nbeta*nbasis)
 
     e2b = 0.5 * (ecoul - exx)
 
     energy = zeros((nwalkers, 3), dtype=numpy.complex128)
-    energy[:,0] = e1b+e2b
+    energy[:,0] = e1b + e2b
     energy[:,1] = e1b
     energy[:,2] = e2b
 
