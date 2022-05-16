@@ -70,7 +70,7 @@ class Generic(object):
         self.exact_eri = options.get("exact_eri", False)
         self.mixed_precision = options.get("mixed_precision", False)
         self.density_diff = options.get("density_diff", False)
-        self.symmetry = options.get("symmetry", True)
+        self.symmetry = options.get("symmetry", False)
         self.chunked = False # chunking disabled by default
 
         self.ecore = ecore

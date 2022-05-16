@@ -70,8 +70,8 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             print("# Time to pack Cholesky vectors: {:.6f}".format(time.time()-start))
 
         ham = Generic(h1e = hcore, chol=chol, chol_packed=chol_packed, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
-        mem = ham.chol_packed.nbytes / (1024.0**3)
-        if verbose:
+        if ham.symmetry and verbose:
+            mem = ham.chol_packed.nbytes / (1024.0**3)
             print("# Approximate memory required by packed Cholesky vectors %f GB"%mem)
     else:
         if comm.rank == 0:
