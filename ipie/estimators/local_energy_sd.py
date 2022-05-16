@@ -1,8 +1,11 @@
 import time
 import numpy
+from numba import jit
+from math import ceil
+
 from ipie.estimators.local_energy import local_energy_G
 from ipie.utils.misc import is_cupy
-from numba import jit
+from ipie.estimators import kernels
 
 @jit(nopython=True,fastmath=True)
 def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
@@ -180,9 +183,9 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
         rmi_a = trial._rchola[x].reshape((nalpha,nbasis))
         rmi_b = trial._rcholb[x].reshape((nbeta,nbasis))
         if (isrealobj(trial._rchola)): # this is actually fasater
-            Ta[:,:,:].real = rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2) 
+            Ta[:,:,:].real = rmi_a.dot(GhalfaT_batch.real).transpose(1,0,2)
             Ta[:,:,:].imag = rmi_a.dot(GhalfaT_batch.imag).transpose(1,0,2)
-            Tb[:,:,:].real = rmi_b.dot(GhalfbT_batch.real).transpose(1,0,2) 
+            Tb[:,:,:].real = rmi_b.dot(GhalfbT_batch.real).transpose(1,0,2)
             Tb[:,:,:].imag = rmi_b.dot(GhalfbT_batch.imag).transpose(1,0,2)
         else:
             Ta = rmi_a.dot(GhalfaT_batch).transpose(1,0,2)
@@ -230,7 +233,7 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
         ecoul = ecoul_kernel_batch_complex_rchol_rhf(trial._rchola, walker_batch.Ghalfa)
 
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    
+
     if (isrealobj(trial._rchola)):
         exx = 2. * exx_kernel_batch_real_rchol (trial._rchola, walker_batch.Ghalfa)
     else:
@@ -291,19 +294,17 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
 
     return energy
 
-def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
+def local_energy_single_det_batch_gpu_old(system, hamiltonian, walker_batch, trial):
 
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
-        dot = cupy.dot
         einsum = cupy.einsum
         zeros = cupy.zeros
         isrealobj = cupy.isrealobj
     else:
         einsum = numpy.einsum
         zeros = numpy.zeros
-        dot = cupy.dot
         isrealobj = numpy.isrealobj
 
     nwalkers = walker_batch.Ghalfa.shape[0]
@@ -312,7 +313,6 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     nbasis = walker_batch.Ghalfa.shape[-1]
     nchol = hamiltonian.nchol
 
-    free_bytes, total_bytes = cupy.cuda.Device().mem_info
     walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
     walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
 
@@ -329,23 +329,22 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
     ecoul += 2. * einsum("xw,xw->w", Xa, Xb, optimize=True)
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers*nalpha, nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers*nbeta, nbasis)
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
 
-    free_bytes, total_bytes = cupy.cuda.Device().mem_info
-    trial._rchola = trial._rchola.reshape(nchol*nalpha, nbasis)
-    trial._rcholb = trial._rcholb.reshape(nchol*nbeta, nbasis)
+    trial._rchola = trial._rchola.reshape(nchol, nalpha, nbasis)
+    trial._rcholb = trial._rcholb.reshape(nchol, nbeta, nbasis)
 
-    # [xi,m] [wj,m] -> xiwj
-    Txij = dot(trial._rchola, walker_batch.Ghalfa.T).reshape((nchol, nalpha, nwalkers, nalpha))
-    exx  = einsum("xiwj,xjwi->w", Txij, Txij)
-    Txij = dot(trial._rcholb, walker_batch.Ghalfb.T).reshape((nchol, nbeta, nwalkers, nbeta))
-    exx  = einsum("xiwj,xjwi->w", Txij, Txij)
+    Txij = einsum("xim,wjm->wxji", trial._rchola, walker_batch.Ghalfa)
+    exx  = einsum("wxji,wxij->w",Txij,Txij)
+    Txij = einsum("xim,wjm->wxji", trial._rcholb, walker_batch.Ghalfb)
+    exx += einsum("wxji,wxij->w",Txij,Txij)
+
+    # exx = einsum("xim,xjn,win,wjm->w",trial._rchola, trial._rchola, walker_batch.Ghalfa, walker_batch.Ghalfa, optimize=True)\
+    #     + einsum("xim,xjn,win,wjm->w",trial._rcholb, trial._rcholb, walker_batch.Ghalfb, walker_batch.Ghalfb, optimize=True)
 
     trial._rchola = trial._rchola.reshape(nchol, nalpha*nbasis)
     trial._rcholb = trial._rcholb.reshape(nchol, nbeta*nbasis)
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
 
     e2b = 0.5 * (ecoul - exx)
 
@@ -353,9 +352,98 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     energy[:,0] = e1b+e2b
     energy[:,1] = e1b
     energy[:,2] = e2b
-    
+
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy    
+        import cupy
         cupy.cuda.stream.get_current_stream().synchronize()
     return energy
 
+def local_energy_single_det_batch_gpu(
+        system,
+        hamiltonian,
+        walker_batch,
+        trial,
+        max_mem=2
+        ):
+
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        assert(cupy.is_available())
+        einsum = cupy.einsum
+        zeros = cupy.zeros
+        isrealobj = cupy.isrealobj
+        dot = cupy.dot
+        complex128 = cupy.complex128
+    else:
+        einsum = numpy.einsum
+        zeros = numpy.zeros
+        isrealobj = numpy.isrealobj
+        dot = numpy.dot
+        complex128 = numpy.complex128
+
+    nwalkers = walker_batch.Ghalfa.shape[0]
+    nalpha = walker_batch.Ghalfa.shape[1]
+    nbeta = walker_batch.Ghalfb.shape[1]
+    nbasis = walker_batch.Ghalfa.shape[-1]
+    nchol = hamiltonian.nchol
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+
+    e1b = walker_batch.Ghalfa.dot(trial._rH1a.ravel()) + walker_batch.Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
+
+    if (isrealobj(trial._rchola)):
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.real.T) + 1.j * trial._rchola.dot(walker_batch.Ghalfa.imag.T) # naux x nwalkers
+        Xb = trial._rcholb.dot(walker_batch.Ghalfb.real.T) + 1.j * trial._rcholb.dot(walker_batch.Ghalfb.imag.T) # naux x nwalkers
+    else:
+        Xa = trial._rchola.dot(walker_batch.Ghalfa.T)
+        Xb = trial._rcholb.dot(walker_batch.Ghalfb.T)
+
+    ecoul = einsum("xw,xw->w", Xa, Xa, optimize=True)
+    ecoul += einsum("xw,xw->w", Xb, Xb, optimize=True)
+    ecoul += 2. * einsum("xw,xw->w", Xa, Xb, optimize=True)
+
+    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
+    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
+
+    trial._rchola = trial._rchola.reshape(nchol, nalpha, nbasis)
+    trial._rcholb = trial._rcholb.reshape(nchol, nbeta, nbasis)
+    # trial._rchola = trial._rchola.reshape(nchol*nalpha, nbasis)
+    # trial._rcholb = trial._rcholb.reshape(nchol*nbeta, nbasis)
+    nocc = max(nalpha, nbeta)
+    mem_needed = 16 * nwalkers * nocc * nocc * nchol / (1024.0**3.0)
+    num_chunks = max(1, ceil(mem_needed / max_mem))
+    chunk_size = (nchol + num_chunks - 1) // num_chunks
+
+    buff = zeros(shape=(nwalkers*chunk_size*nocc*nocc), dtype=complex128)
+    nchol_chunk = chunk_size
+    nchol_left = nchol
+    # print(mem_needed, num_chunks, chunk_size, buff.shape)
+    exx = zeros(nwalkers, dtype=complex128)
+    for i in range(num_chunks):
+        nchol_chunk = min(nchol_chunk, nchol_left)
+        chol_sls = slice(i*chunk_size, i*chunk_size + nchol_chunk)
+        size = nwalkers * nchol_chunk * nalpha * nalpha
+        Txij = buff[:size].reshape((nwalkers, nchol_chunk, nalpha, nalpha),)
+        Txij[:] = einsum("xim,wjm->wxji", trial._rchola[chol_sls], walker_batch.Ghalfa)
+        kernels.exchange_reduction(Txij, exx)
+        size = nwalkers * nchol_chunk * nbeta * nbeta
+        Txij = buff[:size].reshape((nwalkers, nchol_chunk, nbeta, nbeta))
+        Txij[:] = einsum("xim,wjm->wxij", trial._rcholb[chol_sls], walker_batch.Ghalfb)
+        kernels.exchange_reduction(Txij, exx)
+        nchol_left -= chunk_size
+
+    trial._rchola = trial._rchola.reshape(nchol, nalpha*nbasis)
+    trial._rcholb = trial._rcholb.reshape(nchol, nbeta*nbasis)
+
+    e2b = 0.5 * (ecoul - exx)
+
+    energy = zeros((nwalkers, 3), dtype=numpy.complex128)
+    energy[:,0] = e1b+e2b
+    energy[:,1] = e1b
+    energy[:,2] = e2b
+
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+    return energy
