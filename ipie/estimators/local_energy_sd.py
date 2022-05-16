@@ -5,7 +5,6 @@ from math import ceil
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.utils.misc import is_cupy
-from ipie.estimators import kernels
 
 @jit(nopython=True,fastmath=True)
 def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
@@ -366,6 +365,7 @@ def local_energy_single_det_batch_gpu(
         max_mem=2
         ):
 
+    from ipie.estimators import kernels
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
