@@ -49,8 +49,9 @@ def get_git_revision_hash():
                                          cwd=src).strip()
         branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                          cwd=src).strip()
-    except:
+    except Exception as error:
         suffix = False
+        print(f"couldn't determine git hash : {error}")
         sha1 = 'none'.encode()
     if suffix:
         return sha1.decode('utf-8') + '-dirty', branch.decode('utf-8')
