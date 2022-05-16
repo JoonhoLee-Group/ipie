@@ -37,7 +37,7 @@ def kernel_exchange_reduction_old(T, exx_w):
         cuda.atomic.add(exx_w.imag, walker, shared_array[0].imag)
 
 @cuda.jit('void(complex128[:,:,:,:], complex128[:])')
-def kernel_exchange_reduction_new(T, exx_w):
+def kernel_exchange_reduction(T, exx_w):
     naux = T.shape[0]
     nocc = T.shape[1]
     nwalker = T.shape[2]
@@ -93,5 +93,5 @@ def exchange_reduction(Txiwj, exx_walker):
     # todo add constants to config
     # do blocks_per_grid dot products + reductions
     # look into optimizations.
-    kernel_exchange_reduction_new[blocks_per_grid, _block_size](Txiwj, exx_walker)
+    kernel_exchange_reduction[blocks_per_grid, _block_size](Txiwj, exx_walker)
     cp.cuda.stream.get_current_stream().synchronize()
