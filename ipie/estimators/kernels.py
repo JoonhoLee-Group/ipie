@@ -5,7 +5,7 @@ from numba import cuda
 _block_size = 512#
 
 @cuda.jit('void(complex128[:,:,:,:], complex128[:])')
-def kernel_exchange_reduction(T, exx_w):
+def kernel_exchange_reduction_old(T, exx_w):
     nwalker = T.shape[0]
     naux = T.shape[1]
     nocc = T.shape[2]
@@ -68,17 +68,25 @@ def kernel_exchange_reduction_new(T, exx_w):
         cuda.atomic.add(exx_w.real, walker, shared_array[0].real)
         cuda.atomic.add(exx_w.imag, walker, shared_array[0].imag)
 
-def exchange_reduction(Twxij, exx_walker):
+def exchange_reduction_old(Twxij, exx_walker):
+    """Reduce intermediate with itself.
+
+    equivalent to einsum('wxij,wxji->w', Txiwj, Txiwj)
+    """
     nwalkers = Twxij.shape[0]
     nocc = Twxij.shape[2]
     blocks_per_grid = nwalkers * nocc * nocc
     # todo add constants to config
     # do blocks_per_grid dot products + reductions
     # look into optimizations.
-    kernel_exchange_reduction[blocks_per_grid, _block_size](Twxij, exx_walker)
+    kernel_exchange_reduction_old[blocks_per_grid, _block_size](Twxij, exx_walker)
     cp.cuda.stream.get_current_stream().synchronize()
 
-def exchange_reduction_new(Txiwj, exx_walker):
+def exchange_reduction(Txiwj, exx_walker):
+    """Reduce intermediate with itself.
+
+    equivalent to einsum('xiwj,xjwi->w', Txiwj, Txiwj)
+    """
     nwalkers = Txiwj.shape[0]
     nocc = Txiwj.shape[2]
     blocks_per_grid = nwalkers * nocc * nocc

@@ -424,14 +424,14 @@ def local_energy_single_det_batch_gpu(
         rchol = trial._rchola[chol_sls].reshape((nchol_chunk*nalpha, nbasis))
         dot(rchol, Ghalfa.T, out=Txij)
         Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
-        kernels.exchange_reduction_new(Txij, exx)
+        kernels.exchange_reduction(Txij, exx)
         # beta-beta
         size = nwalkers * nchol_chunk * nbeta * nbeta
         Txij = buff[:size].reshape((nchol_chunk*nbeta, nwalkers*nbeta))
         rchol = trial._rcholb[chol_sls].reshape((nchol_chunk*nbeta, nbasis))
         dot(rchol, Ghalfb.T, out=Txij)
         Txij = Txij.reshape((nchol_chunk, nbeta, nwalkers, nbeta))
-        kernels.exchange_reduction_new(Txij, exx)
+        kernels.exchange_reduction(Txij, exx)
         nchol_left -= chunk_size
 
     e2b = 0.5 * (ecoul - exx)
