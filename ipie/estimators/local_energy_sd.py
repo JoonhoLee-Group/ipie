@@ -353,6 +353,9 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial):
     energy[:,0] = e1b+e2b
     energy[:,1] = e1b
     energy[:,2] = e2b
-
+    
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy    
+        cupy.cuda.stream.get_current_stream().synchronize()
     return energy
 

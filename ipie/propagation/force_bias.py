@@ -86,9 +86,16 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
             vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
             vbias_batch.real = vbias_batch_real.T.copy()
             vbias_batch.imag = vbias_batch_imag.T.copy()
+            if is_cupy(trial.psi):
+                import cupy
+                cupy.cuda.stream.get_current_stream().synchronize()
             return vbias_batch
         else:    
             vbias_batch_tmp = 2.*trial._rchola.dot(Ghalfa.T) 
+            if is_cupy(trial.psi):
+                import cupy
+                cupy.cuda.stream.get_current_stream().synchronize()
+
             return vbias_batch_tmp.T
 
     else:
@@ -105,10 +112,18 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
                 vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=walker_batch.Ghalfa.dtype)
                 vbias_batch.real = vbias_batch_real.T.copy() + trial._vbias0.real
                 vbias_batch.imag = vbias_batch_imag.T.copy() + trial._vbias0.imag
+                if is_cupy(trial.psi):
+                    import cupy
+                    cupy.cuda.stream.get_current_stream().synchronize()
+
                 return vbias_batch
             else:    
                 vbias_batch_tmp = trial._rchola.dot(dGhalfa.T) + trial._rcholb.dot(dGhalfb.T)
                 vbias_batch_tmp += trial._vbias0
+                if is_cupy(trial.psi):
+                    import cupy
+                    cupy.cuda.stream.get_current_stream().synchronize()
+
                 return vbias_batch_tmp.T
         else:
             Ghalfa = walker_batch.Ghalfa.reshape(walker_batch.nwalkers, walker_batch.nup*hamiltonian.nbasis)
@@ -119,9 +134,17 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
                 vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
                 vbias_batch.real = vbias_batch_real.T.copy()
                 vbias_batch.imag = vbias_batch_imag.T.copy()
+                if is_cupy(trial.psi):
+                    import cupy
+                    cupy.cuda.stream.get_current_stream().synchronize()
+
                 return vbias_batch
             else:    
                 vbias_batch_tmp = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(Ghalfb.T)
+                if is_cupy(trial.psi):
+                    import cupy
+                    cupy.cuda.stream.get_current_stream().synchronize()
+
                 return vbias_batch_tmp.T
 
 
@@ -224,5 +247,9 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walker_batch, tri
     vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
     vbias_batch.real = vbias_batch_real_recv.T.copy()
     vbias_batch.imag = vbias_batch_imag_recv.T.copy()
+
+    if is_cupy(trial.psi):
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
 
     return vbias_batch
