@@ -256,7 +256,7 @@ class AFQMCBatch(object):
             self.propagators.cast_to_cupy(verbose)
             if comm.rank == 0:
                 print("# Casting arrays in hamiltonian")
-            # self.hamiltonian.cast_to_cupy(verbose)
+            self.hamiltonian.cast_to_cupy(verbose)
             if comm.rank == 0:
                 print("# Casting arrays in trial")
             self.trial.cast_to_cupy(verbose)

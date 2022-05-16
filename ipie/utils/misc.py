@@ -286,11 +286,11 @@ def get_sys_info(sha1, branch, uuid, nranks):
             elif lib == 'cupy':
                 cu_info = l.cuda.runtime.getDeviceProperties(0)
                 cuda_compute = l.cuda.Device().compute_capability
-                cuda_version = l.cuda.runtime.runtimeGetVersion()
+                cuda_version = str(l.cuda.runtime.runtimeGetVersion())
                 cuda_compute = cuda_compute[0] + '.' +cuda_compute[1]
                 #info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
                 #                                    'path': ' '.join(lib_dir)}
-                version_string = cuda_version[:2] + '.' + cuda_version[2:4] + '.' + cuda_version[5]
+                version_string = cuda_version[:2] + '.' + cuda_version[2:4] + '.' + cuda_version[4]
                 print("# - CUDA compute capability: {:s}".format(cuda_compute))
                 print("# - CUDA version: {}".format(version_string))
                 print("# - GPU Type: {:s}".format(str(cu_info['name'])[1:]))
