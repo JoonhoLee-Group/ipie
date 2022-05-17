@@ -19,12 +19,12 @@ def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
 
     T = zeros((nocc,nocc), dtype=numpy.complex128)
     exx = zeros((nwalkers), dtype=numpy.complex128)
+    rchol = rchola.reshape((naux,nocc,nbsf))
     for iw in range(nwalkers):
-        Greal = Ghalfa_batch[iw].real.copy()
-        Gimag = Ghalfa_batch[iw].imag.copy()
+        Greal = Ghalfa_batch[iw].T.real.copy()
+        Gimag = Ghalfa_batch[iw].T.imag.copy()
         for jx in range(naux):
-            rcholx = rchola[jx].reshape(nocc,nbsf)
-            T = rcholx.dot(Greal.T) + 1.j * rcholx.dot(Gimag.T)
+            T = rchol[jx].dot(Greal) + 1.j * rchol[jx].dot(Gimag)
             exx[iw] += dot(T.ravel(), T.T.ravel())
     exx *= 0.5
     return exx
