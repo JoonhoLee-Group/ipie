@@ -1,0 +1,1 @@
+from .single_det_batch import SingleDetWalkerBatch

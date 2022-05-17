@@ -78,6 +78,8 @@ def test_local_energy_single_det_batch():
         walker_batch.reortho()
 
     energies_einsum = local_energy_single_det_batch_gpu(system, ham, walker_batch, trial)
+    from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
+    energies_einsum_old = local_energy_single_det_batch_gpu_old(system, ham, walker_batch, trial)
     walker_batch.Ghalfa = cupy.asnumpy(walker_batch.Ghalfa)
     walker_batch.Ghalfb = cupy.asnumpy(walker_batch.Ghalfb)
     trial._rchola = cupy.asnumpy(trial._rchola)
@@ -86,6 +88,8 @@ def test_local_energy_single_det_batch():
     trial._rH1b = cupy.asnumpy(trial._rH1b)
     energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
 
+    assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
+
 if __name__ == '__main__':
     test_local_energy_single_det_batch()
