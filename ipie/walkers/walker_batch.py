@@ -309,4 +309,7 @@ class WalkerBatch(object):
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
+        if is_cupy(self.phia): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
         return detR

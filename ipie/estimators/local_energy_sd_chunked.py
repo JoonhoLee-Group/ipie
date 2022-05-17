@@ -187,6 +187,9 @@ def local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walker_ba
     exx_recv = exx_send.copy()
     ecoul_recv = ecoul_send.copy()
 
+    #print("ecoul (initial) = {} at {}".format(ecoul_recv, handler.rank))
+    #print("exx (initial) = {} at {}".format(exx_recv, handler.rank))
+
     for icycle in range(handler.ssize-1):
         for isend, sender in enumerate(senders):
             if handler.srank == isend:
@@ -212,6 +215,8 @@ def local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walker_ba
         exx_send = exx_recv.copy()
         exx_send += exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa_recv)
         exx_send += exx_kernel_batch_rchol_gpu(rcholb_chunk, Ghalfb_recv)
+       # print("exx_recv = {} at {} in cylcle {}".format(exx_recv, handler.rank, icycle))
+       # print("exx_send = {} at {} in cylcle {}".format(exx_send, handler.rank, icycle))
         Ghalfa_send = Ghalfa_recv.copy()
         Ghalfb_send = Ghalfb_recv.copy()
 
@@ -225,11 +230,22 @@ def local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walker_ba
                 handler.scomm.Recv(ecoul_recv,source=sender, tag=1)
                 handler.scomm.Recv(exx_recv,source=sender, tag=2)
 
+    handler.scomm.barrier()
+    cupy.cuda.stream.get_current_stream().synchronize()
+
     e2b = ecoul_recv - exx_recv
 
     energy = zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:,0] = e1b+e2b
     energy[:,1] = e1b
     energy[:,2] = e2b
+
+
+    cupy.cuda.stream.get_current_stream().synchronize()
+
+    # print("ecoul = {} at {}".format(ecoul_recv, handler.rank))
+    # print("exx = {} at {}".format(exx_recv, handler.rank))
+    #print("energy = {} at {}".format(energy, handler.rank))
+   # print("e1b = {} at {}".format(e1b, handler.rank))
 
     return energy

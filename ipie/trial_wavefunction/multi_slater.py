@@ -30,6 +30,7 @@ class MultiSlater(object):
         init_time = time.time()
         self.name = "MultiSlater"
         self.mixed_precision = hamiltonian.mixed_precision
+        self.chunked = False
         # TODO : Fix for MSD.
         # This is for the overlap trial
         if len(wfn) == 3:

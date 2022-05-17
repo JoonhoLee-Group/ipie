@@ -261,5 +261,7 @@ class GenericContinuous(object):
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS)
         else:
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
-            
+        if is_cupy(xshifted): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy    
+            cupy.cuda.stream.get_current_stream().synchronize() 
         return  VHS
