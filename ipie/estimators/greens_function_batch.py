@@ -274,8 +274,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
         G0b, G0Hb = gab_mod(trial.psi0b, phib)
         walker_batch.G0a[iw] = G0a
         walker_batch.G0b[iw] = G0b
-        walker_batch.G0halfa[iw] = G0Ha
-        walker_batch.G0halfb[iw] = G0Hb
+        walker_batch.Ghalf0a[iw] = G0Ha
+        walker_batch.Ghalf0b[iw] = G0Hb
         walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
         walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
 
