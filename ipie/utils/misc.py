@@ -284,15 +284,18 @@ def get_sys_info(sha1, branch, uuid, nranks):
                 print("# - mpicc: {:s}".format(mpicc))
                 info['{:s}'.format(lib)]['mpicc'] = mpicc
             elif lib == 'cupy':
-                cu_info = l.cuda.runtime.getDeviceProperties(0)
-                cuda_compute = l.cuda.Device().compute_capability
-                cuda_compute = cuda_compute[0] + '.' +cuda_compute[1]
-                #info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
-                #                                    'path': ' '.join(lib_dir)}
-                print("# - CUDA compute capability: {:s}".format(cuda_compute))
-                print("# - GPU Type: {:s}".format(str(cu_info['name'])[1:]))
-                print("# - GPU Mem: {:.3f} GB".format(cu_info['totalGlobalMem']/(1024**3.0)))
-                print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
+                try:
+                    cu_info = l.cuda.runtime.getDeviceProperties(0)
+                    cuda_compute = l.cuda.Device().compute_capability
+                    cuda_compute = cuda_compute[0] + '.' +cuda_compute[1]
+                    #info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
+                    #                                    'path': ' '.join(lib_dir)}
+                    print("# - CUDA compute capability: {:s}".format(cuda_compute))
+                    print("# - GPU Type: {:s}".format(str(cu_info['name'])[1:]))
+                    print("# - GPU Mem: {:.3f} GB".format(cu_info['totalGlobalMem']/(1024**3.0)))
+                    print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
+                except:
+                    print("# cupy import error")
         except (ModuleNotFoundError,ImportError):
             print("# Package {:s} not found.".format(lib))
     return info
