@@ -30,18 +30,6 @@ def get_git_revision_hash():
 
     try:
         src = os.path.dirname(__file__) + '/../../'
-        # srcs = [s for s in sys.path if 'pie' in s]
-        # if len(srcs) > 1:
-            # for s in srcs:
-                # if 'setup.py' in os.listdir(s):
-                    # src = s
-                    # break
-                # else:
-                    # src = srcs[0]
-        # else:
-            # src = srcs[0]
-
-
         sha1 = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
                                        cwd=src).strip()
         suffix = subprocess.check_output(['git', 'status',
