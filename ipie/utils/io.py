@@ -563,7 +563,7 @@ def to_qmcpack_complex(array):
     shape = array.shape
     return array.view(numpy.float64).reshape(shape+(2,))
 
-def write_input(filename, hamil, wfn, bp=False, options={}):
+def write_input(filename, hamil, wfn, est, bp=False, options={}):
     with h5py.File(wfn, 'r') as fh5:
         try:
             dims = fh5['Wavefunction/NOMSD/dims'][:]
@@ -588,12 +588,15 @@ def write_input(filename, hamil, wfn, bp=False, options={}):
             'nwalkers': 640,
             'nsteps': 25,
             'blocks': 50000,
-            'batched': True
+            'batched': True,
+            "pop_control_freq": 5,
+            "stabilise_freq": 5
             },
         'trial': {
             'filename': wfn
             },
         'estimators': {
+            'filename': est
             }
         }
     if bp:

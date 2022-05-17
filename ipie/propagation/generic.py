@@ -1,8 +1,13 @@
 import time
+import math
 import numpy
 import scipy.linalg
 from ipie.utils.misc import is_cupy
 from ipie.utils.pack import unpack_VHS_batch
+try:
+    from ipie.utils.pack_numba_gpu import unpack_VHS_batch_gpu
+except:
+    pass
 
 class GenericContinuous(object):
     """Propagator for generic many-electron Hamiltonian.
@@ -127,12 +132,16 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(xshifted): # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
             assert(cupy.is_available())
             isrealobj = cupy.isrealobj
+            zeros = cupy.zeros
+            iscupy = True
         else:
             isrealobj = numpy.isrealobj
+            zeros = numpy.zeros
+            iscupy = False
 
         if (hamiltonian.mixed_precision): # cast it to float
             xshifted = xshifted.astype(numpy.complex64)
@@ -143,22 +152,105 @@ class GenericContinuous(object):
             else:
                 VHS_packed = hamiltonian.chol_packed.dot(xshifted)
             # (nb, nb, nw) -> (nw, nb, nb)
-            VHS_packed = VHS_packed.T.reshape(self.nwalkers, hamiltonian.chol_packed.shape[0]).copy()
+            VHS_packed = self.isqrt_dt * VHS_packed.T.reshape(self.nwalkers, hamiltonian.chol_packed.shape[0]).copy()
             
             if (hamiltonian.mixed_precision): # cast it to double
                 VHS_packed = VHS_packed.astype(numpy.complex128)
 
-            VHS = numpy.zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_packed.dtype)
-            unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
+            VHS = zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_packed.dtype)
+            if iscupy:
+                threadsperblock = 512
+                nbsf = hamiltonian.nbasis
+                nut = round(nbsf *(nbsf+1)/2)
+                blockspergrid = math.ceil(self.nwalkers*nut / threadsperblock)
+                unpack_VHS_batch_gpu[blockspergrid, threadsperblock](hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS)
+            else:
+                unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
         else:
             if isrealobj(hamiltonian.chol_vecs):
                 VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.j * hamiltonian.chol_vecs.dot(xshifted.imag)
             else:
                 VHS = hamiltonian.chol_vecs.dot(xshifted)
             # (nb, nb, nw) -> (nw, nb, nb)
-            VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
+            VHS = self.isqrt_dt * VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
 
             if (hamiltonian.mixed_precision): # cast it to double
                 VHS = VHS.astype(numpy.complex128)
             
-        return  self.isqrt_dt * VHS
+        return  VHS
+
+
+    def construct_VHS_batch_chunked(self, hamiltonian, xshifted, handler):
+        """Construct the one body potential from the HS transformation
+        Parameters
+        ----------
+        hamiltonian :
+            hamiltonian class
+        xshifted : numpy array
+            shifited auxiliary field
+        Returns
+        -------
+        VHS : numpy array
+            the HS potential
+        """
+        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            assert(cupy.is_available())
+            isrealobj = cupy.isrealobj
+            zeros_like = cupy.zeros_like
+            zeros = cupy.zeros
+            where = cupy.where
+        else:
+            isrealobj = numpy.isrealobj
+            zeros_like = numpy.zeros_like
+            zeros = numpy.zeros
+            where = numpy.where
+        
+        assert(hamiltonian.chunked)
+        assert(hamiltonian.symmetry)
+        assert(isrealobj(hamiltonian.chol_vecs))
+
+        if (hamiltonian.mixed_precision): # cast it to float
+            xshifted = xshifted.astype(numpy.complex64)
+
+#       xshifted is unique for each processor!
+        xshifted_send = xshifted.copy()
+        xshifted_recv = zeros_like(xshifted)
+
+        idxs = hamiltonian.chol_idxs_chunk
+        chol_packed_chunk = hamiltonian.chol_packed_chunk
+        
+        VHS_send = chol_packed_chunk.dot(xshifted[idxs,:].real) + 1.j * chol_packed_chunk.dot(xshifted[idxs,:].imag)
+        VHS_recv = zeros_like(VHS_send)
+
+        ssize = handler.scomm.size
+        srank = handler.scomm.rank
+
+        for icycle in range(handler.ssize-1):
+            for isend, sender in enumerate(handler.senders):
+                if srank == isend:
+                    handler.scomm.Send(xshifted_send,dest=handler.receivers[isend], tag=1)
+                    handler.scomm.Send(VHS_send,dest=handler.receivers[isend], tag=2)
+                elif srank == handler.receivers[isend]:
+                    sender = where(handler.receivers == srank)[0]
+                    handler.scomm.Recv(xshifted_recv,source=sender, tag=1)
+                    handler.scomm.Recv(VHS_recv,source=sender, tag=2)
+            handler.scomm.barrier()
+            # prepare sending
+            VHS_send = VHS_recv\
+                    + chol_packed_chunk.dot(xshifted_recv[idxs,:].real)\
+                    + 1.j * chol_packed_chunk.dot(xshifted_recv[idxs,:].imag)
+            xshifted_send = xshifted_recv.copy()
+
+        for isend, sender in enumerate(handler.senders):
+            if (handler.scomm.rank == sender): # sending 1 xshifted to 0 xshifted_buf
+                handler.scomm.Send(VHS_send,dest=handler.receivers[isend], tag=1)
+            elif srank == handler.receivers[isend]:
+                sender = where(handler.receivers == srank)[0]
+                handler.scomm.Recv(VHS_recv,source=sender, tag=1)
+
+        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(self.nwalkers, chol_packed_chunk.shape[0]).copy()
+        VHS = zeros((self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype = VHS_recv.dtype)
+        unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
+            
+        return  VHS

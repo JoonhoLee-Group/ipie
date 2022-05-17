@@ -80,8 +80,8 @@ def local_energy_generic_batch(Ghalfa_batch, Ghalfb_batch, rchola, rcholb):
 
 nwalkers = 20
 
-nao = 100
-nocc = 10
+nao = 200
+nocc = 50
 naux = nao * 4
 Ghalfa_batch = numpy.random.randn(nwalkers * nao * nocc).reshape(nwalkers, nocc,nao) + 1.j * numpy.random.randn(nwalkers * nao * nocc).reshape(nwalkers, nocc, nao)
 Ghalfb_batch = numpy.random.randn(nwalkers * nao * nocc).reshape(nwalkers, nocc,nao)+ 1.j * numpy.random.randn(nwalkers * nao * nocc).reshape(nwalkers, nocc, nao)

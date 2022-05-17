@@ -14,7 +14,7 @@ from ipie.utils.testing import (
         generate_hamiltonian,
         get_random_wavefunction
         )
-from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
 from ipie.estimators.greens_function_batch import greens_function_multi_det_wicks, greens_function_multi_det
 from ipie.estimators.local_energy_batch import local_energy_multi_det_trial_batch, local_energy_multi_det_trial_wicks_batch

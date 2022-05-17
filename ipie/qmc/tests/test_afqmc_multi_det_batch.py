@@ -17,6 +17,7 @@ from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
+from ipie.utils.pack import pack_cholesky
 
 steps = 25
 blocks = 5
@@ -44,6 +45,7 @@ def test_generic_multi_det_batch():
                 'batched': True
             },
             'estimates': {
+                'filename': "estimates.test_generic_multi_det_batch.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -57,9 +59,21 @@ def test_generic_multi_det_batch():
         }
     numpy.random.seed(seed)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    chol = chol.reshape((-1,nmo*nmo)).T.copy()
+
+    nchol = chol.shape[-1]
+    chol = chol.reshape((nmo,nmo,nchol))
+
+    idx = numpy.triu_indices(nmo)
+    cp_shape = (nmo*(nmo+1)//2, chol.shape[-1])
+    chol_packed = numpy.zeros(cp_shape, dtype = chol.dtype)
+    pack_cholesky(idx[0],idx[1], chol_packed, chol)
+    chol = chol.reshape((nmo*nmo,nchol))
+
+
     sys = Generic(nelec=nelec) 
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
-                  chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                  chol=chol, chol_packed = chol_packed,
                   ecore=enuc)
 
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=ndets, init=True)
@@ -82,7 +96,7 @@ def test_generic_multi_det_batch():
     denom_batch = afqmc.estimators.estimators['mixed'].estimates[enum_batch.edenom]
     weight_batch = afqmc.estimators.estimators['mixed'].estimates[enum_batch.weight]
 
-    data_batch = extract_mixed_estimates('estimates.0.h5')
+    data_batch = extract_mixed_estimates('estimates.test_generic_multi_det_batch.h5')
 
     numpy.random.seed(seed)
     options = {
@@ -99,6 +113,7 @@ def test_generic_multi_det_batch():
                 'batched': False
             },
             'estimates': {
+                'filename': "estimates.test_generic_multi_det_batch.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -142,7 +157,7 @@ def test_generic_multi_det_batch():
     assert numer.imag == pytest.approx(numer_batch.imag)
     assert denom.imag == pytest.approx(denom_batch.imag)
     assert weight.imag == pytest.approx(weight_batch.imag)
-    data = extract_mixed_estimates('estimates.0.h5')
+    data = extract_mixed_estimates('estimates.test_generic_multi_det_batch.h5')
 
     assert numpy.mean(data_batch.WeightFactor.values[:-1].real) == pytest.approx(numpy.mean(data.WeightFactor.values[:-1].real))
     assert numpy.mean(data_batch.Weight.values[:-1].real) == pytest.approx(numpy.mean(data.Weight.values[:-1].real))

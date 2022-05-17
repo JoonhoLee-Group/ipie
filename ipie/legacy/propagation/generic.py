@@ -240,6 +240,11 @@ class GenericContinuous(object):
             VHS = hamiltonian.chol_vecs.dot(xshifted)
         # (nb, nb, nw) -> (nw, nb, nb)
         VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
+        
+        if is_cupy(hamiltonian.chol_vecs): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
+
         return  self.isqrt_dt * VHS
 
 def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=False):

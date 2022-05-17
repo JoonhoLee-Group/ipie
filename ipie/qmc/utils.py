@@ -1,6 +1,6 @@
 import numpy
 
-def set_rng_seed(seed, comm):
+def set_rng_seed(seed, comm, gpu=False):
     if seed is None:
         # only set "random" part of seed on parent processor so we can reproduce
         # results in when running in parallel.
@@ -12,5 +12,9 @@ def set_rng_seed(seed, comm):
         comm.Bcast(seed, root=0)
         seed = seed[0]
     seed = seed + comm.rank
-    numpy.random.seed(seed)
+    if gpu:
+        import cupy
+        cupy.random.seed(seed)
+    else:
+        numpy.random.seed(seed)
     return seed

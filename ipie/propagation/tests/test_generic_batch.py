@@ -5,10 +5,9 @@ from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.systems.generic import Generic
 from ipie.propagation.continuous import Continuous
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.legacy.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.utils.testing import (
@@ -30,7 +29,7 @@ def test_overlap_rhf_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     init[:,:nelec[0]] = init[:,nelec[0]:].copy()
@@ -81,7 +80,7 @@ def test_overlap_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
@@ -131,7 +130,7 @@ def test_two_body_rhf_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     init[:,:nelec[0]] = init[:,nelec[0]:].copy()
@@ -183,7 +182,7 @@ def test_two_body_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
@@ -233,7 +232,7 @@ def test_hybrid_rhf_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     init[:,:nelec[0]] = init[:,nelec[0]:].copy()
@@ -282,7 +281,7 @@ def test_hybrid_batch():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
@@ -331,7 +330,7 @@ def test_vhs():
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
-                     ecore=0)
+                     ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)

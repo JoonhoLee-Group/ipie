@@ -28,12 +28,15 @@ def test_constructor():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'walkers': {
                 'pop_control': 'comb'
             },
             'estimates': {
+                'filename': "estimates.test_constructor.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -66,7 +69,9 @@ def test_ueg():
                 'num_steps': 10,
                 'blocks': 5,
                 'rng_seed': 8,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'system': {
                 'name': "UEG",
@@ -82,6 +87,7 @@ def test_ueg():
                 'pop_control': 'comb'
             },
             'estimates': {
+                'filename': "estimates.test_ueg.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -123,7 +129,9 @@ def test_hubbard():
                 'blocks': 10,
                 'rng_seed': 8,
                 'nwalkers': 10,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'system':{
                 'name': "Generic",
@@ -143,6 +151,7 @@ def test_hubbard():
                 'name': 'hubbard_uhf'
             },
             'estimates': {
+                'filename': "estimates.test_hubbard.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -162,7 +171,7 @@ def test_hubbard():
     denom = afqmc.estimators.estimators['mixed'].estimates[enum.edenom]
     weight = afqmc.estimators.estimators['mixed'].estimates[enum.weight]
     assert numer.real == pytest.approx(-152.68468568462666)
-    data = extract_mixed_estimates('estimates.0.h5')
+    data = extract_mixed_estimates('estimates.test_hubbard.h5')
     # old code seemed to ommit last value. Discard to avoid updating benchmark.
     assert numpy.mean(data.ETotal.values[:-1]) == pytest.approx(-14.974806533852874)
 
@@ -176,7 +185,9 @@ def test_hubbard_complex():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'system':{
                 'name': 'Generic',
@@ -196,6 +207,7 @@ def test_hubbard_complex():
                 'name': 'hubbard_UHF'
             },
             'estimates': {
+                'filename': "estimates.test_hubbard_complex.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -215,7 +227,7 @@ def test_hubbard_complex():
     denom = afqmc.estimators.estimators['mixed'].estimates[enum.edenom]
     weight = afqmc.estimators.estimators['mixed'].estimates[enum.weight]
     assert numer == pytest.approx(-152.91937839611)
-    data = extract_mixed_estimates('estimates.0.h5')
+    data = extract_mixed_estimates('estimates.test_hubbard_complex.h5')
     assert numpy.mean(data.ETotal.values[:-1].real) == pytest.approx(-15.14323385684513)
 
 @pytest.mark.driver
@@ -230,12 +242,15 @@ def test_generic():
                 'steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'walkers': {
                 'pop_control': 'comb'
             },
             'estimates': {
+                'filename': "estimates.test_generic.h5",
                 'mixed': {
                     'energy_eval_freq': 1
                 }
@@ -261,7 +276,7 @@ def test_generic():
     denom = afqmc.estimators.estimators['mixed'].estimates[enum.edenom]
     weight = afqmc.estimators.estimators['mixed'].estimates[enum.weight]
     assert numer.real == pytest.approx(3.8763193646854273)
-    data = extract_mixed_estimates('estimates.0.h5')
+    data = extract_mixed_estimates('estimates.test_generic.h5')
     assert numpy.mean(data.ETotal.values[:-1].real) == pytest.approx(1.5485077038208)
 
 @pytest.mark.driver
@@ -275,7 +290,9 @@ def test_generic_single_det():
                 'num_steps': 10,
                 'blocks': 10,
                 'rng_seed': 8,
-                'batched':False
+                'batched':False,
+                "pop_control_freq": 1,
+                "stabilise_freq": 10
             },
             'trial': {
                 'name': 'MultiSlater'
@@ -288,10 +305,11 @@ def test_generic_single_det():
                     'tau_bp': 0.025,
                     'one_rdm': True
                     },
-                    'mixed': {
-                        'energy_eval_freq': 1
-                    }
+                'filename': "estimates.test_generic_single_det.h5",
+                'mixed': {
+                    'energy_eval_freq': 1
                 }
+            }
         }
     numpy.random.seed(7)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
@@ -311,16 +329,23 @@ def test_generic_single_det():
     denom = afqmc.estimators.estimators['mixed'].estimates[enum.edenom]
     weight = afqmc.estimators.estimators['mixed'].estimates[enum.weight]
     assert numer.real == pytest.approx(3.8763193646854273)
-    data = extract_mixed_estimates('estimates.0.h5')
+    data = extract_mixed_estimates('estimates.test_generic_single_det.h5')
     assert numpy.mean(data.ETotal.values[:-1].real) == pytest.approx(1.5485077038208)
-    rdm = extract_rdm('estimates.0.h5')
+    rdm = extract_rdm('estimates.test_generic_single_det.h5')
     assert rdm[0,0].trace() == pytest.approx(nelec[0])
     assert rdm[0,1].trace() == pytest.approx(nelec[1])
     assert rdm[11,0,1,3].real == pytest.approx(-0.121883381144845)
 
 def teardown_module(self):
     cwd = os.getcwd()
-    files = ['estimates.0.h5']
+    files = [
+            'estimates.test_generic_single_det.h5',
+            'estimates.test_constructor.h5',
+            'estimates.test_ueg.h5',
+            'estimates.test_hubbard.h5',
+            'estimates.test_hubbard_complex.h5',
+            'estimates.test_hubbard_complex.h5'
+            ]
     for f in files:
         try:
             os.remove(cwd+'/'+f)

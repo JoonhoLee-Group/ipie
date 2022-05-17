@@ -14,8 +14,6 @@ from ipie.utils.io import (
         write_qmcpack_sparse,
         write_qmcpack_dense,
         )
-from ipie.utils.mpi import get_shared_array, have_shared_mem
-
 
 class Generic(object):
     """Ab-initio Hamiltonian.
@@ -63,7 +61,7 @@ class Generic(object):
         integrals.
     """
 
-    def __init__(self, h1e, chol, ecore, h1e_mod=None, options = {},
+    def __init__(self, h1e, chol, ecore, h1e_mod=None, chol_packed = None, options = {},
                  verbose=False, write_ints=False):
         if verbose:
             print("# Parsing input options for hamiltonians.Generic.")
@@ -72,19 +70,31 @@ class Generic(object):
         self.exact_eri = options.get("exact_eri", False)
         self.mixed_precision = options.get("mixed_precision", False)
         self.density_diff = options.get("density_diff", False)
+        self.symmetry = options.get("symmetry", True)
+        self.chunked = False # chunking disabled by default
+
+        self.ecore = ecore
+        self.chol_vecs = chol # [M^2, nchol]
+
+        if self.symmetry:
+            self.chol_packed = chol_packed
+            nbsf = h1e.shape[1]
+            self.sym_idx = numpy.triu_indices(nbsf)
+            self.sym_idx_i = self.sym_idx[0].copy()
+            self.sym_idx_j = self.sym_idx[1].copy()
+        else:
+            self.chol_packed = None # [M*(M+1)/2, nchol] if used
+            self.sym_idx = None
 
         if self.mixed_precision:
             if not self.density_diff:
                 self.density_diff = True
                 if self.verbose:
                     print("# density_diff is switched on for more stable mixed precision")
-
-        self.ecore = ecore
-        self.chol_vecs = chol # [M^2, nchol]
-
-        self.symmetry = False
-        self.chol_packed = None # [M*(M+1)/2, nchol] if used
-        self.sym_idx = None
+            if self.symmetry:
+                self.chol_packed = self.chol_packed.astype(numpy.float32)
+            else:
+                self.chol_vecs = self.chol_vecs.astype(numpy.float32) # [M^2, nchol]
 
         if self.exact_eri:
             if self.verbose:
@@ -153,14 +163,63 @@ class Generic(object):
                                 enuc=self.ecore, filename=filename,
                                 real_chol=not self.cplx_chol)
 
+    def chunk (self, handler, verbose=False):
+        self.chunked = True # Boolean to indicate that chunked cholesky is available
+
+        chol_idxs = [i for i in range(self.nchol)]
+        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
+
+
+        if self.symmetry:
+            if handler.srank == 0: # creating copies for every rank = 0!!!!
+                self.chol_packed = self.chol_packed.T.copy() # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = handler.scatter_group(self.chol_packed) # distribute over chol
+
+            if handler.srank == 0:
+                self.chol_packed = self.chol_packed.T.copy() # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = self.chol_packed_chunk.T.copy() # [M^2, chol_chunk]
+            
+            tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
+            assert(self.chol_packed.size == tot_size)
+        else:
+            if handler.comm.rank == 0:
+                self.chol_vecs = self.chol_vecs.T.copy() # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = handler.scatter_group(self.chol_vecs) # distribute over chol
+
+            if handler.comm.rank == 0:
+                self.chol_vecs = self.chol_vecs.T.copy() # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = self.chol_vecs_chunk.T.copy() # [M^2, chol_chunk]
+
+            tot_size = handler.allreduce_group(self.chol_vecs_chunk.size)
+            assert(self.chol_vecs.size == tot_size)
+
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy (self, verbose = False):
         import cupy
 
-        size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
+        size = self.H1.size + self.h1e_mod.size
+        if (self.chunked):
+            if self.symmetry:
+                size += self.chol_packed_chunk.size
+            else:
+                size += self.chol_vecs_chunk.size
+        else:
+            if self.symmetry:
+                size += self.chol_packed.size
+            else:
+                size += self.chol_vecs.size
+
         if self.symmetry:
-            size += self.chol_packed.size
-            size -= self.chol_vecs.size
+            size += self.sym_idx_i.size
+            size += self.sym_idx_j.size
 
         if verbose:
             expected_bytes = size * 8. # float64
@@ -169,9 +228,19 @@ class Generic(object):
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
         if self.symmetry:
-            self.chol_packed = cupy.asarray(self.chol_packed)
+            self.sym_idx_i = cupy.asarray(self.sym_idx_i)
+            self.sym_idx_j = cupy.asarray(self.sym_idx_j)
+
+        if (self.chunked):
+            if self.symmetry:
+                self.chol_packed_chunk = cupy.asarray(self.chol_packed_chunk)
+            else:
+                self.chol_vecs_chunk = cupy.asarray(self.chol_vecs_chunk)
         else:
-            self.chol_vecs = cupy.asarray(self.chol_vecs)
+            if self.symmetry:
+                self.chol_packed = cupy.asarray(self.chol_packed)
+            else:
+                self.chol_vecs = cupy.asarray(self.chol_vecs)
 
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
@@ -184,15 +253,17 @@ def read_integrals(integral_file):
                 from_qmcpack_sparse(integral_file)
                 )
         chol_vecs = schol_vecs.toarray()
+        return h1e, chol_vecs, ecore
     except KeyError:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = (
                 from_qmcpack_dense(integral_file)
                 )
+        return h1e, chol_vecs, ecore
     except OSError:
         print("# Unknown Hamiltonian file {}.".format(integral_file))
     except:
         print("# Unknown Hamiltonian file format.")
-    return h1e, chol_vecs, ecore
+    return None
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.

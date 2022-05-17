@@ -126,6 +126,10 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     elif ndown == 0:
         ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
 
+    if is_cupy(trial.psi):
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+
     return ot
 
 # overlap for a given determinant

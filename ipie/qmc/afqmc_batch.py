@@ -26,7 +26,7 @@ from ipie.utils.misc import (
         get_node_mem
         )
 from ipie.utils.io import  to_json, serialise, get_input_value
-from ipie.utils.mpi import get_shared_comm
+from ipie.utils.mpi import MPIHandler
 from ipie.utils.misc import is_cupy
 
 
@@ -118,8 +118,8 @@ class AFQMCBatch(object):
                                   alias=['qmc_options'],
                                   verbose=self.verbosity>1)
 
-        self.shared_comm = comm
-
+        self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
+        self.shared_comm = self.mpi_handler.shared_comm
         # 2. Calculation objects.
         if system is not None:
             self.system = system
@@ -145,6 +145,22 @@ class AFQMCBatch(object):
 
         self.qmc = QMCOpts(qmc_opt, self.system,
                            verbose=self.verbosity>1)
+        if self.qmc.gpu:
+            try:
+                import cupy
+                assert(cupy.is_available())
+            except:
+                if comm.rank == 0:
+                    print("# cupy is unavailble but GPU calculation is requested")
+                exit()
+            ngpus = cupy.cuda.runtime.getDeviceCount()
+            props = cupy.cuda.runtime.getDeviceProperties(0)
+            cupy.cuda.runtime.setDevice(self.shared_comm.rank)
+            if comm.rank == 0:
+                if ngpus > comm.size:
+                    print("# There are unused GPUs ({} MPI tasks but {} GPUs). "
+                          " Check if this is really what you wanted.".format(comm.size,ngpus))
+
         if (self.qmc.nwalkers == None):
             assert(self.qmc.nwalkers_per_task is not None)
             self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
@@ -166,7 +182,7 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
             
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm, gpu=self.qmc.gpu)
         
         self.cplx = self.determine_dtype(options.get('propagator', {}),
                                          self.system)
@@ -218,30 +234,20 @@ class AFQMCBatch(object):
             print("# Getting WalkerBatchHandler")
         self.psi = WalkerBatchHandler(self.system, self.hamiltonian, self.trial,
                            self.qmc, walker_opts=wlk_opts,
-                           verbose=verbose,
+                           mpi_handler=self.mpi_handler,
                            nprop_tot=self.estimators.nprop_tot,
                            nbp=self.estimators.nbp,
-                           comm=comm)
+                           verbose=verbose)
+
+        if (self.mpi_handler.nmembers > 1):
+            if comm.rank == 0:
+                print("# Chunking hamiltonian.")
+            self.hamiltonian.chunk(self.mpi_handler)
+            if comm.rank == 0:
+                print("# Chunking trial.")
+            self.trial.chunk(self.mpi_handler)
 
         if (self.qmc.gpu):
-            try:
-                import cupy
-                assert(cupy.is_available())
-            except:
-                if comm.rank == 0:
-                    print("# cupy is unavailble but GPU calculation is requested")
-                exit()
-            ngpus = cupy.cuda.runtime.getDeviceCount()
-            props = cupy.cuda.runtime.getDeviceProperties(0)
-            if comm.rank == 0:
-                if (ngpus > comm.size):
-                    print("# There are unused GPUs ({} MPI tasks but {} GPUs). Check if this is really what you wanted.".format(comm.size,ngpus))
-
-            if (ngpus < comm.size):
-                if comm.rank == 0:
-                    print("# Not enough GPUs availalbe. {} MPI tasks requested but {} GPUs available.".format(comm.size, ngpus))
-                exit()
-            
             if comm.rank == 0:
                 print("# Casting numpy arrays to cupy arrays")
 

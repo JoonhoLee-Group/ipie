@@ -32,8 +32,10 @@ def get_greens_function(trial):
     """
 
     if trial.name == "MultiSlater" and trial.ndets == 1:
-        # compute_greens_function = greens_function_single_det
-        compute_greens_function = greens_function_single_det_batch
+        if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+            compute_greens_function = greens_function_single_det_batch
+        else:
+            compute_greens_function = greens_function_single_det
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
         compute_greens_function = greens_function_multi_det
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and not trial.optimized:
@@ -86,17 +88,19 @@ def greens_function_single_det(walker_batch, trial):
     det = []
 
     for iw in range(walker_batch.nwalkers):
-        ovlp = dot(walker_batch.phi[iw][:,:nup].T, trial.psi[:,:nup].conj())
+        ovlp = dot(walker_batch.phia[iw].T, trial.psi[:,:nup].conj())
         ovlp_inv = inv(ovlp)
-        walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phi[iw][:,:nup].T)
-        walker_batch.Ga[iw] = dot(trial.psi[:,:nup].conj(), walker_batch.Ghalfa[iw])
+        walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phia[iw].T)
+        if not trial.half_rotated:
+            walker_batch.Ga[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfa[iw])
         sign_a, log_ovlp_a = slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0 and not walker_batch.rhf:
-            ovlp = dot(walker_batch.phi[iw][:,nup:].T, trial.psi[:,nup:].conj())
+            ovlp = dot(walker_batch.phib[iw].T, trial.psi[:,nup:].conj())
             sign_b, log_ovlp_b = slogdet(ovlp)
-            walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phi[iw][:,nup:].T)
-            walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
+            walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phib[iw].T)
+            if not trial.half_rotated:
+                walker_batch.Gb[iw] = dot(trial.psi[:,nup:].conj(), walker_batch.Ghalfb[iw])
             det += [sign_a*sign_b*exp(log_ovlp_a+log_ovlp_b-walker_batch.log_shift[iw])]
         elif ndown > 0 and walker_batch.rhf:
             det += [sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift[iw])]
@@ -104,6 +108,9 @@ def greens_function_single_det(walker_batch, trial):
             det += [sign_a*exp(log_ovlp_a-walker_batch.log_shift)]
 
     det = array(det, dtype=numpy.complex128)
+    
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
 
     return det
 
@@ -162,7 +169,11 @@ def greens_function_single_det_batch(walker_batch, trial):
         ot = sign_a*sign_a*exp(log_ovlp_a+log_ovlp_a-walker_batch.log_shift)
     elif ndown == 0:
         ot = sign_a*exp(log_ovlp_a-walker_batch.log_shift)
-
+    
+    if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+    
     return ot
 
 def greens_function_multi_det(walker_batch, trial):

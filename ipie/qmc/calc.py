@@ -45,6 +45,8 @@ def get_driver(options, comm):
     qmc_opts = get_input_value(options, 'qmc', default={},
                                alias=['qmc_options'])
     beta = get_input_value(qmc_opts, 'beta', default=None)
+    if comm.rank != 0:
+        verbosity = 0
     batched = get_input_value(qmc_opts, 'batched', default=True,
             verbose=verbosity)
     
@@ -90,24 +92,6 @@ def read_input(input_file, comm, verbose=False):
         raise FileNotFoundError
 
     return options
-
-
-def set_rng_seed(seed, comm):
-    if seed is None:
-        # only set "random" part of seed on parent processor so we can reproduce
-        # results in when running in parallel.
-        if comm.rank == 0:
-            seed = numpy.array([numpy.random.randint(0, 1e8)], dtype='i4')
-            # Can't directly json serialise numpy arrays
-            qmc_opts['rng_seed'] = seed[0].item()
-        else:
-            seed = numpy.empty(1, dtype='i4')
-        comm.Bcast(seed, root=0)
-        seed = seed[0]
-    seed = seed + comm.rank
-    numpy.random.seed(seed)
-    return seed
-
 
 def setup_parallel(options, comm=None, verbose=False):
     """Wrapper routine for initialising simulation

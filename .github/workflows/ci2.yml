@@ -27,13 +27,17 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        python -m pytest
+        pip install pytest-xdist
+        python -m pytest -n 6 --dist loadfile
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
+        mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
     - name: Test Integration
+      timeout-minutes: 10
       run: |
         pip install pytest-mpi
-        mpirun -np 4 python -m pytest --with-mpi ipie/qmc/tests/test_mpi_integration.py
+        mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
         ./tools/run_examples.sh
 

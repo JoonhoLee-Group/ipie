@@ -155,6 +155,9 @@ class Continuous(object):
                     Temp[iw] = VHS[iw].dot(Temp[iw]) / n
                     phi[iw] += Temp[iw]
 
+        if is_cupy(VHS):
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
@@ -197,7 +200,11 @@ class Continuous(object):
         for n in range(1, self.exp_nmax+1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
-            
+
+        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+            cupy.cuda.stream.get_current_stream().synchronize()
+
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
@@ -259,7 +266,7 @@ class Continuous(object):
         xbar = zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
-            self.propagator.vbias_batch = construct_force_bias_batch(hamiltonian, walker_batch, trial)
+            self.propagator.vbias_batch = construct_force_bias_batch(hamiltonian, walker_batch, trial, walker_batch.mpi_handler)
             xbar = - self.propagator.sqrt_dt * (1j*self.propagator.vbias_batch-self.propagator.mf_shift)
             self.tfbias += time.time() - start_time
 
@@ -283,7 +290,10 @@ class Continuous(object):
 
         # Operator terms contributing to propagator.
         start_time = time.time()
-        VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
+        if hamiltonian.chunked:
+            VHS = self.propagator.construct_VHS_batch_chunked(hamiltonian, xshifted.T.copy(), walker_batch.mpi_handler)
+        else:
+            VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
         self.tvhs += time.time() - start_time
         assert(len(VHS.shape) == 3)
         start_time = time.time()
