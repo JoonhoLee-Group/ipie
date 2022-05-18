@@ -24,7 +24,6 @@ from ipie.estimators.local_energy_batch import (
         local_energy_multi_det_trial_batch)
 from ipie.estimators.local_energy_wicks import (
         local_energy_multi_det_trial_wicks_batch,
-        local_energy_multi_det_trial_wicks_batch_opt_low_mem,
         local_energy_multi_det_trial_wicks_batch_opt,
         fill_opp_spin_factors_batched,
         fill_same_spin_contribution_batched
@@ -54,7 +53,8 @@ def test_greens_function_wicks_opt():
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
-    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
+    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
+        'use_wicks_helper': False})
     trial.calculate_energy(system, ham)
     numpy.random.seed(7)
     walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
@@ -183,7 +183,8 @@ def test_phmsd_local_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
-    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True})
+    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
+        'use_wicks_helper': False})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
 
@@ -207,15 +208,15 @@ def test_phmsd_local_energy():
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham,
             walker_batch_test, trial)
-    e_wicks_opt_low_mem = local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham,
-            walker_batch_test, trial)
+    # e_wicks_opt_low_mem = local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham,
+            # walker_batch_test, trial)
     e_dumb = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
 
     print(e_dumb[0])
     print(e_wicks[0])
-    # assert numpy.allclose(e_dumb, e_wicks)
-    # assert numpy.allclose(e_dumb, e_wicks_opt)
-    # assert numpy.allclose(e_dumb, e_wicks_opt_low_mem)
+    assert numpy.allclose(e_dumb, e_wicks)
+    assert numpy.allclose(e_dumb, e_wicks_opt)
+    assert numpy.allclose(e_dumb, e_wicks_opt_low_mem)
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
