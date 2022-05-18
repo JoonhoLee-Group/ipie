@@ -280,8 +280,8 @@ class MultiSlater(object):
         nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]
         self.spin_occs = [numpy.sort(d) for d in dets]
-        self.occa = numpy.array(wfn[1])
-        self.occb = numpy.array(wfn[2])
+        self.occa = numpy.array(wfn[1], dtype=numpy.int32)
+        self.occb = numpy.array(wfn[2], dtype=numpy.int32)
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
             self.psi[idet,:,:nup] = I[:,occa]
