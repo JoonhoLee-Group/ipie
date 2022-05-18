@@ -40,6 +40,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         # useful variables
         G0a = walker_batch.G0a[iwalker]
         G0b = walker_batch.G0b[iwalker]
+        G0Ha = walker_batch.Ghalf0a[iwalker]
+        G0Hb = walker_batch.Ghalf0b[iwalker]
         Q0a = walker_batch.Q0a[iwalker]
         Q0b = walker_batch.Q0b[iwalker]
         CIa = walker_batch.CIa[iwalker]
@@ -61,8 +63,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         LXb = LXb.reshape((nbasis,nbasis))
 
         # useful intermediate
-        QCIGa = Q0a.dot(CIa).dot(G0a)
-        QCIGb = Q0b.dot(CIb).dot(G0b)
+        QCIGa = Q0a.dot(CIa).dot(G0Ha)
+        QCIGb = Q0b.dot(CIb).dot(G0Hb)
 
         cont2_Jaa = numpy.sum(QCIGa * LXa)
         cont2_Jbb = numpy.sum(QCIGb * LXb)
@@ -644,6 +646,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
     # useful variables
     G0a = walker_batch.G0a
     G0b = walker_batch.G0b
+    G0Ha = walker_batch.Ghalf0a
+    G0Hb = walker_batch.Ghalf0b
     Q0a = walker_batch.Q0a
     Q0b = walker_batch.Q0b
     CIa = walker_batch.CIa
@@ -681,13 +685,13 @@ def local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham, walker_bat
                 'wpr,wrs,wsq->wpq',
                 walker_batch.Q0a,
                 walker_batch.CIa,
-                G0a,
+                G0Ha,
                 optimize=True)
     QCIGb = numpy.einsum(
                 'wpr,wrs,wsq->wpq',
                 walker_batch.Q0b,
                 walker_batch.CIb,
-                G0b,
+                G0Hb,
                 optimize=True)
 
     cont2_Jaa = numpy.einsum('wpq,wpq->w', QCIGa, LXa, optimize=True)
