@@ -197,6 +197,7 @@ class MultiSlater(object):
         if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
+            start = time.time()
             if self.use_wicks_helper:
                 dets = wicks_helper.encode_dets(self.occa, self.occb)
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
@@ -208,6 +209,7 @@ class MultiSlater(object):
                         system.ne)
             else:
                 self.G = self.compute_1rdm(hamiltonian.nbasis)
+            end = time.time()
             if verbose:
                 print("# Time to compute 1-RDM: {} s".format(end - start))
 
