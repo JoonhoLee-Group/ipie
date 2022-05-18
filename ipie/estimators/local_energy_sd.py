@@ -79,10 +79,10 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
     Ghalfb_batch_imag = Ghalfb_batch.imag.copy()
     X = rchola.dot(Ghalfa_batch_real.T) + 1.j * rchola.dot(Ghalfa_batch_imag.T) # naux x nwalkers
     X += rcholb.dot(Ghalfb_batch_real.T) + 1.j * rcholb.dot(Ghalfb_batch_imag.T) # naux x nwalkers
-    ecoul = zeros (nwalkers, dtype = numpy.complex128)
+    ecoul = zeros(nwalkers, dtype = numpy.complex128)
     X = X.T.copy()
     for iw in range(nwalkers):
-        ecoul[iw] += dot(X[iw],X[iw])
+        ecoul[iw] += dot(X[iw], X[iw])
     ecoul *= 0.5
     return ecoul
 
@@ -247,6 +247,25 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
 
     return energy
 
+def two_body_energy_uhf(trial, walker_batch):
+    if is_cupy(trial.psi):
+        isrealobj = cupy.isrealobj
+    else:
+        isrealobj = numpy.isrealobj
+    nwalkers = walker_batch.Ghalfa.shape[0]
+    nalpha = walker_batch.Ghalfa.shape[1]
+    nbeta = walker_batch.Ghalfb.shape[1]
+    nbasis = walker_batch.Ghalfa.shape[2]
+    Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+    Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+    if isrealobj(trial._rchola):
+        ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
+        exx = exx_kernel_batch_real_rchol(trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_real_rchol(trial._rcholb, walker_batch.Ghalfb)
+    else:
+        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
+        exx = exx_kernel_batch_complex_rchol(trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_complex_rchol(trial._rcholb, walker_batch.Ghalfb)
+    return ecoul - exx
+
 def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
 
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
@@ -265,8 +284,8 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
     nbeta = walker_batch.Ghalfb.shape[1]
     nbasis = hamiltonian.nbasis
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
+    Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
+    Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
 
     e1b = walker_batch.Ghalfa.dot(trial._rH1a.ravel())
     e1b += walker_batch.Ghalfb.dot(trial._rH1b.ravel())
@@ -277,8 +296,6 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
     else:
         ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, walker_batch.Ghalfa, walker_batch.Ghalfb)
 
-    walker_batch.Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha, nbasis)
-    walker_batch.Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta, nbasis)
     if (isrealobj(trial._rchola)):
         exx = exx_kernel_batch_real_rchol (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_real_rchol (trial._rcholb, walker_batch.Ghalfb)
     else:
