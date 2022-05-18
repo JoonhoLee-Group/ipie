@@ -6,7 +6,7 @@ from ipie.estimators.generic import local_energy_generic_cholesky
 from ipie.estimators.local_energy_sd import (
         local_energy_single_det_batch_einsum,
         local_energy_single_det_uhf_batch,
-        exx_kernel_batch_real_rchol
+        two_body_energy_uhf
         )
 from ipie.utils.linalg import minor_mask, minor_mask4
 from ipie.propagation.overlap import (
@@ -40,8 +40,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         # useful variables
         G0a = walker_batch.G0a[iwalker]
         G0b = walker_batch.G0b[iwalker]
-        G0Ha = walker_batch.Ghalf0a[iwalker]
-        G0Hb = walker_batch.Ghalf0b[iwalker]
+        G0Ha = walker_batch.Ghalfa[iwalker]
+        G0Hb = walker_batch.Ghalfb[iwalker]
         Q0a = walker_batch.Q0a[iwalker]
         Q0b = walker_batch.Q0b[iwalker]
         CIa = walker_batch.CIa[iwalker]
@@ -56,7 +56,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         P0 = G0[0] + G0[1]
         Xa = ham.chol_vecs.T.dot(G0[0].ravel()) #numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
         Xb = ham.chol_vecs.T.dot(G0[1].ravel()) #numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
-        
+ 
         LXa = numpy.einsum("mx,x->m", ham.chol_vecs, Xa, optimize=True)
         LXb = numpy.einsum("mx,x->m", ham.chol_vecs, Xb, optimize=True)
         LXa = LXa.reshape((nbasis,nbasis))
@@ -88,8 +88,9 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0Ha, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0Hb, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        print("Laa: ", numpy.sum(Laa))
 
         cont3 = 0.0 + 0.0j
 
@@ -324,6 +325,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
                                 cont3 +=  (numpy.dot(Lbb[q,p,:],Lbb[s,r,:])-numpy.dot(Lbb[q,r,:],Lbb[s,p,:])) * const
         cont3 *= (ovlp0/ovlp)
 
+        print(cont1, cont2_J, cont2_K, cont3)
         e2bs += [cont1 + cont2_J + cont2_K + cont3]
 
     e2bs = numpy.array(e2bs, dtype=numpy.complex128)
@@ -665,19 +667,11 @@ def build_exchange_contribution(chol_vecs, G0a, G0b, QCIGa, QCIGb):
     QCIGa_imag = QCIGa.imag.copy()
     for x in range(nchol):
         Lmn = chol_vecs[:,x].copy().reshape((nbasis, nbasis))
-        # print(Lmn.dtype, G0a_real.dtype)
-        # LGL = Lmn.dot(G0a_real.T).dot(Lmn) + 1j * Lmn.dot(G0a_imag.T).dot(Lmn)
         LGL = [(Lmn @ G0a_real[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        # cont2_Kaa[iw] -= numpy.sum(LGL * QCIGa) #
-        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa_real, optimize=True)
-        cont2_Kaa += numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
+        cont2_Kaa -= numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
         Lmn = chol_vecs[:,x].copy().reshape((nbasis, nbasis))
-        # print(Lmn.dtype, G0a_real.dtype)
-        # LGL = Lmn.dot(G0a_real.T).dot(Lmn) + 1j * Lmn.dot(G0a_imag.T).dot(Lmn)
         LGL = [(Lmn @ G0a_real[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        # cont2_Kaa[iw] -= numpy.sum(LGL * QCIGa) #
-        # cont2_Kaa = numpy.einsum('wpq,wpq->w', LGL, QCIGa_real, optimize=True)
-        cont2_Kbb += numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
+        cont2_Kbb -= numpy.array([numpy.sum(LGL[iw] * QCIGa_real[iw]) for iw in range(nwalkers)])
 
         # LGL = numpy.einsum('wsr,pr,sq->wpq', G0b, Lmn, Lmn, optimize=True)
         # LGL = Lmn.dot(G0b.T).T.dot(Lmn)
@@ -726,8 +720,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # useful variables
     G0a = walker_batch.G0a
     G0b = walker_batch.G0b
-    G0Ha = walker_batch.Ghalf0a
-    G0Hb = walker_batch.Ghalf0b
+    G0Ha = walker_batch.Ghalfa
+    G0Hb = walker_batch.Ghalfb
     Q0a = walker_batch.Q0a
     Q0b = walker_batch.Q0b
     CIa = walker_batch.CIa
@@ -739,13 +733,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # cont1 = local_energy_single_det_batch_einsum(system, ham, walker_batch, trial)[:,2]
     start = time.time()
     # cont1 = local_energy_single_det_uhf_batch(system, ham, walker_batch, trial)[:,2]
-    cont1 = exx_kernel_batch_real_rchol(
-            trial._rchola,
-            walker_batch.Ghalfa,
-            )
-    cont1 += exx_kernel_batch_real_rchol(
-            trial._rcholb,
-            walker_batch.Ghalfb,
+    cont1 = two_body_energy_uhf(
+            trial,
+            walker_batch
             )
     print("e0: ", time.time()-start)
     P0 = G0a + G0b
@@ -762,6 +752,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 walker_batch.CIa,
                 G0Ha,
                 optimize=True)
+    print(numpy.sum(QCIGa[0]))
     QCIGb = numpy.einsum(
                 'wpr,wrs,wsq->wpq',
                 walker_batch.Q0b,
@@ -780,12 +771,19 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     na = walker_batch.nup
     nb = walker_batch.ndown
 
+    cont2_Kaa = cont2_Kbb = 0
+    for x in range(nchol):
+        Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
+        LGL = [(Lmn @ G0a[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
+
+        LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
+        cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGb, optimize=True)
     # start = time.time()
     # cont2_Kaa, cont2_Kbb = build_exchange_contribution(
                                     # ham.chol_vecs,
                                     # G0a, G0b,
                                     # QCIGa, QCIGb)
-    cont2_Kaa = cont2_Kbb = 0
 
     cont2_Kaa *= (ovlp0/ovlp)
     cont2_Kbb *= (ovlp0/ovlp)
@@ -797,17 +795,18 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # This is **much** faster than the above einsum
     chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
     # start = time.time()
-    # for i in range(nwalkers):
-        # Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0Ha[i], chol_vecs, optimize=True)
-        # Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0Hb[i], chol_vecs, optimize=True)
+    for i in range(nwalkers):
+        Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0Ha[i], chol_vecs, optimize=True)
+        Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0Hb[i], chol_vecs, optimize=True)
+    print(numpy.sum(Laa[0]))
     cont3 = 0.0
     # print("L: ", time.time()-start)
     start = time.time()
-    build_Laa(
-            Q0a, Q0b,
-            G0Ha, G0Hb,
-            chol_vecs,
-            Laa, Lbb)
+    # build_Laa(
+            # Q0a, Q0b,
+            # G0Ha, G0Hb,
+            # chol_vecs,
+            # Laa, Lbb)
     print("build Laa: ", time.time()-start)
     start = time.time()
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
@@ -993,6 +992,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     print("det contr: ", time.time()-start)
 
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
+    print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
     e2b = cont1 + cont2_J + cont2_K + cont3
 
     walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
