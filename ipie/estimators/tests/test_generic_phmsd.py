@@ -80,7 +80,9 @@ def test_greens_function_wicks_opt():
     assert numpy.allclose(ovlps_ref_wick, ovlps_ref_slow)
     assert numpy.allclose(ovlps_ref_opt, ovlps_ref_slow)
     assert numpy.allclose(walker_batch_wick.Ga, walker_batch_slow.Ga)
-    assert numpy.allclose(walker_batch_wick.Gb, walker_batch_slow.Gb)
+    assert numpy.allclose(walker_batch_wick.Ga, walker_batch_slow.Ga)
+    assert numpy.allclose(walker_batch_wick.Ghalf0a, walker_batch_slow.Gihalfa[:,0])
+    assert numpy.allclose(walker_batch_wick.Ghalf0b, walker_batch_slow.Gihalfb[:,0])
     assert numpy.allclose(walker_batch_opt.Ga, walker_batch_slow.Ga)
     assert numpy.allclose(walker_batch_opt.Gb, walker_batch_slow.Gb)
     assert numpy.allclose(walker_batch_opt.det_ovlpas, walker_batch_wick.det_ovlpas)
@@ -208,15 +210,10 @@ def test_phmsd_local_energy():
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham,
             walker_batch_test, trial)
-    # e_wicks_opt_low_mem = local_energy_multi_det_trial_wicks_batch_opt_low_mem(system, ham,
-            # walker_batch_test, trial)
-    e_dumb = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
+    e_simple = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
 
-    print(e_dumb[0])
-    print(e_wicks[0])
-    assert numpy.allclose(e_dumb, e_wicks)
-    assert numpy.allclose(e_dumb, e_wicks_opt)
-    assert numpy.allclose(e_dumb, e_wicks_opt_low_mem)
+    assert numpy.allclose(e_simple, e_wicks)
+    assert numpy.allclose(e_simple, e_wicks_opt)
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
