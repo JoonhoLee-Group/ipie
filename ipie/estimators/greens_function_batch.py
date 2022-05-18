@@ -888,6 +888,8 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
     ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
     inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
+    # Note abuse of naming convention this is really theta for the reference
+    # determinant.
     walker_batch.Ghalfa = numpy.einsum('wmi,wij->wjm', walker_batch.phia, inv_ovlps_a, optimize=True)
     G0a = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfa, trial.psi0a.conj(), optimize=True)
     # something not correct here.
