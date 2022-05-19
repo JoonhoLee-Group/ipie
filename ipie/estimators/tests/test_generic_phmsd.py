@@ -433,6 +433,41 @@ def test_kernels():
             slices_beta[iexcit]
             )
     assert numpy.allclose(ref, test)
+    iexcit = 4
+    ndets_level = len(trial.cre_ex_b[iexcit])
+    det_mat = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit-1, iexcit-1), dtype=numpy.complex128)
+    get_det_matrix_batched(
+            iexcit,
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            walker_batch.G0b,
+            det_mat)
+    ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    from ipie.estimators.local_energy_wicks import fill_opp_spin_factors_batched_chol
+    fill_opp_spin_factors_batched_chol(
+            iexcit,
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            trial.excit_map_b[iexcit],
+            det_mat,
+            cof_mat,
+            Lbb,
+            ref,
+            slices_beta[iexcit]
+            )
+    wk.fill_os_nfold(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            det_mat,
+            cof_mat,
+            Lbb,
+            test,
+            slices_beta[iexcit]
+            )
+    assert numpy.allclose(ref, test)
+
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
