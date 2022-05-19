@@ -115,6 +115,17 @@ def test_cofactor_matrix():
         for jdet in range(ndets_b):
             assert numpy.allclose(cofactor_matrix[iw, jdet], minor_mask(det_mat[iw, jdet], iex, jex))
 
+    from ipie.estimators.kernels.cpu import wicks as wk
+    cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
+    wk.cofactor_matrix(
+            iex,
+            jex,
+            det_mat,
+            cofactor_matrix)
+    for iw in range(nwalkers):
+        for jdet in range(ndets_b):
+            assert numpy.allclose(cofactor_matrix[iw, jdet], minor_mask(det_mat[iw, jdet], iex, jex))
+
 # Move to propagator tests
 @pytest.mark.unit
 def test_cofactor_matrix_4():
@@ -148,9 +159,7 @@ def test_cofactor_matrix_4():
     ndets_b  = 10
     det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
     cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-2, nexcit-2), dtype=numpy.complex128)
-    # from ipie.propagation.wicks_kernels import get_cofactor_matrix_4_batched
-    # from ipie.utils.linalg import minor_mask4
-    # import itertools
+    from ipie.estimators.kernels.cpu import wicks as wk
     for iex, jex, kex, lex in itertools.product(range(nexcit), repeat=4):
         if kex > iex and lex > jex:
             get_cofactor_matrix_4_batched(
@@ -167,6 +176,82 @@ def test_cofactor_matrix_4():
                 for jdet in range(ndets_b):
                     ref = minor_mask4(det_mat[iw, jdet], iex, jex, kex, lex)
                     assert numpy.allclose(cofactor_matrix[iw, jdet], ref)
+
+    # test numba
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
+    cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-2, nexcit-2), dtype=numpy.complex128)
+    for iex, jex, kex, lex in itertools.product(range(nexcit), repeat=4):
+        if kex > iex and lex > jex:
+            wk.cofactor_matrix_4(
+                    iex,
+                    jex,
+                    kex,
+                    lex,
+                    det_mat,
+                    cofactor_matrix)
+            for iw in range(nwalkers):
+                for jdet in range(ndets_b):
+                    ref = minor_mask4(det_mat[iw, jdet], iex, jex, kex, lex)
+                    assert numpy.allclose(cofactor_matrix[iw, jdet], ref)
+
+@pytest.mark.unit
+def test_det_matrix():
+    numpy.random.seed(7)
+    nmo = 12
+    nelec = (7,7)
+    nwalkers = 10
+    nsteps = 100
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0, options = {"symmetry":False})
+    # Test PH type wavefunction.
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
+    ci, oa, ob = wfn
+    wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
+    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
+        'use_wicks_helper': False})
+    trial.calculate_energy(system, ham)
+    trial.half_rotate(system, ham)
+
+    numpy.random.seed(7)
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
+        nwalkers})
+    options = {'hybrid': True}
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    numpy.random.seed(7)
+    for i in range (nsteps):
+        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        walker_batch.reortho()
+
+    nexcit = 4
+    from ipie.propagation.wicks_kernels import get_det_matrix_batched
+    from ipie.utils.testing import shaped_normal
+    ndets_b = len(trial.cre_ex_b[nexcit])
+    det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit),
+            dtype=numpy.complex128)
+    get_det_matrix_batched(
+            nexcit,
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            walker_batch.G0b,
+            det_mat
+            )
+    from ipie.estimators.kernels.cpu import wicks as wk
+    det_mat_2 = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit),
+            dtype=numpy.complex128)
+    wk.det_matrix(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            walker_batch.G0b,
+            det_mat_2
+            )
+
+    assert numpy.allclose(det_mat, det_mat_2)
+
+
 
 @pytest.mark.unit
 def test_phmsd_local_energy():
