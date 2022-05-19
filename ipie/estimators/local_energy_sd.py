@@ -382,13 +382,13 @@ def local_energy_single_det_batch_gpu(
         max_mem=2
         ):
 
-    from ipie.estimators import kernels
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         import cupy
         assert(cupy.is_available())
         einsum = cupy.einsum
         zeros = cupy.zeros
         isrealobj = cupy.isrealobj
+        from ipie.estimators.kernels.gpu import exchange as kernels
         dot = cupy.dot
         complex128 = cupy.complex128
     else:
