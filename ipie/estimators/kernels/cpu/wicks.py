@@ -269,3 +269,57 @@ def cofactor_matrix_4(
                     ii = max(i - (ishift_1+ishift_2),0)
                     jj = max(j - (jshift_1+jshift_2),0)
                     cofactor[iw, idet, ii, jj] = det_matrix[iw, idet, i, j]
+
+@jit(nopython=True, fastmath=True)
+def reduce_opp_spin_factor(
+        ps,
+        qs,
+        phase,
+        cof_mat,
+        chol_factor,
+        spin_buffer,
+        det_sls):
+    nwalker = chol_factor.shape[0]
+    ndet = cof_mat.shape[1]
+    start = det_sls.start
+    # assert ndet == det_sls.end - det_sls.start
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            det_cofactor = phase * numpy.linalg.det(cof_mat[iw,idet])
+            spin_buffer[iw, start + idet] += dot_real_cplx(
+                                            chol_factor[iw, qs[idet], ps[idet]],
+                                            det_cofactor.real,
+                                            det_cofactor.imag,
+                                            )
+
+@jit(nopython=True, fastmath=True)
+def fill_os_nfold(
+        cre,
+        anh,
+        det_matrix,
+        cof_mat,
+        chol_factor,
+        spin_buffer,
+        det_sls):
+    nwalkers = cof_mat.shape[0]
+    ndet = cof_mat.shape[1]
+    nexcit = det_matrix.shape[-1]
+    for iex in range(nexcit):
+        ps = cre[:, iex]
+        for jex in range(nexcit):
+            qs = anh[:, jex]
+            cofactor_matrix(
+                    iex,
+                    jex,
+                    det_matrix,
+                    cof_mat)
+            # nwalkers x ndet
+            phase = (-1.0 + 0.j)**(iex + jex)
+            reduce_opp_spin_factor(
+                    ps,
+                    qs,
+                    phase,
+                    cof_mat,
+                    chol_factor,
+                    spin_buffer,
+                    det_sls)
