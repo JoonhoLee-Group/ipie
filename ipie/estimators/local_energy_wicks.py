@@ -341,20 +341,22 @@ def get_same_spin_double_contribution_batched(
         anh,
         buffer,
         excit_map,
-        chol_fact):
+        chol_fact,
+        det_sls):
     p = cre[:,0]
     q = anh[:,0]
     r = cre[:,1]
     s = anh[:,1]
     contribution = chol_fact[:,q,p]*chol_fact[:,s,r] - chol_fact[:,q,r]*chol_fact[:,s,p]
-    buffer[:, excit_map[2]] = contribution
+    buffer[:, det_sls] = contribution
 
 def get_same_spin_double_contribution_batched_contr(
         cre,
         anh,
         buffer,
         excit_map,
-        chol_fact):
+        chol_fact,
+        det_sls):
     p = cre[:,0]
     q = anh[:,0]
     r = cre[:,1]
@@ -363,7 +365,7 @@ def get_same_spin_double_contribution_batched_contr(
             chol_fact[:,s,r], optimize=True)
     contribution -= numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,r],
             chol_fact[:,s,p], optimize=True)
-    buffer[:, excit_map[2]] = contribution
+    buffer[:, det_sls] = contribution
 
 def fill_same_spin_contribution_batched(
         nexcit,
@@ -373,7 +375,8 @@ def fill_same_spin_contribution_batched(
         cofactor_matrix,
         chol_fact,
         buffer,
-        excit_map
+        excit_map,
+        det_sls
         ):
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
@@ -401,7 +404,7 @@ def fill_same_spin_contribution_batched(
                     dets_contrib = (chol_fact[:,q,p]*chol_fact[:,s,r] - chol_fact[:,q,r]*chol_fact[:,s,p]) * det_cofactor
                     accumulator += dets_contrib
 
-    buffer[:, excit_map[nexcit]] = accumulator
+    buffer[:, det_sls] = accumulator
 
 def fill_same_spin_contribution_batched_contr(
         nexcit,
@@ -411,7 +414,8 @@ def fill_same_spin_contribution_batched_contr(
         cofactor_matrix,
         chol_fact,
         buffer,
-        excit_map
+        excit_map,
+        det_sls
         ):
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
@@ -451,7 +455,7 @@ def fill_same_spin_contribution_batched_contr(
                     contribution *= det_cofactor
                     accumulator += contribution
 
-    buffer[:, excit_map[nexcit]] = accumulator
+    buffer[:, det_sls] = accumulator
 
 def fill_opp_spin_factors_batched(
         nexcit,
@@ -461,7 +465,8 @@ def fill_opp_spin_factors_batched(
         det_matrix,
         cofactor_matrix,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        det_sls):
     nwalkers = cofactor_matrix.shape[0]
     ndet_level = cofactor_matrix.shape[1]
     accumulator = numpy.zeros((nwalkers, ndet_level), dtype=numpy.complex128)
@@ -480,7 +485,7 @@ def fill_opp_spin_factors_batched(
             # Nw x Nd_l
             det_cofactors = (-1)**(iex+jex) * numpy.linalg.det(cofactor_matrix)
             accumulator += det_cofactors * chol_factor[:, qs, ps]
-    spin_buffer[:, excit_map[nexcit]] = accumulator
+    spin_buffer[:, det_sls] = accumulator
 
 def fill_opp_spin_factors_batched_chol(
         nexcit,
@@ -490,7 +495,8 @@ def fill_opp_spin_factors_batched_chol(
         det_matrix,
         cofactor_matrix,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        det_sls):
     nwalkers = cofactor_matrix.shape[0]
     ndet_level = cofactor_matrix.shape[1]
     accumulator = numpy.zeros((nwalkers, ndet_level, chol_factor.shape[-1]), dtype=numpy.complex128)
@@ -509,7 +515,7 @@ def fill_opp_spin_factors_batched_chol(
             # Nw x Nd_l
             det_cofactors = (-1)**(iex+jex) * numpy.linalg.det(cofactor_matrix)
             accumulator += det_cofactors[:,:,None] * chol_factor[:, qs, ps]
-    spin_buffer[:, excit_map[nexcit]] = accumulator
+    spin_buffer[:, det_sls] = accumulator
 
 def fill_opp_spin_factors_batched_singles(
         cre,
@@ -517,13 +523,20 @@ def fill_opp_spin_factors_batched_singles(
         excit_map,
         chol_factor,
         spin_buffer,
+        det_sls
         ):
     p = cre[:, 0]
     q = anh[:, 0]
     start = time.time()
     x = chol_factor[:, q, p]
     start = time.time()
-    spin_buffer[:, excit_map[1]] = x
+    # tmp = numpy.zeros_like(spin_buffer)
+    # tmp_2 = numpy.zeros_like(spin_buffer)
+    # tmp[:,excit_map[1],:] = x
+    spin_buffer[:, det_sls] = x
+    # tmp_2[:,excit_map[1],:] = spin_buffer[:,det_sls]
+    # print("here")
+    # print(numpy.linalg.norm(tmp-tmp_2))
 
 # @jit(nopython=True, fastmath=True)
 # def fill_opp_spin_factors_batched_singles(
@@ -544,7 +557,8 @@ def fill_opp_spin_factors_batched_doubles(
         excit_map,
         G0,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
@@ -553,7 +567,7 @@ def fill_opp_spin_factors_batched_doubles(
     accumulator -= chol_factor[:,s,p] * G0[:,r,q]
     accumulator -= chol_factor[:,q,r] * G0[:,p,s]
     accumulator += chol_factor[:,s,r] * G0[:,p,q]
-    spin_buffer[:, excit_map[2]] = accumulator
+    spin_buffer[:, sls] = accumulator
 
 def fill_opp_spin_factors_batched_doubles_chol(
         cre,
@@ -561,7 +575,8 @@ def fill_opp_spin_factors_batched_doubles_chol(
         excit_map,
         G0,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        det_sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
@@ -570,7 +585,7 @@ def fill_opp_spin_factors_batched_doubles_chol(
     accumulator -= chol_factor[:,s,p] * G0[:,r,q,None]
     accumulator -= chol_factor[:,q,r] * G0[:,p,s,None]
     accumulator += chol_factor[:,s,r] * G0[:,p,q,None]
-    spin_buffer[:, excit_map[2]] = accumulator
+    spin_buffer[:, det_sls] = accumulator
 
 def fill_opp_spin_factors_batched_triples(
         cre,
@@ -578,7 +593,8 @@ def fill_opp_spin_factors_batched_triples(
         excit_map,
         G0,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        det_sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
@@ -612,7 +628,7 @@ def fill_opp_spin_factors_batched_triples(
     accumulator += chol_factor[:,u,t] * (
                         G0[:,p,q]*G0[:,r,s] - G0[:,r,q]*G0[:,p,s]
                         )
-    spin_buffer[:, excit_map[3]] = accumulator
+    spin_buffer[:, det_sls] = accumulator
 
 def fill_opp_spin_factors_batched_triples_chol(
         cre,
@@ -620,7 +636,8 @@ def fill_opp_spin_factors_batched_triples_chol(
         excit_map,
         G0,
         chol_factor,
-        spin_buffer):
+        spin_buffer,
+        det_sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
@@ -645,7 +662,7 @@ def fill_opp_spin_factors_batched_triples_chol(
     accumulator -= chol_factor[:,s,t] * cofac[:,:,None]
     cofac = G0[:,p,q]*G0[:,r,s] - G0[:,r,q]*G0[:,p,s]
     accumulator += chol_factor[:,u,t] * cofac[:,:,None]
-    spin_buffer[:, excit_map[3]] = accumulator
+    spin_buffer[:, det_sls] = accumulator
 
 @jit(nopython=True, fastmath=True)
 def build_exchange_contribution(chol_vecs, G0a, G0b, QCIGa, QCIGb):
@@ -751,19 +768,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     na = walker_batch.nup
     nb = walker_batch.ndown
 
-    # cont2_Kaa = cont2_Kbb = 0
-    # start = time.time()
-    # for x in range(nchol):
-        # Lmn = ham.chol_vecs[:,x].reshape((nbasis, nbasis))
-        # LGL = [(Lmn @ G0a[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        # cont2_Kaa -= numpy.einsum('wpq,wpq->w', LGL, QCIGa, optimize=True)
-
-        # LGL = [(Lmn @ G0b[iwalker].T) @ Lmn for iwalker in range(nwalkers)]
-        # cont2_Kbb -= numpy.einsum('wpq,wpq->w', LGL, QCIGb, optimize=True)
-    # print("Kaa: ", time.time()-start)
     start = time.time()
-    # _cont2_Kaa = _cont2_Kbb = 0
-    print(G0a.shape)
     start = time.time()
     cont2_Kaa, cont2_Kbb = build_exchange_contribution(
                                     ham.chol_vecs,
@@ -811,18 +816,30 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    slices_beta = [[None]]
-    slices_alpha = [[None]]
-    start_alpha = 0
-    start_beta = 0
-    for i in range(1, trial.max_excite+1):
+    slices_beta = []
+    slices_alpha = []
+    start_alpha = 1
+    start_beta = 1
+    # print(trial.cre_ex_b[0])
+    for i in range(0, trial.max_excite+1):
+        # nd = max(len(trial.cre_ex_a[i]), 1)
         nd = len(trial.cre_ex_a[i])
-        slices_alpha.append(slice(start, start+nd))
+        # print(i, start_alpha, nd)
+        slices_alpha.append(slice(start_alpha, start_alpha+nd))
         start_alpha += nd
+        # nd = max(len(trial.cre_ex_b[i]), 1)
         nd = len(trial.cre_ex_b[i])
-        slices_beta.append(slice(start, start+nd))
+        slices_beta.append(slice(start_beta, start_beta+nd))
         start_beta += nd
     start = time.time()
+    map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
+    map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
+    # map_alpha = numpy.concatenate(trial.excit_map_a)
+    # map_beta = numpy.concatenate(trial.excit_map_b)
+    # # tmp = trial.excit_map_a + [numpy.array([0], dtype=numpy.int32)]
+    # print(tmp, len(tmp))
+    # print("ndets: ", len(map_beta), ndets,
+            # len(numpy.concatenate(trial.excit_map_a)))
     for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
         det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
@@ -844,7 +861,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.anh_ex_a[iexcit],
                         trial.excit_map_a,
                         Laa,
-                        alpha_os_buffer
+                        alpha_os_buffer,
+                        slices_alpha[1]
                         )
                 print("singles:", time.time()-_start)
             elif iexcit == 2:
@@ -855,7 +873,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.excit_map_a,
                         G0a,
                         Laa,
-                        alpha_os_buffer
+                        alpha_os_buffer,
+                        slices_alpha[2]
                         )
                 print("doubles:", time.time()-_start)
             elif iexcit == 3:
@@ -866,7 +885,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.excit_map_a,
                         G0a,
                         Laa,
-                        alpha_os_buffer
+                        alpha_os_buffer,
+                        slices_alpha[3]
                         )
                 print("tripled:", time.time()-_start)
             else:
@@ -879,7 +899,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 det_mat_a,
                                 cofactor_matrix_a,
                                 Laa,
-                                alpha_os_buffer)
+                                alpha_os_buffer,
+                                slices_alpha[iexcit]
+                                )
                 print("nfold:", time.time()-_start)
             if iexcit >= 2 and ndets_a > 0:
                 if iexcit == 2:
@@ -889,7 +911,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                             trial.anh_ex_a[iexcit],
                             alpha_ss_buffer,
                             trial.excit_map_a,
-                            Laa)
+                            Laa,
+                            slices_alpha[iexcit])
                     print("ss doubles", time.time()-_start)
                 else:
                     _start = time.time()
@@ -901,7 +924,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                         cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                                         Laa,
                                         alpha_ss_buffer,
-                                        trial.excit_map_a
+                                        trial.excit_map_a,
+                                        slices_alpha[iexcit]
                                         )
                     print("ss nfold", time.time()-_start)
         ndets_b = len(trial.cre_ex_b[iexcit])
@@ -921,8 +945,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.anh_ex_b[iexcit],
                         trial.excit_map_b,
                         Lbb,
-                        beta_os_buffer
+                        beta_os_buffer,
+                        slices_beta[1]
                         )
+                # print(numpy.sum(beta_os_buffer[0]))
+                # print(beta_os_buffer[0,map_beta,0])
             elif iexcit == 2:
                 fill_opp_spin_factors_batched_doubles_chol(
                         trial.cre_ex_b[iexcit],
@@ -930,7 +957,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.excit_map_b,
                         G0b,
                         Lbb,
-                        beta_os_buffer
+                        beta_os_buffer,
+                        slices_beta[2]
                         )
             elif iexcit == 3:
                 fill_opp_spin_factors_batched_triples_chol(
@@ -939,7 +967,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.excit_map_b,
                         G0b,
                         Lbb,
-                        beta_os_buffer
+                        beta_os_buffer,
+                        slices_beta[3]
                         )
             else:
                 fill_opp_spin_factors_batched_chol(
@@ -950,7 +979,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 det_mat_b,
                                 cofactor_matrix_b,
                                 Lbb,
-                                beta_os_buffer)
+                                beta_os_buffer,
+                                slices_beta[iexcit]
+                                )
         if iexcit >= 2 and ndets_b > 0:
             if iexcit == 2:
                 get_same_spin_double_contribution_batched_contr(
@@ -958,7 +989,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.anh_ex_b[iexcit],
                         beta_ss_buffer,
                         trial.excit_map_b,
-                        Lbb)
+                        Lbb,
+                        slices_beta[iexcit]
+                        )
             else:
                 fill_same_spin_contribution_batched_contr(
                                     iexcit,
@@ -968,17 +1001,40 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                     cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                                     Lbb,
                                     beta_ss_buffer,
-                                    trial.excit_map_b
+                                    trial.excit_map_b,
+                                    slices_beta[iexcit]
                                     )
 
     # accumulating over x (cholesky vector)
-    energy_os = numpy.einsum('wJx,wJx,J->w', alpha_os_buffer, beta_os_buffer, cphase_ab, optimize=True)
-    energy_ss = numpy.einsum('wJ,wJ->w', alpha_ss_buffer, c_phasea_ovlpb, optimize=True)
-    energy_ss += numpy.einsum('wJ,wJ->w', beta_ss_buffer, c_phaseb_ovlpa, optimize=True)
-    print("det contr: ", time.time()-start)
+    # print(map_alpha)
+    # print(trial.ndet_a)
+    # print(trial.ndet_b)
+    # print(map_alpha)
+    # print(map_beta)
+    # bufferab = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    # bufferba = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    # bufferbb = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    # bufferaa = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    bufferab = numpy.zeros_like(alpha_os_buffer)
+    bufferba = numpy.zeros_like(beta_os_buffer)
+    bufferbb = numpy.zeros_like(beta_ss_buffer)
+    bufferaa = numpy.zeros_like(alpha_ss_buffer)
+    bufferab[:,map_alpha,:] = alpha_os_buffer[:,:,:]
+    bufferba[:,map_beta,:] = beta_os_buffer[:,:,:]
+    bufferbb[:,map_beta] = beta_ss_buffer[:,:]
+    bufferaa[:,map_alpha] = alpha_ss_buffer[:,:]
+    # print(bufferab[0,:,0])
+    # print(bufferba[0,:,0])
+    energy_os = numpy.einsum('wJx,wJx,J->w', bufferab, bufferba, cphase_ab, optimize=True)
+    # print("os: ", energy_os[0])
+    energy_ss = numpy.einsum('wJ,wJ->w', bufferaa, c_phasea_ovlpb, optimize=True)
+    # print("os: ", energy_ss[0])
+    energy_ss += numpy.einsum('wJ,wJ->w', bufferbb, c_phaseb_ovlpa, optimize=True)
+    # print("os: ", energy_ss[0])
+    # print("det contr: ", time.time()-start)
 
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
-    print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
+    # print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
     e2b = cont1 + cont2_J + cont2_K + cont3
 
     walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
@@ -986,4 +1042,3 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     walker_energies[:,1] = e1b
     walker_energies[:,2] = e2b
     return walker_energies
-
