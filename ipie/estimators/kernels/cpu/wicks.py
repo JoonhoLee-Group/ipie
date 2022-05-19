@@ -1,4 +1,5 @@
 from numba import jit
+import numpy
 
 # element wise
 @jit(nopython=True, fastmath=True)
@@ -150,3 +151,22 @@ def fill_os_triples(
                         cofac.real,
                         cofac.imag)
                     )
+
+@jit(nopython=True, fastmath=True)
+def get_ss_doubles(
+        cre,
+        anh,
+        chol_fact,
+        buffer,
+        det_sls):
+    start = det_sls.start
+    ndets = cre.shape[0]
+    nwalkers = chol_fact.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = cre[idet, 0]
+            q = anh[idet, 0]
+            r = cre[idet, 1]
+            s = anh[idet, 1]
+            buffer[iw, start+idet] += numpy.dot(chol_fact[iw,q,p], chol_fact[iw,s,r]) + 0j
+            buffer[iw, start+idet] -= numpy.dot(chol_fact[iw,q,r], chol_fact[iw,s,p]) + 0j

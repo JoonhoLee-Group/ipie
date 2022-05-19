@@ -329,6 +329,25 @@ def test_kernels():
             slices_beta[iexcit]
             )
     assert numpy.allclose(ref, test)
+    ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    iexcit = 2
+    get_same_spin_double_contribution_batched_contr(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            ref,
+            trial.excit_map_b[iexcit],
+            Lbb,
+            slices_beta[iexcit]
+            )
+    wk.get_ss_doubles(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            Lbb,
+            test,
+            slices_beta[iexcit]
+            )
+    assert numpy.allclose(ref, test)
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
