@@ -544,12 +544,14 @@ def fill_opp_spin_factors_batched_singles(
         # anh,
         # excit_map,
         # chol_factor,
-        # spin_buffer):
+        # spin_buffer,
+        # det_sls):
     # ps = cre[:, 0]
     # qs = anh[:, 0]
     # ndets = ps.shape[0]
+    # start = det_sls.start
     # for idet in range(ndets):
-        # spin_buffer[idet, :] = chol_factor[:, qs[idet], ps[idet]]
+        # spin_buffer[:,start+idet] = chol_factor[:, qs[idet], ps[idet]]
 
 def fill_opp_spin_factors_batched_doubles(
         cre,
@@ -568,6 +570,27 @@ def fill_opp_spin_factors_batched_doubles(
     accumulator -= chol_factor[:,q,r] * G0[:,p,s]
     accumulator += chol_factor[:,s,r] * G0[:,p,q]
     spin_buffer[:, sls] = accumulator
+
+# @jit(nopython=True, fastmath=True)
+# def fill_opp_spin_factors_batched_doubles_chol(
+        # cre,
+        # anh,
+        # excit_map,
+        # G0,
+        # chol_factor,
+        # spin_buffer,
+        # det_sls):
+    # start = det_sls.start
+    # ndets = cre.shape[0]
+    # for idet in range(ndets):
+        # p = cre[idet, 0]
+        # q = anh[idet, 0]
+        # r = cre[idet, 1]
+        # s = anh[idet, 1]
+        # spin_buffer[:, start + idet] = chol_factor[:,q,p] * G0[:,r,s,None]
+        # spin_buffer[:, start + idet] -= chol_factor[:,s,p] * G0[:,r,q,None]
+        # spin_buffer[:, start + idet] -= chol_factor[:,q,r] * G0[:,p,s,None]
+        # spin_buffer[:, start + idet] += chol_factor[:,s,r] * G0[:,p,q,None]
 
 def fill_opp_spin_factors_batched_doubles_chol(
         cre,
@@ -702,6 +725,25 @@ def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
             T1 = numpy.dot(G0b_real, Lx[x]) + 1j*numpy.dot(G0b_imag, Lx[x])
             Lbb[iw,:,:,x]= numpy.dot(Q0b[iw], T1.T)
 
+def build_slices(trial):
+    slices_beta = []
+    slices_alpha = []
+    start_alpha = 1
+    start_beta = 1
+    # print(trial.cre_ex_b[0])
+    for i in range(0, trial.max_excite+1):
+        # nd = max(len(trial.cre_ex_a[i]), 1)
+        nd = len(trial.cre_ex_a[i])
+        # print(i, start_alpha, nd)
+        slices_alpha.append(slice(start_alpha, start_alpha+nd))
+        start_alpha += nd
+        # nd = max(len(trial.cre_ex_b[i]), 1)
+        nd = len(trial.cre_ex_b[i])
+        slices_beta.append(slice(start_beta, start_beta+nd))
+        start_beta += nd
+
+    return slices_alpha, slices_beta
+
 def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial):
     import time
     start = time.time()
@@ -816,21 +858,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    slices_beta = []
-    slices_alpha = []
-    start_alpha = 1
-    start_beta = 1
-    # print(trial.cre_ex_b[0])
-    for i in range(0, trial.max_excite+1):
-        # nd = max(len(trial.cre_ex_a[i]), 1)
-        nd = len(trial.cre_ex_a[i])
-        # print(i, start_alpha, nd)
-        slices_alpha.append(slice(start_alpha, start_alpha+nd))
-        start_alpha += nd
-        # nd = max(len(trial.cre_ex_b[i]), 1)
-        nd = len(trial.cre_ex_b[i])
-        slices_beta.append(slice(start_beta, start_beta+nd))
-        start_beta += nd
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
@@ -840,6 +867,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # print(tmp, len(tmp))
     # print("ndets: ", len(map_beta), ndets,
             # len(numpy.concatenate(trial.excit_map_a)))
+    slices_alpha, slices_beta = build_slices(trial)
     for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
         det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)

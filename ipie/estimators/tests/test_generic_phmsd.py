@@ -208,12 +208,127 @@ def test_phmsd_local_energy():
     greens_function_multi_det_wicks_opt(walker_batch_test, trial)
     greens_function_multi_det_wicks(walker_batch_test2, trial)
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test, trial)
+    # from ipie.estimators.local_energy_wicks_old import local_energy_multi_det_trial_wicks_batch_opt as wicks_old
+    # e_wicks_opt_old = wicks_old(system, ham, walker_batch_test, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham,
             walker_batch_test, trial)
     e_simple = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
 
     assert numpy.allclose(e_simple, e_wicks)
+    # assert numpy.allclose(e_simple, e_wicks_opt_old)
     assert numpy.allclose(e_simple, e_wicks_opt)
+
+@pytest.mark.unit
+def test_kernels():
+    numpy.random.seed(7)
+    nmo = 12
+    nelec = (7,7)
+    nwalkers = 10
+    nsteps = 100
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0, options = {"symmetry":False})
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
+    ci, oa, ob = wfn
+    wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
+    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
+        'use_wicks_helper': False})
+
+    numpy.random.seed(7)
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
+        nwalkers})
+    options = {'hybrid': True}
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    numpy.random.seed(7)
+    for i in range (nsteps):
+        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        walker_batch.reortho()
+
+    import copy
+    greens_function_multi_det_wicks_opt(walker_batch, trial)
+    from ipie.estimators.kernels.cpu import wicks as wk
+    from ipie.estimators.local_energy_wicks import (
+            fill_opp_spin_factors_batched_singles,
+            fill_opp_spin_factors_batched_doubles_chol,
+            fill_opp_spin_factors_batched_triples_chol,
+            get_same_spin_double_contribution_batched_contr,
+            fill_same_spin_contribution_batched_contr,
+            build_slices
+            )
+
+    ndets = trial.ndets
+    nchol = ham.nchol
+    ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    slices_alpha, slices_beta = build_slices(trial)
+    nbasis = ham.nbasis
+    from ipie.utils.testing import shaped_normal
+    Laa = shaped_normal((nwalkers, nbasis, system.nup, nchol))
+    Lbb = shaped_normal((nwalkers, nbasis, system.ndown, nchol))
+    print(trial.ndet_a, trial.ndet_b)
+    # 1.
+    fill_opp_spin_factors_batched_singles(
+            trial.cre_ex_b[1],
+            trial.anh_ex_b[1],
+            trial.excit_map_b[1],
+            Lbb,
+            ref,
+            slices_beta[1]
+            )
+    wk.fill_os_singles(
+            trial.cre_ex_b[1],
+            trial.anh_ex_b[1],
+            Lbb,
+            test,
+            slices_beta[1]
+            )
+    assert numpy.allclose(ref, test)
+    # 2.
+    G0 = shaped_normal((nwalkers, nbasis, nbasis), cmplx=True) 
+    ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    fill_opp_spin_factors_batched_doubles_chol(
+            trial.cre_ex_b[2],
+            trial.anh_ex_b[2],
+            trial.excit_map_b[2],
+            G0,
+            Lbb,
+            ref,
+            slices_beta[2]
+            )
+    wk.fill_os_doubles(
+            trial.cre_ex_b[2],
+            trial.anh_ex_b[2],
+            G0,
+            Lbb,
+            test,
+            slices_beta[2]
+            )
+    assert numpy.allclose(ref, test)
+    ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
+    iexcit = 3
+    fill_opp_spin_factors_batched_triples_chol(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            trial.excit_map_b[iexcit],
+            G0,
+            Lbb,
+            ref,
+            slices_beta[iexcit]
+            )
+    wk.fill_os_triples(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            G0,
+            Lbb,
+            test,
+            slices_beta[iexcit]
+            )
+    assert numpy.allclose(ref, test)
 
 def compute_alpha_ss(jdet, trial, Laa, cphasea, ovlpb, det_a):
     cont3 = 0.0
