@@ -442,9 +442,13 @@ def compute_determinants_batched(G0a, G0b, trial):
     dets_a, dets_b = get_dets_single_excitation_batched(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[1]] = dets_a
     dets_b_full[:,trial.excit_map_b[1]] = dets_b
+    if trial.max_excite < 2:
+        return dets_a_full, dets_b_full
     dets_a, dets_b = get_dets_double_excitation_batched(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[2]] = dets_a
     dets_b_full[:,trial.excit_map_b[2]] = dets_b
+    if trial.max_excite < 3:
+        return dets_a_full, dets_b_full
     dets_a, dets_b = get_dets_triple_excitation_batched(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[3]] = dets_a
     dets_b_full[:,trial.excit_map_b[3]] = dets_b
