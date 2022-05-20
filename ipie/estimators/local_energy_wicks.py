@@ -324,6 +324,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
                                 cont3 +=  (numpy.dot(Lbb[q,p,:],Lbb[s,r,:])-numpy.dot(Lbb[q,r,:],Lbb[s,p,:])) * const
         cont3 *= (ovlp0/ovlp)
 
+        # print(cont1, cont2_J, cont2_K, cont3)
         e2bs += [cont1 + cont2_J + cont2_K + cont3]
 
     e2bs = numpy.array(e2bs, dtype=numpy.complex128)
@@ -770,12 +771,13 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     CIb = walker_batch.CIb
 
     # contribution 1 (disconnected)
-    start = time.time()
+    # start = time.time()
     cont1 = two_body_energy_uhf(
             trial,
             walker_batch
             )
-    print("e0: ", time.time()-start)
+    # print("cont 1 : ", cont1)
+    # print("e0: ", time.time()-start)
     P0 = G0a + G0b
 
     Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
@@ -816,7 +818,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                     ham.chol_vecs,
                                     G0a, G0b,
                                     QCIGa, QCIGb)
-    print("Kaa : ", time.time()-start)
+    # print("Kaa : ", time.time()-start)
 
     cont2_Kaa *= (ovlp0/ovlp)
     cont2_Kbb *= (ovlp0/ovlp)
@@ -831,7 +833,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     for i in range(nwalkers):
         Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0Ha[i], chol_vecs, optimize=True)
         Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0Hb[i], chol_vecs, optimize=True)
-    print(numpy.sum(Laa[0]))
+    # print(numpy.sum(Laa[0]))
     cont3 = 0.0
     # print("L: ", time.time()-start)
     start = time.time()
@@ -1051,18 +1053,17 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     bufferba[:,map_beta,:] = beta_os_buffer[:,:,:]
     bufferbb[:,map_beta] = beta_ss_buffer[:,:]
     bufferaa[:,map_alpha] = alpha_ss_buffer[:,:]
-    # print(bufferab[0,:,0])
-    # print(bufferba[0,:,0])
+    print(numpy.max(numpy.abs(cphase_ab)))
+    print(numpy.max(numpy.abs(bufferab)))
+    print(numpy.max(numpy.abs(bufferba)))
+    print(numpy.max(numpy.abs(bufferaa)))
+    print(numpy.max(numpy.abs(bufferbb)))
     energy_os = numpy.einsum('wJx,wJx,J->w', bufferab, bufferba, cphase_ab, optimize=True)
-    # print("os: ", energy_os[0])
     energy_ss = numpy.einsum('wJ,wJ->w', bufferaa, c_phasea_ovlpb, optimize=True)
-    # print("os: ", energy_ss[0])
     energy_ss += numpy.einsum('wJ,wJ->w', bufferbb, c_phaseb_ovlpa, optimize=True)
-    # print("os: ", energy_ss[0])
-    # print("det contr: ", time.time()-start)
 
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
-    # print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
+    print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
     e2b = cont1 + cont2_J + cont2_K + cont3
 
     walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
