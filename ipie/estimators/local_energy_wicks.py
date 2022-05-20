@@ -22,6 +22,8 @@ try:
 except ImportError:
     pass
 
+from ipie.estimators.kernels.cpu import wicks as wk
+
 def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
@@ -863,12 +865,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
-    # map_alpha = numpy.concatenate(trial.excit_map_a)
-    # map_beta = numpy.concatenate(trial.excit_map_b)
-    # # tmp = trial.excit_map_a + [numpy.array([0], dtype=numpy.int32)]
-    # print(tmp, len(tmp))
-    # print("ndets: ", len(map_beta), ndets,
-            # len(numpy.concatenate(trial.excit_map_a)))
     slices_alpha, slices_beta = build_slices(trial)
     for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
@@ -876,20 +872,18 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
         # defined here for reuse
         cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
         _start = time.time()
-        get_det_matrix_batched(
-                iexcit,
-                trial.cre_ex_a[iexcit],
-                trial.anh_ex_a[iexcit],
-                walker_batch.G0a,
-                det_mat_a)
         print("build dets:", time.time()-_start)
         if ndets_a > 0:
+            wk.build_det_matrix(
+                    trial.cre_ex_a[iexcit],
+                    trial.anh_ex_a[iexcit],
+                    walker_batch.G0a,
+                    det_mat_a)
             if iexcit == 1:
                 _start = time.time()
-                fill_opp_spin_factors_batched_singles(
+                wk.fill_os_singles(
                         trial.cre_ex_a[iexcit],
                         trial.anh_ex_a[iexcit],
-                        trial.excit_map_a,
                         Laa,
                         alpha_os_buffer,
                         slices_alpha[1]
@@ -897,22 +891,19 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 print("singles:", time.time()-_start)
             elif iexcit == 2:
                 _start = time.time()
-                fill_opp_spin_factors_batched_doubles_chol(
-                        trial.cre_ex_a[iexcit],
-                        trial.anh_ex_a[iexcit],
-                        trial.excit_map_a,
-                        G0a,
-                        Laa,
-                        alpha_os_buffer,
-                        slices_alpha[2]
-                        )
+                wk.fill_os_doubles(
+                    trial.cre_ex_a[iexcit],
+                    trial.anh_ex_a[iexcit],
+                    G0a,
+                    Laa,
+                    alpha_os_buffer,
+                    slices_alpha[2])
                 print("doubles:", time.time()-_start)
             elif iexcit == 3:
                 _start = time.time()
-                fill_opp_spin_factors_batched_triples_chol(
+                wk.fill_os_triples(
                         trial.cre_ex_a[iexcit],
                         trial.anh_ex_a[iexcit],
-                        trial.excit_map_a,
                         G0a,
                         Laa,
                         alpha_os_buffer,
@@ -921,91 +912,76 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 print("tripled:", time.time()-_start)
             else:
                 _start = time.time()
-                fill_opp_spin_factors_batched_chol(
-                                iexcit,
-                                trial.cre_ex_a[iexcit],
-                                trial.anh_ex_a[iexcit],
-                                trial.excit_map_a,
-                                det_mat_a,
-                                cofactor_matrix_a,
-                                Laa,
-                                alpha_os_buffer,
-                                slices_alpha[iexcit]
-                                )
+                wk.fill_os_nfold(
+                        trial.cre_ex_a[iexcit],
+                        trial.anh_ex_a[iexcit],
+                        G0a,
+                        Laa,
+                        alpha_os_buffer,
+                        slices_alpha[3]
+                        )
                 print("nfold:", time.time()-_start)
             if iexcit >= 2 and ndets_a > 0:
                 if iexcit == 2:
                     _start = time.time()
-                    get_same_spin_double_contribution_batched_contr(
+                    wk.get_ss_doubles(
                             trial.cre_ex_a[iexcit],
                             trial.anh_ex_a[iexcit],
-                            alpha_ss_buffer,
-                            trial.excit_map_a,
                             Laa,
+                            alpha_ss_buffer,
                             slices_alpha[iexcit])
                     print("ss doubles", time.time()-_start)
                 else:
                     _start = time.time()
-                    fill_same_spin_contribution_batched_contr(
-                                        iexcit,
-                                        trial.cre_ex_a[iexcit],
-                                        trial.anh_ex_a[iexcit],
-                                        det_mat_a,
-                                        cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
-                                        Laa,
-                                        alpha_ss_buffer,
-                                        trial.excit_map_a,
-                                        slices_alpha[iexcit]
-                                        )
+                    wk.get_ss_nfold(
+                                trial.cre_ex_a[iexcit],
+                                trial.anh_ex_a[iexcit],
+                                det_mat_a,
+                                cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                                Laa,
+                                alpha_ss_buffer,
+                                slices_alpha[iexcit]
+                            )
                     print("ss nfold", time.time()-_start)
         ndets_b = len(trial.cre_ex_b[iexcit])
         det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
         cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
-        get_det_matrix_batched(
-                iexcit,
-                trial.cre_ex_b[iexcit],
-                trial.anh_ex_b[iexcit],
-                walker_batch.G0b,
-                det_mat_b)
         if ndets_b > 0:
-            # if iexcit > 2:
+            wk.build_det_matrix(
+                    trial.cre_ex_b[iexcit],
+                    trial.anh_ex_b[iexcit],
+                    walker_batch.G0b,
+                    det_mat_b)
             if iexcit == 1:
-                fill_opp_spin_factors_batched_singles(
+                wk.fill_os_singles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
-                        trial.excit_map_b,
                         Lbb,
                         beta_os_buffer,
                         slices_beta[1]
                         )
-                # print(numpy.sum(beta_os_buffer[0]))
-                # print(beta_os_buffer[0,map_beta,0])
             elif iexcit == 2:
-                fill_opp_spin_factors_batched_doubles_chol(
+                wk.fill_os_doubles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
-                        trial.excit_map_b,
                         G0b,
                         Lbb,
                         beta_os_buffer,
                         slices_beta[2]
                         )
             elif iexcit == 3:
-                fill_opp_spin_factors_batched_triples_chol(
+                wk.fill_os_triples(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
-                        trial.excit_map_b,
                         G0b,
                         Lbb,
                         beta_os_buffer,
                         slices_beta[3]
                         )
             else:
-                fill_opp_spin_factors_batched_chol(
-                                iexcit,
+                wk.fill_os_nfold(
                                 trial.cre_ex_b[iexcit],
                                 trial.anh_ex_b[iexcit],
-                                trial.excit_map_b,
                                 det_mat_b,
                                 cofactor_matrix_b,
                                 Lbb,
@@ -1014,37 +990,24 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 )
         if iexcit >= 2 and ndets_b > 0:
             if iexcit == 2:
-                get_same_spin_double_contribution_batched_contr(
+                wk.get_ss_doubles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
-                        beta_ss_buffer,
-                        trial.excit_map_b,
                         Lbb,
+                        beta_ss_buffer,
                         slices_beta[iexcit]
                         )
             else:
-                fill_same_spin_contribution_batched_contr(
-                                    iexcit,
-                                    trial.cre_ex_b[iexcit],
-                                    trial.anh_ex_b[iexcit],
-                                    det_mat_b,
-                                    cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
-                                    Lbb,
-                                    beta_ss_buffer,
-                                    trial.excit_map_b,
-                                    slices_beta[iexcit]
-                                    )
+                wk.get_ss_nfold(
+                        trial.cre_ex_b[iexcit],
+                        trial.anh_ex_b[iexcit],
+                        det_mat_b,
+                        cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                        Lbb,
+                        beta_ss_buffer,
+                        slices_beta[iexcit]
+                        )
 
-    # accumulating over x (cholesky vector)
-    # print(map_alpha)
-    # print(trial.ndet_a)
-    # print(trial.ndet_b)
-    # print(map_alpha)
-    # print(map_beta)
-    # bufferab = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
-    # bufferba = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
-    # bufferbb = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    # bufferaa = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     bufferab = numpy.zeros_like(alpha_os_buffer)
     bufferba = numpy.zeros_like(beta_os_buffer)
     bufferbb = numpy.zeros_like(beta_ss_buffer)
@@ -1053,17 +1016,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     bufferba[:,map_beta,:] = beta_os_buffer[:,:,:]
     bufferbb[:,map_beta] = beta_ss_buffer[:,:]
     bufferaa[:,map_alpha] = alpha_ss_buffer[:,:]
-    print(numpy.max(numpy.abs(cphase_ab)))
-    print(numpy.max(numpy.abs(bufferab)))
-    print(numpy.max(numpy.abs(bufferba)))
-    print(numpy.max(numpy.abs(bufferaa)))
-    print(numpy.max(numpy.abs(bufferbb)))
     energy_os = numpy.einsum('wJx,wJx,J->w', bufferab, bufferba, cphase_ab, optimize=True)
     energy_ss = numpy.einsum('wJ,wJ->w', bufferaa, c_phasea_ovlpb, optimize=True)
     energy_ss += numpy.einsum('wJ,wJ->w', bufferbb, c_phaseb_ovlpa, optimize=True)
 
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
-    print(cont1[0], cont2_J[0], cont2_K[0], cont3[0])
     e2b = cont1 + cont2_J + cont2_K + cont3
 
     walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
