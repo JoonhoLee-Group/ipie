@@ -287,19 +287,19 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
     Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha*nbasis)
     Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta*nbasis)
 
-    e1b = walker_batch.Ghalfa.dot(trial._rH1a.ravel())
-    e1b += walker_batch.Ghalfb.dot(trial._rH1b.ravel())
+    e1b = Ghalfa.dot(trial._rH1a.ravel())
+    e1b += Ghalfb.dot(trial._rH1b.ravel())
     e1b += hamiltonian.ecore
 
     if (isrealobj(trial._rchola)):
-        ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, walker_batch.Ghalfa, walker_batch.Ghalfb)
+        ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
     else:
-        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, walker_batch.Ghalfa, walker_batch.Ghalfb)
+        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
 
     if (isrealobj(trial._rchola)):
-        exx = exx_kernel_batch_real_rchol (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_real_rchol (trial._rcholb, walker_batch.Ghalfb)
+        exx = exx_kernel_batch_real_rchol(trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_real_rchol(trial._rcholb, walker_batch.Ghalfb)
     else:
-        exx = exx_kernel_batch_complex_rchol (trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_complex_rchol (trial._rcholb, walker_batch.Ghalfb)
+        exx = exx_kernel_batch_complex_rchol(trial._rchola, walker_batch.Ghalfa) + exx_kernel_batch_complex_rchol(trial._rcholb, walker_batch.Ghalfb)
 
     e2b = ecoul - exx
 
