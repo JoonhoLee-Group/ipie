@@ -99,7 +99,7 @@ class MultiSlater(object):
         self.use_wicks_helper = get_input_value(
                         options,
                         'use_wicks_helper',
-                        default=True,
+                        default=False,
                         verbose=verbose
                         )
         self.optimized = get_input_value(
