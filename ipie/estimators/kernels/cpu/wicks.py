@@ -172,29 +172,31 @@ def get_ss_doubles(
             buffer[iw, start+idet] -= numpy.dot(chol_fact[iw,q,r], chol_fact[iw,s,p]) + 0j
 
 @jit(nopython=True, fastmath=True)
-def det_matrix(
+def build_det_matrix(
         cre,
         anh,
         G0,
-        det_matrix):
+        det_mat):
 
-    nwalker = det_matrix.shape[0]
-    ndet = det_matrix.shape[1]
-    nex = det_matrix.shape[2]
+    nwalker = det_mat.shape[0]
+    ndet = det_mat.shape[1]
+    if ndet == 0:
+        return
+    nex = det_mat.shape[2]
     for iw in range(nwalker):
         for idet in range(ndet):
             for iex in range(nex):
-                p = cre[idet][iex]
-                q = anh[idet][iex]
-                det_matrix[iw, idet, iex, iex] = G0[iw, p, q]
+                p = cre[idet,iex]
+                q = anh[idet,iex]
+                det_mat[iw, idet, iex, iex] = G0[iw, p, q]
                 for jex in range(iex+1, nex):
-                    r = cre[idet][jex]
-                    s = anh[idet][jex]
-                    det_matrix[iw, idet, iex, jex] = G0[iw, p, s]
-                    det_matrix[iw, idet, jex, iex] = G0[iw, r, q]
+                    r = cre[idet,jex]
+                    s = anh[idet,jex]
+                    det_mat[iw, idet, iex, jex] = G0[iw, p, s]
+                    det_mat[iw, idet, jex, iex] = G0[iw, r, q]
 
 @jit(nopython=True, fastmath=True)
-def cofactor_matrix(
+def build_cofactor_matrix(
         row,
         col,
         det_matrix,
@@ -225,7 +227,7 @@ def cofactor_matrix(
                     cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[iw, idet, i, j]
 
 @jit(nopython=True, fastmath=True)
-def cofactor_matrix_4(
+def build_cofactor_matrix_4(
         row_1,
         col_1,
         row_2,
@@ -308,7 +310,7 @@ def fill_os_nfold(
         ps = cre[:, iex]
         for jex in range(nexcit):
             qs = anh[:, jex]
-            cofactor_matrix(
+            build_cofactor_matrix(
                     iex,
                     jex,
                     det_matrix,
@@ -378,7 +380,7 @@ def get_ss_nfold(
                 rs = cre[:, kex]
                 for lex in range(jex+1,nexcit):
                     ss = anh[:, lex]
-                    cofactor_matrix_4(
+                    build_cofactor_matrix_4(
                                     iex,
                                     jex,
                                     kex,
