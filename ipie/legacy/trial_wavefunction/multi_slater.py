@@ -214,8 +214,8 @@ class MultiSlater(object):
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
-            dets = wicks_helper.encode_dets(self.occa, self.occb)
             if self.use_wicks_helper:
+                dets = wicks_helper.encode_dets(self.occa, self.occb)
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
                 assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12
                 self.G = wicks_helper.compute_opdm(
