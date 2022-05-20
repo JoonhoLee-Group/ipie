@@ -372,7 +372,7 @@ def test_kernels():
             )
     assert numpy.allclose(ref, test)
     # 2.
-    G0 = shaped_normal((nwalkers, nbasis, nbasis), cmplx=True) 
+    G0 = shaped_normal((nwalkers, nbasis, nbasis), cmplx=True)
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     fill_opp_spin_factors_batched_doubles_chol(
@@ -458,6 +458,38 @@ def test_kernels():
             slices_beta[iexcit]
             )
     wk.fill_os_nfold(
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            det_mat,
+            cof_mat,
+            Lbb,
+            test,
+            slices_beta[iexcit]
+            )
+    assert numpy.allclose(ref, test)
+    det_mat = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit-2, iexcit-2), dtype=numpy.complex128)
+    get_det_matrix_batched(
+            iexcit,
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            walker_batch.G0b,
+            det_mat)
+    ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    from ipie.estimators.local_energy_wicks import fill_same_spin_contribution_batched_contr
+    fill_same_spin_contribution_batched_contr(
+            iexcit,
+            trial.cre_ex_b[iexcit],
+            trial.anh_ex_b[iexcit],
+            det_mat,
+            cof_mat,
+            Lbb,
+            ref,
+            trial.excit_map_b[iexcit],
+            slices_beta[iexcit]
+            )
+    wk.get_ss_nfold(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
             det_mat,

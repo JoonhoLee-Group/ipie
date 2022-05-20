@@ -271,7 +271,7 @@ def cofactor_matrix_4(
                     cofactor[iw, idet, ii, jj] = det_matrix[iw, idet, i, j]
 
 @jit(nopython=True, fastmath=True)
-def reduce_opp_spin_factor(
+def reduce_os_spin_factor(
         ps,
         qs,
         phase,
@@ -315,7 +315,7 @@ def fill_os_nfold(
                     cof_mat)
             # nwalkers x ndet
             phase = (-1.0 + 0.j)**(iex + jex)
-            reduce_opp_spin_factor(
+            reduce_os_spin_factor(
                     ps,
                     qs,
                     phase,
@@ -323,3 +323,76 @@ def fill_os_nfold(
                     chol_factor,
                     spin_buffer,
                     det_sls)
+
+@jit(nopython=True, fastmath=True)
+def reduce_ss_spin_factor(
+        ps,
+        qs,
+        rs,
+        ss,
+        phase,
+        cof_mat,
+        chol_factor,
+        spin_buffer,
+        det_sls):
+    nwalker = chol_factor.shape[0]
+    ndet = cof_mat.shape[1]
+    start = det_sls.start
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            det_cofactor = phase * numpy.linalg.det(cof_mat[iw,idet])
+            chol_a = chol_factor[iw, ss[idet], rs[idet]]
+            chol_b = chol_factor[iw, qs[idet], ps[idet]]
+            cont_ab = numpy.dot(chol_a, chol_b)
+            spin_buffer[iw, start + idet] += dot_real_cplx(
+                                            cont_ab,
+                                            det_cofactor.real,
+                                            det_cofactor.imag,
+                                            )
+            chol_c = chol_factor[iw, qs[idet], rs[idet]]
+            chol_d = chol_factor[iw, ss[idet], ps[idet]]
+            cont_cd = numpy.dot(chol_c, chol_d)
+            spin_buffer[iw, start + idet] -= dot_real_cplx(
+                                            cont_cd,
+                                            det_cofactor.real,
+                                            det_cofactor.imag,
+                                            )
+
+def get_ss_nfold(
+        cre,
+        anh,
+        dets_mat,
+        cof_mat,
+        chol_fact,
+        buffer,
+        det_sls
+        ):
+    nwalkers = dets_mat.shape[0]
+    ndet_level = dets_mat.shape[1]
+    nexcit = dets_mat.shape[-1] 
+    for iex in range(nexcit):
+        for jex in range(nexcit):
+            ps = cre[:, iex]
+            qs = anh[:, jex]
+            for kex in range(iex+1,nexcit):
+                rs = cre[:, kex]
+                for lex in range(jex+1,nexcit):
+                    ss = anh[:, lex]
+                    cofactor_matrix_4(
+                                    iex,
+                                    jex,
+                                    kex,
+                                    lex,
+                                    dets_mat,
+                                    cof_mat)
+                    phase = (-1.0 + 0.0j)**(kex + lex + iex + jex)
+                    reduce_ss_spin_factor(
+                            ps,
+                            qs,
+                            rs,
+                            ss,
+                            phase,
+                            cof_mat,
+                            chol_fact,
+                            buffer,
+                            det_sls)

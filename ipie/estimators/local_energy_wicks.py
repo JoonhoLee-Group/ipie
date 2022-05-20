@@ -452,8 +452,8 @@ def fill_same_spin_contribution_batched_contr(
                     contribution -= numpy.einsum('wJx,wJx->wJ', chol_c, chol_d, optimize=True)
                     # contribution = numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,p], chol_fact[:,s,r], optimize=True)
                     # contribution -= numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,r], chol_fact[:,s,p], optimize=True)
-                    contribution *= det_cofactor
-                    accumulator += contribution
+                    # contribution *= det_cofactor
+                    accumulator += det_cofactor * contribution
 
     buffer[:, det_sls] = accumulator
 
