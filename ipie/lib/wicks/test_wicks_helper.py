@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from pie.lib.wicks.wicks_helper import (
+from ipie.lib.wicks.wicks_helper import (
         encode_det,
         encode_dets,
         count_set_bits,
