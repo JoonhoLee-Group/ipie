@@ -63,11 +63,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                   .format(self.ot.real))
 
         # Green's functions for various elements of the trial wavefunction.        
-        if (trial.ortho_expansion):
+        if trial.ortho_expansion:
             self.G0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.G0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            self.Ghalf0a = numpy.zeros(shape=(self.nwalkers, system.nup,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            self.Ghalf0b = numpy.zeros(shape=(self.nwalkers, system.ndown,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.CIa = numpy.zeros(
