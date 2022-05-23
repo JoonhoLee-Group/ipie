@@ -832,22 +832,17 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # This is **much** faster than the above einsum
     chol_vecs = ham.chol_vecs.reshape((nbasis, nbasis, nchol))
     # start = time.time()
-    for i in range(nwalkers):
-        Laa[i] = numpy.einsum("iq,pj,ijx->qpx", Q0a[i], G0Ha[i], chol_vecs, optimize=True)
-        Lbb[i] = numpy.einsum("iq,pj,ijx->qpx", Q0b[i], G0Hb[i], chol_vecs, optimize=True)
-    # print(numpy.sum(Laa[0]))
     cont3 = 0.0
-    # print("L: ", time.time()-start)
     start = time.time()
-    # build_Laa(
-            # Q0a, Q0b,
-            # G0Ha, G0Hb,
-            # chol_vecs,
-            # Laa, Lbb)
-    print("build Laa: ", time.time()-start)
+    build_Laa(
+            Q0a, Q0b,
+            G0Ha, G0Hb,
+            chol_vecs,
+            Laa, Lbb)
+    # print("build Laa: ", time.time()-start)
     start = time.time()
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
-    print("build dets:", time.time()-start)
+    # print("build dets:", time.time()-start)
     ndets = len(trial.coeffs)
     energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
@@ -872,7 +867,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
         # defined here for reuse
         cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
         _start = time.time()
-        print("build dets:", time.time()-_start)
+        # print("build dets:", time.time()-_start)
         if ndets_a > 0:
             wk.build_det_matrix(
                     trial.cre_ex_a[iexcit],
@@ -888,7 +883,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         alpha_os_buffer,
                         slices_alpha[1]
                         )
-                print("singles:", time.time()-_start)
+                # print("singles:", time.time()-_start)
             elif iexcit == 2:
                 _start = time.time()
                 wk.fill_os_doubles(
@@ -898,7 +893,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                     Laa,
                     alpha_os_buffer,
                     slices_alpha[2])
-                print("doubles:", time.time()-_start)
+                # print("doubles:", time.time()-_start)
             elif iexcit == 3:
                 _start = time.time()
                 wk.fill_os_triples(
@@ -909,7 +904,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         alpha_os_buffer,
                         slices_alpha[3]
                         )
-                print("tripled:", time.time()-_start)
+                # print("tripled:", time.time()-_start)
             else:
                 _start = time.time()
                 wk.fill_os_nfold(
@@ -920,7 +915,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         alpha_os_buffer,
                         slices_alpha[3]
                         )
-                print("nfold:", time.time()-_start)
+                # print("nfold:", time.time()-_start)
             if iexcit >= 2 and ndets_a > 0:
                 if iexcit == 2:
                     _start = time.time()
@@ -930,7 +925,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                             Laa,
                             alpha_ss_buffer,
                             slices_alpha[iexcit])
-                    print("ss doubles", time.time()-_start)
+                    # print("ss doubles", time.time()-_start)
                 else:
                     _start = time.time()
                     wk.get_ss_nfold(
@@ -942,7 +937,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 alpha_ss_buffer,
                                 slices_alpha[iexcit]
                             )
-                    print("ss nfold", time.time()-_start)
+                    # print("ss nfold", time.time()-_start)
         ndets_b = len(trial.cre_ex_b[iexcit])
         det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
         cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
