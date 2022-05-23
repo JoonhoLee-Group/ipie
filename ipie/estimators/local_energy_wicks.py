@@ -908,12 +908,13 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
             else:
                 _start = time.time()
                 wk.fill_os_nfold(
-                        trial.cre_ex_a[iexcit],
-                        trial.anh_ex_a[iexcit],
-                        G0a,
-                        Laa,
-                        alpha_os_buffer,
-                        slices_alpha[3]
+                            trial.cre_ex_a[iexcit],
+                            trial.anh_ex_a[iexcit],
+                            det_mat_a,
+                            cofactor_matrix_a,
+                            Laa,
+                            alpha_os_buffer,
+                            slices_alpha[iexcit]
                         )
                 # print("nfold:", time.time()-_start)
             if iexcit >= 2 and ndets_a > 0:
