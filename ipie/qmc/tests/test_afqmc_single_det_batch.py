@@ -253,6 +253,18 @@ def test_generic_single_det_batch_density_diff():
     assert numpy.mean(data_batch.EHybrid.values[:-1].real) == pytest.approx(numpy.mean(data.EHybrid.values[:-1].real))
     assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(numpy.mean(data.Overlap.values[:-1].real))
 
+def teardown_module():
+    cwd = os.getcwd()
+    files = [
+            'estimates.test_generic_single_det_batch_density_diff.h5',
+            'estimates.test_generic_single_det_batch.h5'
+            ]
+    for f in files:
+        try:
+            os.remove(cwd+'/'+f)
+        except OSError:
+            pass
+
 if __name__=="__main__":
     test_generic_single_det_batch()
     test_generic_single_det_batch_density_diff()
