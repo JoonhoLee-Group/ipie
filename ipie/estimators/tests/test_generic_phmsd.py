@@ -117,7 +117,7 @@ def test_cofactor_matrix():
 
     from ipie.estimators.kernels.cpu import wicks as wk
     cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
-    wk.cofactor_matrix(
+    wk.build_cofactor_matrix(
             iex,
             jex,
             det_mat,
@@ -182,7 +182,7 @@ def test_cofactor_matrix_4():
     cofactor_matrix = numpy.zeros((nwalkers, ndets_b, nexcit-2, nexcit-2), dtype=numpy.complex128)
     for iex, jex, kex, lex in itertools.product(range(nexcit), repeat=4):
         if kex > iex and lex > jex:
-            wk.cofactor_matrix_4(
+            wk.build_cofactor_matrix_4(
                     iex,
                     jex,
                     kex,
@@ -242,7 +242,7 @@ def test_det_matrix():
     from ipie.estimators.kernels.cpu import wicks as wk
     det_mat_2 = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit),
             dtype=numpy.complex128)
-    wk.det_matrix(
+    wk.build_det_matrix(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
             walker_batch.G0b,
