@@ -716,7 +716,7 @@ def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
     naux = chol.shape[-1]
     nbsf = Q0a.shape[1]
     nwalkers = G0a.shape[0]
-    Lx = chol.transpose((2,0,1)).copy()
+    Lx = chol.transpose((2,1,0)).copy()
     for iw in range(nwalkers):
         G0a_real = G0a[iw].real.copy()
         G0a_imag = G0a[iw].imag.copy()
@@ -724,9 +724,10 @@ def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
         G0b_imag = G0b[iw].imag.copy()
         for x in range(naux):
             T1 = numpy.dot(G0a_real, Lx[x]) + 1j*numpy.dot(G0a_imag, Lx[x])
-            Laa[iw,:,:,x] = numpy.dot(Q0a[iw], T1.T)
+            Laa[iw,:,:,x] = numpy.dot(T1, Q0a[iw]).T
+            # pj,ji->pi,iq->pq
             T1 = numpy.dot(G0b_real, Lx[x]) + 1j*numpy.dot(G0b_imag, Lx[x])
-            Lbb[iw,:,:,x]= numpy.dot(Q0b[iw], T1.T)
+            Lbb[iw,:,:,x]= numpy.dot(T1, Q0b[iw]).T
 
 def build_slices(trial):
     slices_beta = []
