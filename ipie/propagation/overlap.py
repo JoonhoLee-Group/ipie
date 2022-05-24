@@ -560,7 +560,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
     else:
         # arrays of length ndet_per_single_excitation
         dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
-        wk.get_dets_doubles(
+        wk.get_dets_triples(
             trial.cre_ex_a[3],
             trial.anh_ex_a[3],
             G0wa,
@@ -570,7 +570,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         dets_b = None
     else:
         dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
-        wk.get_dets_doubles(
+        wk.get_dets_triples(
             trial.cre_ex_b[3],
             trial.anh_ex_b[3],
             G0wb,

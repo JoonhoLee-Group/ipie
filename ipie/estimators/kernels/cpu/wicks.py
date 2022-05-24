@@ -55,13 +55,13 @@ def get_dets_triples(
         G0,
         dets
         ):
-    ndets = ps.shape[0]
+    ndets = len(cre)
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            ps, qs = cre[3][idet,0], anh[3][idet,0]
-            rs, ss = cre[3][idet,1], anh[3][idet,1]
-            ts, us = cre[3][idet,2], anh[3][idet,2]
+            ps, qs = cre[idet,0], anh[idet,0]
+            rs, ss = cre[idet,1], anh[idet,1]
+            ts, us = cre[idet,2], anh[idet,2]
             dets[iw,idet] = G0[iw, ps, qs]*(
                         G0[iw, rs, ss]*G0[iw, ts, us] - G0[iw, rs, us]*G0[iw, ts, ss]
                          )
