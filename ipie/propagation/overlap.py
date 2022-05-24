@@ -2,6 +2,7 @@ import itertools
 import numpy
 import scipy.linalg
 from ipie.legacy.estimators.greens_function import gab_mod
+from ipie.estimators.kernels.cpu import wicks as wk
 try:
     from ipie.propagation.wicks_kernels import get_det_matrix_batched
 except ImportError:
@@ -266,7 +267,10 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
 
     return ovlps
 
-def get_dets_single_excitation_batched(G0wa, G0wb, trial):
+def get_dets_single_excitation_batched(
+        G0wa,
+        G0wb,
+        trial):
     """Compute alpha and beta overlaps at single excitation level.
 
     Parameters
@@ -285,17 +289,68 @@ def get_dets_single_excitation_batched(G0wa, G0wb, trial):
     dets_b : numpy.ndarray
         Beta overlaps shape (nw, ndets_excit1_beta)
     """
-    if trial.cre_ex_a[1].shape[0] == 0:
+    ndets_a = trial.cre_ex_a[1].shape[0]
+    ndets_b = trial.cre_ex_b[1].shape[0]
+    nwalkers = G0wa.shape[0]
+    if ndets_a == 0:
         dets_a = None
     else:
         # arrays of length ndet_per_single_excitation
         ps, qs = trial.cre_ex_a[1][:,0], trial.anh_ex_a[1][:,0]
         dets_a = G0wa[:, ps, qs]
-    if trial.cre_ex_b[1].shape[0] == 0:
+    if ndets_b == 0:
         dets_b = None
     else:
         ps, qs = trial.cre_ex_b[1][:,0], trial.anh_ex_b[1][:,0]
         dets_b = G0wb[:, ps, qs]
+    return dets_a, dets_b
+
+def get_dets_single_excitation_batched_opt(
+        G0wa,
+        G0wb,
+        trial):
+    """Compute alpha and beta overlaps at single excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit1_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit1_beta)
+    """
+    ndets_a = trial.cre_ex_a[1].shape[0]
+    ndets_b = trial.cre_ex_b[1].shape[0]
+    nwalkers = G0wa.shape[0]
+    if ndets_a == 0:
+        dets_a = None
+    else:
+        # arrays of length ndet_per_single_excitation
+        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        wk.get_dets_singles(
+            trial.cre_ex_a[1],
+            trial.anh_ex_a[1],
+            G0wa,
+            dets_a
+            )
+    if ndets_b == 0:
+        dets_b = None
+    else:
+        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        wk.get_dets_singles(
+            trial.cre_ex_b[1],
+            trial.anh_ex_b[1],
+            G0wb,
+            dets_b
+            )
     return dets_a, dets_b
 
 def get_dets_double_excitation_batched(G0wa, G0wb, trial):
@@ -404,6 +459,8 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = G0wa.shape[0]
     indices = numpy.indices((nexcit, nexcit))
+    # print(G0wa.shape)
+    # print(ndets_a)
     if ndets_a == 0:
         dets_a = None
     else:
@@ -431,6 +488,143 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
         dets_b = numpy.linalg.det(det_mat)
     return dets_a, dets_b
 
+def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at double excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit2_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit2_beta)
+    """
+    ndets_a = trial.cre_ex_a[2].shape[0]
+    ndets_b = trial.cre_ex_b[2].shape[0]
+    nwalkers = G0wa.shape[0]
+    if ndets_a == 0:
+        dets_a = None
+    else:
+        # arrays of length ndet_per_single_excitation
+        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        wk.get_dets_doubles(
+            trial.cre_ex_a[2],
+            trial.anh_ex_a[2],
+            G0wa,
+            dets_a
+            )
+    if ndets_b == 0:
+        dets_b = None
+    else:
+        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        wk.get_dets_doubles(
+            trial.cre_ex_b[2],
+            trial.anh_ex_b[2],
+            G0wb,
+            dets_b
+            )
+    return dets_a, dets_b
+
+def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at triple excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excit3_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excit3_beta)
+    """
+    ndets_a = trial.cre_ex_a[3].shape[0]
+    ndets_b = trial.cre_ex_b[3].shape[0]
+    nwalkers = G0wa.shape[0]
+    if ndets_a == 0:
+        dets_a = None
+    else:
+        # arrays of length ndet_per_single_excitation
+        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        wk.get_dets_doubles(
+            trial.cre_ex_a[3],
+            trial.anh_ex_a[3],
+            G0wa,
+            dets_a
+            )
+    if ndets_b == 0:
+        dets_b = None
+    else:
+        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        wk.get_dets_doubles(
+            trial.cre_ex_b[3],
+            trial.anh_ex_b[3],
+            G0wb,
+            dets_b
+            )
+    return dets_a, dets_b
+
+def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
+    """Compute alpha and beta overlaps at arbitrary excitation level.
+
+    Parameters
+    ----------
+    G0wa : numpy.ndarray
+        Alpha reference Green's function (all walkers).
+    G0wb : numpy.ndarray
+        Bewa reference Green's function (all walkers).
+    trial : MultiSlater
+        Trial wavefunction instance.
+
+    Returns
+    -------
+    dets_a : numpy.ndarray
+        Alpha overlaps shape (nw, ndets_excitn_alpha)
+    dets_b : numpy.ndarray
+        Beta overlaps shape (nw, ndets_excitn_beta)
+    """
+    ndets_a = len(trial.cre_ex_a[nexcit])
+    nwalkers = G0wa.shape[0]
+    ndets_a = trial.cre_ex_a[nexcit].shape[0]
+    ndets_b = trial.cre_ex_b[nexcit].shape[0]
+    nwalkers = G0wa.shape[0]
+    if ndets_a == 0:
+        dets_a = None
+    else:
+        # arrays of length ndet_per_single_excitation
+        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        wk.get_dets_nfold(
+            trial.cre_ex_a[nexcit],
+            trial.anh_ex_a[nexcit],
+            G0wa,
+            dets_a
+            )
+    if ndets_b == 0:
+        dets_b = None
+    else:
+        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        wk.get_dets_nfold(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            G0wb,
+            dets_b
+            )
+    return dets_a, dets_b
+
 def compute_determinants_batched(G0a, G0b, trial):
     na = trial._nalpha
     nb = trial._nbeta
@@ -439,21 +633,22 @@ def compute_determinants_batched(G0a, G0b, trial):
     dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
     dets_b_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
     # Use low level excitation optimizations
-    dets_a, dets_b = get_dets_single_excitation_batched(G0a, G0b, trial)
+    # TODO: Optimization Use one buffer + one remapping at the end.
+    dets_a, dets_b = get_dets_single_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[1]] = dets_a
     dets_b_full[:,trial.excit_map_b[1]] = dets_b
     if trial.max_excite < 2:
         return dets_a_full, dets_b_full
-    dets_a, dets_b = get_dets_double_excitation_batched(G0a, G0b, trial)
+    dets_a, dets_b = get_dets_double_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[2]] = dets_a
     dets_b_full[:,trial.excit_map_b[2]] = dets_b
     if trial.max_excite < 3:
         return dets_a_full, dets_b_full
-    dets_a, dets_b = get_dets_triple_excitation_batched(G0a, G0b, trial)
+    dets_a, dets_b = get_dets_triple_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:,trial.excit_map_a[3]] = dets_a
     dets_b_full[:,trial.excit_map_b[3]] = dets_b
     for iexcit in range(4, trial.max_excite+1):
-        dets_a, dets_b = get_dets_nfold_excitation_batched(iexcit, G0a, G0b, trial)
+        dets_a, dets_b = get_dets_nfold_excitation_batched_opt(iexcit, G0a, G0b, trial)
         dets_a_full[:,trial.excit_map_a[iexcit]] = dets_a
         dets_b_full[:,trial.excit_map_b[iexcit]] = dets_b
 

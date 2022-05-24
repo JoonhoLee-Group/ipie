@@ -12,6 +12,92 @@ def dot_real_cplx(
     return A * B_real + 1j * (A * B_cplx)
 
 
+# Overlap
+@jit(nopython=True, fastmath=True)
+def get_dets_singles(
+        cre,
+        anh,
+        G0,
+        dets
+        ):
+    ps = cre[:, 0]
+    qs = anh[:, 0]
+    ndets = ps.shape[0]
+    nwalkers = G0.shape[0]
+    for idet in range(ndets):
+        dets[:,idet] = G0[:, ps[idet], qs[idet]]
+
+@jit(nopython=True, fastmath=True)
+def get_dets_doubles(
+        cre,
+        anh,
+        G0,
+        dets
+        ):
+    ps = cre[:, 0]
+    qs = anh[:, 0]
+    rs = cre[:, 1]
+    ss = anh[:, 1]
+    ndets = ps.shape[0]
+    nwalkers = G0.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            dets[iw,idet] = (
+                    G0[iw, ps[idet], qs[idet]] * G0[iw, rs[idet], ss[idet]]
+                    -
+                    G0[iw, ps[idet], ss[idet]] * G0[iw, rs[idet], qs[idet]]
+                    )
+
+@jit(nopython=True, fastmath=True)
+def get_dets_triples(
+        cre,
+        anh,
+        G0,
+        dets
+        ):
+    ndets = ps.shape[0]
+    nwalkers = G0.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            ps, qs = cre[3][idet,0], anh[3][idet,0]
+            rs, ss = cre[3][idet,1], anh[3][idet,1]
+            ts, us = cre[3][idet,2], anh[3][idet,2]
+            dets[iw,idet] = G0[iw, ps, qs]*(
+                        G0[iw, rs, ss]*G0[iw, ts, us] - G0[iw, rs, us]*G0[iw, ts, ss]
+                         )
+            dets[iw,idet] -= G0[iw, ps, ss]*(
+                        G0[iw, rs, qs]*G0[iw, ts, us] - G0[iw, rs, us]*G0[iw, ts, qs]
+                        )
+            dets[iw,idet] += G0[iw, ps, us]*(
+                        G0[iw, rs, qs]*G0[iw, ts, ss] - G0[iw, rs, ss]*G0[iw, ts, qs]
+                        )
+
+@jit(nopython=True, fastmath=True)
+def get_dets_nfold(
+        cre,
+        anh,
+        G0,
+        dets
+        ):
+    ndets = len(cre)
+    nwalkers = G0.shape[0]
+    nex = cre.shape[-1]
+    det = numpy.zeros((nex, nex), dtype=numpy.complex128)
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            for iex in range(nex):
+                p = cre[idet, iex]
+                q = anh[idet, iex]
+                det[iex,iex] = G0[iw,p,q]
+                for jex in range(iex+1, nex):
+                    r = cre[idet, jex]
+                    s = anh[idet, jex]
+                    det[iex, jex] = G0[iw,p,s]
+                    det[jex, iex] = G0[iw,r,q]
+            dets[iw, idet] = numpy.linalg.det(det)
+
+
+# Energy evaluation
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(
         cre,
@@ -371,7 +457,7 @@ def get_ss_nfold(
         ):
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
-    nexcit = dets_mat.shape[-1] 
+    nexcit = dets_mat.shape[-1]
     for iex in range(nexcit):
         for jex in range(nexcit):
             ps = cre[:, iex]
