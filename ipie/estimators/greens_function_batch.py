@@ -108,7 +108,7 @@ def greens_function_single_det(walker_batch, trial):
             det += [sign_a*exp(log_ovlp_a-walker_batch.log_shift)]
 
     det = array(det, dtype=numpy.complex128)
-    
+
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         cupy.cuda.stream.get_current_stream().synchronize()
 
@@ -872,6 +872,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
+    import time
     tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype = numpy.complex128)
     nbasis = walker_batch.Ga.shape[-1]
 
@@ -882,33 +883,49 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     walker_batch.Gb.fill(0.0+0.0j)
 
     # Build reference Green's functions and overlaps
-    ovlp_mats_a = numpy.einsum('wmi,mj->wji', walker_batch.phia, trial.psi0a.conj(), optimize=True)
-    signs_a, logdets_a = numpy.linalg.slogdet(ovlp_mats_a)
-    ovlp_mats_b = numpy.einsum('wmi,mj->wji', walker_batch.phib, trial.psi0b.conj(), optimize=True)
-    signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
-    ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
-    inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
+    start = time.time()
     # Note abuse of naming convention this is really theta for the reference
     # determinant.
-    walker_batch.Ghalfa = numpy.einsum('wmi,wij->wjm', walker_batch.phia, inv_ovlps_a, optimize=True)
-    G0a = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfa, trial.psi0a.conj(), optimize=True)
-    # something not correct here.
-    inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
-    walker_batch.Ghalfb = numpy.einsum('wmi,wij->wjm', walker_batch.phib, inv_ovlps_b, optimize=True)
-    G0b = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfb, trial.psi0b.conj(), optimize=True)
+    G0a = numpy.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    G0b = numpy.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    ovlps0 = numpy.zeros((walker_batch.nwalkers), dtype=numpy.complex128)
+    signs_a = numpy.zeros_like(ovlps0)
+    signs_b = numpy.zeros_like(ovlps0)
+    logdets_a = numpy.zeros_like(ovlps0)
+    logdets_b = numpy.zeros_like(ovlps0)
+    for iw in range(walker_batch.nwalkers):
+        ovlp = numpy.dot(walker_batch.phia[iw].T, trial.psi[0,:,:na].conj())
+        ovlp_inv = numpy.linalg.inv(ovlp)
+        walker_batch.Ghalfa[iw] = numpy.dot(ovlp_inv, walker_batch.phia[iw].T)
+        G0a[iw] = numpy.dot(trial.psi[0,:,:na].conj(), walker_batch.Ghalfa[iw])
+        sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
+        sign_b, log_ovlp_b = 1.0, 0.0
+        ovlp = numpy.dot(walker_batch.phib[iw].T, trial.psi[0,:,na:].conj())
+        sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
+        walker_batch.Ghalfb[iw] = numpy.dot(numpy.linalg.inv(ovlp), walker_batch.phib[iw].T)
+        G0b[iw] = numpy.dot(trial.psi[0,:,na:].conj(), walker_batch.Ghalfb[iw])
+        signs_a[iw] = sign_a
+        signs_b[iw] = sign_b
+        logdets_a[iw] = log_ovlp_a
+        logdets_b[iw] = log_ovlp_b
+    ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
+    print("g0: ", time.time()-start)
     walker_batch.G0a = G0a
     walker_batch.G0b = G0b
     walker_batch.Q0a = numpy.eye(nbasis)[None, :] - G0a
     walker_batch.Q0b = numpy.eye(nbasis)[None, :] - G0b
     walker_batch.CIa.fill(0.0+0.0j)
     walker_batch.CIb.fill(0.0+0.0j)
+    start = time.time()
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
+    print("dets: ", time.time() - start)
 
     walker_batch.det_ovlpas = dets_a_full * trial.phase_a[None, :] # phase included
     walker_batch.det_ovlpbs = dets_b_full * trial.phase_b[None, :] # phase included
     ovlpa = walker_batch.det_ovlpas
     ovlpb = walker_batch.det_ovlpbs
 
+    start = time.time()
     c_phasea_ovlpb = numpy.einsum(
                         'wJ,J->wJ',
                         ovlpb,
@@ -924,29 +941,40 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     walker_batch.Ga += numpy.einsum('w,wpq->wpq', ovlps, G0a, optimize=True)
     walker_batch.Gb += numpy.einsum('w,wpq->wpq', ovlps, G0b, optimize=True)
     # intermediates for contribution 2 (connected diagrams)
+    print("const : ", time.time() - start)
+    import time
+    start = time.time()
     build_CI_single_excitation(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
+    print("single: ", time.time()-start)
+    start = time.time()
     build_CI_double_excitation(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
+    print("double: ", time.time()-start)
+    start = time.time()
     build_CI_triple_excitation(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
+    print("triple: ", time.time()-start)
     for iexcit in range(4, trial.max_excite+1):
+        start = time.time()
         build_CI_nfold_excitation(
             iexcit,
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
+        print(iexcit, time.time()-start)
     # contribution 2 (connected diagrams)
+    start = time.time()
     walker_batch.Ga += numpy.einsum(
                             'wpr,wrs,wsq->wpq',
                             walker_batch.Q0a,
@@ -960,6 +988,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
                             walker_batch.Ghalfb,
                             optimize=True)
 
+    print("gab: ", time.time()-start)
     # multiplying everything by reference overlap
     ovlps *= ovlps0
     walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]
