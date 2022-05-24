@@ -97,6 +97,161 @@ def get_dets_nfold(
             dets[iw, idet] = numpy.linalg.det(det)
 
 
+# Green's function
+
+@jit(nopython=True, fastmath=True)
+def reduce_CI_singles(
+        cre,
+        anh,
+        phases,
+        CI):
+    ps = cre[:,0]
+    qs = anh[:,0]
+    ndets = len(cre)
+    nwalkers = phases.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = ps[idet]
+            q = qs[idet]
+            CI[iw, q, p] += phases[iw, idet] 
+
+@jit(nopython=True, fastmath=True)
+def reduce_CI_doubles(
+        cre,
+        anh,
+        phases,
+        G0,
+        CI):
+    ps = cre[:,0]
+    qs = anh[:,0]
+    rs = cre[:, 1]
+    ss = anh[:, 1]
+    ndets = len(cre)
+    nwalkers = G0.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = ps[idet]
+            q = qs[idet]
+            r = rs[idet]
+            s = ss[idet]
+            CI[iw, q, p] += phases[iw, idet] * G0[iw,r,s]
+            CI[iw, s, r] += phases[iw, idet] * G0[iw,p,q]
+            CI[iw, q, r] -= phases[iw, idet] * G0[iw,p,s]
+            CI[iw, s, p] -= phases[iw, idet] * G0[iw,r,q]
+
+@jit(nopython=True, fastmath=True)
+def reduce_CI_triples(
+        cre,
+        anh,
+        phases,
+        G0,
+        CI):
+    ps = cre[:, 0]
+    qs = anh[:, 0]
+    rs = cre[:, 1]
+    ss = anh[:, 1]
+    ts = cre[:, 2]
+    us = anh[:, 2]
+    ndets = len(cre)
+    nwalkers = G0.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = ps[idet]
+            q = qs[idet]
+            r = rs[idet]
+            s = ss[idet]
+            t = ts[idet]
+            u = us[idet]
+            CI[iw,q,p] += phases[iw,idet] * (
+                    G0[iw,r,s]*G0[iw,t,u] -
+                    G0[iw,r,u]*G0[iw,t,s]
+                    ) # 0 0
+            CI[iw,s,p] -= phases[iw,idet] * (
+                    G0[iw,r,q]*G0[iw,t,u] -
+                    G0[iw,r,u]*G0[iw,t,q]
+                    ) # 0 1
+            CI[iw,u,p] += phases[iw,idet] * (
+                    G0[iw,r,q]*G0[iw,t,s] -
+                    G0[iw,r,s]*G0[iw,t,q]
+                    ) # 0 2
+
+            CI[iw,q,r] -= phases[iw,idet] * (
+                    G0[iw,p,s]*G0[iw,t,u] -
+                    G0[iw,p,u]*G0[iw,t,s]
+                    ) # 1 0
+            CI[iw,s,r] += phases[iw,idet] * (
+                    G0[iw,p,q]*G0[iw,t,u] -
+                    G0[iw,p,u]*G0[iw,t,q]
+                    ) # 1 1
+            CI[iw,u,r] -= phases[iw,idet] * (
+                    G0[iw,p,q]*G0[iw,t,s] -
+                    G0[iw,p,s]*G0[iw,t,q]
+                    ) # 1 2
+
+            CI[iw,q,t] += phases[iw,idet] * (
+                    G0[iw,p,s]*G0[iw,r,u] -
+                    G0[iw,p,u]*G0[iw,r,s]
+                    ) # 2 0
+            CI[iw,s,t] -= phases[iw,idet] * (
+                    G0[iw,p,q]*G0[iw,r,u] -
+                    G0[iw,p,u]*G0[iw,r,q]
+                    ) # 2 1
+            CI[iw,u,t] += phases[iw,idet] * (
+                    G0[iw,p,q]*G0[iw,r,s] -
+                    G0[iw,p,s]*G0[iw,r,q]
+                    ) # 2 2
+
+
+@jit(nopython=True, fastmath=True)
+def _reduce_nfold_cofactor_contribution(
+        ps,
+        qs,
+        sign,
+        phases,
+        cofactor_matrix,
+        CI
+        ):
+    nwalkers = cofactor_matrix.shape[0]
+    ndets = cofactor_matrix.shape[1]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = ps[idet]
+            q = qs[idet]
+            det = numpy.linalg.det(cofactor_matrix[iw, idet])
+            rhs = sign  * det * phases[iw, idet]
+            CI[iw, q, p] += rhs 
+
+@jit(nopython=True, fastmath=True)
+def reduce_CI_nfold(
+        cre,
+        anh,
+        phases,
+        det_mat,
+        cof_mat,
+        CI):
+    ndets = len(cre)
+    nwalkers = CI.shape[0]
+    nexcit = det_mat.shape[-1] 
+    for iex in range(nexcit):
+        p = cre[:, iex]
+        for jex in range(nexcit):
+            q = anh[:, jex]
+            build_cofactor_matrix(
+                    iex,
+                    jex,
+                    det_mat,
+                    cof_mat)
+            sign = (-1 + 0.0j)**(iex + jex)
+            _reduce_nfold_cofactor_contribution(
+                    p,
+                    q,
+                    sign,
+                    phases,
+                    cof_mat,
+                    CI
+                    )
+
+
 # Energy evaluation
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(

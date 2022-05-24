@@ -15,6 +15,7 @@ try:
         )
 except ImportError:
     pass
+from ipie.estimators.kernels.cpu import wicks as wk
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
@@ -451,6 +452,29 @@ def build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
                 c_phaseb_ovlpa[:, trial.excit_map_b[1]]
                 )
 
+def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[1])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[1].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
+        wk.reduce_CI_singles(
+                trial.cre_ex_a[1],
+                trial.anh_ex_a[1],
+                phases,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[1])
+    if trial.cre_ex_b[1].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
+        wk.reduce_CI_singles(
+                trial.cre_ex_b[1],
+                trial.anh_ex_b[1],
+                phases,
+                walker_batch.CIb)
+
 def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     ndets_a = len(trial.cre_ex_a[2])
     nwalkers = walker_batch.G0a.shape[0]
@@ -535,6 +559,56 @@ def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
                 walker_batch.CIb,
                 rhs,
                 )
+
+def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[2])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[2].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
+        wk.reduce_CI_doubles(
+                trial.cre_ex_a[2],
+                trial.anh_ex_a[2],
+                phases,
+                walker_batch.G0a,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[1])
+    if trial.cre_ex_b[2].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
+        wk.reduce_CI_doubles(
+                trial.cre_ex_b[2],
+                trial.anh_ex_b[2],
+                phases,
+                walker_batch.G0b,
+                walker_batch.CIb)
+
+def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[3])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[3].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
+        wk.reduce_CI_triples(
+                trial.cre_ex_a[3],
+                trial.anh_ex_a[3],
+                phases,
+                walker_batch.G0a,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[3])
+    if trial.cre_ex_b[3].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
+        wk.reduce_CI_triples(
+                trial.cre_ex_b[3],
+                trial.anh_ex_b[3],
+                phases,
+                walker_batch.G0b,
+                walker_batch.CIb)
 
 def build_CI_triple_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     ndets_a = len(trial.cre_ex_a[3])
@@ -858,6 +932,52 @@ def build_CI_nfold_excitation(
                         )
     return dets_a, dets_b
 
+def build_CI_nfold_excitation_opt(
+        nexcit,
+        walker_batch,
+        trial,
+        c_phasea_ovlpb,
+        c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[nexcit])
+    nwalkers = walker_batch.G0a.shape[0]
+    if ndets_a == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+        det_mat = numpy.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
+        wk.build_det_matrix(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                walker_batch.G0a,
+                det_mat)
+        cof_mat = numpy.zeros((nwalkers, ndets_a, nexcit-1, nexcit-1), dtype=numpy.complex128)
+        wk.reduce_CI_nfold(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[nexcit])
+    if ndets_b == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
+        det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
+        wk.build_det_matrix(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                walker_batch.G0b,
+                det_mat)
+        cof_mat = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
+        wk.reduce_CI_nfold(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIb)
+
 def greens_function_multi_det_wicks_opt(walker_batch, trial):
     """Compute walker's green's function using Wick's theorem.
 
@@ -944,21 +1064,21 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     print("const : ", time.time() - start)
     import time
     start = time.time()
-    build_CI_single_excitation(
+    build_CI_single_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
     print("single: ", time.time()-start)
     start = time.time()
-    build_CI_double_excitation(
+    build_CI_double_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
     print("double: ", time.time()-start)
     start = time.time()
-    build_CI_triple_excitation(
+    build_CI_triple_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
@@ -966,7 +1086,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     print("triple: ", time.time()-start)
     for iexcit in range(4, trial.max_excite+1):
         start = time.time()
-        build_CI_nfold_excitation(
+        build_CI_nfold_excitation_opt(
             iexcit,
             walker_batch,
             trial,
