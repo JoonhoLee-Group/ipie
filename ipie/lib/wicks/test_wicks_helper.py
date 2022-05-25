@@ -1,19 +1,24 @@
 import pytest
 import numpy as np
 
-from ipie.lib.wicks.wicks_helper import (
-        encode_det,
-        encode_dets,
-        count_set_bits,
-        get_excitation_level,
-        decode_det,
-        get_ia,
-        get_perm_ia,
-        print_bitstring,
-        compute_opdm
-        )
+try:
+    from ipie.lib.wicks.wicks_helper import (
+            encode_det,
+            encode_dets,
+            count_set_bits,
+            get_excitation_level,
+            decode_det,
+            get_ia,
+            get_perm_ia,
+            print_bitstring,
+            compute_opdm
+            )
+    no_wicks = False
+except ImportError:
+    no_wicks = True
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 @pytest.mark.parametrize(
         "test_input,expected",
         [
@@ -35,6 +40,7 @@ def test_encode_det(test_input, expected):
         assert bin(det[i]) == expected[i]
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 def test_encode_dets():
     occsa = np.array(
             [[0,1,2,3], [0,1,2,4]],
@@ -52,6 +58,7 @@ def test_encode_dets():
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 @pytest.mark.parametrize(
         "test_input,expected",
         [
@@ -65,6 +72,7 @@ def test_count_set_bits(test_input, expected):
     assert nset == expected
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 @pytest.mark.parametrize(
         "test_input,expected",
         [
@@ -83,6 +91,7 @@ def test_get_excitation_level(test_input, expected):
     assert nset == expected
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 @pytest.mark.parametrize(
         "test_input,expected",
         [
@@ -98,6 +107,7 @@ def test_decode_det(test_input, expected):
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 def test_get_ia():
     # <1100|0^3|1010>
     ket = encode_det(
@@ -113,6 +123,7 @@ def test_get_ia():
     assert (ia == [3, 0]).all()
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 @pytest.mark.parametrize(
         "test_input,expected",
         [
@@ -134,6 +145,7 @@ def test_get_perm_ia(test_input, expected):
     assert perm == expected
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 def test_get_perm_ia_long():
     # perm(0^3|0101>) = -1
     # |0101> = 1010 (binary)
@@ -146,6 +158,7 @@ def test_get_perm_ia_long():
     assert perm == 1
 
 @pytest.mark.unit
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
 def test_compute_opdm():
     # perm(0^3|0101>) = -1
     # |0101> = 1010 (binary)
