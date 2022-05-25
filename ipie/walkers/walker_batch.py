@@ -167,6 +167,8 @@ class WalkerBatch(object):
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
             data = self.__dict__[d]
+            if data is None:
+                continue
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
             if isinstance(data[iw], (ndarray)):
                 buff[s:s+data[iw].size] = array(data[iw].ravel())
@@ -212,6 +214,8 @@ class WalkerBatch(object):
         s = 0
         for d in self.buff_names:
             data = self.__dict__[d]
+            if data is None:
+                continue
             assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
             if isinstance(data[iw], ndarray):
                 self.__dict__[d][iw] = array(buff[s:s+data[iw].size].reshape(data[iw].shape).copy())
