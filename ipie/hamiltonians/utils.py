@@ -5,6 +5,7 @@ import time
 from ipie.hamiltonians.generic import Generic, read_integrals, construct_h1e_mod
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 from ipie.utils.pack import pack_cholesky
+from ipie.utils.io import get_input_value
 
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     """Wrapper to select hamiltonian class
@@ -42,8 +43,13 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         idx = numpy.triu_indices(nbsf)
 
         chol = chol.reshape((nbsf,nbsf,nchol))
-        
+
         shmem = have_shared_mem(comm)
+        pack_cholesky = get_input_value(
+                ham_opts,
+                'symmetry',
+                verbose=verbose,
+                alias=['pack_cholesky'])
         if shmem:
             if comm.rank == 0:
                 cp_shape = (nbsf*(nbsf+1)//2, nchol)
@@ -55,17 +61,18 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             shape = comm.bcast(cp_shape, root=0)
             dtype = comm.bcast(dtype, root=0)
             chol_packed = get_shared_array(comm, shape, dtype)
-            if comm.rank == 0:
+            if comm.rank == 0 and pack_cholesky:
                 pack_cholesky(idx[0],idx[1], chol_packed, chol)
             comm.Barrier()
         else:
             dtype = chol.dtype
             cp_shape = (nbsf*(nbsf+1)//2, nchol)
             chol_packed = numpy.zeros(cp_shape, dtype=dtype)
-            pack_cholesky(idx[0],idx[1], chol_packed, chol)
+            if pack_cholesky:
+                pack_cholesky(idx[0],idx[1], chol_packed, chol)
 
         chol = chol.reshape((nbsf*nbsf,nchol))
-        
+
         if verbose:
             print("# Time to pack Cholesky vectors: {:.6f}".format(time.time()-start))
 
