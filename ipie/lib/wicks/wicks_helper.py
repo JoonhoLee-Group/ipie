@@ -4,7 +4,10 @@ import ctypes
 from numpy.ctypeslib import ndpointer
 
 _path = os.path.dirname(__file__)
-_wicks_helper = np.ctypeslib.load_library('libwicks_helper', _path)
+try:
+    _wicks_helper = np.ctypeslib.load_library('libwicks_helper', _path)
+except OSError:
+    raise ImportError
 DET_LEN = 2
 
 def encode_dets(occsa, occsb):
