@@ -16,6 +16,7 @@ try:
 except ImportError:
     pass
 from ipie.estimators.kernels.cpu import wicks as wk
+from numba import jit
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
@@ -978,6 +979,14 @@ def build_CI_nfold_excitation_opt(
                 cof_mat,
                 walker_batch.CIb)
 
+
+@jit(nopython=True, fastmath=True)
+def contract_CI(Q0, CI, Ghalf, G):
+    nwalkers = Ghalf.shape[0]
+    nbasis = Q0.shape[1]
+    for iw in range(nwalkers):
+        G[iw] += numpy.dot(Q0[iw], numpy.dot(CI[iw], Ghalf[iw]))
+
 def greens_function_multi_det_wicks_opt(walker_batch, trial):
     """Compute walker's green's function using Wick's theorem.
 
@@ -1029,16 +1038,13 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
         logdets_a[iw] = log_ovlp_a
         logdets_b[iw] = log_ovlp_b
     ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
-    print("g0: ", time.time()-start)
     walker_batch.G0a = G0a
     walker_batch.G0b = G0b
     walker_batch.Q0a = numpy.eye(nbasis)[None, :] - G0a
     walker_batch.Q0b = numpy.eye(nbasis)[None, :] - G0b
     walker_batch.CIa.fill(0.0+0.0j)
     walker_batch.CIb.fill(0.0+0.0j)
-    start = time.time()
     dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
-    print("dets: ", time.time() - start)
 
     walker_batch.det_ovlpas = dets_a_full * trial.phase_a[None, :] # phase included
     walker_batch.det_ovlpbs = dets_b_full * trial.phase_b[None, :] # phase included
@@ -1061,29 +1067,21 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     walker_batch.Ga += numpy.einsum('w,wpq->wpq', ovlps, G0a, optimize=True)
     walker_batch.Gb += numpy.einsum('w,wpq->wpq', ovlps, G0b, optimize=True)
     # intermediates for contribution 2 (connected diagrams)
-    print("const : ", time.time() - start)
-    import time
-    start = time.time()
     build_CI_single_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    print("single: ", time.time()-start)
-    start = time.time()
     build_CI_double_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    print("double: ", time.time()-start)
-    start = time.time()
     build_CI_triple_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    print("triple: ", time.time()-start)
     for iexcit in range(4, trial.max_excite+1):
         start = time.time()
         build_CI_nfold_excitation_opt(
@@ -1092,23 +1090,17 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-        print(iexcit, time.time()-start)
     # contribution 2 (connected diagrams)
-    start = time.time()
-    walker_batch.Ga += numpy.einsum(
-                            'wpr,wrs,wsq->wpq',
-                            walker_batch.Q0a,
-                            walker_batch.CIa,
-                            walker_batch.Ghalfa,
-                            optimize=True)
-    walker_batch.Gb += numpy.einsum(
-                            'wpr,wrs,wsq->wpq',
-                            walker_batch.Q0b,
-                            walker_batch.CIb,
-                            walker_batch.Ghalfb,
-                            optimize=True)
-
-    print("gab: ", time.time()-start)
+    contract_CI(
+        walker_batch.Q0a,
+        walker_batch.CIa,
+        walker_batch.Ghalfa,
+        walker_batch.Ga)
+    contract_CI(
+        walker_batch.Q0b,
+        walker_batch.CIb,
+        walker_batch.Ghalfb,
+        walker_batch.Gb)
     # multiplying everything by reference overlap
     ovlps *= ovlps0
     walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]
