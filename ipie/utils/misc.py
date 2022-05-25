@@ -29,28 +29,18 @@ def get_git_revision_hash():
     """
 
     try:
-        srcs = [s for s in sys.path if 'pie' in s]
-        if len(srcs) > 1:
-            for s in srcs:
-                if 'setup.py' in os.listdir(s):
-                    src = s
-                    break
-                else:
-                    src = srcs[0]
-        else:
-            src = srcs[0]
-
-
+        src = os.path.dirname(__file__) + '/../../'
         sha1 = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
                                        cwd=src).strip()
         suffix = subprocess.check_output(['git', 'status',
                                           '--porcelain',
-                                          './pie'],
+                                          './ipie'],
                                          cwd=src).strip()
         branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                          cwd=src).strip()
-    except:
+    except Exception as error:
         suffix = False
+        print(f"couldn't determine git hash : {error}")
         sha1 = 'none'.encode()
     if suffix:
         return sha1.decode('utf-8') + '-dirty', branch.decode('utf-8')
