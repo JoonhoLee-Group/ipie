@@ -110,6 +110,7 @@ class MultiSlater(object):
                             options,
                             'optimized',
                             default=False,
+                            alias=['optimize', 'optimise', 'optimised'],
                             verbose=verbose)
         if self.wicks: # this is for Wick's theorem
             if verbose:

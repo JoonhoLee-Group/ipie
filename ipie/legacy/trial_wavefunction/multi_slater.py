@@ -12,7 +12,10 @@ from ipie.utils.io import (
         write_qmcpack_wfn
         )
 from ipie.utils.mpi import get_shared_array
-from ipie.lib.wicks import wicks_helper
+try:
+    from ipie.lib.wicks import wicks_helper
+except ImportError:
+    wicks_helper = None
 
 import numpy
 
@@ -215,6 +218,7 @@ class MultiSlater(object):
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
             if self.use_wicks_helper:
+                assert wicks_helper is not None, "wicks_helper lib not found."
                 dets = wicks_helper.encode_dets(self.occa, self.occb)
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
                 assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12
