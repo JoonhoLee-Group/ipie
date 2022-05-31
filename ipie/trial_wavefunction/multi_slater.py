@@ -119,11 +119,9 @@ class MultiSlater(object):
         self.nact = get_input_value(
                         options,
                         'nact_orbitals',
-                        default=None,
+                        default=self._nbasis,
                         alias=['nact'],
                         verbose=verbose)
-        if self.nact is None:
-            self.nact = nbasis
         # won't use this for the moment as we still insert core.
         self.ncas  = get_input_value(
                         options,
@@ -131,7 +129,7 @@ class MultiSlater(object):
                         default=0,
                         alias=['ncore', 'ncas'],
                         verbose=verbose)
-        self.norb_act = self._nalpha + self.nact - self.ncas // 2 
+        self.norb_act = self._nalpha + self.nact - self.ncas // 2
         if self.wicks: # this is for Wick's theorem
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
