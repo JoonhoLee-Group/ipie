@@ -45,9 +45,10 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         chol = chol.reshape((nbsf,nbsf,nchol))
 
         shmem = have_shared_mem(comm)
-        pack_cholesky = get_input_value(
+        pack_chol = get_input_value(
                 ham_opts,
                 'symmetry',
+                default=True,
                 verbose=verbose,
                 alias=['pack_cholesky'])
         if shmem:
@@ -61,14 +62,14 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             shape = comm.bcast(cp_shape, root=0)
             dtype = comm.bcast(dtype, root=0)
             chol_packed = get_shared_array(comm, shape, dtype)
-            if comm.rank == 0 and pack_cholesky:
+            if comm.rank == 0 and pack_chol:
                 pack_cholesky(idx[0],idx[1], chol_packed, chol)
             comm.Barrier()
         else:
             dtype = chol.dtype
             cp_shape = (nbsf*(nbsf+1)//2, nchol)
             chol_packed = numpy.zeros(cp_shape, dtype=dtype)
-            if pack_cholesky:
+            if pack_chol:
                 pack_cholesky(idx[0],idx[1], chol_packed, chol)
 
         chol = chol.reshape((nbsf*nbsf,nchol))
