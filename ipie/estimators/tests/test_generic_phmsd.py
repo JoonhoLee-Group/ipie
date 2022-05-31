@@ -353,7 +353,6 @@ def test_kernels_energy():
     from ipie.utils.testing import shaped_normal
     Laa = shaped_normal((nwalkers, nbasis, system.nup, nchol))
     Lbb = shaped_normal((nwalkers, nbasis, system.ndown, nchol))
-    print(trial.ndet_a, trial.ndet_b)
     # 1.
     fill_opp_spin_factors_batched_singles(
             trial.cre_ex_b[1],
