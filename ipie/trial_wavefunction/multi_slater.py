@@ -126,7 +126,7 @@ class MultiSlater(object):
         self.ncas  = get_input_value(
                         options,
                         'nelec_cas',
-                        default=0,
+                        default=system.ne,
                         alias=['ncore', 'ncas'],
                         verbose=verbose)
         self.norb_act = self._nalpha + self.nact - self.ncas // 2
