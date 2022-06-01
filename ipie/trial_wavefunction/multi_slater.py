@@ -17,6 +17,11 @@ from ipie.utils.io import (
         write_qmcpack_wfn
         )
 from ipie.utils.mpi import get_shared_array
+try:
+    from ipie.lib.wicks import wicks_helper
+except ImportError:
+    wicks_helper = None
+    pass
 
 import numpy
 
@@ -47,6 +52,10 @@ class MultiSlater(object):
 
         self.psia = self.psi[:,:,:system.nup]
         self.psib = self.psi[:,:,system.nup:]
+        self._nalpha = system.nup
+        self._nbeta = system.ndown
+        self._nelec = system.nelec
+        self._nbasis = hamiltonian.nbasis
 
         self.compute_trial_energy = get_input_value(
                                         options,
@@ -95,11 +104,32 @@ class MultiSlater(object):
                         default=False,
                         verbose=verbose
                         )
+        self.use_wicks_helper = get_input_value(
+                        options,
+                        'use_wicks_helper',
+                        default=False,
+                        verbose=verbose
+                        )
         self.optimized = get_input_value(
                             options,
                             'optimized',
                             default=False,
+                            alias=['optimize', 'optimise', 'optimised'],
                             verbose=verbose)
+        self.nact = get_input_value(
+                        options,
+                        'nact_orbitals',
+                        default=self._nbasis,
+                        alias=['nact'],
+                        verbose=verbose)
+        # won't use this for the moment as we still insert core.
+        self.ncas  = get_input_value(
+                        options,
+                        'nelec_cas',
+                        default=system.ne,
+                        alias=['ncore', 'ncas'],
+                        verbose=verbose)
+        self.norb_act = self._nalpha + self.nact - self.ncas // 2
         if self.wicks: # this is for Wick's theorem
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
@@ -191,7 +221,18 @@ class MultiSlater(object):
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
-            self.G = self.compute_1rdm(hamiltonian.nbasis)
+            if self.use_wicks_helper:
+                assert wicks_helper is not None
+                dets = wicks_helper.encode_dets(self.occa, self.occb)
+                phases = wicks_helper.convert_phase(self.occa, self.occb)
+                assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12, "Need to implement complex support"
+                self.G = wicks_helper.compute_opdm(
+                        phases*self.coeffs.real.copy(),
+                        dets,
+                        hamiltonian.nbasis,
+                        system.ne)
+            else:
+                self.G = self.compute_1rdm(hamiltonian.nbasis)
             end = time.time()
             if verbose:
                 print("# Time to compute 1-RDM: {} s".format(end - start))
@@ -201,10 +242,6 @@ class MultiSlater(object):
         self.half_rotated = False
         self.e1b = None
         self.e2b = None
-        self._nalpha = system.nup
-        self._nbeta = system.ndown
-        self._nelec = system.nelec
-        self._nbasis = hamiltonian.nbasis
         self._rchol = None
         self._rH1a = None # rotated H1
         self._rH1b = None # rotated H1
@@ -263,8 +300,8 @@ class MultiSlater(object):
         nb = nbasis
         dets = [list(a) + [i+nb for i in c] for (a,c) in zip(wfn[1],wfn[2])]
         self.spin_occs = [numpy.sort(d) for d in dets]
-        self.occa = numpy.array(wfn[1])
-        self.occb = numpy.array(wfn[2])
+        self.occa = numpy.array(wfn[1], dtype=numpy.int32)
+        self.occb = numpy.array(wfn[2], dtype=numpy.int32)
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
             self.psi[idet,:,:nup] = I[:,occa]

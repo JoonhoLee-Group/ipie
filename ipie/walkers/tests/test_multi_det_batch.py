@@ -17,7 +17,11 @@ from ipie.utils.testing import (
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
 from ipie.estimators.greens_function_batch import greens_function_multi_det_wicks, greens_function_multi_det
-from ipie.estimators.local_energy_batch import local_energy_multi_det_trial_batch, local_energy_multi_det_trial_wicks_batch
+from ipie.estimators.local_energy_batch import (
+        local_energy_multi_det_trial_batch,
+        local_energy_multi_det_trial_wicks_batch,
+        local_energy_multi_det_trial_wicks_batch_opt
+        )
 
 @pytest.mark.unit
 def test_walker_overlap_nomsd():
@@ -25,13 +29,13 @@ def test_walker_overlap_nomsd():
                       'nelec': (5,5), 'ne': 10})
     ham = dotdict({'nbasis':10})
     numpy.random.seed(7)
-    
+
     ndets = 5
     a = numpy.random.rand(ndets*ham.nbasis*(system.nup+system.ndown))
     b = numpy.random.rand(ndets*ham.nbasis*(system.nup+system.ndown))
     wfn = (a + 1j*b).reshape((ndets,ham.nbasis,system.nup+system.ndown))
     coeffs = numpy.random.randn(ndets) + 1.j * numpy.random.randn(ndets)
-    
+
     nwalkers = 5
     # Test NOMSD type wavefunction.
     trial = MultiSlater(system, ham, (coeffs, wfn))
@@ -112,7 +116,8 @@ def test_walker_energy():
     init[:,na:], R = reortho(init[:,na:])
     trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options = {'wicks':True})
     trial.calculate_energy(system, ham)
-    
+    trial.half_rotate(system, ham)
+
     nwalkers = 10
     walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
 
@@ -134,13 +139,16 @@ def test_walker_energy():
             nume += trial.coeffs[i].conj()*ovlp*e
             deno += trial.coeffs[i].conj()*ovlp
         energies[iw] = nume/deno
-    
+
     greens_function_multi_det_wicks(walker, trial) # compute green's function using Wick's theorem
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker, trial)
     greens_function_multi_det(walker, trial)
-    e_dumb = local_energy_multi_det_trial_batch(system, ham, walker, trial)
+    e_simple = local_energy_multi_det_trial_batch(system, ham, walker, trial)
 
-    assert e_dumb[:,0] == pytest.approx(energies)
+
+    assert e_simple[:,0] == pytest.approx(energies)
+    assert e_wicks_opt[:,0] == pytest.approx(e_wicks[:,0])
     assert e_wicks[:,0] == pytest.approx(energies)
 
     # e = local_energy_batch(system, ham, walker, trial, iw=0)

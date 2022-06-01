@@ -380,8 +380,8 @@ def read_qmcpack_phmsd_hdf5(wgroup, nelec=None):
     nb = dims[2]
     if nelec is not None:
         log = "Number of electrons does not match wavefunction: {} vs {}."
-        assert na == nelec[0], log.format(na,nelec[0]) 
-        assert nb == nelec[0], log.format(nb,nelec[1]) 
+        assert na == nelec[0], log.format(na,nelec[0])
+        assert nb == nelec[0], log.format(nb,nelec[1])
     walker_type = dims[3]
     if walker_type == 2:
         uhf = True
