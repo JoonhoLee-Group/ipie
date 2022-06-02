@@ -40,8 +40,9 @@ def autocorr_gw2010(y, c=5.0):
     return taus[window]
 
 
-def reblock_by_autocorr(y, name = "ETotal"):
-    print("# Reblock based on autocorrelation time")
+def reblock_by_autocorr(y, name = "ETotal", verbose = False):
+    if verbose:
+        print("# Reblock based on autocorrelation time")
     Nmax = int(numpy.log2(len(y)))
     Ndata = []
     tacs = []
@@ -49,9 +50,9 @@ def reblock_by_autocorr(y, name = "ETotal"):
         n = int(len(y)/2**i)
         Ndata += [n]
         tacs += [autocorr_gw2010(y[:n])]
-    
-    for n, tac in zip(Ndata, tacs):
-        print("nsamples, tac = {}, {}".format(n,tac))
+    if verbose:
+        for n, tac in zip(Ndata, tacs):
+            print("nsamples, tac = {}, {}".format(n,tac))
     
     block_size = int(numpy.round(numpy.max(tacs)))
     nblocks = len(y) // block_size

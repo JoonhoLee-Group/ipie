@@ -17,4 +17,6 @@ def set_rng_seed(seed, comm, gpu=False):
         cupy.random.seed(seed)
     else:
         numpy.random.seed(seed)
+    if (comm.rank == 0):
+        print ("# random seed is {}".format(seed))
     return seed
