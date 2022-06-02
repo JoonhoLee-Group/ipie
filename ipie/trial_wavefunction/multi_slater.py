@@ -122,25 +122,34 @@ class MultiSlater(object):
                         default=self._nbasis,
                         alias=['nact'],
                         verbose=verbose)
-        # won't use this for the moment as we still insert core.
-        self.ncas  = get_input_value(
+        self.nelec_cas = get_input_value(
                         options,
                         'nelec_cas',
                         default=system.ne,
                         alias=['ncore', 'ncas'],
                         verbose=verbose)
-        self.norb_act = self._nalpha + self.nact - self.ncas // 2
-        if self.wicks: # this is for Wick's theorem
+        self.nfrozen = (system.nup + system.ndown - self.nelec_cas) // 2
+        self.nocc_alpha = system.nup - self.nfrozen
+        self.nocc_beta = system.ndown - self.nfrozen
+        self.act_orb_alpha = slice(self.nfrozen, self.nfrozen + self.nact)
+        self.act_orb_beta = slice(self.nfrozen, self.nfrozen + self.nact)
+        self.occ_orb_alpha = slice(self.nfrozen, self.nfrozen + self.nocc_alpha)
+        self.occ_orb_beta = slice(self.nfrozen, self.nfrozen + self.nocc_beta)
+        if self.wicks:
             if verbose:
                 print("# Using generalized Wick's theorem for the PHMSD trial")
                 print("# Setting the first determinant in"
                       " expansion as the reference wfn for Wick's theorem.")
+                print(f"# Number of frozen orbitals: {self.nfrozen}")
+                print(f"# Number of occupied electrons in active space trial: "
+                        f"({self.nocc_alpha}, {self.nocc_beta})")
+                print(f"# Number of orbitals in active space trial: {self.nact}")
             self.psi0a = self.psi[0, :, :system.nup].copy()
             self.psi0b = self.psi[0, :, system.nup:].copy()
             if verbose:
                 print("# Setting additional member variables for Wick's theorem")
-            d0a = self.occa[0]
-            d0b = self.occb[0]
+            d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
+            d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
             self.cre_a = [[]] # one empty list as a member to account for the reference state
             self.anh_a = [[]] # one empty list as a member to account for the reference state
             self.cre_b = [[]] # one empty list as a member to account for the reference state
@@ -160,8 +169,8 @@ class MultiSlater(object):
             excit_map_a = [[] for _ in range(max_excit)]
             excit_map_b = [[] for _ in range(max_excit)]
             for j in range(1, self.ndets):
-                dja = self.occa[j]
-                djb = self.occb[j]
+                dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
+                djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
 
                 anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
                 cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
