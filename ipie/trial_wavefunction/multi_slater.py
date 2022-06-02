@@ -236,7 +236,7 @@ class MultiSlater(object):
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
                 assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12, "Need to implement complex support"
                 self.G = wicks_helper.compute_opdm(
-                        phases*self.coeffs.real.copy(),
+                        phases*self.coeffs.copy(),
                         dets,
                         hamiltonian.nbasis,
                         system.ne)
@@ -391,7 +391,7 @@ class MultiSlater(object):
         P[1] /= denom
 
         return P
-    
+
     def chunk (self, handler, verbose=False):
         self.chunked = True # Boolean to indicate that chunked cholesky is available
 
@@ -420,7 +420,7 @@ class MultiSlater(object):
             size += self._rchola.size/2. + self._rcholb.size/2.
         else:
             size += self._rchola.size + self._rcholb.size
-        
+
         if (numpy.isrealobj(self._rH1a)):
             size += self._rH1a.size/2. + self._rH1b.size/2.
         else:
@@ -454,6 +454,7 @@ class MultiSlater(object):
         used_bytes = total_bytes - free_bytes
         if verbose:
             print("# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+
     def contract_one_body(self, ints):
         numer = 0.0
         denom = 0.0
@@ -488,40 +489,40 @@ class MultiSlater(object):
                           init=init)
 
     def half_rotate(self, system, hamiltonian, comm=None):
+        if self.verbose:
+            print("# Constructing half rotated Cholesky vectors.")
+        M = hamiltonian.nbasis
+        nchol = hamiltonian.nchol
         self.half_rotated = True
         # Half rotated cholesky vectors (by trial wavefunction or a reference wfn in the case of PHMSD).
         na = system.nup
         nb = system.ndown
-        M = hamiltonian.nbasis
-        nchol = hamiltonian.nchol
+        psi = self.psi[0]
         if self.verbose:
-            print("# Constructing half rotated Cholesky vectors.")
+            print("# Shape of alpha half-rotated Cholesky: {}".format((nchol, na*M)))
+            print("# Shape of beta half-rotated Cholesky: {}".format((nchol, nb*M)))
 
-        hr_ndet = self.ndets
-        if (self.ortho_expansion):
-            if self.verbose:
-                print("# Only performing half-rotation of the reference determinant")
-            hr_ndet = 1
-
-        assert(hr_ndet == 1)
+        assert self.ortho_expansion
+        if self.verbose:
+            print("# Only performing half-rotation of the reference determinant")
+        hr_ndet = 1
 
         if isinstance(hamiltonian.chol_vecs, numpy.ndarray):
             chol = hamiltonian.chol_vecs.reshape((M,M,nchol))
         else:
             chol = hamiltonian.chol_vecs.toarray().reshape((nchol,M,M))
 
-        if (hamiltonian.exact_eri):
+        if hamiltonian.exact_eri:
             shape = (hr_ndet,(M**2*(na**2+nb**2) + M**2*(na*nb)))
             self._eri = get_shared_array(comm, shape, numpy.complex128)
             self._mem_required = self._eri.nbytes / (1024.0**3.0)
 
-            for i, psi in enumerate(self.psi[:hr_ndet]):
-                vipjq_aa = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
-                vipjq_bb = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
-                vipjq_ab = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
-                self._eri[i,:M**2*na**2] = vipjq_aa.ravel()
-                self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
-                self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
+            vipjq_aa = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,:na].conj(), optimize=True)
+            vipjq_bb = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,na:].conj(), psi[:,na:].conj(), optimize=True)
+            vipjq_ab = numpy.einsum("Xmp,Xrq,mi,rj->ipjq", chol, chol, psi[:,:na].conj(), psi[:,na:].conj(), optimize=True)
+            self._eri[i,:M**2*na**2] = vipjq_aa.ravel()
+            self._eri[i,M**2*na**2:M**2*na**2+M**2*nb**2] = vipjq_bb.ravel()
+            self._eri[i,M**2*na**2+M**2*nb**2:] = vipjq_ab.ravel()
 
             if self.verbose:
                 print("# Memory required by exact ERIs: "
@@ -533,63 +534,60 @@ class MultiSlater(object):
         shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
-        
-        self._rH1a = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
-        self._rH1b = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
 
-        for idet, psi in enumerate(self.psi[:hr_ndet]):
-            self._rH1a[idet] = psi[:,:na].conj().T.dot(hamiltonian.H1[0])
-            self._rH1b[idet] = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
+        self._rH1a = get_shared_array(comm, (na, M), self.psi.dtype)
+        self._rH1b = get_shared_array(comm, (nb, M), self.psi.dtype)
+
+        self._rH1a = psi[:,:na].conj().T.dot(hamiltonian.H1[0])
+        self._rH1b = psi[:,na:].conj().T.dot(hamiltonian.H1[1])
 
         self._rH1a = self._rH1a.reshape(na,M)
         self._rH1b = self._rH1b.reshape(nb,M)
 
-        for i, psi in enumerate(self.psi[:hr_ndet]):
-            start_time = time.time()
-            if self.verbose:
-                print("# Rotating Cholesky for determinant {} of "
-                      "{}.".format(i+1,hr_ndet))
-            # start = i*M*(na+nb)
-            start_a = i*M*na # determinant loops
-            start_b = i*M*nb # determinant loops
-            compute = True
-            # Distribute amongst MPI tasks on this node.
-            if comm is not None:
-                nwork_per_thread = hamiltonian.nchol // comm.size
-                if nwork_per_thread == 0:
-                    start_n = 0
-                    end_n = nchol
-                    if comm.rank != 0:
-                        # Just run on root processor if problem too small.
-                        compute = False
-                else:
-                    start_n = comm.rank * nwork_per_thread # Cholesky work split
-                    end_n = (comm.rank+1) * nwork_per_thread
-                    if comm.rank == comm.size - 1:
-                        end_n = nchol
-            else:
+        start_time = time.time()
+        if self.verbose:
+            print("# Half-Rotating Cholesky for determinant.")
+        # start = i*M*(na+nb)
+        start_a = 0 # determinant loops
+        start_b = 0
+        compute = True
+        # Distribute amongst MPI tasks on this node.
+        if comm is not None:
+            nwork_per_thread = hamiltonian.nchol // comm.size
+            if nwork_per_thread == 0:
                 start_n = 0
-                end_n = hamiltonian.nchol
+                end_n = nchol
+                if comm.rank != 0:
+                    # Just run on root processor if problem too small.
+                    compute = False
+            else:
+                start_n = comm.rank * nwork_per_thread # Cholesky work split
+                end_n = (comm.rank+1) * nwork_per_thread
+                if comm.rank == comm.size - 1:
+                    end_n = nchol
+        else:
+            start_n = 0
+            end_n = hamiltonian.nchol
 
-            nchol_loc = end_n - start_n
-            # if comm.rank == 0:
-                # print(start_n, end_n, nchol_loc)
-                # print(numpy.may_share_memory(chol, chol[:,start_n:end_n]))
-            if compute:
-                # Investigate whether these einsums are fast in the future
-                rup = numpy.einsum("mi,mnx->xin", psi[:,:na].conj(), chol[:,:,start_n:end_n], optimize=True)
-                rup = rup.reshape((nchol_loc, na*M))
-                rdn = numpy.einsum("mi,mnx->xin", psi[:,na:].conj(), chol[:,:,start_n:end_n], optimize=True)
-                rdn = rdn.reshape((nchol_loc, nb*M))
-                self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
-                self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
-        
-            self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
-            self._mem_required += (self._rH1a.nbytes + self._rH1b.nbytes) / (1024.0**3.0)
-            if self.verbose:
-                print("# Memory required by half-rotated integrals: "
-                      " {:.4f} GB.".format(self._mem_required))
-                print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
+        nchol_loc = end_n - start_n
+        # if comm.rank == 0:
+            # print(start_n, end_n, nchol_loc)
+            # print(numpy.may_share_memory(chol, chol[:,start_n:end_n]))
+        if compute:
+            # Investigate whether these einsums are fast in the future
+            rup = numpy.einsum("mi,mnx->xin", psi[:,:na].conj(), chol[:,:,start_n:end_n], optimize=True)
+            rup = rup.reshape((nchol_loc, na*M))
+            rdn = numpy.einsum("mi,mnx->xin", psi[:,na:].conj(), chol[:,:,start_n:end_n], optimize=True)
+            rdn = rdn.reshape((nchol_loc, nb*M))
+            self._rchola[start_n:end_n,start_a:start_a+M*na] = rup[:]
+            self._rcholb[start_n:end_n,start_b:start_b+M*nb] = rdn[:]
+
+        self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
+        self._mem_required += (self._rH1a.nbytes + self._rH1b.nbytes) / (1024.0**3.0)
+        if self.verbose:
+            print("# Memory required by half-rotated integrals: "
+                  " {:.4f} GB.".format(self._mem_required))
+            print("# Time to half-rotated integrals: {} s.".format(time.time()-start_time))
         if comm is not None:
             comm.barrier()
 
@@ -597,22 +595,22 @@ class MultiSlater(object):
         self._rchola = self._rchola.reshape(hamiltonian.nchol,na,M)
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb,M)
 
-        if (hamiltonian.density_diff):
+        if hamiltonian.density_diff:
             start_time = time.time()
-            Xa = numpy.einsum("mi,xim->x",self.psi[0][:,:na], self._rchola, optimize=True)
-            Xb = numpy.einsum("mi,xim->x",self.psi[0][:,na:], self._rcholb, optimize=True)
+            Xa = numpy.einsum("mi,xim->x",psi[:,:na], self._rchola, optimize=True)
+            Xb = numpy.einsum("mi,xim->x",psi[:,na:], self._rcholb, optimize=True)
             X = Xa + Xb
-            J0a = numpy.einsum("x,xim->im",X, self._rchola, optimize=True) # occ x M
-            J0b = numpy.einsum("x,xim->im",X, self._rcholb, optimize=True) # occ x M
+            J0a = numpy.einsum("x,xim->im", X, self._rchola, optimize=True) # occ x M
+            J0b = numpy.einsum("x,xim->im", X, self._rcholb, optimize=True) # occ x M
 
             Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
             Kb = numpy.einsum("xim,xin->mn",self._rcholb, self._rcholb)
-            K0a = self.psi[0][:,:na].T.conj().dot(Ka) # occ x M
-            K0b = self.psi[0][:,na:].T.conj().dot(Kb) # occ x M
-            
+            K0a = self.psi[:,:na].T.conj().dot(Ka) # occ x M
+            K0b = self.psi[:,na:].T.conj().dot(Kb) # occ x M
+
             self._rH1a_corr = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
             self._rH1b_corr = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
-            
+
             self._rH1a_corr = self._rH1a + J0a - K0a
             self._rH1b_corr = self._rH1b + J0b - K0b
             self._rFa_corr = J0a - K0a
@@ -624,7 +622,7 @@ class MultiSlater(object):
         self._rcholb = self._rcholb.reshape(hamiltonian.nchol,nb*M)
 
         if self.mixed_precision:
-            self._vbias0 = self._rchola.dot(self.psi[0][:,:na].T.ravel()) + self._rchola.dot(self.psi[0][:,na:].T.ravel())
+            self._vbias0 = self._rchola.dot(psi[:,:na].T.ravel()) + self._rchola.dot(psi[:,na:].T.ravel())
             self._rchola = self._rchola.astype(numpy.float32)
             self._rcholb = self._rcholb.astype(numpy.float32)
 
