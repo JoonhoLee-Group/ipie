@@ -192,6 +192,7 @@ def test_get_dets_single_excitation_batched():
                 'anh_ex_a': [[0], numpy.array([[q]]*ndets, dtype=int)],
                 'cre_ex_b': [[0], numpy.array([[p]]*ndets, dtype=int)],
                 'anh_ex_b': [[0], numpy.array([[q]]*ndets, dtype=int)],
+                'nfrozen': 0,
                 }
                 )
     from ipie.propagation.overlap import (
@@ -228,6 +229,7 @@ def test_get_dets_double_excitation_batched():
                 'anh_ex_a': [[0], [0], numpy.array([anh_a]*ndets, dtype=int)],
                 'cre_ex_b': [[0], [0], numpy.array([cre_a]*ndets, dtype=int)],
                 'anh_ex_b': [[0], [0], numpy.array([anh_a]*ndets, dtype=int)],
+                'nfrozen': 0,
                 }
                 )
     from ipie.propagation.overlap import (
@@ -270,6 +272,7 @@ def test_get_dets_triple_excitation_batched():
                 'anh_ex_a': [[0], [0], [0], numpy.array([anh_a]*ndets, dtype=int)],
                 'cre_ex_b': [[0], [0], [0], numpy.array([cre_a]*ndets, dtype=int)],
                 'anh_ex_b': [[0], [0], [0], numpy.array([anh_a]*ndets, dtype=int)],
+                'nfrozen': 0,
                 }
                 )
     from ipie.propagation.overlap import (
@@ -314,6 +317,7 @@ def test_get_dets_nfold_excitation_batched():
                 'anh_ex_a': empty + [numpy.array([anh_a]*ndets, dtype=int)],
                 'cre_ex_b': empty + [numpy.array([cre_a]*ndets, dtype=int)],
                 'anh_ex_b': empty + [numpy.array([anh_a]*ndets, dtype=int)],
+                'nfrozen': 0,
                 }
                 )
     from ipie.propagation.overlap import (
