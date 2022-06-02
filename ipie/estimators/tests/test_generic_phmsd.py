@@ -1093,5 +1093,93 @@ def test_kernels_energy_active_space():
             )
     assert numpy.allclose(ref, test)
 
+@pytest.mark.unit
+def test_phmsd_local_energy_active_space():
+    numpy.random.seed(7)
+    nmo = 30
+    nelec = (9,9)
+    nwalkers = 1
+    nsteps = 100
+    nact = 12
+    ncore = 2
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0, options = {"symmetry":False})
+    wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
+    ci, occa, occb = wfn
+    core = [0, 1]
+    with_core_a = [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    with_core_b = [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
+    wfn_2 = (ci[::50], with_core_a[::50], with_core_b[::50]) # Get high excitation determinants too
+
+    trial_ref = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            options={
+                'wicks': True,
+                'optimized': True,
+                'use_wicks_helper': False,
+                }
+            )
+    trial_ref.half_rotate(system, ham)
+    trial_test = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            options={
+                'wicks': True,
+                'optimized': True,
+                'use_wicks_helper': False,
+                'nact': 12,
+                'ncas': 14,
+                }
+            )
+    trial_test.half_rotate(system, ham)
+
+    numpy.random.seed(7)
+    qmc = dotdict(
+            {'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers': nwalkers}
+            )
+    options = {'hybrid': True}
+    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
+    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    numpy.random.seed(7)
+    for i in range (nsteps):
+        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        walker_batch_ref.reortho()
+
+    import copy
+    walker_batch_test.phia = walker_batch_ref.phia.copy()
+    walker_batch_test.phib = walker_batch_ref.phib.copy()
+    walker_batch_test.ovlp = walker_batch_ref.ovlp
+    greens_function_multi_det_wicks_opt(walker_batch_ref, trial_ref)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
+    assert numpy.allclose(walker_batch_ref.Ga, walker_batch_test.Ga)
+    assert numpy.allclose(walker_batch_test.Ghalfa, walker_batch_ref.Ghalfa)
+    assert numpy.allclose(walker_batch_test.Ghalfb, walker_batch_ref.Ghalfb)
+    assert numpy.allclose(walker_batch_test.Ga, walker_batch_ref.Ga)
+    assert numpy.allclose(walker_batch_test.Gb, walker_batch_ref.Gb)
+    assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_ref.det_ovlpas)
+    assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_ref.det_ovlpbs)
+    # assert numpy.allclose(walker_batch_test.CIa, walker_batch_ref.CIa)
+    # assert numpy.allclose(walker_batch_test.CIb, walker_batch_ref.CIb)
+    assert trial_ref.nfrozen != trial_test.nfrozen
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(
+                        system,
+                        ham,
+                        walker_batch_ref,
+                        trial_ref)
+    e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
+                        system,
+                        ham,
+                        walker_batch_test,
+                        trial_test)
+
+    assert numpy.allclose(e_wicks_opt, e_wicks_opt_act)
+
 if __name__ == '__main__':
     test_phmsd_local_energy()
