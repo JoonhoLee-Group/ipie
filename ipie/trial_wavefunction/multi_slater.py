@@ -631,8 +631,8 @@ class MultiSlater(object):
 
             Ka = numpy.einsum("xim,xin->mn",self._rchola, self._rchola)
             Kb = numpy.einsum("xim,xin->mn",self._rcholb, self._rcholb)
-            K0a = self.psi[:,:na].T.conj().dot(Ka) # occ x M
-            K0b = self.psi[:,na:].T.conj().dot(Kb) # occ x M
+            K0a = self.psi[0,:,:na].T.conj().dot(Ka) # occ x M
+            K0b = self.psi[0,:,na:].T.conj().dot(Kb) # occ x M
 
             self._rH1a_corr = get_shared_array(comm, (hr_ndet, na,M), self.psi.dtype)
             self._rH1b_corr = get_shared_array(comm, (hr_ndet, nb,M), self.psi.dtype)
