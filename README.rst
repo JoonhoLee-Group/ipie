@@ -6,7 +6,7 @@ IPIE stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\vol
 
 IPIE inherits a lot of QMC features from pauxy.
 
-.. image:: https://github.com/linusjoonho/ipie/workflows/Continuous%20Integration/badge.svg
+.. image:: https://github.com/linusjoonho/ipie/workflows/Continuous%20Integration/badge.svg?event=push
     :target: https://github.com/linusjoonho/ipie/workflows/Continuous%20Integration/badge.svg
 
 .. image:: http://readthedocs.org/projects/ipie/badge/?version=latest
