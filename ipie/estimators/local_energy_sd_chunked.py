@@ -193,16 +193,32 @@ def local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walker_ba
     for icycle in range(handler.ssize-1):
         for isend, sender in enumerate(senders):
             if handler.srank == isend:
+                Ghalfa_send = cupy.asnumpy(Ghalfa_send)
+                Ghalfb_send = cupy.asnumpy(Ghalfb_send)
+                ecoul_send = cupy.asnumpy(ecoul_send)
+                exx_send = cupy.asnumpy(exx_send)
                 handler.scomm.Send(Ghalfa_send,dest=receivers[isend], tag=1)
                 handler.scomm.Send(Ghalfb_send,dest=receivers[isend], tag=2)
                 handler.scomm.Send(ecoul_send,dest=receivers[isend], tag=3)
                 handler.scomm.Send(exx_send,dest=receivers[isend], tag=4)
+                Ghalfa_send = cupy.asarray(Ghalfa_send)
+                Ghalfb_send = cupy.asarray(Ghalfb_send)
+                ecoul_send = cupy.asarray(ecoul_send)
+                exx_send = cupy.asarray(exx_send)
             elif handler.srank == receivers[isend]:
                 sender = numpy.where(receivers == handler.srank)[0]
+                Ghalfa_recv = cupy.asnumpy(Ghalfa_recv)
+                Ghalfb_recv = cupy.asnumpy(Ghalfb_recv)
+                ecoul_recv = cupy.asnumpy(ecoul_recv)
+                exx_recv = cupy.asnumpy(exx_recv)
                 handler.scomm.Recv(Ghalfa_recv,source=sender, tag=1)
                 handler.scomm.Recv(Ghalfb_recv,source=sender, tag=2)
                 handler.scomm.Recv(ecoul_recv,source=sender, tag=3)
                 handler.scomm.Recv(exx_recv,source=sender, tag=4)
+                Ghalfa_recv = cupy.asarray(Ghalfa_recv)
+                Ghalfb_recv = cupy.asarray(Ghalfb_recv)
+                ecoul_recv = cupy.asarray(ecoul_recv)
+                exx_recv = cupy.asarray(exx_recv)
         handler.scomm.barrier()
 
         # prepare sending
@@ -223,12 +239,20 @@ def local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walker_ba
     if (len(senders)>1):
         for isend, sender in enumerate(senders):
             if handler.srank == sender: # sending 1 xshifted to 0 xshifted_buf
+                ecoul_send = cupy.asnumpy(ecoul_send)
+                exx_send = cupy.asnumpy(exx_send)
                 handler.scomm.Send(ecoul_send,dest=receivers[isend], tag=1)
                 handler.scomm.Send(exx_send,dest=receivers[isend], tag=2)
+                ecoul_send = cupy.asarray(ecoul_send)
+                exx_send = cupy.asarray(exx_send)
             elif handler.srank == receivers[isend]:
                 sender = numpy.where(receivers == handler.srank)[0]
+                ecoul_recv = cupy.asnumpy(ecoul_recv)
+                exx_recv = cupy.asnumpy(exx_recv)
                 handler.scomm.Recv(ecoul_recv,source=sender, tag=1)
                 handler.scomm.Recv(exx_recv,source=sender, tag=2)
+                ecoul_recv = cupy.asarray(ecoul_recv)
+                exx_recv = cupy.asarray(exx_recv)
 
     handler.scomm.barrier()
     cupy.cuda.stream.get_current_stream().synchronize()
