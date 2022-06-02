@@ -245,6 +245,7 @@ def test_det_matrix():
     wk.build_det_matrix(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
+            trial.nfrozen,
             walker_batch.G0b,
             det_mat_2
             )
@@ -271,7 +272,7 @@ def test_phmsd_local_energy():
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
-        'use_wicks_helper': False})
+        'use_wicks_helper': False, 'optimized': True})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
 
@@ -365,6 +366,7 @@ def test_kernels_energy():
     wk.fill_os_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
+            trial.nfrozen,
             Lbb,
             test,
             slices_beta[1]
@@ -386,6 +388,7 @@ def test_kernels_energy():
     wk.fill_os_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
+            trial.nfrozen,
             G0,
             Lbb,
             test,
@@ -407,6 +410,7 @@ def test_kernels_energy():
     wk.fill_os_triples(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.nfrozen,
             G0,
             Lbb,
             test,
@@ -439,6 +443,7 @@ def test_kernels_energy():
     wk.build_det_matrix(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.nfrozen,
             walker_batch.G0b,
             det_mat)
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)

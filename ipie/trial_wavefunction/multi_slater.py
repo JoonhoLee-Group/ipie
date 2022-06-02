@@ -502,7 +502,7 @@ class MultiSlater(object):
             print("# Shape of alpha half-rotated Cholesky: {}".format((nchol, na*M)))
             print("# Shape of beta half-rotated Cholesky: {}".format((nchol, nb*M)))
 
-        assert self.ortho_expansion
+        # assert self.ortho_expansion
         if self.verbose:
             print("# Only performing half-rotation of the reference determinant")
         hr_ndet = 1
@@ -540,10 +540,12 @@ class MultiSlater(object):
             nact = self.nact
             nfrz = self.nfrozen
             self._rchola_act = get_shared_array(comm, shape_a_act, self.psi.dtype)
-            if comm.rank == 0:
+            compute = comm is None or comm.rank == 0
+            if compute:
                 # working in MO basis so can just grab correct slice
-                self._rchola_act[:] = chol[nfrz:nfrz+nact].transpose((2,0,1)).copy()
-                self._rcholb_act = self._rchol_a_act
+                chol_act = chol[nfrz:nfrz+nact].reshape((M*self.nact, -1))
+                self._rchola_act[:] = chol_act.T.copy()
+                self._rcholb_act = self._rchola_act
 
         self._rH1a = get_shared_array(comm, (na, M), self.psi.dtype)
         self._rH1b = get_shared_array(comm, (nb, M), self.psi.dtype)
