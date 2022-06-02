@@ -114,7 +114,8 @@ def test_walker_energy():
     init = get_random_wavefunction(nelec, nmo)
     init[:,:na], R = reortho(init[:,:na])
     init[:,na:], R = reortho(init[:,na:])
-    trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options = {'wicks':True})
+    trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options =
+            {'wicks': True, 'optimized': True})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
 
