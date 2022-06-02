@@ -15,6 +15,8 @@ try:
         )
 except ImportError:
     pass
+from ipie.estimators.kernels.cpu import wicks as wk
+from numba import jit
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
@@ -108,7 +110,7 @@ def greens_function_single_det(walker_batch, trial):
             det += [sign_a*exp(log_ovlp_a-walker_batch.log_shift)]
 
     det = array(det, dtype=numpy.complex128)
-    
+
     if is_cupy(trial.psi): # if even one array is a cupy array we should assume the rest is done with cupy
         cupy.cuda.stream.get_current_stream().synchronize()
 
@@ -274,6 +276,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
         G0b, G0Hb = gab_mod(trial.psi0b, phib)
         walker_batch.G0a[iw] = G0a
         walker_batch.G0b[iw] = G0b
+        walker_batch.Ghalfa[iw] = G0Ha
+        walker_batch.Ghalfb[iw] = G0Hb
         walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
         walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
 
@@ -405,8 +409,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                         walker_batch.CIb[iw,q,p] += c_phaseb_ovlpa * (-1)**(iex+jex) * numpy.linalg.det(cofactor)
 
         # contribution 2 (connected diagrams)
-        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0a)
-        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0b)
+        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0Ha)
+        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0Hb)
 
         # multiplying everything by reference overlap
         ovlp *= ovlp0
@@ -448,6 +452,29 @@ def build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
                 walker_batch.CIb,
                 c_phaseb_ovlpa[:, trial.excit_map_b[1]]
                 )
+
+def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[1])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[1].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
+        wk.reduce_CI_singles(
+                trial.cre_ex_a[1],
+                trial.anh_ex_a[1],
+                phases,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[1])
+    if trial.cre_ex_b[1].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
+        wk.reduce_CI_singles(
+                trial.cre_ex_b[1],
+                trial.anh_ex_b[1],
+                phases,
+                walker_batch.CIb)
 
 def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     ndets_a = len(trial.cre_ex_a[2])
@@ -533,6 +560,56 @@ def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
                 walker_batch.CIb,
                 rhs,
                 )
+
+def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[2])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[2].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
+        wk.reduce_CI_doubles(
+                trial.cre_ex_a[2],
+                trial.anh_ex_a[2],
+                phases,
+                walker_batch.G0a,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[1])
+    if trial.cre_ex_b[2].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
+        wk.reduce_CI_doubles(
+                trial.cre_ex_b[2],
+                trial.anh_ex_b[2],
+                phases,
+                walker_batch.G0b,
+                walker_batch.CIb)
+
+def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[3])
+    nwalkers = walker_batch.G0a.shape[0]
+    if trial.cre_ex_a[3].shape[0] == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
+        wk.reduce_CI_triples(
+                trial.cre_ex_a[3],
+                trial.anh_ex_a[3],
+                phases,
+                walker_batch.G0a,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[3])
+    if trial.cre_ex_b[3].shape[0] == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
+        wk.reduce_CI_triples(
+                trial.cre_ex_b[3],
+                trial.anh_ex_b[3],
+                phases,
+                walker_batch.G0b,
+                walker_batch.CIb)
 
 def build_CI_triple_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     ndets_a = len(trial.cre_ex_a[3])
@@ -856,6 +933,60 @@ def build_CI_nfold_excitation(
                         )
     return dets_a, dets_b
 
+def build_CI_nfold_excitation_opt(
+        nexcit,
+        walker_batch,
+        trial,
+        c_phasea_ovlpb,
+        c_phaseb_ovlpa):
+    ndets_a = len(trial.cre_ex_a[nexcit])
+    nwalkers = walker_batch.G0a.shape[0]
+    if ndets_a == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+        det_mat = numpy.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
+        wk.build_det_matrix(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                walker_batch.G0a,
+                det_mat)
+        cof_mat = numpy.zeros((nwalkers, ndets_a, nexcit-1, nexcit-1), dtype=numpy.complex128)
+        wk.reduce_CI_nfold(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIa)
+    ndets_b = len(trial.cre_ex_b[nexcit])
+    if ndets_b == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
+        det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
+        wk.build_det_matrix(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                walker_batch.G0b,
+                det_mat)
+        cof_mat = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
+        wk.reduce_CI_nfold(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIb)
+
+
+@jit(nopython=True, fastmath=True)
+def contract_CI(Q0, CI, Ghalf, G):
+    nwalkers = Ghalf.shape[0]
+    nbasis = Q0.shape[1]
+    for iw in range(nwalkers):
+        G[iw] += numpy.dot(Q0[iw], numpy.dot(CI[iw], Ghalf[iw]))
+
 def greens_function_multi_det_wicks_opt(walker_batch, trial):
     """Compute walker's green's function using Wick's theorem.
 
@@ -870,6 +1001,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
+    import time
     tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype = numpy.complex128)
     nbasis = walker_batch.Ga.shape[-1]
 
@@ -880,18 +1012,32 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     walker_batch.Gb.fill(0.0+0.0j)
 
     # Build reference Green's functions and overlaps
-    ovlp_mats_a = numpy.einsum('wmi,mj->wji', walker_batch.phia, trial.psi0a.conj(), optimize=True)
-    signs_a, logdets_a = numpy.linalg.slogdet(ovlp_mats_a)
-    ovlp_mats_b = numpy.einsum('wmi,mj->wji', walker_batch.phib, trial.psi0b.conj(), optimize=True)
-    signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
+    start = time.time()
+    # Note abuse of naming convention this is really theta for the reference
+    # determinant.
+    G0a = numpy.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    G0b = numpy.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    ovlps0 = numpy.zeros((walker_batch.nwalkers), dtype=numpy.complex128)
+    signs_a = numpy.zeros_like(ovlps0)
+    signs_b = numpy.zeros_like(ovlps0)
+    logdets_a = numpy.zeros_like(ovlps0)
+    logdets_b = numpy.zeros_like(ovlps0)
+    for iw in range(walker_batch.nwalkers):
+        ovlp = numpy.dot(walker_batch.phia[iw].T, trial.psi[0,:,:na].conj())
+        ovlp_inv = numpy.linalg.inv(ovlp)
+        walker_batch.Ghalfa[iw] = numpy.dot(ovlp_inv, walker_batch.phia[iw].T)
+        G0a[iw] = numpy.dot(trial.psi[0,:,:na].conj(), walker_batch.Ghalfa[iw])
+        sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
+        sign_b, log_ovlp_b = 1.0, 0.0
+        ovlp = numpy.dot(walker_batch.phib[iw].T, trial.psi[0,:,na:].conj())
+        sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
+        walker_batch.Ghalfb[iw] = numpy.dot(numpy.linalg.inv(ovlp), walker_batch.phib[iw].T)
+        G0b[iw] = numpy.dot(trial.psi[0,:,na:].conj(), walker_batch.Ghalfb[iw])
+        signs_a[iw] = sign_a
+        signs_b[iw] = sign_b
+        logdets_a[iw] = log_ovlp_a
+        logdets_b[iw] = log_ovlp_b
     ovlps0 = signs_a*signs_b*numpy.exp(logdets_a+logdets_b)
-    inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
-    walker_batch.Ghalfa = numpy.einsum('wmi,wij->wjm', walker_batch.phia, inv_ovlps_a, optimize=True)
-    G0a = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfa, trial.psi0a.conj(), optimize=True)
-    # something not correct here.
-    inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
-    walker_batch.Ghalfb = numpy.einsum('wmi,wij->wjm', walker_batch.phib, inv_ovlps_b, optimize=True)
-    G0b = numpy.einsum('wjm,nj->wnm', walker_batch.Ghalfb, trial.psi0b.conj(), optimize=True)
     walker_batch.G0a = G0a
     walker_batch.G0b = G0b
     walker_batch.Q0a = numpy.eye(nbasis)[None, :] - G0a
@@ -905,6 +1051,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     ovlpa = walker_batch.det_ovlpas
     ovlpb = walker_batch.det_ovlpbs
 
+    start = time.time()
     c_phasea_ovlpb = numpy.einsum(
                         'wJ,J->wJ',
                         ovlpb,
@@ -920,42 +1067,40 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
     walker_batch.Ga += numpy.einsum('w,wpq->wpq', ovlps, G0a, optimize=True)
     walker_batch.Gb += numpy.einsum('w,wpq->wpq', ovlps, G0b, optimize=True)
     # intermediates for contribution 2 (connected diagrams)
-    build_CI_single_excitation(
+    build_CI_single_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    build_CI_double_excitation(
+    build_CI_double_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    build_CI_triple_excitation(
+    build_CI_triple_excitation_opt(
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
     for iexcit in range(4, trial.max_excite+1):
-        build_CI_nfold_excitation(
+        start = time.time()
+        build_CI_nfold_excitation_opt(
             iexcit,
             walker_batch,
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
     # contribution 2 (connected diagrams)
-    walker_batch.Ga += numpy.einsum(
-                            'wpr,wrs,wsq->wpq',
-                            walker_batch.Q0a,
-                            walker_batch.CIa,
-                            G0a,
-                            optimize=True)
-    walker_batch.Gb += numpy.einsum(
-                            'wpr,wrs,wsq->wpq',
-                            walker_batch.Q0b,
-                            walker_batch.CIb,
-                            G0b,
-                            optimize=True)
-
+    contract_CI(
+        walker_batch.Q0a,
+        walker_batch.CIa,
+        walker_batch.Ghalfa,
+        walker_batch.Ga)
+    contract_CI(
+        walker_batch.Q0b,
+        walker_batch.CIb,
+        walker_batch.Ghalfb,
+        walker_batch.Gb)
     # multiplying everything by reference overlap
     ovlps *= ovlps0
     walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]

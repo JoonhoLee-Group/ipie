@@ -12,6 +12,10 @@ from ipie.utils.io import (
         write_qmcpack_wfn
         )
 from ipie.utils.mpi import get_shared_array
+try:
+    from ipie.lib.wicks import wicks_helper
+except ImportError:
+    wicks_helper = None
 
 import numpy
 
@@ -112,6 +116,12 @@ class MultiSlater(object):
                         default=False,
                         verbose=verbose
                         )
+        self.use_wicks_helper = get_input_value(
+                        options,
+                        'use_wicks_helper',
+                        default=False,
+                        verbose=verbose
+                        )
         self.optimized = get_input_value(
                             options,
                             'optimized',
@@ -207,7 +217,18 @@ class MultiSlater(object):
             if verbose:
                 print("# Computing 1-RDM of the trial wfn for mean-field shift")
             start = time.time()
-            self.G = self.compute_1rdm(hamiltonian.nbasis)
+            if self.use_wicks_helper:
+                assert wicks_helper is not None, "wicks_helper lib not found."
+                dets = wicks_helper.encode_dets(self.occa, self.occb)
+                phases = wicks_helper.convert_phase(self.occa, self.occb)
+                assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12
+                self.G = wicks_helper.compute_opdm(
+                        phases*self.coeffs.real.copy(),
+                        dets,
+                        hamiltonian.nbasis,
+                        system.ne)
+            else:
+                self.G = self.compute_1rdm(hamiltonian.nbasis)
             end = time.time()
             if verbose:
                 print("# Time to compute 1-RDM: {} s".format(end - start))

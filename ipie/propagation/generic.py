@@ -89,7 +89,7 @@ class GenericContinuous(object):
         return mf_shift
 
     def construct_mean_field_shift_multi_det(self, hamiltonian, trial):
-        if (trial.G != None):
+        if trial.G is not None:
             mf_shift = self.construct_mean_field_shift(hamiltonian,trial)
         else:
             nb = hamiltonian.nbasis

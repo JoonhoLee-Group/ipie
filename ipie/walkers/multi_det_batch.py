@@ -32,7 +32,8 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
     """
 
     def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0,
-                 det_weights='zeros', verbose=False, nprop_tot=None, nbp=None, mpi_handler=None):
+                 det_weights='zeros', verbose=False, nprop_tot=None, nbp=None,
+                 mpi_handler=None):
         if verbose:
             print("# Setting up ipie.legacy.walkers.MultiDetTrialWalkerBatch object.")
        
@@ -62,15 +63,17 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                   .format(self.ot.real))
 
         # Green's functions for various elements of the trial wavefunction.        
-        if (trial.ortho_expansion):
+        if trial.ortho_expansion:
             self.G0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.G0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            # self.Ghalf0a = numpy.zeros(shape=(self.nwalkers, system.nup,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            # self.Ghalf0b = numpy.zeros(shape=(self.nwalkers, system.ndown,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            self.CIa = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
-            self.CIb = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128)
+            self.CIa = numpy.zeros(
+                    shape=(self.nwalkers, hamiltonian.nbasis, system.nup),
+                    dtype=numpy.complex128)
+            self.CIb = numpy.zeros(
+                    shape=(self.nwalkers, hamiltonian.nbasis, system.ndown),
+                    dtype=numpy.complex128)
         # else:
         self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
                                      hamiltonian.nbasis), dtype=numpy.complex128)

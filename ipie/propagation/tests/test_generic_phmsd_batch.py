@@ -194,8 +194,13 @@ def test_get_dets_single_excitation_batched():
                 'anh_ex_b': [[0], numpy.array([[q]]*ndets, dtype=int)],
                 }
                 )
-    from ipie.propagation.overlap import get_dets_single_excitation_batched
+    from ipie.propagation.overlap import (
+            get_dets_single_excitation_batched,
+            get_dets_single_excitation_batched_opt
+            )
     test = get_dets_single_excitation_batched(G0, G0, trial)
+    assert numpy.allclose(ref, test)
+    test = get_dets_single_excitation_batched_opt(G0, G0, trial)
     assert numpy.allclose(ref, test)
 
 @pytest.mark.unit
@@ -225,8 +230,13 @@ def test_get_dets_double_excitation_batched():
                 'anh_ex_b': [[0], [0], numpy.array([anh_a]*ndets, dtype=int)],
                 }
                 )
-    from ipie.propagation.overlap import get_dets_double_excitation_batched
+    from ipie.propagation.overlap import (
+            get_dets_double_excitation_batched,
+            get_dets_double_excitation_batched_opt
+            )
     test = get_dets_double_excitation_batched(G0, G0, trial)
+    assert numpy.allclose(ref, test)
+    test = get_dets_double_excitation_batched_opt(G0, G0, trial)
     assert numpy.allclose(ref, test)
 
 @pytest.mark.unit
@@ -262,8 +272,13 @@ def test_get_dets_triple_excitation_batched():
                 'anh_ex_b': [[0], [0], [0], numpy.array([anh_a]*ndets, dtype=int)],
                 }
                 )
-    from ipie.propagation.overlap import get_dets_triple_excitation_batched
+    from ipie.propagation.overlap import (
+            get_dets_triple_excitation_batched,
+            get_dets_triple_excitation_batched_opt
+            )
     test = get_dets_triple_excitation_batched(G0, G0, trial)
+    assert numpy.allclose(ref, test)
+    test = get_dets_triple_excitation_batched_opt(G0, G0, trial)
     assert numpy.allclose(ref, test)
 
 @pytest.mark.unit
@@ -301,8 +316,13 @@ def test_get_dets_nfold_excitation_batched():
                 'anh_ex_b': empty + [numpy.array([anh_a]*ndets, dtype=int)],
                 }
                 )
-    from ipie.propagation.overlap import get_dets_nfold_excitation_batched
+    from ipie.propagation.overlap import (
+            get_dets_nfold_excitation_batched,
+            get_dets_nfold_excitation_batched_opt
+            )
     test = get_dets_nfold_excitation_batched(5, G0, G0, trial)
+    assert numpy.allclose(ref, test)
+    test = get_dets_nfold_excitation_batched_opt(5, G0, G0, trial)
     assert numpy.allclose(ref, test)
 
 @pytest.mark.unit

@@ -340,6 +340,7 @@ def teardown_module(self):
     cwd = os.getcwd()
     files = [
             'estimates.test_generic_single_det.h5',
+            'estimates.test_generic.h5',
             'estimates.test_constructor.h5',
             'estimates.test_ueg.h5',
             'estimates.test_hubbard.h5',

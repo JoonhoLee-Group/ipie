@@ -40,7 +40,6 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
         return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walker_batch, trial)
 
-# Naive way to evaluate local energy
 def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial):
     energy = []
     ndets = trial.ndets
