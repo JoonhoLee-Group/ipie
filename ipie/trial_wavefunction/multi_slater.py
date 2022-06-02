@@ -534,6 +534,16 @@ class MultiSlater(object):
         shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
+        if self.wicks and self.optimized:
+            shape_a_act = (nchol, (M*(self.nact)))
+            shape_b_act = (nchol, (M*(self.nact)))
+            nact = self.nact
+            nfrz = self.nfrozen
+            self._rchola_act = get_shared_array(comm, shape_a_act, self.psi.dtype)
+            if comm.rank == 0:
+                # working in MO basis so can just grab correct slice
+                self._rchola_act[:] = chol[nfrz:nfrz+nact].transpose((2,0,1)).copy()
+                self._rcholb_act = self._rchol_a_act
 
         self._rH1a = get_shared_array(comm, (na, M), self.psi.dtype)
         self._rH1b = get_shared_array(comm, (nb, M), self.psi.dtype)
