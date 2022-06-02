@@ -129,7 +129,7 @@ def reblock_mixed(groupby, columns, verbose=False):
     final = pd.concat(analysed, sort=True)
 
     y = short["ETotal"].values
-    reblocked_ac = reblock_by_autocorr(y)
+    reblocked_ac = reblock_by_autocorr(y,verbose=verbose)
     for c in reblocked_ac.columns:
         final[c] = reblocked_ac[c].values
 

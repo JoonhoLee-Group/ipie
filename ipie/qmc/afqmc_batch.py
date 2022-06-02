@@ -250,7 +250,6 @@ class AFQMCBatch(object):
         if (self.qmc.gpu):
             if comm.rank == 0:
                 print("# Casting numpy arrays to cupy arrays")
-
             if comm.rank == 0:
                 print("# Casting arrays in propagators")
             self.propagators.cast_to_cupy(verbose)
