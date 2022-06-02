@@ -17,11 +17,12 @@ def dot_real_cplx(
 def get_dets_singles(
         cre,
         anh,
+        offset,
         G0,
         dets
         ):
-    ps = cre[:, 0]
-    qs = anh[:, 0]
+    ps = cre[:, 0] + offset
+    qs = anh[:, 0] + offset
     ndets = ps.shape[0]
     nwalkers = G0.shape[0]
     for idet in range(ndets):
@@ -31,13 +32,14 @@ def get_dets_singles(
 def get_dets_doubles(
         cre,
         anh,
+        offset,
         G0,
         dets
         ):
-    ps = cre[:, 0]
-    qs = anh[:, 0]
-    rs = cre[:, 1]
-    ss = anh[:, 1]
+    ps = cre[:, 0] + offset
+    qs = anh[:, 0] + offset
+    rs = cre[:, 1] + offset
+    ss = anh[:, 1] + offset
     ndets = ps.shape[0]
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
@@ -52,16 +54,17 @@ def get_dets_doubles(
 def get_dets_triples(
         cre,
         anh,
+        offset,
         G0,
-        dets
+        dets,
         ):
     ndets = len(cre)
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            ps, qs = cre[idet,0], anh[idet,0]
-            rs, ss = cre[idet,1], anh[idet,1]
-            ts, us = cre[idet,2], anh[idet,2]
+            ps, qs = cre[idet,0] + offset, anh[idet,0] + offset
+            rs, ss = cre[idet,1] + offset, anh[idet,1] + offset
+            ts, us = cre[idet,2] + offset, anh[idet,2] + offset
             dets[iw,idet] = G0[iw, ps, qs]*(
                         G0[iw, rs, ss]*G0[iw, ts, us] - G0[iw, rs, us]*G0[iw, ts, ss]
                          )
@@ -76,6 +79,7 @@ def get_dets_triples(
 def get_dets_nfold(
         cre,
         anh,
+        offset,
         G0,
         dets
         ):
@@ -86,12 +90,12 @@ def get_dets_nfold(
     for iw in range(nwalkers):
         for idet in range(ndets):
             for iex in range(nex):
-                p = cre[idet, iex]
-                q = anh[idet, iex]
+                p = cre[idet, iex] + offset
+                q = anh[idet, iex] + offset
                 det[iex,iex] = G0[iw,p,q]
                 for jex in range(iex+1, nex):
-                    r = cre[idet, jex]
-                    s = anh[idet, jex]
+                    r = cre[idet, jex] + offset
+                    s = anh[idet, jex] + offset
                     det[iex, jex] = G0[iw,p,s]
                     det[jex, iex] = G0[iw,r,q]
             dets[iw, idet] = numpy.linalg.det(det)
@@ -113,12 +117,13 @@ def reduce_CI_singles(
         for idet in range(ndets):
             p = ps[idet]
             q = qs[idet]
-            CI[iw, q, p] += phases[iw, idet] 
+            CI[iw, q, p] += phases[iw, idet]
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_doubles(
         cre,
         anh,
+        offset,
         phases,
         G0,
         CI):
@@ -134,15 +139,20 @@ def reduce_CI_doubles(
             q = qs[idet]
             r = rs[idet]
             s = ss[idet]
-            CI[iw, q, p] += phases[iw, idet] * G0[iw,r,s]
-            CI[iw, s, r] += phases[iw, idet] * G0[iw,p,q]
-            CI[iw, q, r] -= phases[iw, idet] * G0[iw,p,s]
-            CI[iw, s, p] -= phases[iw, idet] * G0[iw,r,q]
+            po = ps[idet] + offset
+            qo = qs[idet] + offset
+            ro = rs[idet] + offset
+            so = ss[idet] + offset
+            CI[iw, q, p] += phases[iw, idet] * G0[iw,ro,so]
+            CI[iw, s, r] += phases[iw, idet] * G0[iw,po,qo]
+            CI[iw, q, r] -= phases[iw, idet] * G0[iw,po,so]
+            CI[iw, s, p] -= phases[iw, idet] * G0[iw,ro,qo]
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_triples(
         cre,
         anh,
+        offset,
         phases,
         G0,
         CI):
@@ -162,43 +172,49 @@ def reduce_CI_triples(
             s = ss[idet]
             t = ts[idet]
             u = us[idet]
+            po = ps[idet] + offset
+            qo = qs[idet] + offset
+            ro = rs[idet] + offset
+            so = ss[idet] + offset
+            to = ts[idet] + offset
+            uo = us[idet] + offset
             CI[iw,q,p] += phases[iw,idet] * (
-                    G0[iw,r,s]*G0[iw,t,u] -
-                    G0[iw,r,u]*G0[iw,t,s]
+                    G0[iw,ro,so]*G0[iw,to,uo] -
+                    G0[iw,ro,uo]*G0[iw,to,so]
                     ) # 0 0
             CI[iw,s,p] -= phases[iw,idet] * (
-                    G0[iw,r,q]*G0[iw,t,u] -
-                    G0[iw,r,u]*G0[iw,t,q]
+                    G0[iw,ro,qo]*G0[iw,to,uo] -
+                    G0[iw,ro,uo]*G0[iw,to,qo]
                     ) # 0 1
             CI[iw,u,p] += phases[iw,idet] * (
-                    G0[iw,r,q]*G0[iw,t,s] -
-                    G0[iw,r,s]*G0[iw,t,q]
+                    G0[iw,ro,qo]*G0[iw,to,so] -
+                    G0[iw,ro,so]*G0[iw,to,qo]
                     ) # 0 2
 
             CI[iw,q,r] -= phases[iw,idet] * (
-                    G0[iw,p,s]*G0[iw,t,u] -
-                    G0[iw,p,u]*G0[iw,t,s]
+                    G0[iw,po,so]*G0[iw,to,uo] -
+                    G0[iw,po,uo]*G0[iw,to,so]
                     ) # 1 0
             CI[iw,s,r] += phases[iw,idet] * (
-                    G0[iw,p,q]*G0[iw,t,u] -
-                    G0[iw,p,u]*G0[iw,t,q]
+                    G0[iw,po,qo]*G0[iw,to,uo] -
+                    G0[iw,po,uo]*G0[iw,to,qo]
                     ) # 1 1
             CI[iw,u,r] -= phases[iw,idet] * (
-                    G0[iw,p,q]*G0[iw,t,s] -
-                    G0[iw,p,s]*G0[iw,t,q]
+                    G0[iw,po,qo]*G0[iw,to,so] -
+                    G0[iw,po,so]*G0[iw,to,qo]
                     ) # 1 2
 
             CI[iw,q,t] += phases[iw,idet] * (
-                    G0[iw,p,s]*G0[iw,r,u] -
-                    G0[iw,p,u]*G0[iw,r,s]
+                    G0[iw,po,so]*G0[iw,ro,uo] -
+                    G0[iw,po,uo]*G0[iw,ro,so]
                     ) # 2 0
             CI[iw,s,t] -= phases[iw,idet] * (
-                    G0[iw,p,q]*G0[iw,r,u] -
-                    G0[iw,p,u]*G0[iw,r,q]
+                    G0[iw,po,qo]*G0[iw,ro,uo] -
+                    G0[iw,po,uo]*G0[iw,ro,qo]
                     ) # 2 1
             CI[iw,u,t] += phases[iw,idet] * (
-                    G0[iw,p,q]*G0[iw,r,s] -
-                    G0[iw,p,s]*G0[iw,r,q]
+                    G0[iw,po,qo]*G0[iw,ro,so] -
+                    G0[iw,po,so]*G0[iw,ro,qo]
                     ) # 2 2
 
 
@@ -219,19 +235,20 @@ def _reduce_nfold_cofactor_contribution(
             q = qs[idet]
             det = numpy.linalg.det(cofactor_matrix[iw, idet])
             rhs = sign  * det * phases[iw, idet]
-            CI[iw, q, p] += rhs 
+            CI[iw, q, p] += rhs
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_nfold(
         cre,
         anh,
+        offset,
         phases,
         det_mat,
         cof_mat,
         CI):
     ndets = len(cre)
     nwalkers = CI.shape[0]
-    nexcit = det_mat.shape[-1] 
+    nexcit = det_mat.shape[-1]
     for iex in range(nexcit):
         p = cre[:, iex]
         for jex in range(nexcit):
@@ -257,6 +274,7 @@ def reduce_CI_nfold(
 def fill_os_singles(
         cre,
         anh,
+        offset,
         chol_factor,
         spin_buffer,
         det_sls):
@@ -271,6 +289,7 @@ def fill_os_singles(
 def fill_os_doubles(
         cre,
         anh,
+        offset,
         G0,
         chol_factor,
         spin_buffer,
@@ -286,26 +305,30 @@ def fill_os_doubles(
             q = anh[idet, 0]
             r = cre[idet, 1]
             s = anh[idet, 1]
+            po = cre[idet, 0] + offset
+            qo = anh[idet, 0] + offset
+            ro = cre[idet, 1] + offset
+            so = anh[idet, 1] + offset
             spin_buffer[iw, start + idet, :] = (
                     dot_real_cplx(
                         chol_factor[iw,q,p,:],
-                        G0_real[r,s],
-                        G0_imag[r,s])
+                        G0_real[ro,so],
+                        G0_imag[ro,so])
                     -
                     dot_real_cplx(
                         chol_factor[iw,s,p,:],
-                        G0_real[r,q],
-                        G0_imag[r,q])
+                        G0_real[ro,qo],
+                        G0_imag[ro,qo])
                     -
                     dot_real_cplx(
                         chol_factor[iw,q,r,:],
-                        G0_real[p,s],
-                        G0_imag[p,s])
+                        G0_real[po,so],
+                        G0_imag[po,so])
                     +
                     dot_real_cplx(
                         chol_factor[iw,s,r,:],
-                        G0_real[p,q],
-                        G0_imag[p,q])
+                        G0_real[po,qo],
+                        G0_imag[po,qo])
                     )
 
 
@@ -313,6 +336,7 @@ def fill_os_doubles(
 def fill_os_triples(
         cre,
         anh,
+        offset,
         G0w,
         chol_factor,
         spin_buffer,
@@ -329,63 +353,69 @@ def fill_os_triples(
             s = anh[idet, 1]
             t = cre[idet, 2]
             u = anh[idet, 2]
-            cofac = G0[r,s]*G0[t,u] - G0[r,u]*G0[t,s]
+            po = cre[idet, 0] + offset
+            qo = anh[idet, 0] + offset
+            ro = cre[idet, 1] + offset
+            so = anh[idet, 1] + offset
+            to = cre[idet, 2] + offset
+            uo = anh[idet, 2] + offset
+            cofac = G0[ro,so]*G0[to,uo] - G0[ro,uo]*G0[to,so]
             spin_buffer[iw, start + idet, :] = (
                     dot_real_cplx(
                         chol_factor[iw,q,p],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[r,q]*G0[t,u] - G0[r,u]*G0[t,q]
+            cofac = G0[ro,qo]*G0[to,uo] - G0[ro,uo]*G0[to,qo]
             spin_buffer[iw, start + idet, :] -= (
                     dot_real_cplx(
                         chol_factor[iw,s,p],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[r,q]*G0[t,s] - G0[r,s]*G0[t,q]
+            cofac = G0[ro,qo]*G0[to,so] - G0[ro,so]*G0[to,qo]
             spin_buffer[iw, start + idet, :] += (
                     dot_real_cplx(
                         chol_factor[iw,u,p],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,s]*G0[t,u] - G0[t,s]*G0[p,u]
+            cofac = G0[po,so]*G0[to,uo] - G0[to,so]*G0[po,uo]
             spin_buffer[iw, start + idet, :] -= (
                     dot_real_cplx(
                         chol_factor[iw,q,r],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,q]*G0[t,u] - G0[t,q]*G0[p,u]
+            cofac = G0[po,qo]*G0[to,uo] - G0[to,qo]*G0[po,uo]
             spin_buffer[iw, start + idet, :] += (
                     dot_real_cplx(
                         chol_factor[iw,s,r],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,q]*G0[t,s] - G0[t,q]*G0[p,s]
+            cofac = G0[po,qo]*G0[to,so] - G0[to,qo]*G0[po,so]
             spin_buffer[iw, start + idet, :] -= (
                     dot_real_cplx(
                         chol_factor[iw,u,r],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,s]*G0[r,u] - G0[r,s]*G0[p,u]
+            cofac = G0[po,so]*G0[ro,uo] - G0[ro,so]*G0[po,uo]
             spin_buffer[iw, start + idet, :] += (
                     dot_real_cplx(
                         chol_factor[iw,q,t],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,q]*G0[r,u] - G0[r,q]*G0[p,u]
+            cofac = G0[po,qo]*G0[ro,uo] - G0[ro,qo]*G0[po,uo]
             spin_buffer[iw, start + idet, :] -= (
                     dot_real_cplx(
                         chol_factor[iw,s,t],
                         cofac.real,
                         cofac.imag)
                     )
-            cofac = G0[p,q]*G0[r,s] - G0[r,q]*G0[p,s]
+            cofac = G0[po,qo]*G0[ro,so] - G0[ro,qo]*G0[po,so]
             spin_buffer[iw, start + idet, :] += (
                     dot_real_cplx(
                         chol_factor[iw,u,t],
@@ -416,6 +446,7 @@ def get_ss_doubles(
 def build_det_matrix(
         cre,
         anh,
+        offset,
         G0,
         det_mat):
 
@@ -427,12 +458,12 @@ def build_det_matrix(
     for iw in range(nwalker):
         for idet in range(ndet):
             for iex in range(nex):
-                p = cre[idet,iex]
-                q = anh[idet,iex]
+                p = cre[idet,iex] + offset
+                q = anh[idet,iex] + offset
                 det_mat[iw, idet, iex, iex] = G0[iw, p, q]
                 for jex in range(iex+1, nex):
-                    r = cre[idet,jex]
-                    s = anh[idet,jex]
+                    r = cre[idet,jex] + offset
+                    s = anh[idet,jex] + offset
                     det_mat[iw, idet, iex, jex] = G0[iw, p, s]
                     det_mat[iw, idet, jex, iex] = G0[iw, r, q]
 

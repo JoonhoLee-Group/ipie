@@ -571,6 +571,7 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_doubles(
                 trial.cre_ex_a[2],
                 trial.anh_ex_a[2],
+                trial.nfrozen,
                 phases,
                 walker_batch.G0a,
                 walker_batch.CIa)
@@ -582,6 +583,7 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_doubles(
                 trial.cre_ex_b[2],
                 trial.anh_ex_b[2],
+                trial.nfrozen,
                 phases,
                 walker_batch.G0b,
                 walker_batch.CIb)
@@ -596,6 +598,7 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_triples(
                 trial.cre_ex_a[3],
                 trial.anh_ex_a[3],
+                trial.nfrozen,
                 phases,
                 walker_batch.G0a,
                 walker_batch.CIa)
@@ -607,6 +610,7 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_triples(
                 trial.cre_ex_b[3],
                 trial.anh_ex_b[3],
+                trial.nfrozen,
                 phases,
                 walker_batch.G0b,
                 walker_batch.CIb)
@@ -949,12 +953,14 @@ def build_CI_nfold_excitation_opt(
         wk.build_det_matrix(
                 trial.cre_ex_a[nexcit],
                 trial.anh_ex_a[nexcit],
+                trial.nfrozen,
                 walker_batch.G0a,
                 det_mat)
         cof_mat = numpy.zeros((nwalkers, ndets_a, nexcit-1, nexcit-1), dtype=numpy.complex128)
         wk.reduce_CI_nfold(
                 trial.cre_ex_a[nexcit],
                 trial.anh_ex_a[nexcit],
+                trial.nfrozen,
                 phases,
                 det_mat,
                 cof_mat,
@@ -968,12 +974,14 @@ def build_CI_nfold_excitation_opt(
         wk.build_det_matrix(
                 trial.cre_ex_b[nexcit],
                 trial.anh_ex_b[nexcit],
+                trial.nfrozen,
                 walker_batch.G0b,
                 det_mat)
         cof_mat = numpy.zeros((nwalkers, ndets_b, nexcit-1, nexcit-1), dtype=numpy.complex128)
         wk.reduce_CI_nfold(
                 trial.cre_ex_b[nexcit],
                 trial.anh_ex_b[nexcit],
+                trial.nfrozen,
                 phases,
                 det_mat,
                 cof_mat,
@@ -981,11 +989,10 @@ def build_CI_nfold_excitation_opt(
 
 
 @jit(nopython=True, fastmath=True)
-def contract_CI(Q0, CI, Ghalf, G):
+def contract_CI(Q0_act, CI, Ghalf, G):
     nwalkers = Ghalf.shape[0]
-    nbasis = Q0.shape[1]
     for iw in range(nwalkers):
-        G[iw] += numpy.dot(Q0[iw], numpy.dot(CI[iw], Ghalf[iw]))
+        G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))
 
 def greens_function_multi_det_wicks_opt(walker_batch, trial):
     """Compute walker's green's function using Wick's theorem.
@@ -1091,15 +1098,21 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
     # contribution 2 (connected diagrams)
+    # Frozen orbitals not in original active space calculation but reincluded in
+    # AFQMC
+    act_orb = trial.act_orb_alpha
+    occ_orb = trial.occ_orb_alpha
     contract_CI(
-        walker_batch.Q0a,
+        walker_batch.Q0a[:,:,act_orb].copy(),
         walker_batch.CIa,
-        walker_batch.Ghalfa,
+        walker_batch.Ghalfa[:,act_orb].copy(),
         walker_batch.Ga)
+    act_orb = trial.act_orb_beta
+    occ_orb = trial.occ_orb_beta
     contract_CI(
-        walker_batch.Q0b,
+        walker_batch.Q0b[:,:,act_orb].copy(),
         walker_batch.CIb,
-        walker_batch.Ghalfb,
+        walker_batch.Ghalfb[:,act_orb].copy(),
         walker_batch.Gb)
     # multiplying everything by reference overlap
     ovlps *= ovlps0
