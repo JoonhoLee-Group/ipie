@@ -65,14 +65,14 @@ def read_dice_wavefunction(filename, ndets=None):
     _chr = 1
     _int = 4
     _dou = 8
-    if ndets is None:
-        ndets = struct.unpack('<I', data[:4])[0]
+    ndets_in_file = struct.unpack('<I', data[:4])[0]
     norbs = struct.unpack('<I', data[4:8])[0]
     wfn_data = data[8:]
     coeffs = []
     occs = []
     start = 0
-    print(f"Number of determinants: {ndets}")
+    print(f"Number of determinants specified: {ndets}")
+    print(f"Number of determinants in dets.bin : {ndets_in_file}")
     print(f"Number of orbitals : {norbs}")
     for idet in range(ndets):
         coeff = struct.unpack('<d', wfn_data[start:start+_dou])[0]
@@ -88,37 +88,33 @@ def read_dice_wavefunction(filename, ndets=None):
 def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
     print("Converting phase to account for abab -> aabb")
     ndets = len(coeff0)
-    for ndet in range(ndets):
-        coeff = np.array(coeff0[:ndet], dtype=np.complex128)
-        occa = occa_ref[:ndet]
-        occb = occb_ref[:ndet]
-        if verbose and ndet % 10000 == 0 and ndet > 0:
-            done = float(ndet)/ndets
-            print(f"convert phase {ndet}. Percent: {done}")
-        for i in range(ndet):
-            doubles = list(set(occa[i])&set(occb[i]))
-            occa0 = np.array(occa[i])
-            occb0 = np.array(occb[i])
+    coeffs = np.zeros(len(coeff0), dtype=np.complex128)
+    for i in range(ndets):
+        if verbose and i % (int(0.1*ndets)) == 0 and i > 0:
+            done = float(i)/ndets
+            print(f"convert phase {i}. Percent: {done}")
+        doubles = list(set(occa_ref[i])&set(occb_ref[i]))
+        occa0 = np.array(occa_ref[i])
+        occb0 = np.array(occb_ref[i])
 
-            count = 0
-            for ocb in occb0:
-                passing_alpha = np.where(occa0 > ocb)[0]
-                count += len(passing_alpha)
+        count = 0
+        for ocb in occb0:
+            passing_alpha = np.where(occa0 > ocb)[0]
+            count += len(passing_alpha)
 
-            phase = (-1)**count
-            coeff[i] *= phase
-        coeff = np.array(coeff, dtype = np.complex128)
-        ixs = np.argsort(np.abs(coeff))[::-1]
-        coeff = coeff[ixs]
-        occa = np.array(occa)[ixs]
-        occb = np.array(occb)[ixs]
+        phase = (-1)**count
+        coeffs[i] = coeffs0[i]
+    ixs = np.argsort(np.abs(coeffs))[::-1]
+    coeffs = coeffs[ixs]
+    occa = np.array(occa_ref)[ixs]
+    occb = np.array(occb_ref)[ixs]
 
-    return coeff, occa, occb
+    return coeffs, occa, occb
 
 if __name__ == '__main__':
     options = parse_args(sys.argv[1:])
     for key, val in vars(options).items():
-        print(f" {key:<10s} : {val:>10d}")
+        print(f"{key:<10s} : {val:>10d}")
     if options.ndets > 0:
         ndets = options.ndets
     else:
