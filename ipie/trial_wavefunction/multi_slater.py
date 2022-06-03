@@ -184,11 +184,6 @@ class MultiSlater(object):
                 anh_a.sort()
                 anh_b.sort()
 
-                # anh_a = numpy.array(anh_a)
-                # cre_a = numpy.array(cre_a)
-                # anh_b = numpy.array(anh_b)
-                # cre_b = numpy.array(cre_b)
-
                 self.anh_a += [anh_a]
                 self.anh_b += [anh_b]
                 self.cre_a += [cre_a]
@@ -224,6 +219,10 @@ class MultiSlater(object):
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
+
+            if verbose:
+                print(f"# Number of alpha determinants at each level: {self.ndet_a}")
+                print(f"# Number of beta determinants at each level: {self.ndet_b}")
 
         self.compute_opdm = options.get('compute_opdm', True)
 
