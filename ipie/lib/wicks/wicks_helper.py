@@ -132,10 +132,10 @@ def compute_opdm(
         dets,
         norbs,
         nelec):
-    fun = _wicks_helper.compute_density_matrix
-    fun.restype = None
     ndets = len(ci_coeffs)
     if ci_coeffs.dtype == np.complex128:
+        fun = _wicks_helper.compute_density_matrix_cmplx
+        fun.restype = None
         fun.argtypes = [
                 ndpointer(np.complex128, flags="C_CONTIGUOUS"),
                 ndpointer(shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"),
@@ -146,6 +146,8 @@ def compute_opdm(
                 ctypes.c_size_t,
                 ]
     elif ci_coeffs.dtype == np.float64:
+        fun = _wicks_helper.compute_density_matrix_cmplx
+        fun.restype = None
         fun.argtypes = [
                 ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                 ndpointer(shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"),

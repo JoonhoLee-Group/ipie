@@ -338,6 +338,7 @@ def get_dets_single_excitation_batched_opt(
         wk.get_dets_singles(
             trial.cre_ex_a[1],
             trial.anh_ex_a[1],
+            trial.nfrozen,
             G0wa,
             dets_a
             )
@@ -348,6 +349,7 @@ def get_dets_single_excitation_batched_opt(
         wk.get_dets_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
+            trial.nfrozen,
             G0wb,
             dets_b
             )
@@ -518,6 +520,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_doubles(
             trial.cre_ex_a[2],
             trial.anh_ex_a[2],
+            trial.nfrozen,
             G0wa,
             dets_a
             )
@@ -528,6 +531,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
+            trial.nfrozen,
             G0wb,
             dets_b
             )
@@ -563,6 +567,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_triples(
             trial.cre_ex_a[3],
             trial.anh_ex_a[3],
+            trial.nfrozen,
             G0wa,
             dets_a
             )
@@ -573,6 +578,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_triples(
             trial.cre_ex_b[3],
             trial.anh_ex_b[3],
+            trial.nfrozen,
             G0wb,
             dets_b
             )
@@ -610,6 +616,7 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
         wk.get_dets_nfold(
             trial.cre_ex_a[nexcit],
             trial.anh_ex_a[nexcit],
+            trial.nfrozen,
             G0wa,
             dets_a
             )
@@ -620,6 +627,7 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
         wk.get_dets_nfold(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
+            trial.nfrozen,
             G0wb,
             dets_b
             )
