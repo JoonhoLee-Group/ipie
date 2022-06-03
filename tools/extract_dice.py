@@ -32,6 +32,9 @@ def parse_args(args):
     parser.add_argument('--ndets', type=int, dest='ndets',
                         default=-1, help='Number of frozen core orbitals to'
                         ' reinclude.')
+    parser.add_argument('--verbose', dest='verbose', action='store_true',
+                        default=False, help='Number of frozen core orbitals to'
+                        ' reinclude.')
 
     options = parser.parse_args(args)
 
@@ -82,13 +85,16 @@ def read_dice_wavefunction(filename, ndets=None):
     oa, ob = zip(*occs)
     return np.array(coeffs, dtype=np.complex128), oa, ob
 
-def convert_phase(coeff0, occa_ref, occb_ref):
+def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
     print("Converting phase to account for abab -> aabb")
     ndets = len(coeff0)
     for ndet in range(ndets):
         coeff = np.array(coeff0[:ndet], dtype=np.complex128)
         occa = occa_ref[:ndet]
         occb = occb_ref[:ndet]
+        if verbose and ndet % 10000 == 0 and ndet > 0:
+            done = float(ndet)/ndets
+            print(f"convert phase {ndet}. Percent: {done}")
         for i in range(ndet):
             doubles = list(set(occa[i])&set(occb[i]))
             occa0 = np.array(occa[i])
@@ -112,9 +118,13 @@ def convert_phase(coeff0, occa_ref, occb_ref):
 if __name__ == '__main__':
     options = parse_args(sys.argv[1:])
     for key, val in vars(options).items():
-        print(f" {key:<10s} : {val:4d}")
-    coeffs0, occa0, occb0 = read_dice_wavefunction('dets.bin', options.ndets)
-    coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0)
+        print(f" {key:<10s} : {val:>10d}")
+    if options.ndets > 0:
+        ndets = options.ndets
+    else:
+        ndets = None
+    coeffs0, occa0, occb0 = read_dice_wavefunction('dets.bin', ndets=ndets)
+    coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
     if options.nfrozen > 0:
         core = [i for i in range(options.nfrozen)]
         occa = [np.array(core + [orb + options.nfrozen for orb in oa], dtype=np.int32) for oa in occa]
