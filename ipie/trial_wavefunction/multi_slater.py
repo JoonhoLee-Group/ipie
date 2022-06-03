@@ -554,7 +554,7 @@ class MultiSlater(object):
             nact = self.nact
             nfrz = self.nfrozen
             self._rchola_act = get_shared_array(comm, shape_a_act, self.psi.dtype)
-            self._rcholb_act = get_shared_array(comm, shape_a_act, self.psi.dtype)
+            self._rcholb_act = get_shared_array(comm, shape_b_act, self.psi.dtype)
             compute = comm is None or comm.rank == 0
             if compute:
                 # working in MO basis so can just grab correct slice
