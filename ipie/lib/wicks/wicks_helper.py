@@ -161,15 +161,15 @@ def compute_opdm(
         raise TypeError("Unknown type for ci_coeffs")
     opdm = np.zeros((2, norbs, norbs), dtype=ci_coeffs.dtype)
     occs = np.zeros((nelec), dtype=np.int32)
-    _wicks_helper.compute_density_matrix(
-            ci_coeffs,
-            dets,
-            opdm,
-            occs,
-            ci_coeffs.size,
-            norbs,
-            nelec
-            )
+    fun(
+        ci_coeffs,
+        dets,
+        opdm,
+        occs,
+        ci_coeffs.size,
+        norbs,
+        nelec
+        )
     return opdm
 
 def convert_phase(occa, occb):

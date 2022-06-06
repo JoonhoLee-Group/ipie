@@ -18,12 +18,10 @@ void compute_density_matrix(
    // bras
   int ia[2];
   double denom = 0.0;
-  /*printf("here\n");*/
   for (int idet = 0; idet < num_dets; idet++) {
     u_int64_t* det_bra = &dets[idet*DET_LEN];
     double ci_bra = ci_coeffs[idet];
     denom += ci_bra * ci_bra;
-    /*printf("denom \n: %f", denom);*/
     fill_diagonal_term(
         det_bra,
         ci_bra,
@@ -32,7 +30,6 @@ void compute_density_matrix(
         num_orbs,
         nel
         );
-    /*printf("\n");*/
     for (int jdet = idet+1; jdet < num_dets; jdet++) {
       u_int64_t* det_ket = &dets[jdet*DET_LEN];
       double ci_ket = ci_coeffs[jdet];
@@ -48,11 +45,6 @@ void compute_density_matrix(
           int spin_offset = num_orbs*num_orbs*si;
           int pq = spat_a*num_orbs + spat_i + spin_offset;
           int qp = spat_i*num_orbs + spat_a + spin_offset;
-          /*if (idet == 50 || jdet == 50)*/
-            /*printf("%d %d %d %d %d %d %d %f %f\n", idet, jdet, ia[0], ia[1], spat_i, spat_a, perm, ci_ket, ci_bra);*/
-          /*for (int i = 0; i < DET_LEN; i++) {*/
-            /*printf("%d %llu\n", i, det_ket[i]);*/
-          /*}*/
           density_matrix[pq] += perm * ci_bra * ci_ket;
           density_matrix[qp] += perm * ci_bra * ci_ket;
         }
@@ -77,24 +69,22 @@ void compute_density_matrix_cmplx(
    // bras
   int ia[2];
   complex double denom = 0.0;
-  /*printf("here\n");*/
   for (int idet = 0; idet < num_dets; idet++) {
-    u_int64_t* det_bra = &dets[idet*DET_LEN];
-    complex double ci_bra = ci_coeffs[idet];
-    denom += conj(ci_bra) * ci_bra;
-    /*printf("denom \n: %f", denom);*/
+    u_int64_t* det_ket = &dets[idet*DET_LEN];
+    complex double ci_ket = ci_coeffs[idet];
+    denom += conj(ci_ket) * ci_ket;
+    /*printf("denom \n: %f %f\n ", creal(denom), cimag(denom));*/
     fill_diagonal_term_cmplx(
-        det_bra,
-        ci_bra,
+        det_ket,
+        ci_ket,
         occs,
         density_matrix,
         num_orbs,
         nel
         );
-    /*printf("\n");*/
     for (int jdet = idet+1; jdet < num_dets; jdet++) {
-      u_int64_t* det_ket = &dets[jdet*DET_LEN];
-      complex double ci_ket = ci_coeffs[jdet];
+      u_int64_t* det_bra = &dets[jdet*DET_LEN];
+      complex double ci_bra = ci_coeffs[jdet];
       int excitation = get_excitation_level(det_bra, det_ket);
       if (excitation == 1) {
         get_ia(det_bra, det_ket, ia);
@@ -107,13 +97,9 @@ void compute_density_matrix_cmplx(
           int spin_offset = num_orbs*num_orbs*si;
           int pq = spat_a*num_orbs + spat_i + spin_offset;
           int qp = spat_i*num_orbs + spat_a + spin_offset;
-          /*if (idet == 50 || jdet == 50)*/
-            /*printf("%d %d %d %d %d %d %d %f %f\n", idet, jdet, ia[0], ia[1], spat_i, spat_a, perm, ci_ket, ci_bra);*/
-          /*for (int i = 0; i < DET_LEN; i++) {*/
-            /*printf("%d %llu\n", i, det_ket[i]);*/
-          /*}*/
-          density_matrix[pq] += perm * conj(ci_bra) * ci_ket;
-          density_matrix[qp] += perm * ci_bra * conj(ci_ket);
+          complex double val = perm * conj(ci_bra) * ci_ket;
+          density_matrix[pq] += val;
+          density_matrix[qp] += conj(val);
         }
       }
     }
@@ -132,16 +118,11 @@ void fill_diagonal_term(
     size_t nel
     )
 {
-  /*for (int i = 0; i < DET_LEN; i++)*/
-    /*printf("D: %d\n", det[i]);*/
   decode_det(det, occs, nel);
-  /*printf("nel : %d \n", nel);*/
   for (int iel = 0; iel < nel; iel++) {
-    // density_matrix[spin,p,q]
     int spatial = occs[iel] / 2;
     int spin_offset = num_orbs*num_orbs*(occs[iel]%2);
     int pq = spatial*num_orbs + spatial + spin_offset;
-    /*printf("%d %d %d \n", iel, spatial, occs[iel]%2);*/
     density_matrix[pq] += ci_coeff * ci_coeff;
   }
 }
@@ -155,16 +136,11 @@ void fill_diagonal_term_cmplx(
     size_t nel
     )
 {
-  /*for (int i = 0; i < DET_LEN; i++)*/
-    /*printf("D: %d\n", det[i]);*/
   decode_det(det, occs, nel);
-  /*printf("nel : %d \n", nel);*/
   for (int iel = 0; iel < nel; iel++) {
-    // density_matrix[spin,p,q]
     int spatial = occs[iel] / 2;
     int spin_offset = num_orbs*num_orbs*(occs[iel]%2);
     int pq = spatial*num_orbs + spatial + spin_offset;
-    /*printf("%d %d %d \n", iel, spatial, occs[iel]%2);*/
-    density_matrix[pq] += ci_coeff * ci_coeff;
+    density_matrix[pq] += conj(ci_coeff) * ci_coeff;
   }
 }
