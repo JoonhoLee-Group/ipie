@@ -409,8 +409,8 @@ def greens_function_multi_det_wicks(walker_batch, trial):
                         walker_batch.CIb[iw,q,p] += c_phaseb_ovlpa * (-1)**(iex+jex) * numpy.linalg.det(cofactor)
 
         # contribution 2 (connected diagrams)
-        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0Ha)
-        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0Hb)
+        walker_batch.Ga[iw] += Q0a.dot(walker_batch.CIa[iw]).dot(G0a)
+        walker_batch.Gb[iw] += Q0b.dot(walker_batch.CIb[iw]).dot(G0b)
 
         # multiplying everything by reference overlap
         ovlp *= ovlp0
