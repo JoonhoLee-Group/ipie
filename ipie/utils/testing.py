@@ -55,8 +55,8 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
         oa = oa_new.copy()
         ob = ob_new.copy()
     else:
-        oa = oa[:ndet]
-        ob = ob[:ndet]
+        oa = list(oa[:ndet])
+        ob = list(ob[:ndet])
     coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
     wfn = (coeffs,oa,ob)
     if init:
