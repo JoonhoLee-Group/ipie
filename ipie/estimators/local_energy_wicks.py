@@ -65,8 +65,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         LXb = LXb.reshape((nbasis,nbasis))
 
         # useful intermediate
-        QCIGa = Q0a.dot(CIa).dot(G0Ha)
-        QCIGb = Q0b.dot(CIb).dot(G0Hb)
+        QCIGa = Q0a.dot(CIa).dot(G0a)
+        QCIGb = Q0b.dot(CIb).dot(G0b)
 
         cont2_Jaa = numpy.sum(QCIGa * LXa)
         cont2_Jbb = numpy.sum(QCIGb * LXb)
@@ -90,8 +90,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
 
         cont2_K = cont2_Kaa + cont2_Kbb
 
-        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0Ha, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
-        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0Hb, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Laa = numpy.einsum("iq,pj,ijx->qpx",Q0a, G0a, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
+        Lbb = numpy.einsum("iq,pj,ijx->qpx",Q0b, G0b, ham.chol_vecs.reshape((nbasis, nbasis, nchol)), optimize=True)
 
         cont3 = 0.0 + 0.0j
 
