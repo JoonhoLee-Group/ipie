@@ -944,6 +944,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_singles(
                         trial.cre_ex_a[iexcit],
                         trial.anh_ex_a[iexcit],
+                        trial.occ_map_a,
                         trial.nfrozen,
                         Laa,
                         alpha_os_buffer,
@@ -954,6 +955,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_doubles(
                     trial.cre_ex_a[iexcit],
                     trial.anh_ex_a[iexcit],
+                    trial.occ_map_a,
                     trial.nfrozen,
                     G0a,
                     Laa,
@@ -964,6 +966,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_triples(
                         trial.cre_ex_a[iexcit],
                         trial.anh_ex_a[iexcit],
+                        trial.occ_map_a,
                         trial.nfrozen,
                         G0a,
                         Laa,
@@ -975,6 +978,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_nfold(
                             trial.cre_ex_a[iexcit],
                             trial.anh_ex_a[iexcit],
+                            trial.occ_map_a,
                             det_mat_a,
                             cofactor_matrix_a,
                             Laa,
@@ -987,6 +991,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                     wk.get_ss_doubles(
                             trial.cre_ex_a[iexcit],
                             trial.anh_ex_a[iexcit],
+                            trial.occ_map_a,
                             Laa,
                             alpha_ss_buffer,
                             slices_alpha[iexcit])
@@ -995,6 +1000,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                     wk.get_ss_nfold(
                                 trial.cre_ex_a[iexcit],
                                 trial.anh_ex_a[iexcit],
+                                trial.occ_map_a,
                                 det_mat_a,
                                 cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                                 Laa,
@@ -1015,6 +1021,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_singles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
+                        trial.occ_map_b,
                         trial.nfrozen,
                         Lbb,
                         beta_os_buffer,
@@ -1024,6 +1031,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_doubles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
+                        trial.occ_map_b,
                         trial.nfrozen,
                         G0b,
                         Lbb,
@@ -1034,6 +1042,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_triples(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
+                        trial.occ_map_b,
                         trial.nfrozen,
                         G0b,
                         Lbb,
@@ -1044,6 +1053,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.fill_os_nfold(
                                 trial.cre_ex_b[iexcit],
                                 trial.anh_ex_b[iexcit],
+                                trial.occ_map_b,
                                 det_mat_b,
                                 cofactor_matrix_b,
                                 Lbb,
@@ -1055,6 +1065,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.get_ss_doubles(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
+                        trial.occ_map_b,
                         Lbb,
                         beta_ss_buffer,
                         slices_beta[iexcit]
@@ -1063,6 +1074,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 wk.get_ss_nfold(
                         trial.cre_ex_b[iexcit],
                         trial.anh_ex_b[iexcit],
+                        trial.occ_map_b,
                         det_mat_b,
                         cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                         Lbb,
