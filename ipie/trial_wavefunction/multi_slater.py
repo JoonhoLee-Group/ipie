@@ -151,9 +151,14 @@ class MultiSlater(object):
                 print("# Setting additional member variables for Wick's theorem")
             d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
             d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
+            if verbose:
+                print(f"# Reference alpha determinant: {d0a}")
+                print(f"# Reference beta determinant: {d0b}")
+            # numba won't accept dictionary in jitted code so use an array so
+            # can't do following
             # self.occ_map_a = dict(zip(d0a, list(range(self.nocc_alpha))))
-            # self.occ_map_b = dict(zip(d0b, list(range(self.nocc_beta)))) 
-            # numba won't accept dictionary in jitted code so use an array
+            # self.occ_map_b = dict(zip(d0b, list(range(self.nocc_beta))))
+
             # Create mapping from reference determinant to occupied orbital
             # index for eg.
             # TODO: Use safer value than zero that fails in debug mode.
