@@ -100,13 +100,39 @@ def get_dets_nfold(
                     det[jex, iex] = G0[iw,r,q]
             dets[iw, idet] = numpy.linalg.det(det)
 
+@jit(nopython=True, fastmath=True)
+def build_det_matrix(
+        cre,
+        anh,
+        offset,
+        G0,
+        det_mat):
+
+    nwalker = det_mat.shape[0]
+    ndet = det_mat.shape[1]
+    if ndet == 0:
+        return
+    nex = det_mat.shape[2]
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            for iex in range(nex):
+                p = cre[idet,iex] + offset
+                q = anh[idet,iex] + offset
+                det_mat[iw, idet, iex, iex] = G0[iw, p, q]
+                for jex in range(iex+1, nex):
+                    r = cre[idet,jex] + offset
+                    s = anh[idet,jex] + offset
+                    det_mat[iw, idet, iex, jex] = G0[iw, p, s]
+                    det_mat[iw, idet, jex, iex] = G0[iw, r, q]
+
 
 # Green's function
 
-@jit(nopython=True, fastmath=True)
+@jit(nopython=False, fastmath=False)
 def reduce_CI_singles(
         cre,
         anh,
+        mapping,
         phases,
         CI):
     ps = cre[:,0]
@@ -115,7 +141,7 @@ def reduce_CI_singles(
     nwalkers = phases.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            p = ps[idet]
+            p = mapping[ps[idet]]
             q = qs[idet]
             CI[iw, q, p] += phases[iw, idet]
 
@@ -123,6 +149,7 @@ def reduce_CI_singles(
 def reduce_CI_doubles(
         cre,
         anh,
+        mapping,
         offset,
         phases,
         G0,
@@ -135,9 +162,9 @@ def reduce_CI_doubles(
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            p = ps[idet]
+            p = mapping[ps[idet]]
             q = qs[idet]
-            r = rs[idet]
+            r = mapping[rs[idet]]
             s = ss[idet]
             po = ps[idet] + offset
             qo = qs[idet] + offset
@@ -152,6 +179,7 @@ def reduce_CI_doubles(
 def reduce_CI_triples(
         cre,
         anh,
+        mapping,
         offset,
         phases,
         G0,
@@ -166,11 +194,11 @@ def reduce_CI_triples(
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            p = ps[idet]
+            p = mapping[ps[idet]]
             q = qs[idet]
-            r = rs[idet]
+            r = mapping[rs[idet]]
             s = ss[idet]
-            t = ts[idet]
+            t = mapping[ts[idet]]
             u = us[idet]
             po = ps[idet] + offset
             qo = qs[idet] + offset
@@ -222,6 +250,7 @@ def reduce_CI_triples(
 def _reduce_nfold_cofactor_contribution(
         ps,
         qs,
+        mapping,
         sign,
         phases,
         cofactor_matrix,
@@ -231,7 +260,7 @@ def _reduce_nfold_cofactor_contribution(
     ndets = cofactor_matrix.shape[1]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            p = ps[idet]
+            p = mapping[ps[idet]]
             q = qs[idet]
             det = numpy.linalg.det(cofactor_matrix[iw, idet])
             rhs = sign  * det * phases[iw, idet]
@@ -241,6 +270,7 @@ def _reduce_nfold_cofactor_contribution(
 def reduce_CI_nfold(
         cre,
         anh,
+        mapping,
         offset,
         phases,
         det_mat,
@@ -262,6 +292,7 @@ def reduce_CI_nfold(
             _reduce_nfold_cofactor_contribution(
                     p,
                     q,
+                    mapping,
                     sign,
                     phases,
                     cof_mat,
@@ -441,31 +472,6 @@ def get_ss_doubles(
             s = anh[idet, 1]
             buffer[iw, start+idet] += numpy.dot(chol_fact[iw,q,p], chol_fact[iw,s,r]) + 0j
             buffer[iw, start+idet] -= numpy.dot(chol_fact[iw,q,r], chol_fact[iw,s,p]) + 0j
-
-@jit(nopython=True, fastmath=True)
-def build_det_matrix(
-        cre,
-        anh,
-        offset,
-        G0,
-        det_mat):
-
-    nwalker = det_mat.shape[0]
-    ndet = det_mat.shape[1]
-    if ndet == 0:
-        return
-    nex = det_mat.shape[2]
-    for iw in range(nwalker):
-        for idet in range(ndet):
-            for iex in range(nex):
-                p = cre[idet,iex] + offset
-                q = anh[idet,iex] + offset
-                det_mat[iw, idet, iex, iex] = G0[iw, p, q]
-                for jex in range(iex+1, nex):
-                    r = cre[idet,jex] + offset
-                    s = anh[idet,jex] + offset
-                    det_mat[iw, idet, iex, jex] = G0[iw, p, s]
-                    det_mat[iw, idet, jex, iex] = G0[iw, r, q]
 
 @jit(nopython=True, fastmath=True)
 def build_cofactor_matrix(

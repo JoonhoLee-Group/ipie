@@ -463,6 +463,7 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_singles(
                 trial.cre_ex_a[1],
                 trial.anh_ex_a[1],
+                trial.occ_map_a,
                 phases,
                 walker_batch.CIa)
     ndets_b = len(trial.cre_ex_b[1])
@@ -470,9 +471,12 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         pass
     else:
         phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
+        ps = trial.cre_ex_b[1][:,0]
+        qs = trial.anh_ex_b[1][:,0]
         wk.reduce_CI_singles(
                 trial.cre_ex_b[1],
                 trial.anh_ex_b[1],
+                trial.occ_map_b,
                 phases,
                 walker_batch.CIb)
 
@@ -571,6 +575,7 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_doubles(
                 trial.cre_ex_a[2],
                 trial.anh_ex_a[2],
+                trial.occ_map_a,
                 trial.nfrozen,
                 phases,
                 walker_batch.G0a,
@@ -583,6 +588,7 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_doubles(
                 trial.cre_ex_b[2],
                 trial.anh_ex_b[2],
+                trial.occ_map_b,
                 trial.nfrozen,
                 phases,
                 walker_batch.G0b,
@@ -598,6 +604,7 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_triples(
                 trial.cre_ex_a[3],
                 trial.anh_ex_a[3],
+                trial.occ_map_a,
                 trial.nfrozen,
                 phases,
                 walker_batch.G0a,
@@ -610,6 +617,7 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
         wk.reduce_CI_triples(
                 trial.cre_ex_b[3],
                 trial.anh_ex_b[3],
+                trial.occ_map_b,
                 trial.nfrozen,
                 phases,
                 walker_batch.G0b,
@@ -960,6 +968,7 @@ def build_CI_nfold_excitation_opt(
         wk.reduce_CI_nfold(
                 trial.cre_ex_a[nexcit],
                 trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
                 trial.nfrozen,
                 phases,
                 det_mat,
@@ -981,6 +990,7 @@ def build_CI_nfold_excitation_opt(
         wk.reduce_CI_nfold(
                 trial.cre_ex_b[nexcit],
                 trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
                 trial.nfrozen,
                 phases,
                 det_mat,
