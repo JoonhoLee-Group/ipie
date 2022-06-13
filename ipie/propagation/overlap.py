@@ -253,13 +253,11 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
                                 nex_a,
                                 trial.cre_a[jdet],
                                 trial.anh_a[jdet],
-                                # greens_a,
-                                theta_a,
+                                greens_a,
                                 nex_b,
                                 trial.cre_b[jdet],
                                 trial.anh_b[jdet],
-                                theta_b)
-                                # greens_b)
+                                greens_b)
 
             tmp = trial.coeffs[jdet].conj() * ovlp_a * ovlp_b * trial.phase_a[jdet] * trial.phase_b[jdet]
             ovlp += tmp
