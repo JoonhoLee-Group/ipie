@@ -234,13 +234,13 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         theta_a = scipy.linalg.inv(Oalpha.T) @ phia.T
-        greens_a = psi0a.conj() @ theta_a 
+        greens_a = psi0a.conj() @ theta_a
 
         phib = walker_batch.phib[iw]
         Obeta = numpy.dot(psi0b.T, phib.conj())
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
         theta_b = scipy.linalg.inv(Obeta.T) @ phib.T
-        greens_b = psi0b.conj() @ theta_a 
+        greens_b = psi0b.conj() @ theta_b
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
 
@@ -253,11 +253,13 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
                                 nex_a,
                                 trial.cre_a[jdet],
                                 trial.anh_a[jdet],
-                                greens_a,
+                                # greens_a,
+                                theta_a,
                                 nex_b,
                                 trial.cre_b[jdet],
                                 trial.anh_b[jdet],
-                                greens_b)
+                                theta_b)
+                                # greens_b)
 
             tmp = trial.coeffs[jdet].conj() * ovlp_a * ovlp_b * trial.phase_a[jdet] * trial.phase_b[jdet]
             ovlp += tmp

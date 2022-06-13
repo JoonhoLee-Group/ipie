@@ -334,9 +334,9 @@ def test_phmsd_propagation_batch():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5,4)
-    nwalkers = 10
+    nwalkers = 2
     ndets = 5
-    nsteps = 20
+    nsteps = 1
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     nchols = chol.shape[0]
     system = Generic(nelec=nelec)
@@ -383,7 +383,7 @@ def test_phmsd_propagation_batch():
     for iw in range(nwalkers):
         assert numpy.allclose(walkers[iw].phi[:,:nelec[0]],walker_batch.phia[iw])
         assert numpy.allclose(walkers[iw].phi[:,nelec[0]:],walker_batch.phib[iw])
-        assert numpy.allclose(walkers[iw].weight,walker_batch.weight[iw])
+        assert numpy.allclose(walkers[iw].weight, walker_batch.weight[iw])
 
 if __name__ == '__main__':
     test_phmsd_greens_function_batch()
