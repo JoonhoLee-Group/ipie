@@ -39,6 +39,29 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
         coeffs = numpy.random.rand(ndet)
     return (coeffs,wfn)
 
+def truncated_combinations(iterable, r, count):
+    # Modified from:
+    # https://docs.python.org/3/library/itertools.html#itertools.combinations
+    # combinations('ABCD', 2) --> AB AC AD BC BD CD
+    # combinations(range(4), 3) --> 012 013 023 123
+    pool = tuple(iterable)
+    n = len(pool)
+    if r > n:
+        return
+    indices = list(range(r))
+    yield tuple(pool[i] for i in indices)
+    for i in range(count):
+        for i in reversed(range(r)):
+            if indices[i] != i + n - r:
+                break
+        else:
+            return
+        indices[i] += 1
+        for j in range(i+1, r):
+            indices[j] = indices[j-1] + 1
+        yield tuple(pool[i] for i in indices)
+
+
 def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
