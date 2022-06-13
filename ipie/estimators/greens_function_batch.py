@@ -1094,11 +1094,12 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial):
             trial,
             c_phasea_ovlpb,
             c_phaseb_ovlpa)
-    build_CI_triple_excitation_opt(
-            walker_batch,
-            trial,
-            c_phasea_ovlpb,
-            c_phaseb_ovlpa)
+    if trial.max_excite >= 3:
+        build_CI_triple_excitation_opt(
+                walker_batch,
+                trial,
+                c_phasea_ovlpb,
+                c_phaseb_ovlpa)
     for iexcit in range(4, trial.max_excite+1):
         start = time.time()
         build_CI_nfold_excitation_opt(
