@@ -351,7 +351,6 @@ class Continuous(object):
         # Now apply phaseless approximation
         start_time = time.time()
         ovlp_new = self.calc_overlap(walker_batch, trial)
-        print(ovlp, ovlp_new)
         self.tovlp += time.time() - start_time
         start_time = time.time()
         self.update_weight_batch(system, hamiltonian, walker_batch, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)

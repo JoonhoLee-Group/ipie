@@ -310,7 +310,6 @@ class Continuous(object):
 
         # Now apply phaseless approximation
         ovlp_new = walker.calc_overlap(trial)
-        print("old: ", ovlp, ovlp_new)
         self.update_weight(system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
 
     def update_weight_hybrid(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
