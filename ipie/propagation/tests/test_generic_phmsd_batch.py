@@ -334,9 +334,9 @@ def test_phmsd_propagation_batch():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5,4)
-    nwalkers = 2
+    nwalkers = 10
     ndets = 5
-    nsteps = 1
+    nsteps = 20
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     nchols = chol.shape[0]
     system = Generic(nelec=nelec)
