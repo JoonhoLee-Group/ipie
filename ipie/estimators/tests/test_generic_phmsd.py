@@ -354,8 +354,16 @@ def test_kernels_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
-    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
-        'use_wicks_helper': False})
+    trial = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': True,
+                'optimized': True,
+                'use_wicks_helper': False}
+            )
 
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
@@ -401,6 +409,7 @@ def test_kernels_energy():
     wk.fill_os_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
+            trial.occ_map_b,
             trial.nfrozen,
             Lbb,
             test,
@@ -423,6 +432,7 @@ def test_kernels_energy():
     wk.fill_os_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
+            trial.occ_map_b,
             trial.nfrozen,
             G0,
             Lbb,
@@ -445,6 +455,7 @@ def test_kernels_energy():
     wk.fill_os_triples(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             trial.nfrozen,
             G0,
             Lbb,
@@ -466,6 +477,7 @@ def test_kernels_energy():
     wk.get_ss_doubles(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             Lbb,
             test,
             slices_beta[iexcit]
@@ -498,6 +510,7 @@ def test_kernels_energy():
     wk.fill_os_nfold(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             det_mat,
             cof_mat,
             Lbb,
@@ -530,6 +543,7 @@ def test_kernels_energy():
     wk.get_ss_nfold(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             det_mat,
             cof_mat,
             Lbb,
@@ -829,7 +843,7 @@ def test_kernels_gf_active_space():
     contract_CI(
         walker_batch_ref.Q0a[:,:,act_orb].copy(),
         walker_batch_ref.CIa,
-        walker_batch_ref.Ghalfa[:,act_orb].copy(),
+        walker_batch_ref.G0a,
         walker_batch_ref.Ga
         )
     act_orb = trial_test.act_orb_alpha
@@ -872,13 +886,13 @@ def test_kernels_gf_active_space():
     contract_CI(
         walker_batch_test.Q0b[:,:,act_orb].copy(),
         walker_batch_test.CIb,
-        walker_batch_test.Ghalfa[:,act_orb].copy(),
+        walker_batch_test.Ghalfb[:,act_orb].copy(),
         walker_batch_test.Gb
         )
     contract_CI(
         walker_batch_ref.Q0b,
         walker_batch_ref.CIb,
-        walker_batch_ref.Ghalfb,
+        walker_batch_ref.G0b,
         walker_batch_ref.Gb
         )
     assert numpy.allclose(walker_batch_ref.Ga, walker_batch_test.Ga)
