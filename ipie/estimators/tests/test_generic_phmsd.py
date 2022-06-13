@@ -313,7 +313,7 @@ def test_phmsd_local_energy():
     walker_batch_test2.phia = walker_batch.phia.copy()
     walker_batch_test2.phib = walker_batch.phib.copy()
     walker_batch_test.ovlp = walker_batch.ovlp
-    walker_batch_test.ovlp = walker_batch.ovlp
+    walker_batch_test2.ovlp = walker_batch.ovlp
     greens_function_multi_det(walker_batch, trial)
     greens_function_multi_det_wicks(walker_batch_test2, trial)
     greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
@@ -329,15 +329,9 @@ def test_phmsd_local_energy():
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test2, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch_test, trial_test)
 
-    print(walker_batch.det_ovlpas[0])
-    print(walker_batch_test.det_ovlpas[0])
-    print(walker_batch_test2.det_ovlpas[0])
-    print(e_simple[0])
-    print(e_wicks[0])
-    print(e_wicks_opt[0])
-    # assert numpy.allclose(e_simple, e_wicks)
-    # assert numpy.allclose(e_simple, e_wicks_opt)
-    # assert numpy.allclose(e_wicks, e_wicks_opt)
+    assert numpy.allclose(e_simple, e_wicks)
+    assert numpy.allclose(e_simple, e_wicks_opt)
+    assert numpy.allclose(e_wicks, e_wicks_opt)
 
 @pytest.mark.unit
 def test_kernels_energy():
