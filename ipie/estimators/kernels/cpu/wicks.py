@@ -13,15 +13,16 @@ def dot_real_cplx(
 
 
 # Overlap
-@jit(nopython=True, fastmath=True)
+# @jit(nopython=True, fastmath=True)
 def get_dets_singles(
         cre,
         anh,
+        mapping,
         offset,
         G0,
         dets
         ):
-    ps = cre[:, 0] + offset
+    ps = mapping[cre[:, 0] + offset]
     qs = anh[:, 0] + offset
     ndets = ps.shape[0]
     nwalkers = G0.shape[0]
@@ -32,6 +33,7 @@ def get_dets_singles(
 def get_dets_doubles(
         cre,
         anh,
+        mapping,
         offset,
         G0,
         dets
@@ -45,15 +47,16 @@ def get_dets_doubles(
     for iw in range(nwalkers):
         for idet in range(ndets):
             dets[iw,idet] = (
-                    G0[iw, ps[idet], qs[idet]] * G0[iw, rs[idet], ss[idet]]
+                    G0[iw, mapping[ps[idet]], qs[idet]] * G0[iw, mapping[rs[idet]], ss[idet]]
                     -
-                    G0[iw, ps[idet], ss[idet]] * G0[iw, rs[idet], qs[idet]]
+                    G0[iw, mapping[ps[idet]], ss[idet]] * G0[iw, mapping[rs[idet]], qs[idet]]
                     )
 
 @jit(nopython=True, fastmath=True)
 def get_dets_triples(
         cre,
         anh,
+        mapping,
         offset,
         G0,
         dets,
@@ -62,9 +65,9 @@ def get_dets_triples(
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
         for idet in range(ndets):
-            ps, qs = cre[idet,0] + offset, anh[idet,0] + offset
-            rs, ss = cre[idet,1] + offset, anh[idet,1] + offset
-            ts, us = cre[idet,2] + offset, anh[idet,2] + offset
+            ps, qs = mapping[cre[idet,0] + offset], anh[idet,0] + offset
+            rs, ss = mapping[cre[idet,1] + offset], anh[idet,1] + offset
+            ts, us = mapping[cre[idet,2] + offset], anh[idet,2] + offset
             dets[iw,idet] = G0[iw, ps, qs]*(
                         G0[iw, rs, ss]*G0[iw, ts, us] - G0[iw, rs, us]*G0[iw, ts, ss]
                          )
@@ -79,6 +82,7 @@ def get_dets_triples(
 def get_dets_nfold(
         cre,
         anh,
+        mapping,
         offset,
         G0,
         dets
@@ -90,11 +94,11 @@ def get_dets_nfold(
     for iw in range(nwalkers):
         for idet in range(ndets):
             for iex in range(nex):
-                p = cre[idet, iex] + offset
+                p = mapping[cre[idet, iex] + offset]
                 q = anh[idet, iex] + offset
                 det[iex,iex] = G0[iw,p,q]
                 for jex in range(iex+1, nex):
-                    r = cre[idet, jex] + offset
+                    r = mapping[cre[idet, jex] + offset]
                     s = anh[idet, jex] + offset
                     det[iex, jex] = G0[iw,p,s]
                     det[jex, iex] = G0[iw,r,q]
@@ -104,6 +108,7 @@ def get_dets_nfold(
 def build_det_matrix(
         cre,
         anh,
+        mapping,
         offset,
         G0,
         det_mat):
@@ -116,11 +121,11 @@ def build_det_matrix(
     for iw in range(nwalker):
         for idet in range(ndet):
             for iex in range(nex):
-                p = cre[idet,iex] + offset
+                p = mapping[cre[idet,iex] + offset]
                 q = anh[idet,iex] + offset
                 det_mat[iw, idet, iex, iex] = G0[iw, p, q]
                 for jex in range(iex+1, nex):
-                    r = cre[idet,jex] + offset
+                    r = mapping[cre[idet,jex] + offset]
                     s = anh[idet,jex] + offset
                     det_mat[iw, idet, iex, jex] = G0[iw, p, s]
                     det_mat[iw, idet, jex, iex] = G0[iw, r, q]
