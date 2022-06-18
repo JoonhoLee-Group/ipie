@@ -853,7 +853,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     # useful intermediate
     start = time.time()
     act_orb = trial.act_orb_alpha
-    occ_orb = trial.occ_orb_alpha
     QCIGa = numpy.einsum(
                 'wpr,wrs,wsq->wpq',
                 walker_batch.Q0a[:,:,act_orb].copy(),
@@ -861,7 +860,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                 G0Ha[:,act_orb].copy(),
                 optimize=True)
     act_orb = trial.act_orb_beta
-    occ_orb = trial.occ_orb_beta
     QCIGb = numpy.einsum(
                 'wpr,wrs,wsq->wpq',
                 walker_batch.Q0b[:,:,act_orb],
