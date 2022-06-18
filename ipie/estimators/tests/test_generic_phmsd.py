@@ -72,15 +72,18 @@ def test_greens_function_wicks_opt():
     walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     walker_batch_opt  = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
     options = {'hybrid': True}
-    numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
         nwalkers})
+    numpy.random.seed(7)
     prop = Continuous(system, ham, trial, qmc, options=options)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_wick, system, ham, trial, 0)
         walker_batch_wick.reortho()
-    walker_batch_opt.phia = walker_batch_wick.phia
-    walker_batch_opt.phib = walker_batch_wick.phib
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_opt, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_opt, system, ham, trial_opt, 0)
+        walker_batch_opt.reortho()
     walker_batch_slow.phia = walker_batch_wick.phia
     walker_batch_slow.phib = walker_batch_wick.phib
     nbasis = walker_batch_wick.Ga.shape[-1]
