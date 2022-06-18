@@ -936,6 +936,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
             wk.build_det_matrix(
                     trial.cre_ex_a[iexcit],
                     trial.anh_ex_a[iexcit],
+                    trial.occ_map_a,
                     trial.nfrozen,
                     walker_batch.G0a,
                     det_mat_a)
@@ -1014,6 +1015,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
             wk.build_det_matrix(
                     trial.cre_ex_b[iexcit],
                     trial.anh_ex_b[iexcit],
+                    trial.occ_map_b,
                     trial.nfrozen,
                     walker_batch.G0b,
                     det_mat_b)
