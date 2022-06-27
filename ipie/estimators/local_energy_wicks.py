@@ -899,7 +899,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     cont2_K = cont2_Kaa + cont2_Kbb
 
     start = time.time()
-    dets_a_full, dets_b_full = compute_determinants_batched(G0a, G0b, trial)
+    dets_a_full, dets_b_full = compute_determinants_batched(
+            walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+            )
     ndets = len(trial.coeffs)
     energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
