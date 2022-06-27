@@ -56,23 +56,24 @@ def test_greens_function_wicks_opt():
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
         'use_wicks_helper': False})
     trial.calculate_energy(system, ham)
-    trial_slow = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks': False,
-        'use_wicks_helper': False})
-    trial_slow.calculate_energy(system, ham)
+    # trial_slow = multislater(system, ham, wfn_2, init=init, options = {'wicks': false,
+        # 'use_wicks_helper': false})
+    # trial_slow.calculate_energy(system, ham)
     trial_opt = MultiSlater(
             system,
             ham,
             wfn_2,
             init=init,
             options={
-                'wicks':True,
+                'wicks': True,
                 'use_wicks_helper': False,
                 'optimized': True
                 }
             )
     numpy.random.seed(7)
     walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
-    walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
+    # walker_batch_slow = multidettrialwalkerbatch(system, ham, trial_slow, nwalkers)
+    walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     walker_batch_opt  = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
@@ -88,12 +89,12 @@ def test_greens_function_wicks_opt():
         prop.propagate_walker_batch(walker_batch_opt, system, ham, trial_opt, 0)
         walker_batch_opt.reortho()
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_slow, qmc, options=options)
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_slow, system, ham, trial_slow, 0)
-        walker_batch_slow.reortho()
-    # walker_batch_slow.phia = walker_batch_wick.phia
-    # walker_batch_slow.phib = walker_batch_wick.phib
+    # prop = Continuous(system, ham, trial_slow, qmc, options=options)
+    # for i in range(nsteps):
+        # prop.propagate_walker_batch(walker_batch_slow, system, ham, trial_slow, 0)
+        # walker_batch_slow.reortho()
+    walker_batch_slow.phia = walker_batch_wick.phia
+    walker_batch_slow.phib = walker_batch_wick.phib
     nbasis = walker_batch_wick.Ga.shape[-1]
     from ipie.propagation.overlap import calc_overlap_multi_det_wicks_opt
     ovlps_ref_wick = greens_function_multi_det_wicks(walker_batch_wick, trial)
@@ -1257,7 +1258,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     nelec = (9,9)
     nwalkers = 1
     nsteps = 10
-    nact = 10
+    nact = 12
     nmo = 20
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
@@ -1265,8 +1266,11 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
                      chol=chol.reshape((-1,nmo*nmo)).T.copy(),
                      ecore=0, options = {"symmetry":False})
-    wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True, shuffle=False)
-    from ipie.utils.testing import shaped_normal
+    from ipie.utils.testing import (
+            shaped_normal,
+            get_random_phmsd_opt
+            )
+    wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True)
     init = shaped_normal((nmo, system.ne))
     ci, occa, occb = wfn
     tmp = occa[0]
@@ -1277,10 +1281,11 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     occb[2] = tmp
     core = [0, 1]
     ci, occa, occb = wfn
-    with_core_a = [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
-    with_core_b = [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
-    ndet = 18
-    wfn_2 = (ci[:ndet], with_core_a[:ndet], with_core_b[:ndet]) # Get high excitation determinants too
+    with_core_a = numpy.array([numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa])
+    with_core_b = numpy.array([numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb])
+    nskip = 10
+    wfn_2 = (ci[::nskip], with_core_a[::nskip], with_core_b[::nskip]) # Get high excitation determinants too
+    ci, occa, occb = wfn_2
     trial = MultiSlater(
             system,
             ham,
@@ -1314,12 +1319,11 @@ def test_phmsd_local_energy_active_space_non_aufbau():
                 'wicks': True,
                 'optimized': True,
                 'use_wicks_helper': False,
-                'nact': 10,
+                'nact': nact,
                 'ncas': 14,
                 }
             )
     trial_test.half_rotate(system, ham)
-    print(trial_test.ndet_b)
 
     qmc = dotdict(
             {'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers': nwalkers}
@@ -1344,8 +1348,6 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
 
-    # print(trial_test.cre_ex_b[3])
-    # print(trial_test.anh_ex_b[3])
     import copy
     from ipie.propagation.overlap import compute_determinants_batched
     G0a, G0b = walker_batch_ref.G0a, walker_batch_ref.G0b
@@ -1365,7 +1367,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     assert numpy.allclose(walker_batch_test.Gb, walker_batch_ref.Gb)
     assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_ref.det_ovlpas)
     assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_ref.det_ovlpbs)
-    # assert trial_ref.nfrozen != trial_test.nfrozen
+    assert trial_ref.nfrozen != trial_test.nfrozen
     e_wicks = local_energy_multi_det_trial_batch(
                         system,
                         ham,
