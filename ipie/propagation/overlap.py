@@ -234,11 +234,13 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
         sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         theta_a = scipy.linalg.inv(Oalpha.T) @ phia.T
+        greens_a = psi0a.conj() @ theta_a
 
         phib = walker_batch.phib[iw]
         Obeta = numpy.dot(psi0b.conj().T, phib)
         sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
         theta_b = scipy.linalg.inv(Obeta.T) @ phib.T
+        greens_b = psi0b.conj() @ theta_b
 
         ovlp0 = sign_a*sign_b*numpy.exp(logdet_a+logdet_b)
 
@@ -251,11 +253,11 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
                                 nex_a,
                                 trial.cre_a[jdet],
                                 trial.anh_a[jdet],
-                                theta_a,
+                                greens_a,
                                 nex_b,
                                 trial.cre_b[jdet],
                                 trial.anh_b[jdet],
-                                theta_b)
+                                greens_b)
 
             tmp = trial.coeffs[jdet].conj() * ovlp_a * ovlp_b * trial.phase_a[jdet] * trial.phase_b[jdet]
             ovlp += tmp
@@ -338,6 +340,7 @@ def get_dets_single_excitation_batched_opt(
         wk.get_dets_singles(
             trial.cre_ex_a[1],
             trial.anh_ex_a[1],
+            trial.occ_map_a,
             trial.nfrozen,
             G0wa,
             dets_a
@@ -349,6 +352,7 @@ def get_dets_single_excitation_batched_opt(
         wk.get_dets_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
+            trial.occ_map_b,
             trial.nfrozen,
             G0wb,
             dets_b
@@ -520,6 +524,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_doubles(
             trial.cre_ex_a[2],
             trial.anh_ex_a[2],
+            trial.occ_map_a,
             trial.nfrozen,
             G0wa,
             dets_a
@@ -531,6 +536,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
+            trial.occ_map_b,
             trial.nfrozen,
             G0wb,
             dets_b
@@ -567,6 +573,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_triples(
             trial.cre_ex_a[3],
             trial.anh_ex_a[3],
+            trial.occ_map_a,
             trial.nfrozen,
             G0wa,
             dets_a
@@ -578,6 +585,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         wk.get_dets_triples(
             trial.cre_ex_b[3],
             trial.anh_ex_b[3],
+            trial.occ_map_b,
             trial.nfrozen,
             G0wb,
             dets_b
@@ -616,6 +624,7 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
         wk.get_dets_nfold(
             trial.cre_ex_a[nexcit],
             trial.anh_ex_a[nexcit],
+            trial.occ_map_a,
             trial.nfrozen,
             G0wa,
             dets_a
@@ -627,6 +636,7 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
         wk.get_dets_nfold(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
             trial.nfrozen,
             G0wb,
             dets_b

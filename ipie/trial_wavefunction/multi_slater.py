@@ -151,6 +151,23 @@ class MultiSlater(object):
                 print("# Setting additional member variables for Wick's theorem")
             d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
             d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
+            if verbose:
+                print(f"# Reference alpha determinant: {d0a}")
+                print(f"# Reference beta determinant: {d0b}")
+            # numba won't accept dictionary in jitted code so use an array so
+            # can't do following
+            # self.occ_map_a = dict(zip(d0a, list(range(self.nocc_alpha))))
+            # self.occ_map_b = dict(zip(d0b, list(range(self.nocc_beta))))
+
+            # Create mapping from reference determinant to occupied orbital
+            # index for eg.
+            # TODO: Use safer value than zero that fails in debug mode.
+            # d0a = [0,1,3,5]
+            # occ_map_a = [0,1,0,2,0,3]
+            self.occ_map_a = numpy.zeros(max(d0a)+1, dtype=numpy.int32)
+            self.occ_map_b = numpy.zeros(max(d0b)+1, dtype=numpy.int32)
+            self.occ_map_a[d0a] = list(range(self.nocc_alpha))
+            self.occ_map_b[d0b] = list(range(self.nocc_beta))
             self.cre_a = [[]] # one empty list as a member to account for the reference state
             self.anh_a = [[]] # one empty list as a member to account for the reference state
             self.cre_b = [[]] # one empty list as a member to account for the reference state
@@ -547,15 +564,15 @@ class MultiSlater(object):
         shape_b = (nchol, hr_ndet*(M*(nb)))
         self._rchola = get_shared_array(comm, shape_a, self.psi.dtype)
         self._rcholb = get_shared_array(comm, shape_b, self.psi.dtype)
-        if self.wicks and self.optimized:
+        build_act_chol = self.wicks and self.optimized
+        if build_act_chol:
             shape_a_act = (nchol, (M*(self.nact)))
             shape_b_act = (nchol, (M*(self.nact)))
             nact = self.nact
             nfrz = self.nfrozen
             self._rchola_act = get_shared_array(comm, shape_a_act, self.psi.dtype)
             self._rcholb_act = get_shared_array(comm, shape_b_act, self.psi.dtype)
-            compute = comm is None or comm.rank == 0
-            if compute:
+            if build_act_chol:
                 # working in MO basis so can just grab correct slice
                 chol_act = chol[nfrz:nfrz+nact].reshape((M*self.nact, -1))
                 self._rchola_act[:] = chol_act.T.copy()
