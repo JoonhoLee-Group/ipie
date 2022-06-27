@@ -56,39 +56,66 @@ def test_greens_function_wicks_opt():
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
         'use_wicks_helper': False})
     trial.calculate_energy(system, ham)
+    # trial_slow = multislater(system, ham, wfn_2, init=init, options = {'wicks': false,
+        # 'use_wicks_helper': false})
+    # trial_slow.calculate_energy(system, ham)
+    trial_opt = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': True,
+                'use_wicks_helper': False,
+                'optimized': True
+                }
+            )
     numpy.random.seed(7)
     walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    # walker_batch_slow = multidettrialwalkerbatch(system, ham, trial_slow, nwalkers)
     walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
-    walker_batch_opt  = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_opt  = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
     options = {'hybrid': True}
-    numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
         nwalkers})
+    numpy.random.seed(7)
     prop = Continuous(system, ham, trial, qmc, options=options)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_wick, system, ham, trial, 0)
         walker_batch_wick.reortho()
-    walker_batch_opt.phia = walker_batch_wick.phia
-    walker_batch_opt.phib = walker_batch_wick.phib
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_opt, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_opt, system, ham, trial_opt, 0)
+        walker_batch_opt.reortho()
+    numpy.random.seed(7)
+    # prop = Continuous(system, ham, trial_slow, qmc, options=options)
+    # for i in range(nsteps):
+        # prop.propagate_walker_batch(walker_batch_slow, system, ham, trial_slow, 0)
+        # walker_batch_slow.reortho()
     walker_batch_slow.phia = walker_batch_wick.phia
     walker_batch_slow.phib = walker_batch_wick.phib
     nbasis = walker_batch_wick.Ga.shape[-1]
     from ipie.propagation.overlap import calc_overlap_multi_det_wicks_opt
     ovlps_ref_wick = greens_function_multi_det_wicks(walker_batch_wick, trial)
     ovlps_ref_slow = greens_function_multi_det(walker_batch_slow, trial)
-    ovlps_ref_opt = greens_function_multi_det_wicks_opt(walker_batch_opt, trial)
+    ovlps_ref_opt = greens_function_multi_det_wicks_opt(walker_batch_opt, trial_opt)
     assert numpy.allclose(ovlps_ref_wick, ovlps_ref_slow)
     assert numpy.allclose(ovlps_ref_opt, ovlps_ref_slow)
     assert numpy.allclose(walker_batch_wick.Ga, walker_batch_slow.Ga)
-    assert numpy.allclose(walker_batch_wick.Ga, walker_batch_slow.Ga)
+    assert numpy.allclose(walker_batch_wick.Gb, walker_batch_slow.Gb)
     assert numpy.allclose(walker_batch_wick.Ghalfa, walker_batch_slow.Gihalfa[:,0])
     assert numpy.allclose(walker_batch_wick.Ghalfb, walker_batch_slow.Gihalfb[:,0])
     assert numpy.allclose(walker_batch_opt.Ga, walker_batch_slow.Ga)
     assert numpy.allclose(walker_batch_opt.Gb, walker_batch_slow.Gb)
     assert numpy.allclose(walker_batch_opt.det_ovlpas, walker_batch_wick.det_ovlpas)
     assert numpy.allclose(walker_batch_opt.det_ovlpbs, walker_batch_wick.det_ovlpbs)
-    assert numpy.allclose(walker_batch_opt.CIa, walker_batch_wick.CIa)
-    assert numpy.allclose(walker_batch_opt.CIb, walker_batch_wick.CIb)
+    CIa_full = numpy.zeros_like(walker_batch_wick.CIa)
+    CIb_full = numpy.zeros_like(walker_batch_wick.CIb)
+    CIa_full[:,trial_opt.act_orb_alpha, trial_opt.occ_orb_alpha] = walker_batch_opt.CIa
+    CIb_full[:,trial_opt.act_orb_beta, trial_opt.occ_orb_beta] = walker_batch_opt.CIb
+    assert numpy.allclose(CIa_full, walker_batch_wick.CIa)
+    assert numpy.allclose(CIb_full, walker_batch_wick.CIb)
 
 # Move to propagator tests
 @pytest.mark.unit
@@ -245,6 +272,7 @@ def test_det_matrix():
     wk.build_det_matrix(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
             trial.nfrozen,
             walker_batch.G0b,
             det_mat_2
@@ -271,10 +299,13 @@ def test_phmsd_local_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
-    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
-        'use_wicks_helper': False, 'optimized': True})
+    trial = MultiSlater(system, ham, wfn_2, init=init, options={'wicks':  True,
+        'use_wicks_helper': False, 'optimized': False})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
+    trial_test = MultiSlater(system, ham, wfn_2, init=init, options={'wicks':  True,
+        'use_wicks_helper': False, 'optimized': True})
+    trial_test.half_rotate(system, ham)
 
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
@@ -282,27 +313,38 @@ def test_phmsd_local_energy():
     options = {'hybrid': True}
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    walker_batch_test2 = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     numpy.random.seed(7)
     for i in range (nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
 
     import copy
-    walker_batch_test = copy.deepcopy(walker_batch)
-    walker_batch_test2 = copy.deepcopy(walker_batch)
+    walker_batch_test.phia = walker_batch.phia.copy()
+    walker_batch_test.phib = walker_batch.phib.copy()
+    walker_batch_test2.phia = walker_batch.phia.copy()
+    walker_batch_test2.phib = walker_batch.phib.copy()
+    walker_batch_test.ovlp = walker_batch.ovlp
+    walker_batch_test2.ovlp = walker_batch.ovlp
     greens_function_multi_det(walker_batch, trial)
-    greens_function_multi_det_wicks_opt(walker_batch_test, trial)
     greens_function_multi_det_wicks(walker_batch_test2, trial)
-    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test, trial)
-    # from ipie.estimators.local_energy_wicks_old import local_energy_multi_det_trial_wicks_batch_opt as wicks_old
-    # e_wicks_opt_old = wicks_old(system, ham, walker_batch_test, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham,
-            walker_batch_test, trial)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
+    assert numpy.allclose(walker_batch_test.Ghalfa, walker_batch.Gihalfa[:,0])
+    assert numpy.allclose(walker_batch_test.Ghalfb, walker_batch.Gihalfb[:,0])
+    assert numpy.allclose(walker_batch_test.Ga, walker_batch.Ga)
+    assert numpy.allclose(walker_batch_test.Gb, walker_batch.Gb)
+    assert numpy.allclose(walker_batch_test2.Ga, walker_batch.Ga)
+    assert numpy.allclose(walker_batch_test2.Gb, walker_batch.Gb)
+    assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_test2.det_ovlpas)
+    assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_test2.det_ovlpbs)
     e_simple = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test2, trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch_test, trial_test)
 
     assert numpy.allclose(e_simple, e_wicks)
-    # assert numpy.allclose(e_simple, e_wicks_opt_old)
     assert numpy.allclose(e_simple, e_wicks_opt)
+    assert numpy.allclose(e_wicks, e_wicks_opt)
 
 @pytest.mark.unit
 def test_kernels_energy():
@@ -319,8 +361,16 @@ def test_kernels_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
-    trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
-        'use_wicks_helper': False})
+    trial = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': True,
+                'optimized': True,
+                'use_wicks_helper': False}
+            )
 
     numpy.random.seed(7)
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
@@ -366,6 +416,7 @@ def test_kernels_energy():
     wk.fill_os_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
+            trial.occ_map_b,
             trial.nfrozen,
             Lbb,
             test,
@@ -388,6 +439,7 @@ def test_kernels_energy():
     wk.fill_os_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
+            trial.occ_map_b,
             trial.nfrozen,
             G0,
             Lbb,
@@ -410,6 +462,7 @@ def test_kernels_energy():
     wk.fill_os_triples(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             trial.nfrozen,
             G0,
             Lbb,
@@ -431,6 +484,7 @@ def test_kernels_energy():
     wk.get_ss_doubles(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             Lbb,
             test,
             slices_beta[iexcit]
@@ -443,6 +497,7 @@ def test_kernels_energy():
     wk.build_det_matrix(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             trial.nfrozen,
             walker_batch.G0b,
             det_mat)
@@ -463,6 +518,7 @@ def test_kernels_energy():
     wk.fill_os_nfold(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             det_mat,
             cof_mat,
             Lbb,
@@ -495,6 +551,7 @@ def test_kernels_energy():
     wk.get_ss_nfold(
             trial.cre_ex_b[iexcit],
             trial.anh_ex_b[iexcit],
+            trial.occ_map_b,
             det_mat,
             cof_mat,
             Lbb,
@@ -687,7 +744,7 @@ def test_kernels_gf_active_space():
             wfn_2,
             options={
                 'wicks': True,
-                'optimized': True,
+                'optimized': False,
                 'use_wicks_helper': False,
                 }
             )
@@ -794,7 +851,7 @@ def test_kernels_gf_active_space():
     contract_CI(
         walker_batch_ref.Q0a[:,:,act_orb].copy(),
         walker_batch_ref.CIa,
-        walker_batch_ref.Ghalfa[:,act_orb].copy(),
+        walker_batch_ref.G0a,
         walker_batch_ref.Ga
         )
     act_orb = trial_test.act_orb_alpha
@@ -837,13 +894,13 @@ def test_kernels_gf_active_space():
     contract_CI(
         walker_batch_test.Q0b[:,:,act_orb].copy(),
         walker_batch_test.CIb,
-        walker_batch_test.Ghalfa[:,act_orb].copy(),
+        walker_batch_test.Ghalfb[:,act_orb].copy(),
         walker_batch_test.Gb
         )
     contract_CI(
         walker_batch_ref.Q0b,
         walker_batch_ref.CIb,
-        walker_batch_ref.Ghalfb,
+        walker_batch_ref.G0b,
         walker_batch_ref.Gb
         )
     assert numpy.allclose(walker_batch_ref.Ga, walker_batch_test.Ga)
@@ -875,7 +932,7 @@ def test_kernels_energy_active_space():
             wfn_2,
             options={
                 'wicks': True,
-                'optimized': True,
+                'optimized': False,
                 'use_wicks_helper': False,
                 }
             )
@@ -947,6 +1004,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_singles(
             trial_ref.cre_ex_b[1],
             trial_ref.anh_ex_b[1],
+            trial_ref.occ_map_b,
             trial_ref.nfrozen,
             Lbb,
             ref,
@@ -957,6 +1015,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_singles(
             trial_test.cre_ex_b[1],
             trial_test.anh_ex_b[1],
+            trial_test.occ_map_b,
             trial_test.nfrozen,
             Lbb[:,act_orb,occ_orb,:].copy(),
             test,
@@ -970,6 +1029,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_doubles(
             trial_ref.cre_ex_b[2],
             trial_ref.anh_ex_b[2],
+            trial_ref.occ_map_b,
             trial_ref.nfrozen,
             G0,
             Lbb,
@@ -979,6 +1039,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_doubles(
             trial_test.cre_ex_b[2],
             trial_test.anh_ex_b[2],
+            trial_test.occ_map_b,
             trial_test.nfrozen,
             G0,
             Lbb[:,act_orb,occ_orb,:].copy(),
@@ -992,6 +1053,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_triples(
             trial_ref.cre_ex_b[iexcit],
             trial_ref.anh_ex_b[iexcit],
+            trial_ref.occ_map_b,
             trial_ref.nfrozen,
             G0,
             Lbb,
@@ -1001,6 +1063,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_triples(
             trial_test.cre_ex_b[iexcit],
             trial_test.anh_ex_b[iexcit],
+            trial_test.occ_map_b,
             trial_test.nfrozen,
             G0,
             Lbb[:,act_orb,occ_orb,:].copy(),
@@ -1014,6 +1077,7 @@ def test_kernels_energy_active_space():
     wk.get_ss_doubles(
             trial_ref.cre_ex_b[iexcit],
             trial_ref.anh_ex_b[iexcit],
+            trial_ref.occ_map_b,
             Lbb,
             ref,
             slices_beta[iexcit]
@@ -1021,6 +1085,7 @@ def test_kernels_energy_active_space():
     wk.get_ss_doubles(
             trial_test.cre_ex_b[iexcit],
             trial_test.anh_ex_b[iexcit],
+            trial_test.occ_map_b,
             Lbb[:,act_orb,occ_orb,:].copy(),
             test,
             slices_beta[iexcit]
@@ -1034,12 +1099,14 @@ def test_kernels_energy_active_space():
     wk.build_det_matrix(
             trial_ref.cre_ex_b[iexcit],
             trial_ref.anh_ex_b[iexcit],
+            trial_ref.occ_map_b,
             trial_ref.nfrozen,
             walker_batch_ref.G0b,
             det_mat_ref)
     wk.build_det_matrix(
             trial_test.cre_ex_b[iexcit],
             trial_test.anh_ex_b[iexcit],
+            trial_test.occ_map_b,
             trial_test.nfrozen,
             walker_batch_test.G0b,
             det_mat_test)
@@ -1051,6 +1118,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_nfold(
             trial_ref.cre_ex_b[iexcit],
             trial_ref.anh_ex_b[iexcit],
+            trial_ref.occ_map_b,
             det_mat_ref,
             cof_mat,
             Lbb,
@@ -1061,6 +1129,7 @@ def test_kernels_energy_active_space():
     wk.fill_os_nfold(
             trial_test.cre_ex_b[iexcit],
             trial_test.anh_ex_b[iexcit],
+            trial_test.occ_map_b,
             det_mat_test,
             cof_mat,
             Lbb[:,act_orb,occ_orb,:].copy(),
@@ -1075,6 +1144,7 @@ def test_kernels_energy_active_space():
     wk.get_ss_nfold(
             trial_ref.cre_ex_b[iexcit],
             trial_ref.anh_ex_b[iexcit],
+            trial_ref.occ_map_b,
             det_mat_ref,
             cof_mat,
             Lbb,
@@ -1085,6 +1155,7 @@ def test_kernels_energy_active_space():
     wk.get_ss_nfold(
             trial_test.cre_ex_b[iexcit],
             trial_test.anh_ex_b[iexcit],
+            trial_test.occ_map_b,
             det_mat_test,
             cof_mat,
             Lbb[:,act_orb,occ_orb,:].copy(),
@@ -1179,6 +1250,141 @@ def test_phmsd_local_energy_active_space():
                         walker_batch_test,
                         trial_test)
 
+    assert numpy.allclose(e_wicks_opt, e_wicks_opt_act)
+
+@pytest.mark.unit
+def test_phmsd_local_energy_active_space_non_aufbau():
+    numpy.random.seed(7)
+    nelec = (9,9)
+    nwalkers = 1
+    nsteps = 10
+    nact = 12
+    nmo = 20
+    ncore = 2
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e,h1e]),
+                     chol=chol.reshape((-1,nmo*nmo)).T.copy(),
+                     ecore=0, options = {"symmetry":False})
+    from ipie.utils.testing import (
+            shaped_normal,
+            get_random_phmsd_opt
+            )
+    wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True)
+    init = shaped_normal((nmo, system.ne))
+    ci, occa, occb = wfn
+    tmp = occa[0]
+    occa[0] = occa[2]
+    occa[2] = tmp
+    tmp = occb[0]
+    occb[0] = occb[2]
+    occb[2] = tmp
+    core = [0, 1]
+    ci, occa, occb = wfn
+    with_core_a = numpy.array([numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa])
+    with_core_b = numpy.array([numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb])
+    nskip = 10
+    wfn_2 = (ci[::nskip], with_core_a[::nskip], with_core_b[::nskip]) # Get high excitation determinants too
+    ci, occa, occb = wfn_2
+    trial = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': False,
+                'optimized': False,
+                'use_wicks_helper': False,
+                }
+            )
+    trial.half_rotate(system, ham)
+    trial_ref = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': True,
+                'optimized': False,
+                'use_wicks_helper': False,
+                }
+            )
+    trial_ref.half_rotate(system, ham)
+    trial_test = MultiSlater(
+            system,
+            ham,
+            wfn_2,
+            init=init,
+            options={
+                'wicks': True,
+                'optimized': True,
+                'use_wicks_helper': False,
+                'nact': nact,
+                'ncas': 14,
+                }
+            )
+    trial_test.half_rotate(system, ham)
+
+    qmc = dotdict(
+            {'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers': nwalkers}
+            )
+    options = {'hybrid': True}
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
+    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        walker_batch_ref.reortho()
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_test, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
+        walker_batch_test.reortho()
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        walker_batch.reortho()
+
+    import copy
+    from ipie.propagation.overlap import compute_determinants_batched
+    G0a, G0b = walker_batch_ref.G0a, walker_batch_ref.G0b
+    dets_a_ref, dets_b_ref = compute_determinants_batched(G0a, G0b, trial_ref)
+    G0a, G0b = walker_batch_test.G0a, walker_batch_test.G0b
+    dets_a_test, dets_b_test = compute_determinants_batched(G0a, G0b, trial_test)
+    assert numpy.allclose(dets_a_ref, dets_a_test)
+    assert numpy.allclose(dets_b_ref, dets_b_test)
+    greens_function_multi_det(walker_batch, trial)
+    greens_function_multi_det_wicks(walker_batch_ref, trial_ref)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
+    assert numpy.allclose(walker_batch_test.Ghalfa, walker_batch_ref.Ghalfa)
+    assert numpy.allclose(walker_batch_test.Ghalfb, walker_batch_ref.Ghalfb)
+    assert numpy.allclose(walker_batch.Ga, walker_batch_ref.Ga)
+    assert numpy.allclose(walker_batch.Gb, walker_batch_ref.Gb)
+    assert numpy.allclose(walker_batch_test.Ga, walker_batch_ref.Ga)
+    assert numpy.allclose(walker_batch_test.Gb, walker_batch_ref.Gb)
+    assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_ref.det_ovlpas)
+    assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_ref.det_ovlpbs)
+    assert trial_ref.nfrozen != trial_test.nfrozen
+    e_wicks = local_energy_multi_det_trial_batch(
+                        system,
+                        ham,
+                        walker_batch,
+                        trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch(
+                        system,
+                        ham,
+                        walker_batch_ref,
+                        trial_ref)
+    e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
+                        system,
+                        ham,
+                        walker_batch_test,
+                        trial_test)
+
+    assert numpy.allclose(e_wicks, e_wicks_opt)
     assert numpy.allclose(e_wicks_opt, e_wicks_opt_act)
 
 if __name__ == '__main__':

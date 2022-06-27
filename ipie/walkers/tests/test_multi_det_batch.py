@@ -16,7 +16,11 @@ from ipie.utils.testing import (
         )
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
-from ipie.estimators.greens_function_batch import greens_function_multi_det_wicks, greens_function_multi_det
+from ipie.estimators.greens_function_batch import (
+        greens_function_multi_det_wicks,
+        greens_function_multi_det_wicks_opt,
+        greens_function_multi_det
+        )
 from ipie.estimators.local_energy_batch import (
         local_energy_multi_det_trial_batch,
         local_energy_multi_det_trial_wicks_batch,
@@ -115,12 +119,17 @@ def test_walker_energy():
     init[:,:na], R = reortho(init[:,:na])
     init[:,na:], R = reortho(init[:,na:])
     trial = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options =
-            {'wicks': True, 'optimized': True})
+            {'wicks': True, 'optimized': False})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
+    trial_opt = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options =
+            {'wicks': True, 'optimized': True})
+    trial_opt.calculate_energy(system, ham)
+    trial_opt.half_rotate(system, ham)
 
     nwalkers = 10
     walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
 
     nume = 0
     deno = 0
@@ -142,8 +151,9 @@ def test_walker_energy():
         energies[iw] = nume/deno
 
     greens_function_multi_det_wicks(walker, trial) # compute green's function using Wick's theorem
+    greens_function_multi_det_wicks_opt(walker_opt, trial_opt) # compute green's function using Wick's theorem
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker, trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_opt, trial_opt)
     greens_function_multi_det(walker, trial)
     e_simple = local_energy_multi_det_trial_batch(system, ham, walker, trial)
 

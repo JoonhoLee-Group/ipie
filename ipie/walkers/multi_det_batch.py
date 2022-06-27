@@ -68,12 +68,20 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             self.G0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.Q0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
-            self.CIa = numpy.zeros(
-                    shape=(self.nwalkers, trial.nact, trial.nocc_alpha),
-                    dtype=numpy.complex128)
-            self.CIb = numpy.zeros(
-                    shape=(self.nwalkers, trial.nact, trial.nocc_beta),
-                    dtype=numpy.complex128)
+            if trial.optimized:
+                self.CIa = numpy.zeros(
+                        shape=(self.nwalkers, trial.nact, trial.nocc_alpha),
+                        dtype=numpy.complex128)
+                self.CIb = numpy.zeros(
+                        shape=(self.nwalkers, trial.nact, trial.nocc_beta),
+                        dtype=numpy.complex128)
+            else:
+                self.CIa = numpy.zeros(
+                        shape=(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+                        dtype=numpy.complex128)
+                self.CIb = numpy.zeros(
+                        shape=(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+                        dtype=numpy.complex128)
         # else:
         if not trial.wicks:
             self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,

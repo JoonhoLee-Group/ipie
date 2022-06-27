@@ -39,6 +39,29 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
         coeffs = numpy.random.rand(ndet)
     return (coeffs,wfn)
 
+def truncated_combinations(iterable, r, count):
+    # Modified from:
+    # https://docs.python.org/3/library/itertools.html#itertools.combinations
+    # combinations('ABCD', 2) --> AB AC AD BC BD CD
+    # combinations(range(4), 3) --> 012 013 023 123
+    pool = tuple(iterable)
+    n = len(pool)
+    if r > n:
+        return
+    indices = list(range(r))
+    yield tuple(pool[i] for i in indices)
+    for i in range(count):
+        for i in reversed(range(r)):
+            if indices[i] != i + n - r:
+                break
+        else:
+            return
+        indices[i] += 1
+        for j in range(i+1, r):
+            indices[j] = indices[j-1] + 1
+        yield tuple(pool[i] for i in indices)
+
+
 def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
@@ -55,8 +78,8 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
         oa = oa_new.copy()
         ob = ob_new.copy()
     else:
-        oa = oa[:ndet]
-        ob = ob[:ndet]
+        oa = list(oa[:ndet])
+        ob = list(ob[:ndet])
     coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
     wfn = (coeffs,oa,ob)
     if init:
@@ -65,52 +88,62 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle = False):
         init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
     return wfn, init_wfn
 
-def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False):
-    pass
-    # orbs = numpy.arange(nbasis)
-    # coeffs = numpy.random.rand(ndet)+1j*numpy.random.rand(ndet)
-    # # Put in HF det
-    # assert nup == ndown
-    # aufbau_a = numpy.arange(nup)
-    # aufbau_b = numpy.arange(ndown)
-    # nex_a = numpy.zeros((ndet, nup), dtype=numpy.int32)
-    # nex_b = numpy.zeros((ndet, ndown), dtype=numpy.int32)
-    # occ_a[0] = aufbau_a
-    # occ_b[0] = aufbau_b
-    # ndet_per_level = ndet // (nup+ndown)
-    # for nex in range(nup+ndown):
-        # start = nex * ndet_per_level
-        # end   = min((nex+1) * ndet_per_level, ndet)
-        # for idet in range(start, end)
-            # non_unique = 0
-            # found_unique = False
-            # while not found_unique:
-                # new_det = numpy.sort(numpy.random.choice(nbasis, nup, replace=False))
-                # if (new_det == occ_a[:idet]).all(1).any():
-                    # non_unique += 1
-                # else:
-                    # occ_a[idet] = new_det
-                    # found_unique = True
-                # if non_unique > 10:
-                    # occ_a[idet] = new_det
-                    # break
-            # non_unique = 0
-            # found_unique = False
-            # while not found_unique:
-                # new_det = numpy.sort(numpy.random.choice(nbasis, ndown, replace=False))
-                # if (new_det == occ_a[:idet]).all(1).any():
-                    # non_unique += 1
-                # else:
-                    # occ_b[idet] = new_det
-                    # found_unique = True
-                # if non_unique > 10:
-                    # break
-    # wfn = (coeffs, occ_a, occ_b)
-    # if init:
-        # a = numpy.random.rand(nbasis*(nup+ndown))
-        # b = numpy.random.rand(nbasis*(nup+ndown))
-        # init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
-    # return wfn, init_wfn
+def _gen_det_selection(d0, vir, occ, dist, nel):
+    _vir = list(truncated_combinations(vir, nel, dist[nel]))
+    _occ = list(truncated_combinations(occ, nel, dist[nel]))
+    if len(_vir) == 0 or len(_occ) == 0:
+        return None
+    ndet = min(dist[nel], len(_vir)*len(_occ))
+    occs, virs = zip(*itertools.product(_occ, _vir))
+    # choose = numpy.arange(len(occs))
+    choose = numpy.random.choice(numpy.arange(len(occs)), ndet, replace=False)
+    dets = []
+    for ichoose in choose:
+        new_det = d0.copy()
+        o, v = occs[ichoose], virs[ichoose]
+        if len(o) == 1:
+            new_det[o] = v[0]
+        else:
+            new_det[list(o)] = list(v)
+        dets.append(numpy.sort(new_det))
+    return dets
+
+
+def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
+    if dist is None:
+        dist_a = [int(ndet**0.5)//(int(nup**0.5))] * nup
+        dist_b = [int(ndet**0.5)//(int(ndown**0.5))] * ndown
+    else:
+        assert len(dist) == 2
+        dist_a, dist_b = dist
+    d0a = numpy.array(numpy.arange(nup, dtype=numpy.int32))
+    oa = [d0a]
+    d0b = numpy.array(numpy.arange(ndown, dtype=numpy.int32))
+    ob = [d0b]
+    occ_a = numpy.arange(0, nup, dtype=numpy.int32)
+    vir_a = numpy.arange(nup, nbasis, dtype=numpy.int32)
+    occ_b = numpy.arange(0, ndown, dtype=numpy.int32)
+    vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
+    # dets = [(d0a, d0b)]
+    dets = []
+    for ialpha in range(0, nup):
+        oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
+        if oa is None:
+            continue
+        for ibeta in range(0, ndown):
+            ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
+            if ob is None:
+                continue
+            dets += list(itertools.product(oa,ob))
+    occ_a, occ_b = zip(*dets)
+    _ndet = len(occ_a)
+    coeffs = numpy.random.rand(_ndet)+1j*numpy.random.rand(_ndet)
+    wfn = (coeffs, list(occ_a), list(occ_b))
+    if init:
+        a = numpy.random.rand(nbasis*(nup+ndown))
+        b = numpy.random.rand(nbasis*(nup+ndown))
+        init_wfn = (a + 1j*b).reshape((nbasis,nup+ndown))
+    return wfn, init_wfn
 
 def get_random_wavefunction(nelec, nbasis):
     na = nelec[0]
