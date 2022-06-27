@@ -5,7 +5,7 @@ from ipie.legacy.estimators.local_energy import local_energy_multi_det
 from ipie.walkers.walker_batch import WalkerBatch
 from ipie.utils.misc import get_numeric_names
 from ipie.propagation.overlap import get_calc_overlap
-from ipie.estimators.greens_function_batch import greens_function_multi_det
+from ipie.estimators.greens_function_batch import get_greens_function
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
     """Single-det walker for multi-det trials.
@@ -36,8 +36,8 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                  mpi_handler=None):
         if verbose:
             print("# Setting up ipie.legacy.walkers.MultiDetTrialWalkerBatch object.")
-       
-        WalkerBatch.__init__(self, system, hamiltonian, trial, nwalkers, 
+
+        WalkerBatch.__init__(self, system, hamiltonian, trial, nwalkers,
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp, mpi_handler=mpi_handler)
         self.name = "MultiDetTrialWalkerBatch"
@@ -49,7 +49,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         self.det_weights = numpy.zeros((self.nwalkers,self.ndets), dtype=numpy.complex128)
         self.det_ovlpas = numpy.zeros((self.nwalkers,self.ndets), dtype=numpy.complex128)
         self.det_ovlpbs = numpy.zeros((self.nwalkers,self.ndets), dtype=numpy.complex128)
-        
+
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
         calc_overlap = get_calc_overlap(trial)
@@ -62,7 +62,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             print("# Initial overlap of walker with trial wavefunction: {:13.8e}"
                   .format(self.ot.real))
 
-        # Green's functions for various elements of the trial wavefunction.        
+        # Green's functions for various elements of the trial wavefunction.
         if trial.ortho_expansion:
             self.G0a = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
             self.G0b = numpy.zeros(shape=(self.nwalkers, hamiltonian.nbasis,hamiltonian.nbasis), dtype=numpy.complex128) # reference 1-GF
@@ -75,17 +75,18 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                     shape=(self.nwalkers, trial.nact, trial.nocc_beta),
                     dtype=numpy.complex128)
         # else:
-        self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
-                                     hamiltonian.nbasis), dtype=numpy.complex128)
-        self.Gib = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
-                                     hamiltonian.nbasis), dtype=numpy.complex128)
-        self.Gihalfa = numpy.zeros(shape=(self.nwalkers, self.ndets, system.nup, hamiltonian.nbasis),
-                                 dtype=numpy.complex128)
-        self.Gihalfb = numpy.zeros(shape=(self.nwalkers, self.ndets, system.ndown, hamiltonian.nbasis),
+        if not trial.wicks:
+            self.Gia = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
+                                         hamiltonian.nbasis), dtype=numpy.complex128)
+            self.Gib = numpy.zeros(shape=(self.nwalkers, self.ndets, hamiltonian.nbasis,
+                                         hamiltonian.nbasis), dtype=numpy.complex128)
+            self.Gihalfa = numpy.zeros(shape=(self.nwalkers, self.ndets, system.nup, hamiltonian.nbasis),
                                      dtype=numpy.complex128)
+            self.Gihalfb = numpy.zeros(shape=(self.nwalkers, self.ndets, system.ndown, hamiltonian.nbasis),
+                                         dtype=numpy.complex128)
 
 
-        
+
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
         self.Ga = numpy.zeros(shape=(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
@@ -98,7 +99,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                                  dtype=numpy.complex128)
 
         # Contains overlaps of the current walker with the trial wavefunction.
-        greens_function_multi_det(self,trial)
+        get_greens_function(trial)(self, trial)
 
     def contract_one_body(self, ints, trial):
         numer = 0.0
