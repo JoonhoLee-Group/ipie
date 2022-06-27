@@ -251,7 +251,6 @@ class MultiSlater(object):
                 assert wicks_helper is not None
                 dets = wicks_helper.encode_dets(self.occa, self.occb)
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
-                assert numpy.max(numpy.abs(self.coeffs.imag)) < 1e-12, "Need to implement complex support"
                 self.G = wicks_helper.compute_opdm(
                         phases*self.coeffs.copy(),
                         dets,
