@@ -56,9 +56,9 @@ def test_greens_function_wicks_opt():
     trial = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks':True,
         'use_wicks_helper': False})
     trial.calculate_energy(system, ham)
-    # trial_slow = multislater(system, ham, wfn_2, init=init, options = {'wicks': false,
-        # 'use_wicks_helper': false})
-    # trial_slow.calculate_energy(system, ham)
+    trial_slow = MultiSlater(system, ham, wfn_2, init=init, options = {'wicks': False,
+        'use_wicks_helper': False})
+    trial_slow.calculate_energy(system, ham)
     trial_opt = MultiSlater(
             system,
             ham,
@@ -73,7 +73,7 @@ def test_greens_function_wicks_opt():
     numpy.random.seed(7)
     walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     # walker_batch_slow = multidettrialwalkerbatch(system, ham, trial_slow, nwalkers)
-    walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
     walker_batch_opt  = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
@@ -89,16 +89,12 @@ def test_greens_function_wicks_opt():
         prop.propagate_walker_batch(walker_batch_opt, system, ham, trial_opt, 0)
         walker_batch_opt.reortho()
     numpy.random.seed(7)
-    # prop = Continuous(system, ham, trial_slow, qmc, options=options)
-    # for i in range(nsteps):
-        # prop.propagate_walker_batch(walker_batch_slow, system, ham, trial_slow, 0)
-        # walker_batch_slow.reortho()
     walker_batch_slow.phia = walker_batch_wick.phia
     walker_batch_slow.phib = walker_batch_wick.phib
     nbasis = walker_batch_wick.Ga.shape[-1]
     from ipie.propagation.overlap import calc_overlap_multi_det_wicks_opt
     ovlps_ref_wick = greens_function_multi_det_wicks(walker_batch_wick, trial)
-    ovlps_ref_slow = greens_function_multi_det(walker_batch_slow, trial)
+    ovlps_ref_slow = greens_function_multi_det(walker_batch_slow, trial_slow)
     ovlps_ref_opt = greens_function_multi_det_wicks_opt(walker_batch_opt, trial_opt)
     assert numpy.allclose(ovlps_ref_wick, ovlps_ref_slow)
     assert numpy.allclose(ovlps_ref_opt, ovlps_ref_slow)
@@ -299,6 +295,10 @@ def test_phmsd_local_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50]) # Get high excitation determinants too
+    trial_slow = MultiSlater(system, ham, wfn_2, init=init, options={'wicks': False,
+        'use_wicks_helper': False, 'optimized': False})
+    trial_slow.calculate_energy(system, ham)
+    trial_slow.half_rotate(system, ham)
     trial = MultiSlater(system, ham, wfn_2, init=init, options={'wicks':  True,
         'use_wicks_helper': False, 'optimized': False})
     trial.calculate_energy(system, ham)
@@ -308,16 +308,15 @@ def test_phmsd_local_energy():
     trial_test.half_rotate(system, ham)
 
     numpy.random.seed(7)
-    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers':
-        nwalkers})
+    qmc = dotdict({'dt': 0.005, 'nstblz': 5, 'batched': True, 'nwalkers': nwalkers})
     options = {'hybrid': True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
     walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
     walker_batch_test2 = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_slow, qmc, options=options)
     for i in range (nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walker_batch(walker_batch, system, ham, trial_slow, 0)
         walker_batch.reortho()
 
     import copy
@@ -327,7 +326,7 @@ def test_phmsd_local_energy():
     walker_batch_test2.phib = walker_batch.phib.copy()
     walker_batch_test.ovlp = walker_batch.ovlp
     walker_batch_test2.ovlp = walker_batch.ovlp
-    greens_function_multi_det(walker_batch, trial)
+    greens_function_multi_det(walker_batch, trial_slow)
     greens_function_multi_det_wicks(walker_batch_test2, trial)
     greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
     assert numpy.allclose(walker_batch_test.Ghalfa, walker_batch.Gihalfa[:,0])
