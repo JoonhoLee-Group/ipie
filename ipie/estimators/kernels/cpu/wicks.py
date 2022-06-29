@@ -306,6 +306,7 @@ def reduce_CI_nfold(
 
 
 # Energy evaluation
+
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(
         cre,
