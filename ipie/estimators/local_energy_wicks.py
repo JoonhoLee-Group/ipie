@@ -853,16 +853,18 @@ def build_contributions12(
         nocc_act_a = CI_a.shape[2]
         nfrozen_a = nocc_a - nocc_act_a
         # very messy but numba won't let us use lists for the moment
-        theta_act_real_a = theta_a[iw,:,nfrozen_a:nfrozen_a+nact].real.copy()
-        theta_act_imag_a = theta_a[iw,:,nfrozen_a:nfrozen_a+nact].imag.copy()
+        theta_act_a = theta_a[iw,:,nfrozen_a:nfrozen_a+nact]
+        theta_act_real_a = theta_act_a.real.copy()
+        theta_act_imag_a = theta_act_a.imag.copy()
         theta_occ_a = theta_a[iw].copy()
         theta_occ_real_a = theta_occ_a.real.copy()
         theta_occ_imag_a = theta_occ_a.imag.copy()
         nocc_b = theta_b.shape[1]
         nocc_act_b = CI_b.shape[2]
         nfrozen_b = nocc_b - nocc_act_b
-        theta_act_real_b = theta_b[iw,:,nfrozen_b:nfrozen_b+nact].real.copy()
-        theta_act_imag_b = theta_b[iw,:,nfrozen_b:nfrozen_b+nact].imag.copy()
+        theta_act_b = theta_b[iw,:,nfrozen_b:nfrozen_b+nact]
+        theta_act_real_b = theta_act_b.real.copy()
+        theta_act_imag_b = theta_act_b.imag.copy()
         theta_occ_b = theta_b[iw].copy()
         theta_occ_real_b = theta_occ_b.real.copy()
         theta_occ_imag_b = theta_occ_b.imag.copy()
@@ -880,11 +882,9 @@ def build_contributions12(
                         rchol_a[x].reshape((nocc_a, nbasis)).T
                        )
                     )
-            # add exchange contribution
             exx = numpy.dot(T.ravel(), T.T.ravel())
             X[x] += numpy.trace(T)
             cont1_K[iw] += -0.5*exx
-            # Ttilde[t,r] = theta_{c,t} rchol[c,r]
             Ttilde = (
                 numpy.dot(
                     theta_act_real_a.T,
