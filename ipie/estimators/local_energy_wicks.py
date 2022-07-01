@@ -814,8 +814,7 @@ def build_contributions12(
         theta_b,
         CI_a,
         CI_b,
-        Laa,
-        Lbb
+        Lvo,
     ):
     """Build contributions one and two for wicks local energy.
 
@@ -889,7 +888,7 @@ def build_contributions12(
             # add exchange contribution
             # Ttilde[t,r] = theta_{c,t} rchol[c,r]
             # O(X N A_v M)
-            Ltu_1 = (
+            Lut_1 = (
                     numpy.dot(
                         theta_occ_real_a,
                         rchol_act_a[x].reshape(nact, nbasis).T,
@@ -899,17 +898,17 @@ def build_contributions12(
                         rchol_act_a[x].reshape(nact, nbasis).T,
                         )
                     )
-            Ltu_2 = numpy.dot(T, theta_act_a)
+            Lut_2 = numpy.dot(T, theta_act_a)
             # # index a gets contracted with CI tensor later so only need the
             # # occupied orbitals in the active space not the full set of occupied.
-            Ltu = Ltu_1 - Ltu_2
+            Lut = (Lut_1 - Lut_2).T.copy()
             # # (nvir_act x nocc) x (nocc x nocc_act)
             # O(X A_v N A_v)
-            A = numpy.dot(T[nfrozen_a:nfrozen_a+nocc_act_a,:].copy(), Ltu)
-            Laa[iw,x] = Ltu[nfrozen_a:nfrozen_a+nocc_act_a,:]
+            A = numpy.dot(Lut, T[nfrozen_a:nfrozen_a+nocc_act_a,:].T.copy())
+            Lvo[0,iw,x] = Lut[:,nfrozen_a:nfrozen_a+nocc_act_a]
             # # nvir_act x nocc_act
-            cont2_K[iw] -= numpy.sum(A.T * CI_a[iw])
-            F[x] += numpy.sum(Laa[iw,x].T * CI_a[iw])
+            cont2_K[iw] -= numpy.sum(A * CI_a[iw])
+            F[x] += numpy.sum(Lvo[0,iw,x] * CI_a[iw])
             # # beta contributions
             T = (
                     numpy.dot(
@@ -927,7 +926,7 @@ def build_contributions12(
             cont1_K[iw] += -0.5*exx
             # add exchange contribution
             # Ttilde[t,r] = theta_{c,t} rchol[c,r]
-            Ltu_1 = (
+            Lut_1 = (
                     numpy.dot(
                         theta_occ_real_b,
                         rchol_act_b[x].reshape(nact, nbasis).T,
@@ -937,16 +936,16 @@ def build_contributions12(
                         rchol_act_b[x].reshape(nact, nbasis).T,
                         )
                     )
-            Ltu_2 = numpy.dot(T, theta_act_b)
+            Lut_2 = numpy.dot(T, theta_act_b)
             # index a gets contracted with CI tensor later so only need the
             # occupied orbitals in the active space not the full set of occupied.
-            Ltu = (Ltu_1 - Ltu_2)
+            Lut = (Lut_1 - Lut_2).T.copy()
             # (nvir_act x nocc) x (nocc x nocc_act)
-            A = numpy.dot(T[nfrozen_b:nfrozen_b+nocc_act_b,:].copy(), Ltu)
-            Lbb[iw,x] = Ltu[nfrozen_b:nfrozen_b+nocc_act_b,:]
+            A = numpy.dot(Lut, T[nfrozen_b:nfrozen_b+nocc_act_b,:].copy().T)
+            Lvo[1,iw,x] = Lut[:,nfrozen_b:nfrozen_b+nocc_act_b]
             # nvir_act x nocc_act
-            cont2_K[iw] -= numpy.sum(A.T * CI_b[iw])
-            F[x] += numpy.sum(Lbb[iw,x].T * CI_b[iw])
+            cont2_K[iw] -= numpy.sum(A * CI_b[iw])
+            F[x] += numpy.sum(Lvo[1,iw,x] * CI_b[iw])
         cont1_J[iw] += 0.5*numpy.dot(X, X)
         cont2_J[iw] += numpy.dot(F, X)
 
@@ -977,20 +976,18 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    Laa = numpy.zeros((nwalkers, nchol, trial.nocc_alpha, trial.nact), dtype=numpy.complex128)
-    Lbb = numpy.zeros((nwalkers, nchol, trial.nocc_beta, trial.nact), dtype=numpy.complex128)
+    Lvo = numpy.zeros((2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
     cont1, cont2 = build_contributions12(
                                     trial._rchola, trial._rcholb,
                                     trial._rchola_act, trial._rcholb_act,
                                     walker_batch.Ghalfa, walker_batch.Ghalfb,
                                     walker_batch.CIa, walker_batch.CIb,
-                                    Laa,
-                                    Lbb
+                                    Lvo,
                                     )
     cont2 = (ovlp0/ovlp)*cont2
 
-    Laa = Laa.transpose((0, 3, 2, 1)).copy()
-    Lbb = Lbb.transpose((0, 3, 2, 1)).copy()
+    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
 
 
     dets_a_full, dets_b_full = compute_determinants_batched(
