@@ -951,7 +951,16 @@ def build_contributions12(
 
     return cont1_J+cont1_K, cont2_J+cont2_K
 
-def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial):
+def local_energy_multi_det_trial_wicks_batch_opt(
+        system,
+        ham,
+        walker_batch,
+        trial,
+        max_mem=2.0):
+    """Optimized local energy evaluation using Wick's theorem.
+
+    TODO : make memory buffers global via eventual config.
+    """
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
@@ -990,12 +999,13 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
 
 
+    # approximate memory for os_buffers and det/cof matrices which are largest
+    # contributors.
+    mem_required = 16 * 4 * nwalkers * trial.ndets * nchol,
     dets_a_full, dets_b_full = compute_determinants_batched(
             walker_batch.Ghalfa, walker_batch.Ghalfb, trial
             )
     ndets = len(trial.coeffs)
-    energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     cphase_a = trial.coeffs.conj() * trial.phase_a
     cphase_b = trial.coeffs.conj() * trial.phase_b
     ovlpa = dets_a_full * trial.phase_a[None,:]
@@ -1003,19 +1013,28 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     c_phasea_ovlpb = cphase_a[None,:] * ovlpb
     c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
     cphase_ab = cphase_a * trial.phase_b
+    energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     alpha_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    # print(2*beta_ss_buffer.nbytes/1024**3.0)
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
     slices_alpha, slices_beta = build_slices(trial)
+    det_sizes_a = max([len(trial.cre_ex_a[i])*i*i for i in range(1, trial.max_excite+1)])
+    det_sizes_b = max([len(trial.cre_ex_b[i])*i*i for i in range(1, trial.max_excite+1)])
+    max_size = max(det_sizes_a, det_sizes_b)
+    det_mat_buffer = numpy.zeros((2*nwalkers*max_size), dtype=numpy.complex128)
     for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
-        det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
-        # defined here for reuse
-        cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        det_size = (nwalkers, ndets_a, iexcit, iexcit)
+        nelem_det = int(numpy.prod(det_size))
+        det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
+        cof_size = (nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1))
+        cofactor_matrix_a = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
         _start = time.time()
         if ndets_a > 0:
             wk.build_det_matrix(
@@ -1094,8 +1113,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 slices_alpha[iexcit]
                             )
         ndets_b = len(trial.cre_ex_b[iexcit])
-        det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
-        cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        det_size = (nwalkers, ndets_b, iexcit, iexcit)
+        nelem_det = int(numpy.prod(det_size))
+        det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
+        cof_size = (nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1))
+        cofactor_matrix_b = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
         if ndets_b > 0:
             wk.build_det_matrix(
                     trial.cre_ex_b[iexcit],
