@@ -787,23 +787,6 @@ def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
             T1 = numpy.dot(G0b_real, Lx[x]) + 1j*numpy.dot(G0b_imag, Lx[x])
             Lbb[iw,:,:,x]= numpy.dot(T1, Q0b[iw]).T
 
-def build_slices(trial):
-    slices_beta = []
-    slices_alpha = []
-    start_alpha = 1
-    start_beta = 1
-    for i in range(0, trial.max_excite+1):
-        # nd = max(len(trial.cre_ex_a[i]), 1)
-        nd = len(trial.cre_ex_a[i])
-        slices_alpha.append(slice(start_alpha, start_alpha+nd))
-        start_alpha += nd
-        # nd = max(len(trial.cre_ex_b[i]), 1)
-        nd = len(trial.cre_ex_b[i])
-        slices_beta.append(slice(start_beta, start_beta+nd))
-        start_beta += nd
-
-    return slices_alpha, slices_beta
-
 @jit(nopython=True, fastmath=True)
 def build_contributions12(
         rchol_a,
@@ -1023,7 +1006,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
-    slices_alpha, slices_beta = build_slices(trial)
     det_sizes_a = max([len(trial.cre_ex_a[i])*i*i for i in range(1, trial.max_excite+1)])
     det_sizes_b = max([len(trial.cre_ex_b[i])*i*i for i in range(1, trial.max_excite+1)])
     max_size = max(det_sizes_a, det_sizes_b)
@@ -1053,7 +1035,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         trial.nfrozen,
                         Laa,
                         alpha_os_buffer,
-                        slices_alpha[1]
+                        trial.slices_alpha[1]
                         )
             elif iexcit == 2:
                 _start = time.time()
@@ -1065,7 +1047,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                     G0a,
                     Laa,
                     alpha_os_buffer,
-                    slices_alpha[2])
+                    trial.slices_alpha[2])
             elif iexcit == 3:
                 _start = time.time()
                 wk.fill_os_triples(
@@ -1076,7 +1058,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         G0a,
                         Laa,
                         alpha_os_buffer,
-                        slices_alpha[3]
+                        trial.slices_alpha[3]
                         )
             else:
                 _start = time.time()
@@ -1088,7 +1070,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                             cofactor_matrix_a,
                             Laa,
                             alpha_os_buffer,
-                            slices_alpha[iexcit]
+                            trial.slices_alpha[iexcit]
                         )
             if iexcit >= 2 and ndets_a > 0:
                 if iexcit == 2:
@@ -1099,7 +1081,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                             trial.occ_map_a,
                             Laa,
                             alpha_ss_buffer,
-                            slices_alpha[iexcit])
+                            trial.slices_alpha[iexcit])
                 else:
                     _start = time.time()
                     wk.get_ss_nfold(
@@ -1110,7 +1092,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                                 cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                                 Laa,
                                 alpha_ss_buffer,
-                                slices_alpha[iexcit]
+                                trial.slices_alpha[iexcit]
                             )
         ndets_b = len(trial.cre_ex_b[iexcit])
         det_size = (nwalkers, ndets_b, iexcit, iexcit)
@@ -1134,7 +1116,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         trial.nfrozen,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[1]
+                        trial.slices_beta[1]
                         )
             elif iexcit == 2:
                 wk.fill_os_doubles(
@@ -1145,7 +1127,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         G0b,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[2]
+                        trial.slices_beta[2]
                         )
             elif iexcit == 3:
                 wk.fill_os_triples(
@@ -1156,7 +1138,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         G0b,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[3]
+                        trial.slices_beta[3]
                         )
             else:
                 wk.fill_os_nfold(
@@ -1167,7 +1149,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                                 cofactor_matrix_b,
                                 Lbb,
                                 beta_os_buffer,
-                                slices_beta[iexcit]
+                                trial.slices_beta[iexcit]
                                 )
         if iexcit >= 2 and ndets_b > 0:
             if iexcit == 2:
@@ -1177,7 +1159,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         trial.occ_map_b,
                         Lbb,
                         beta_ss_buffer,
-                        slices_beta[iexcit]
+                        trial.slices_beta[iexcit]
                         )
             else:
                 wk.get_ss_nfold(
@@ -1188,7 +1170,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                         Lbb,
                         beta_ss_buffer,
-                        slices_beta[iexcit]
+                        trial.slices_beta[iexcit]
                         )
 
     bufferab = numpy.zeros_like(alpha_os_buffer)

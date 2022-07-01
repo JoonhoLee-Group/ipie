@@ -244,6 +244,8 @@ class MultiSlater(object):
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
 
+            self.slices_alpha, self.slices_beta = self.build_slices()
+
             if verbose:
                 print(f"# Number of alpha determinants at each level: {self.ndet_a}")
                 print(f"# Number of beta determinants at each level: {self.ndet_b}")
@@ -291,6 +293,21 @@ class MultiSlater(object):
             self.write_wavefunction(filename=output_file)
         if verbose:
             print ("# Finished setting up trial_wavefunction.MultiSlater.")
+
+    def build_slices(self):
+        slices_beta = []
+        slices_alpha = []
+        start_alpha = 1
+        start_beta = 1
+        for i in range(0, self.max_excite+1):
+            nd = len(self.cre_ex_a[i])
+            slices_alpha.append(slice(start_alpha, start_alpha+nd))
+            start_alpha += nd
+            nd = len(self.cre_ex_b[i])
+            slices_beta.append(slice(start_beta, start_beta+nd))
+            start_beta += nd
+
+        return slices_alpha, slices_beta
 
     def calculate_energy(self, system, hamiltonian):
         if self.verbose:
