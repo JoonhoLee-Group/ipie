@@ -111,6 +111,13 @@ class MultiSlater(object):
                         default=False,
                         verbose=verbose
                         )
+        self.ndets_props = get_input_value(
+                        options,
+                        'ndets_for_trial_props',
+                        default=self.ndets,
+                        alias=['ndets_prop'],
+                        verbose=verbose
+                        )
         self.optimized = get_input_value(
                             options,
                             'optimized',
@@ -245,15 +252,17 @@ class MultiSlater(object):
 
         if self.ortho_expansion and self.compute_opdm: # this is for phmsd
             if verbose:
-                print("# Computing 1-RDM of the trial wfn for mean-field shift")
+                print("# Computing 1-RDM of the trial wfn for mean-field shift.")
+                print(f"# Using first {self.ndets_props} determinants for evaluation.")
             start = time.time()
             if self.use_wicks_helper:
                 assert wicks_helper is not None
                 dets = wicks_helper.encode_dets(self.occa, self.occb)
                 phases = wicks_helper.convert_phase(self.occa, self.occb)
+                _keep = self.ndets_props
                 self.G = wicks_helper.compute_opdm(
-                        phases*self.coeffs.copy(),
-                        dets,
+                        phases[:_keep]*self.coeffs[:_keep].copy(),
+                        dets[:_keep],
                         hamiltonian.nbasis,
                         system.ne)
             else:
@@ -379,13 +388,13 @@ class MultiSlater(object):
         Pa = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
         Pb = numpy.zeros((nbasis, nbasis), dtype = numpy.complex128)
         P = [Pa, Pb]
-        for idet in range(self.ndets):
+        for idet in range(self.ndets_props):
             di = self.spin_occs[idet]
             # zero excitation case
             for iorb in range(len(di)):
                 ii, spin_ii = map_orb(di[iorb], nbasis)
                 P[spin_ii][ii,ii] += self.coeffs[idet].conj()*self.coeffs[idet]
-            for jdet in range(idet+1, self.ndets):
+            for jdet in range(idet+1, self.ndets_props):
                 dj = self.spin_occs[jdet]
                 from_orb = list(set(dj)-set(di))
                 to_orb = list(set(di)-set(dj))
