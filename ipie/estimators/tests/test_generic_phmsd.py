@@ -25,6 +25,7 @@ from ipie.estimators.local_energy_batch import (
 from ipie.estimators.local_energy_wicks import (
         local_energy_multi_det_trial_wicks_batch,
         local_energy_multi_det_trial_wicks_batch_opt,
+        local_energy_multi_det_trial_wicks_batch_opt_chunked,
         fill_opp_spin_factors_batched,
         fill_same_spin_contribution_batched
         )
@@ -390,15 +391,14 @@ def test_kernels_energy():
             fill_opp_spin_factors_batched_doubles_chol,
             fill_opp_spin_factors_batched_triples_chol,
             get_same_spin_double_contribution_batched_contr,
-            fill_same_spin_contribution_batched_contr,
-            build_slices
+            fill_same_spin_contribution_batched_contr
             )
 
     ndets = trial.ndets
     nchol = ham.nchol
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
-    slices_alpha, slices_beta = build_slices(trial)
+    slices_alpha, slices_beta = trial.slices_alpha, trial.slices_beta
     nbasis = ham.nbasis
     from ipie.utils.testing import shaped_normal
     Laa = shaped_normal((nwalkers, nbasis, system.nup, nchol))
@@ -596,8 +596,7 @@ def test_kernels_gf():
             fill_opp_spin_factors_batched_doubles_chol,
             fill_opp_spin_factors_batched_triples_chol,
             get_same_spin_double_contribution_batched_contr,
-            fill_same_spin_contribution_batched_contr,
-            build_slices
+            fill_same_spin_contribution_batched_contr
             )
 
     ndets = trial.ndets
@@ -993,11 +992,8 @@ def test_kernels_energy_active_space():
     walker_batch_ref.CIa.fill(0.0+0.0j)
     walker_batch_ref.CIb.fill(0.0+0.0j)
     from ipie.utils.testing import shaped_normal
-    from ipie.estimators.local_energy_wicks import (
-            build_slices
-            )
     Lbb = shaped_normal((nwalkers, nmo, system.ndown, nchol))
-    slices_alpha, slices_beta = build_slices(trial_ref)
+    slices_alpha, slices_beta = trial_test.slices_alpha, trial_test.slices_beta
     assert trial_ref.nfrozen != trial_test.nfrozen
     # 1.
     wk.fill_os_singles(
@@ -1319,6 +1315,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
                 'optimized': True,
                 'use_wicks_helper': False,
                 'nact': nact,
+                'ndet_chunks': 10,
                 'ncas': 14,
                 }
             )
@@ -1382,9 +1379,15 @@ def test_phmsd_local_energy_active_space_non_aufbau():
                         ham,
                         walker_batch_test,
                         trial_test)
+    e_wicks_opt_chunk = local_energy_multi_det_trial_wicks_batch_opt_chunked(
+                        system,
+                        ham,
+                        walker_batch_test,
+                        trial_test)
 
     assert numpy.allclose(e_wicks, e_wicks_opt)
     assert numpy.allclose(e_wicks_opt, e_wicks_opt_act)
+    assert numpy.allclose(e_wicks_opt_chunk, e_wicks_opt_act)
 
 if __name__ == '__main__':
     test_phmsd_local_energy()

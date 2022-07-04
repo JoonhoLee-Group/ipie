@@ -124,6 +124,12 @@ class MultiSlater(object):
                             default=False,
                             alias=['optimize', 'optimise', 'optimised'],
                             verbose=verbose)
+        self.ndet_chunks = get_input_value(
+                        options,
+                        'ndet_chunks',
+                        default=1,
+                        alias=["nchunks", "chunks"],
+                        verbose=verbose)
         self.nact = get_input_value(
                         options,
                         'nact_orbitals',
@@ -152,6 +158,18 @@ class MultiSlater(object):
                 print(f"# Number of occupied electrons in active space trial: "
                         f"({self.nocc_alpha}, {self.nocc_beta})")
                 print(f"# Number of orbitals in active space trial: {self.nact}")
+                if self.optimized:
+                    # approximate memory for os_buffers and det/cof matrices which are largest
+                    # contributors.
+                    mem_required = 16 * 4 * self.ndets * hamiltonian.nchol / (self.ndet_chunks * 1024**3.0)
+                    print(f"# Dominant memory cost **per walker** for optimized "
+                    f"energy evaluation using Wick's algorithm: {mem_required} "
+                    "GB.")
+                    if mem_required > 1.0:
+                        print(f"# WARNING: Memory required by energy evaluation "
+                        "exceeds 1 GB per walker.\n# Consider increasing ndet_chunks "
+                        "option in input file from current value "
+                        f"{self.ndet_chunks} to something larger.")
             self.psi0a = self.psi[0, :, :system.nup].copy()
             self.psi0b = self.psi[0, :, system.nup:].copy()
             if verbose:
@@ -191,47 +209,71 @@ class MultiSlater(object):
             cre_ex_b = [[] for _ in range(max_excit)]
             anh_ex_a = [[] for _ in range(max_excit)]
             anh_ex_b = [[] for _ in range(max_excit)]
+            # Will store mapping from unordered list defined by order in which added to
+            # cre_/anh_a/b TO the full determinant index, i.e.,
+            # ordered_like_trial[excit_map_a] = buffer_from_cre_ex_a[:]
             excit_map_a = [[] for _ in range(max_excit)]
             excit_map_b = [[] for _ in range(max_excit)]
-            for j in range(1, self.ndets):
-                dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
-                djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
+            num_chunks = self.ndet_chunks
+            ndets_chunk = (self.ndets - 1) // num_chunks + 1
+            self.ndets_chunk_max = ndets_chunk
+            cre_ex_a_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            cre_ex_b_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            anh_ex_a_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            anh_ex_b_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            excit_map_a_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            excit_map_b_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+            for ichunk in range(num_chunks):
+                for jdet in range(0, ndets_chunk):
+                    j = 1 + ichunk*ndets_chunk + jdet
+                    if j == self.ndets:
+                        break
+                    dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
+                    djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
 
-                anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
-                cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
+                    anh_a = list(set(dja)-set(d0a)) # annihilation to right, creation to left
+                    cre_a = list(set(d0a)-set(dja)) # creation to right, annhilation to left
 
-                anh_b = list(set(djb)-set(d0b))
-                cre_b = list(set(d0b)-set(djb))
+                    anh_b = list(set(djb)-set(d0b))
+                    cre_b = list(set(d0b)-set(djb))
 
-                cre_a.sort()
-                cre_b.sort()
-                anh_a.sort()
-                anh_b.sort()
+                    cre_a.sort()
+                    cre_b.sort()
+                    anh_a.sort()
+                    anh_b.sort()
 
-                self.anh_a += [anh_a]
-                self.anh_b += [anh_b]
-                self.cre_a += [cre_a]
-                self.cre_b += [cre_b]
-                anh_ex_a[len(anh_a)].append(anh_a)
-                anh_ex_b[len(anh_b)].append(anh_b)
-                cre_ex_a[len(cre_a)].append(cre_a)
-                cre_ex_b[len(cre_b)].append(cre_b)
-                excit_map_a[len(anh_a)].append(j)
-                excit_map_b[len(anh_b)].append(j)
+                    self.anh_a += [anh_a]
+                    self.anh_b += [anh_b]
+                    self.cre_a += [cre_a]
+                    self.cre_b += [cre_b]
+                    anh_ex_a[len(anh_a)].append(anh_a)
+                    anh_ex_b[len(anh_b)].append(anh_b)
+                    cre_ex_a[len(cre_a)].append(cre_a)
+                    cre_ex_b[len(cre_b)].append(cre_b)
+                    anh_ex_a_chunk[ichunk][len(anh_a)].append(anh_a)
+                    anh_ex_b_chunk[ichunk][len(anh_b)].append(anh_b)
+                    cre_ex_a_chunk[ichunk][len(cre_a)].append(cre_a)
+                    cre_ex_b_chunk[ichunk][len(cre_b)].append(cre_b)
+                    excit_map_a[len(anh_a)].append(j)
+                    excit_map_b[len(anh_b)].append(j)
+                    excit_map_a_chunk[ichunk][len(anh_a)].append(j)
+                    excit_map_b_chunk[ichunk][len(anh_b)].append(j)
 
-                perm_a = get_perm(anh_a, cre_a, d0a, dja)
-                perm_b = get_perm(anh_b, cre_b, d0b, djb)
+                    perm_a = get_perm(anh_a, cre_a, d0a, dja)
+                    perm_b = get_perm(anh_b, cre_b, d0b, djb)
 
-                if perm_a:
-                    self.phase_a[j] = -1
-                else:
-                    self.phase_a[j] = +1
+                    if perm_a:
+                        self.phase_a[j] = -1
+                    else:
+                        self.phase_a[j] = +1
 
-                if perm_b:
-                    self.phase_b[j] = -1
-                else:
-                    self.phase_b[j] = +1
+                    if perm_b:
+                        self.phase_b[j] = -1
+                    else:
+                        self.phase_b[j] = +1
 
+            self.ndets_per_chunk = [sum(len(ex) for ex in cre_ex_a_chunk[ichunk]) for ichunk in range(num_chunks)]
+            assert sum(self.ndets_per_chunk) == self.ndets - 1
             self.ndet_a = [len(ex) for ex in cre_ex_a]
             self.ndet_b = [len(ex) for ex in cre_ex_b]
             self.max_excite_a = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_a))
@@ -241,10 +283,41 @@ class MultiSlater(object):
             self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
             self.anh_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a]
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
+            self.cre_ex_a_chunk = [
+                    [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a_chunk[ichunk]]
+                    for ichunk in range(num_chunks)
+                    ]
+            self.cre_ex_b_chunk = [
+                    [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b_chunk[ichunk]]
+                    for ichunk in range(num_chunks)
+                    ]
+            self.anh_ex_a_chunk = [
+                    [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a_chunk[ichunk]]
+                    for ichunk in range(num_chunks)
+                    ]
+            self.anh_ex_b_chunk = [
+                    [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b_chunk[ichunk]]
+                    for ichunk in range(num_chunks)
+                    ]
             self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
             self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
+            # Will store array remapping from chunk of data created from
+            # cre/anh_chunk to original determinant order sliced appropriately
+            # to map chunk index.
+            # i.e. buffer_from_cre_a[excit_map_a_chunk[1]] *
+            # trial.coeffs[slice[1]] will yield something sensible.
+            # Note this is the **inverse** mapping from the non chunked case
+            self.excit_map_a_chunk = [
+                    numpy.argsort(numpy.concatenate(excit_map_a_chunk[ichunk]))
+                    for ichunk in range(num_chunks)
+                    ]
+            self.excit_map_b_chunk = [
+                    numpy.argsort(numpy.concatenate(excit_map_b_chunk[ichunk]))
+                    for ichunk in range(num_chunks)
+                    ]
 
             self.slices_alpha, self.slices_beta = self.build_slices()
+            self.slices_alpha_chunk, self.slices_beta_chunk = self.build_slices_chunked()
 
             if verbose:
                 print(f"# Number of alpha determinants at each level: {self.ndet_a}")
@@ -308,6 +381,26 @@ class MultiSlater(object):
             start_beta += nd
 
         return slices_alpha, slices_beta
+
+    def build_slices_chunked(self):
+        slices_beta_chunk = []
+        slices_alpha_chunk = []
+        for ichunk in range(self.ndet_chunks):
+            slices_beta = []
+            slices_alpha = []
+            start_alpha = 0
+            start_beta = 0
+            for i in range(0, self.max_excite+1):
+                nd = len(self.cre_ex_a_chunk[ichunk][i])
+                slices_alpha.append(slice(start_alpha, start_alpha+nd))
+                start_alpha += nd
+                nd = len(self.cre_ex_b_chunk[ichunk][i])
+                slices_beta.append(slice(start_beta, start_beta+nd))
+                start_beta += nd
+            slices_alpha_chunk.append(slices_alpha)
+            slices_beta_chunk.append(slices_beta)
+
+        return slices_alpha_chunk, slices_beta_chunk
 
     def calculate_energy(self, system, hamiltonian):
         if self.verbose:
@@ -468,7 +561,7 @@ class MultiSlater(object):
                 size += self._rchola_chunk.size + self._rcholb_chunk.size
             else:
                 size += self._rchola.size + self._rcholb.size
-        
+
         if (numpy.isrealobj(self._rH1a)):
             size += self._rH1a.size/2. + self._rH1b.size/2.
         else:
@@ -486,7 +579,7 @@ class MultiSlater(object):
 
         self.psi = cupy.asarray(self.psi)
         self.coeffs = cupy.asarray(self.coeffs)
-        
+
         if (self.chunked):
             self._rchola_chunk = cupy.asarray(self._rchola_chunk)
             self._rcholb_chunk = cupy.asarray(self._rcholb_chunk)

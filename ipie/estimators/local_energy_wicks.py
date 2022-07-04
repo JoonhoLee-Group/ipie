@@ -934,6 +934,281 @@ def build_contributions12(
 
     return cont1_J+cont1_K, cont2_J+cont2_K
 
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(
+        system,
+        ham,
+        walker_batch,
+        trial,
+        max_mem=2.0):
+    """Optimized local energy evaluation using Wick's theorem.
+
+    TODO : make memory buffers global via eventual config.
+    """
+    nwalkers = walker_batch.nwalkers
+    nbasis = ham.nbasis
+    nchol = ham.nchol
+    nalpha = system.nup
+    nbeta = system.ndown
+    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
+
+    ovlpa0 = walker_batch.det_ovlpas[:,0]
+    ovlpb0 = walker_batch.det_ovlpbs[:,0]
+    ovlp0 = ovlpa0 * ovlpb0
+    ovlp = walker_batch.ovlp
+
+    # useful variables
+    G0a = walker_batch.G0a
+    G0b = walker_batch.G0b
+    G0Ha = walker_batch.Ghalfa
+    G0Hb = walker_batch.Ghalfb
+    Q0a = walker_batch.Q0a
+    Q0b = walker_batch.Q0b
+    CIa = walker_batch.CIa
+    CIb = walker_batch.CIb
+
+    Lvo = numpy.zeros((2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
+    cont1, cont2 = build_contributions12(
+                                    trial._rchola, trial._rcholb,
+                                    trial._rchola_act, trial._rcholb_act,
+                                    walker_batch.Ghalfa, walker_batch.Ghalfb,
+                                    walker_batch.CIa, walker_batch.CIb,
+                                    Lvo,
+                                    )
+    cont2 = (ovlp0/ovlp)*cont2
+
+    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
+
+
+    dets_a_full, dets_b_full = compute_determinants_batched(
+            walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+            )
+    ndets = len(trial.coeffs)
+    cphase_a = trial.coeffs.conj() * trial.phase_a
+    cphase_b = trial.coeffs.conj() * trial.phase_b
+    ovlpa = dets_a_full * trial.phase_a[None,:]
+    ovlpb = dets_b_full * trial.phase_b[None,:]
+    c_phasea_ovlpb = cphase_a[None,:] * ovlpb
+    c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
+    cphase_ab = cphase_a * trial.phase_b
+    start = time.time()
+    cont3 = numpy.zeros_like(cont2)
+    det_sizes_a = max([
+        max([len(trial.cre_ex_a_chunk[ichunk][i])*i*i for i in range(1, trial.max_excite+1)])
+        for ichunk in range(trial.ndet_chunks)
+        ])
+    det_sizes_b = max(
+            max([len(trial.cre_ex_b_chunk[ichunk][i])*i*i for i in range(1, trial.max_excite+1)])
+            for ichunk in range(trial.ndet_chunks)
+            )
+    max_size = max(det_sizes_a, det_sizes_b)
+    det_mat_buffer = numpy.zeros((2*nwalkers*max_size), dtype=numpy.complex128)
+    # energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    for ichunk in range(trial.ndet_chunks):
+        ndets_chunk = trial.ndets_per_chunk[ichunk]
+        alpha_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        beta_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        alpha_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        beta_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        for iexcit in range(1, trial.max_excite+1):
+            ndets_a = len(trial.cre_ex_a_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_a, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1))
+            cofactor_matrix_a = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
+            _start = time.time()
+            if ndets_a > 0:
+                wk.build_det_matrix(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        walker_batch.Ghalfa,
+                        det_mat_a)
+                if iexcit == 1:
+                    _start = time.time()
+                    wk.fill_os_singles(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            trial.nfrozen,
+                            Laa,
+                            alpha_os_buffer,
+                            trial.slices_alpha_chunk[ichunk][1]
+                            )
+                elif iexcit == 2:
+                    _start = time.time()
+                    wk.fill_os_doubles(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        G0a,
+                        Laa,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][2])
+                elif iexcit == 3:
+                    _start = time.time()
+                    wk.fill_os_triples(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            trial.nfrozen,
+                            G0a,
+                            Laa,
+                            alpha_os_buffer,
+                            trial.slices_alpha_chunk[ichunk][3]
+                            )
+                else:
+                    _start = time.time()
+                    wk.fill_os_nfold(
+                                trial.cre_ex_a_chunk[ichunk][iexcit],
+                                trial.anh_ex_a_chunk[ichunk][iexcit],
+                                trial.occ_map_a,
+                                det_mat_a,
+                                cofactor_matrix_a,
+                                Laa,
+                                alpha_os_buffer,
+                                trial.slices_alpha_chunk[ichunk][iexcit]
+                            )
+                if iexcit >= 2 and ndets_a > 0:
+                    if iexcit == 2:
+                        _start = time.time()
+                        wk.get_ss_doubles(
+                                trial.cre_ex_a_chunk[ichunk][iexcit],
+                                trial.anh_ex_a_chunk[ichunk][iexcit],
+                                trial.occ_map_a,
+                                Laa,
+                                alpha_ss_buffer,
+                                trial.slices_alpha_chunk[ichunk][iexcit])
+                    else:
+                        _start = time.time()
+                        wk.get_ss_nfold(
+                                    trial.cre_ex_a_chunk[ichunk][iexcit],
+                                    trial.anh_ex_a_chunk[ichunk][iexcit],
+                                    trial.occ_map_a,
+                                    det_mat_a,
+                                    cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                                    Laa,
+                                    alpha_ss_buffer,
+                                    trial.slices_alpha_chunk[ichunk][iexcit]
+                                )
+            ndets_b = len(trial.cre_ex_b_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_b, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1))
+            cofactor_matrix_b = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
+            if ndets_b > 0:
+                wk.build_det_matrix(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        trial.nfrozen,
+                        walker_batch.Ghalfb,
+                        det_mat_b)
+                if iexcit == 1:
+                    wk.fill_os_singles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][1]
+                            )
+                elif iexcit == 2:
+                    wk.fill_os_doubles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][2]
+                            )
+                elif iexcit == 3:
+                    wk.fill_os_triples(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][3]
+                            )
+                else:
+                    wk.fill_os_nfold(
+                                    trial.cre_ex_b_chunk[ichunk][iexcit],
+                                    trial.anh_ex_b_chunk[ichunk][iexcit],
+                                    trial.occ_map_b,
+                                    det_mat_b,
+                                    cofactor_matrix_b,
+                                    Lbb,
+                                    beta_os_buffer,
+                                    trial.slices_beta_chunk[ichunk][iexcit]
+                                    )
+            if iexcit >= 2 and ndets_b > 0:
+                if iexcit == 2:
+                    wk.get_ss_doubles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            Lbb,
+                            beta_ss_buffer,
+                            trial.slices_beta_chunk[ichunk][iexcit]
+                            )
+                else:
+                    wk.get_ss_nfold(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            det_mat_b,
+                            cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                            Lbb,
+                            beta_ss_buffer,
+                            trial.slices_beta_chunk[ichunk][iexcit]
+                            )
+
+        # orders buffer by determinant index not alpha/beta index
+        ma = trial.excit_map_a_chunk[ichunk]
+        mb = trial.excit_map_b_chunk[ichunk]
+        # 1 for reference determinant
+        start = 1 + ichunk * trial.ndets_chunk_max
+        # inclusive of endpoint
+        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.ndets)
+        energy_os = numpy.einsum(
+                'wJx,wJx,J->w',
+                alpha_os_buffer[:,ma],
+                beta_os_buffer[:,mb],
+                cphase_ab[start:end],
+                optimize=True)
+        energy_ss = numpy.einsum(
+                'wJ,wJ->w',
+                alpha_ss_buffer[:,ma],
+                c_phasea_ovlpb[:,start:end],
+                optimize=True)
+        energy_ss += numpy.einsum(
+                'wJ,wJ->w',
+                beta_ss_buffer[:,mb],
+                c_phaseb_ovlpa[:,start:end],
+                optimize=True)
+
+        cont3 += (energy_os + energy_ss)*(ovlp0/ovlp)
+    e2b = cont1 + cont2 + cont3
+
+    walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
+    walker_energies[:,0] = e1b + e2b
+    walker_energies[:,1] = e1b
+    walker_energies[:,2] = e2b
+    return walker_energies
+
 def local_energy_multi_det_trial_wicks_batch_opt(
         system,
         ham,
@@ -982,9 +1257,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
 
 
-    # approximate memory for os_buffers and det/cof matrices which are largest
-    # contributors.
-    mem_required = 16 * 4 * nwalkers * trial.ndets * nchol,
     dets_a_full, dets_b_full = compute_determinants_batched(
             walker_batch.Ghalfa, walker_batch.Ghalfb, trial
             )
@@ -1002,7 +1274,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    # print(2*beta_ss_buffer.nbytes/1024**3.0)
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
