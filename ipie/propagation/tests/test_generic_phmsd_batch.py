@@ -104,6 +104,9 @@ def test_phmsd_greens_function_batch():
     numpy.random.seed(7)
 
     trial.calculate_energy(system, ham)
+    trial_slow = MultiSlater(system, ham, wfn, init=init)
+    trial_slow.calculate_energy(system, ham)
+
     options = {'hybrid': True}
     qmc = dotdict({'dt': 0.005, 'nstblz': 5})
     prop = LegacyContinuous(system, ham, trial, qmc, options=options)
@@ -114,9 +117,9 @@ def test_phmsd_greens_function_batch():
     legacytrial = LegacyMultiSlater(system, legacyham, wfn, init=init, options = {'wicks':True})
 
     walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
 
-    greens_function_multi_det(walker_batch, trial)
+    greens_function_multi_det(walker_batch, trial_slow)
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Gia[iw], walkers[iw].Gi[:,0,:,:])
         assert numpy.allclose(walker_batch.Gib[iw], walkers[iw].Gi[:,1,:,:])

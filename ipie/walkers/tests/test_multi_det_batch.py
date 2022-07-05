@@ -122,13 +122,17 @@ def test_walker_energy():
             {'wicks': True, 'optimized': False})
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
+    trial_slow = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options =
+            {'wicks': False, 'optimized': False})
+    trial_slow.calculate_energy(system, ham)
+    trial_slow.half_rotate(system, ham)
     trial_opt = MultiSlater(system, ham, (ev[:,0],oa,ob), init=init,options =
             {'wicks': True, 'optimized': True})
     trial_opt.calculate_energy(system, ham)
     trial_opt.half_rotate(system, ham)
 
     nwalkers = 10
-    walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
     walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
 
     nume = 0
@@ -154,8 +158,8 @@ def test_walker_energy():
     greens_function_multi_det_wicks_opt(walker_opt, trial_opt) # compute green's function using Wick's theorem
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_opt, trial_opt)
-    greens_function_multi_det(walker, trial)
-    e_simple = local_energy_multi_det_trial_batch(system, ham, walker, trial)
+    greens_function_multi_det(walker, trial_slow)
+    e_simple = local_energy_multi_det_trial_batch(system, ham, walker, trial_slow)
 
 
     assert e_simple[:,0] == pytest.approx(energies)
