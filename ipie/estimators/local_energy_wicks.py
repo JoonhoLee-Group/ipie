@@ -787,24 +787,163 @@ def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
             T1 = numpy.dot(G0b_real, Lx[x]) + 1j*numpy.dot(G0b_imag, Lx[x])
             Lbb[iw,:,:,x]= numpy.dot(T1, Q0b[iw]).T
 
-def build_slices(trial):
-    slices_beta = []
-    slices_alpha = []
-    start_alpha = 1
-    start_beta = 1
-    for i in range(0, trial.max_excite+1):
-        # nd = max(len(trial.cre_ex_a[i]), 1)
-        nd = len(trial.cre_ex_a[i])
-        slices_alpha.append(slice(start_alpha, start_alpha+nd))
-        start_alpha += nd
-        # nd = max(len(trial.cre_ex_b[i]), 1)
-        nd = len(trial.cre_ex_b[i])
-        slices_beta.append(slice(start_beta, start_beta+nd))
-        start_beta += nd
+@jit(nopython=True, fastmath=True)
+def build_contributions12(
+        rchol_a,
+        rchol_b,
+        rchol_act_a,
+        rchol_act_b,
+        theta_a,
+        theta_b,
+        CI_a,
+        CI_b,
+        Lvo,
+    ):
+    """Build contributions one and two for wicks local energy.
 
-    return slices_alpha, slices_beta
+    A bit messy but faster to reuse intermediates for reference and contribution
+    2 (half-connected, two-leg, one-body-like terms).
 
-def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, trial):
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    cont1 : numpy.array
+        Reference determinant contribution (exchange + coulomb) (nwalker,)
+    cont2 : numpy.array
+        Half-connected, two-leg one-body-like term (nwalker,)
+    """
+    nchol = rchol_a.shape[0]
+    nwalkers = theta_a.shape[0]
+    nbasis = theta_a.shape[2]
+    cont1_J = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    cont2_J = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    cont1_K = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    cont2_K = numpy.zeros(nwalkers, dtype=numpy.complex128)
+    nact = CI_a.shape[1]
+    # assert nact == CI_a.shape[1]
+    Q = numpy.zeros((nact, nbasis), dtype=numpy.complex128)
+    # X = numpy.zeros((2,nchol), dtype=numpy.complex128)
+    X = numpy.zeros(nchol, dtype=numpy.complex128)
+    F = numpy.zeros(nchol, dtype=numpy.complex128)
+    for iw in range(nwalkers):
+        # alpha slices
+        X.fill(0.0+0.0j)
+        F.fill(0.0+0.0j)
+        nocc_a = theta_a.shape[1]
+        nocc_act_a = CI_a.shape[2]
+        nfrozen_a = nocc_a - nocc_act_a
+        # very messy but numba won't let us use lists for the moment
+        theta_act_a = theta_a[iw,:,nfrozen_a:nfrozen_a+nact].copy()
+        theta_act_real_a = theta_act_a.real.copy()
+        theta_act_imag_a = theta_act_a.imag.copy()
+        theta_occ_a = theta_a[iw].copy()
+        theta_occ_real_a = theta_occ_a.real.copy()
+        theta_occ_imag_a = theta_occ_a.imag.copy()
+        nocc_b = theta_b.shape[1]
+        nocc_act_b = CI_b.shape[2]
+        nfrozen_b = nocc_b - nocc_act_b
+        theta_act_b = theta_b[iw,:,nfrozen_b:nfrozen_b+nact].copy()
+        theta_act_real_b = theta_act_b.real.copy()
+        theta_act_imag_b = theta_act_b.imag.copy()
+        theta_occ_b = theta_b[iw].copy()
+        theta_occ_real_b = theta_occ_b.real.copy()
+        theta_occ_imag_b = theta_occ_b.imag.copy()
+        for x in range(nchol):
+            # alpha contributions
+            # T[a,b] = rchol[b,q] theta[a,q]
+            T = (
+                    numpy.dot(
+                        theta_occ_real_a,
+                        rchol_a[x].reshape((nocc_a, nbasis)).T
+                        )
+                    +
+                    1j*numpy.dot(
+                        theta_occ_imag_a,
+                        rchol_a[x].reshape((nocc_a, nbasis)).T
+                       )
+                    )
+            exx = numpy.dot(T.ravel(), T.T.ravel())
+            X[x] += numpy.trace(T)
+            cont1_K[iw] += -0.5*exx
+            # add exchange contribution
+            # Ttilde[t,r] = theta_{c,t} rchol[c,r]
+            # O(X N A_v M)
+            Lut_1 = (
+                    numpy.dot(
+                        theta_occ_real_a,
+                        rchol_act_a[x].reshape(nact, nbasis).T,
+                        )
+                    + 1j*numpy.dot(
+                        theta_occ_imag_a,
+                        rchol_act_a[x].reshape(nact, nbasis).T,
+                        )
+                    )
+            Lut_2 = numpy.dot(T, theta_act_a)
+            # # index a gets contracted with CI tensor later so only need the
+            # # occupied orbitals in the active space not the full set of occupied.
+            Lut = (Lut_1 - Lut_2).T.copy()
+            # # (nvir_act x nocc) x (nocc x nocc_act)
+            # O(X A_v N A_v)
+            A = numpy.dot(Lut, T[nfrozen_a:nfrozen_a+nocc_act_a,:].T.copy())
+            Lvo[0,iw,x] = Lut[:,nfrozen_a:nfrozen_a+nocc_act_a]
+            # # nvir_act x nocc_act
+            cont2_K[iw] -= numpy.sum(A * CI_a[iw])
+            F[x] += numpy.sum(Lvo[0,iw,x] * CI_a[iw])
+            # # beta contributions
+            T = (
+                    numpy.dot(
+                        theta_occ_real_b,
+                        rchol_b[x].reshape((nocc_b, nbasis)).T
+                        )
+                    +
+                    1j*numpy.dot(
+                        theta_occ_imag_b,
+                        rchol_b[x].reshape((nocc_b, nbasis)).T
+                       )
+                    )
+            exx = numpy.dot(T.ravel(), T.T.ravel())
+            X[x] += numpy.trace(T)
+            cont1_K[iw] += -0.5*exx
+            # add exchange contribution
+            # Ttilde[t,r] = theta_{c,t} rchol[c,r]
+            Lut_1 = (
+                    numpy.dot(
+                        theta_occ_real_b,
+                        rchol_act_b[x].reshape(nact, nbasis).T,
+                        )
+                    + 1j*numpy.dot(
+                        theta_occ_imag_b,
+                        rchol_act_b[x].reshape(nact, nbasis).T,
+                        )
+                    )
+            Lut_2 = numpy.dot(T, theta_act_b)
+            # index a gets contracted with CI tensor later so only need the
+            # occupied orbitals in the active space not the full set of occupied.
+            Lut = (Lut_1 - Lut_2).T.copy()
+            # (nvir_act x nocc) x (nocc x nocc_act)
+            A = numpy.dot(Lut, T[nfrozen_b:nfrozen_b+nocc_act_b,:].copy().T)
+            Lvo[1,iw,x] = Lut[:,nfrozen_b:nfrozen_b+nocc_act_b]
+            # nvir_act x nocc_act
+            cont2_K[iw] -= numpy.sum(A * CI_b[iw])
+            F[x] += numpy.sum(Lvo[1,iw,x] * CI_b[iw])
+        cont1_J[iw] += 0.5*numpy.dot(X, X)
+        cont2_J[iw] += numpy.dot(F, X)
+
+    return cont1_J+cont1_K, cont2_J+cont2_K
+
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(
+        system,
+        ham,
+        walker_batch,
+        trial,
+        max_mem=2.0):
+    """Optimized local energy evaluation using Wick's theorem.
+
+    TODO : make memory buffers global via eventual config.
+    """
     nwalkers = walker_batch.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
@@ -829,82 +968,24 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    # contribution 1 (disconnected)
-    start = time.time()
-    cont1 = two_body_energy_uhf(
-            trial,
-            walker_batch
-            )
-    P0 = G0a + G0b
-
-    Xa = numpy.dot(G0a.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
-    Xb = numpy.dot(G0b.reshape((-1, nbasis*nbasis)), ham.chol_vecs)
-    LXa = numpy.einsum("wx,mx->wm", Xa, ham.chol_vecs, optimize=True)
-    LXb = numpy.einsum("wx,mx->wm", Xb, ham.chol_vecs, optimize=True)
-    LXa = LXa.reshape((nwalkers, nbasis, nbasis))
-    LXb = LXb.reshape((nwalkers, nbasis, nbasis))
-
-    # useful intermediate
-    start = time.time()
-    act_orb = trial.act_orb_alpha
-    QCIGa = numpy.einsum(
-                'wpr,wrs,wsq->wpq',
-                walker_batch.Q0a[:,:,act_orb].copy(),
-                walker_batch.CIa,
-                G0Ha[:,act_orb].copy(),
-                optimize=True)
-    act_orb = trial.act_orb_beta
-    QCIGb = numpy.einsum(
-                'wpr,wrs,wsq->wpq',
-                walker_batch.Q0b[:,:,act_orb],
-                walker_batch.CIb,
-                G0Hb[:,act_orb],
-                optimize=True)
-
-    start = time.time()
-    cont2_Jaa = numpy.einsum('wpq,wpq->w', QCIGa, LXa, optimize=True)
-    cont2_Jbb = numpy.einsum('wpq,wpq->w', QCIGb, LXb, optimize=True)
-    cont2_Jab = numpy.einsum('wpq,wpq->w', QCIGa, LXb, optimize=True)
-    cont2_Jba = numpy.einsum('wpq,wpq->w', QCIGb, LXa, optimize=True)
-    cont2_J = cont2_Jaa + cont2_Jbb + cont2_Jab + cont2_Jba
-    cont2_J *= (ovlp0/ovlp)
-
-    # Second, Exchange-like term
-    na = walker_batch.nup
-    nb = walker_batch.ndown
-
-    Laa = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
-    Lbb = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128)
-    start = time.time()
-    cont2_Kaa = build_exchange_contributions_opt(
-                                    trial._rchola,
-                                    trial._rchola_act,
-                                    walker_batch.Ghalfa,
-                                    walker_batch.CIa,
-                                    Laa,
+    Lvo = numpy.zeros((2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
+    cont1, cont2 = build_contributions12(
+                                    trial._rchola, trial._rcholb,
+                                    trial._rchola_act, trial._rcholb_act,
+                                    walker_batch.Ghalfa, walker_batch.Ghalfb,
+                                    walker_batch.CIa, walker_batch.CIb,
+                                    Lvo,
                                     )
-    cont2_Kbb = build_exchange_contributions_opt(
-                                    trial._rcholb,
-                                    trial._rcholb_act,
-                                    walker_batch.Ghalfb,
-                                    walker_batch.CIb,
-                                    Lbb,
-                                    )
-    Laa = Laa.transpose((0, 2, 3, 1)).copy()
-    Lbb = Lbb.transpose((0, 2, 3, 1)).copy()
+    cont2 = (ovlp0/ovlp)*cont2
 
-    cont2_Kaa *= (ovlp0/ovlp)
-    cont2_Kbb *= (ovlp0/ovlp)
+    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
 
-    cont2_K = cont2_Kaa + cont2_Kbb
 
-    start = time.time()
     dets_a_full, dets_b_full = compute_determinants_batched(
             walker_batch.Ghalfa, walker_batch.Ghalfb, trial
             )
     ndets = len(trial.coeffs)
-    energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     cphase_a = trial.coeffs.conj() * trial.phase_a
     cphase_b = trial.coeffs.conj() * trial.phase_b
     ovlpa = dets_a_full * trial.phase_a[None,:]
@@ -912,6 +993,283 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     c_phasea_ovlpb = cphase_a[None,:] * ovlpb
     c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
     cphase_ab = cphase_a * trial.phase_b
+    start = time.time()
+    cont3 = numpy.zeros_like(cont2)
+    det_sizes_a = max([
+        max([len(trial.cre_ex_a_chunk[ichunk][i])*i*i for i in range(1, trial.max_excite+1)])
+        for ichunk in range(trial.ndet_chunks)
+        ])
+    det_sizes_b = max(
+            max([len(trial.cre_ex_b_chunk[ichunk][i])*i*i for i in range(1, trial.max_excite+1)])
+            for ichunk in range(trial.ndet_chunks)
+            )
+    max_size = max(det_sizes_a, det_sizes_b)
+    det_mat_buffer = numpy.zeros((2*nwalkers*max_size), dtype=numpy.complex128)
+    # energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    for ichunk in range(trial.ndet_chunks):
+        ndets_chunk = trial.ndets_per_chunk[ichunk]
+        alpha_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        beta_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        alpha_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        beta_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        for iexcit in range(1, trial.max_excite+1):
+            ndets_a = len(trial.cre_ex_a_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_a, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1))
+            cofactor_matrix_a = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
+            _start = time.time()
+            if ndets_a > 0:
+                wk.build_det_matrix(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        walker_batch.Ghalfa,
+                        det_mat_a)
+                if iexcit == 1:
+                    _start = time.time()
+                    wk.fill_os_singles(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            trial.nfrozen,
+                            Laa,
+                            alpha_os_buffer,
+                            trial.slices_alpha_chunk[ichunk][1]
+                            )
+                elif iexcit == 2:
+                    _start = time.time()
+                    wk.fill_os_doubles(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        G0a,
+                        Laa,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][2])
+                elif iexcit == 3:
+                    _start = time.time()
+                    wk.fill_os_triples(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            trial.nfrozen,
+                            G0a,
+                            Laa,
+                            alpha_os_buffer,
+                            trial.slices_alpha_chunk[ichunk][3]
+                            )
+                else:
+                    _start = time.time()
+                    wk.fill_os_nfold(
+                                trial.cre_ex_a_chunk[ichunk][iexcit],
+                                trial.anh_ex_a_chunk[ichunk][iexcit],
+                                trial.occ_map_a,
+                                det_mat_a,
+                                cofactor_matrix_a,
+                                Laa,
+                                alpha_os_buffer,
+                                trial.slices_alpha_chunk[ichunk][iexcit]
+                            )
+                if iexcit >= 2 and ndets_a > 0:
+                    if iexcit == 2:
+                        _start = time.time()
+                        wk.get_ss_doubles(
+                                trial.cre_ex_a_chunk[ichunk][iexcit],
+                                trial.anh_ex_a_chunk[ichunk][iexcit],
+                                trial.occ_map_a,
+                                Laa,
+                                alpha_ss_buffer,
+                                trial.slices_alpha_chunk[ichunk][iexcit])
+                    else:
+                        _start = time.time()
+                        wk.get_ss_nfold(
+                                    trial.cre_ex_a_chunk[ichunk][iexcit],
+                                    trial.anh_ex_a_chunk[ichunk][iexcit],
+                                    trial.occ_map_a,
+                                    det_mat_a,
+                                    cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                                    Laa,
+                                    alpha_ss_buffer,
+                                    trial.slices_alpha_chunk[ichunk][iexcit]
+                                )
+            ndets_b = len(trial.cre_ex_b_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_b, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1))
+            cofactor_matrix_b = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
+            if ndets_b > 0:
+                wk.build_det_matrix(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        trial.nfrozen,
+                        walker_batch.Ghalfb,
+                        det_mat_b)
+                if iexcit == 1:
+                    wk.fill_os_singles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][1]
+                            )
+                elif iexcit == 2:
+                    wk.fill_os_doubles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][2]
+                            )
+                elif iexcit == 3:
+                    wk.fill_os_triples(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            trial.nfrozen,
+                            G0b,
+                            Lbb,
+                            beta_os_buffer,
+                            trial.slices_beta_chunk[ichunk][3]
+                            )
+                else:
+                    wk.fill_os_nfold(
+                                    trial.cre_ex_b_chunk[ichunk][iexcit],
+                                    trial.anh_ex_b_chunk[ichunk][iexcit],
+                                    trial.occ_map_b,
+                                    det_mat_b,
+                                    cofactor_matrix_b,
+                                    Lbb,
+                                    beta_os_buffer,
+                                    trial.slices_beta_chunk[ichunk][iexcit]
+                                    )
+            if iexcit >= 2 and ndets_b > 0:
+                if iexcit == 2:
+                    wk.get_ss_doubles(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            Lbb,
+                            beta_ss_buffer,
+                            trial.slices_beta_chunk[ichunk][iexcit]
+                            )
+                else:
+                    wk.get_ss_nfold(
+                            trial.cre_ex_b_chunk[ichunk][iexcit],
+                            trial.anh_ex_b_chunk[ichunk][iexcit],
+                            trial.occ_map_b,
+                            det_mat_b,
+                            cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
+                            Lbb,
+                            beta_ss_buffer,
+                            trial.slices_beta_chunk[ichunk][iexcit]
+                            )
+
+        # orders buffer by determinant index not alpha/beta index
+        ma = trial.excit_map_a_chunk[ichunk]
+        mb = trial.excit_map_b_chunk[ichunk]
+        # 1 for reference determinant
+        start = 1 + ichunk * trial.ndets_chunk_max
+        # inclusive of endpoint
+        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.ndets)
+        energy_os = numpy.einsum(
+                'wJx,wJx,J->w',
+                alpha_os_buffer[:,ma],
+                beta_os_buffer[:,mb],
+                cphase_ab[start:end],
+                optimize=True)
+        energy_ss = numpy.einsum(
+                'wJ,wJ->w',
+                alpha_ss_buffer[:,ma],
+                c_phasea_ovlpb[:,start:end],
+                optimize=True)
+        energy_ss += numpy.einsum(
+                'wJ,wJ->w',
+                beta_ss_buffer[:,mb],
+                c_phaseb_ovlpa[:,start:end],
+                optimize=True)
+
+        cont3 += (energy_os + energy_ss)*(ovlp0/ovlp)
+    e2b = cont1 + cont2 + cont3
+
+    walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
+    walker_energies[:,0] = e1b + e2b
+    walker_energies[:,1] = e1b
+    walker_energies[:,2] = e2b
+    return walker_energies
+
+def local_energy_multi_det_trial_wicks_batch_opt(
+        system,
+        ham,
+        walker_batch,
+        trial,
+        max_mem=2.0):
+    """Optimized local energy evaluation using Wick's theorem.
+
+    TODO : make memory buffers global via eventual config.
+    """
+    nwalkers = walker_batch.nwalkers
+    nbasis = ham.nbasis
+    nchol = ham.nchol
+    nalpha = system.nup
+    nbeta = system.ndown
+    Ga = walker_batch.Ga.reshape((nwalkers, nbasis*nbasis))
+    Gb = walker_batch.Gb.reshape((nwalkers, nbasis*nbasis))
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
+
+    ovlpa0 = walker_batch.det_ovlpas[:,0]
+    ovlpb0 = walker_batch.det_ovlpbs[:,0]
+    ovlp0 = ovlpa0 * ovlpb0
+    ovlp = walker_batch.ovlp
+
+    # useful variables
+    G0a = walker_batch.G0a
+    G0b = walker_batch.G0b
+    G0Ha = walker_batch.Ghalfa
+    G0Hb = walker_batch.Ghalfb
+    Q0a = walker_batch.Q0a
+    Q0b = walker_batch.Q0b
+    CIa = walker_batch.CIa
+    CIb = walker_batch.CIb
+
+    Lvo = numpy.zeros((2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
+    cont1, cont2 = build_contributions12(
+                                    trial._rchola, trial._rcholb,
+                                    trial._rchola_act, trial._rcholb_act,
+                                    walker_batch.Ghalfa, walker_batch.Ghalfb,
+                                    walker_batch.CIa, walker_batch.CIb,
+                                    Lvo,
+                                    )
+    cont2 = (ovlp0/ovlp)*cont2
+
+    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
+
+
+    dets_a_full, dets_b_full = compute_determinants_batched(
+            walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+            )
+    ndets = len(trial.coeffs)
+    cphase_a = trial.coeffs.conj() * trial.phase_a
+    cphase_b = trial.coeffs.conj() * trial.phase_b
+    ovlpa = dets_a_full * trial.phase_a[None,:]
+    ovlpb = dets_b_full * trial.phase_b[None,:]
+    c_phasea_ovlpb = cphase_a[None,:] * ovlpb
+    c_phaseb_ovlpa = cphase_b[None,:] * ovlpa
+    cphase_ab = cphase_a * trial.phase_b
+    energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
+    energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     alpha_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
@@ -919,12 +1277,17 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     start = time.time()
     map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
     map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
-    slices_alpha, slices_beta = build_slices(trial)
+    det_sizes_a = max([len(trial.cre_ex_a[i])*i*i for i in range(1, trial.max_excite+1)])
+    det_sizes_b = max([len(trial.cre_ex_b[i])*i*i for i in range(1, trial.max_excite+1)])
+    max_size = max(det_sizes_a, det_sizes_b)
+    det_mat_buffer = numpy.zeros((2*nwalkers*max_size), dtype=numpy.complex128)
     for iexcit in range(1, trial.max_excite+1):
         ndets_a = len(trial.cre_ex_a[iexcit])
-        det_mat_a = numpy.zeros((nwalkers, ndets_a, iexcit, iexcit), dtype=numpy.complex128)
-        # defined here for reuse
-        cofactor_matrix_a = numpy.zeros((nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        det_size = (nwalkers, ndets_a, iexcit, iexcit)
+        nelem_det = int(numpy.prod(det_size))
+        det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
+        cof_size = (nwalkers, ndets_a, max(iexcit-1,1), max(iexcit-1,1))
+        cofactor_matrix_a = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
         _start = time.time()
         if ndets_a > 0:
             wk.build_det_matrix(
@@ -943,7 +1306,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.nfrozen,
                         Laa,
                         alpha_os_buffer,
-                        slices_alpha[1]
+                        trial.slices_alpha[1]
                         )
             elif iexcit == 2:
                 _start = time.time()
@@ -955,7 +1318,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                     G0a,
                     Laa,
                     alpha_os_buffer,
-                    slices_alpha[2])
+                    trial.slices_alpha[2])
             elif iexcit == 3:
                 _start = time.time()
                 wk.fill_os_triples(
@@ -966,7 +1329,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         G0a,
                         Laa,
                         alpha_os_buffer,
-                        slices_alpha[3]
+                        trial.slices_alpha[3]
                         )
             else:
                 _start = time.time()
@@ -978,7 +1341,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                             cofactor_matrix_a,
                             Laa,
                             alpha_os_buffer,
-                            slices_alpha[iexcit]
+                            trial.slices_alpha[iexcit]
                         )
             if iexcit >= 2 and ndets_a > 0:
                 if iexcit == 2:
@@ -989,7 +1352,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                             trial.occ_map_a,
                             Laa,
                             alpha_ss_buffer,
-                            slices_alpha[iexcit])
+                            trial.slices_alpha[iexcit])
                 else:
                     _start = time.time()
                     wk.get_ss_nfold(
@@ -1000,11 +1363,14 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 cofactor_matrix_a[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                                 Laa,
                                 alpha_ss_buffer,
-                                slices_alpha[iexcit]
+                                trial.slices_alpha[iexcit]
                             )
         ndets_b = len(trial.cre_ex_b[iexcit])
-        det_mat_b = numpy.zeros((nwalkers, ndets_b, iexcit, iexcit), dtype=numpy.complex128)
-        cofactor_matrix_b = numpy.zeros((nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1)), dtype=numpy.complex128)
+        det_size = (nwalkers, ndets_b, iexcit, iexcit)
+        nelem_det = int(numpy.prod(det_size))
+        det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
+        cof_size = (nwalkers, ndets_b, max(iexcit-1,1), max(iexcit-1,1))
+        cofactor_matrix_b = det_mat_buffer[nelem_det:nelem_det+numpy.prod(cof_size)].reshape(cof_size)
         if ndets_b > 0:
             wk.build_det_matrix(
                     trial.cre_ex_b[iexcit],
@@ -1021,7 +1387,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.nfrozen,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[1]
+                        trial.slices_beta[1]
                         )
             elif iexcit == 2:
                 wk.fill_os_doubles(
@@ -1032,7 +1398,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         G0b,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[2]
+                        trial.slices_beta[2]
                         )
             elif iexcit == 3:
                 wk.fill_os_triples(
@@ -1043,7 +1409,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         G0b,
                         Lbb,
                         beta_os_buffer,
-                        slices_beta[3]
+                        trial.slices_beta[3]
                         )
             else:
                 wk.fill_os_nfold(
@@ -1054,7 +1420,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                                 cofactor_matrix_b,
                                 Lbb,
                                 beta_os_buffer,
-                                slices_beta[iexcit]
+                                trial.slices_beta[iexcit]
                                 )
         if iexcit >= 2 and ndets_b > 0:
             if iexcit == 2:
@@ -1064,7 +1430,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         trial.occ_map_b,
                         Lbb,
                         beta_ss_buffer,
-                        slices_beta[iexcit]
+                        trial.slices_beta[iexcit]
                         )
             else:
                 wk.get_ss_nfold(
@@ -1075,7 +1441,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
                         cofactor_matrix_b[:,:,:max(iexcit-2,1),:max(iexcit-2,1)],
                         Lbb,
                         beta_ss_buffer,
-                        slices_beta[iexcit]
+                        trial.slices_beta[iexcit]
                         )
 
     bufferab = numpy.zeros_like(alpha_os_buffer)
@@ -1091,7 +1457,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walker_batch, tria
     energy_ss += numpy.einsum('wJ,wJ->w', bufferbb, c_phaseb_ovlpa, optimize=True)
 
     cont3 = (energy_os + energy_ss)*(ovlp0/ovlp)
-    e2b = cont1 + cont2_J + cont2_K + cont3
+    e2b = cont1 + cont2 + cont3
 
     walker_energies = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
     walker_energies[:,0] = e1b + e2b

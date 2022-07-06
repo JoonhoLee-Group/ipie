@@ -7,8 +7,11 @@ from ipie.estimators.local_energy_sd import local_energy_single_det_rhf_batch,\
                                             local_energy_single_det_batch_gpu,\
                                             local_energy_single_det_batch
 from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked, local_energy_single_det_uhf_batch_chunked_gpu
-from ipie.estimators.local_energy_wicks import local_energy_multi_det_trial_wicks_batch,\
-                                               local_energy_multi_det_trial_wicks_batch_opt
+from ipie.estimators.local_energy_wicks import (
+        local_energy_multi_det_trial_wicks_batch,
+        local_energy_multi_det_trial_wicks_batch_opt,
+        local_energy_multi_det_trial_wicks_batch_opt_chunked
+        )
 from ipie.utils.misc import is_cupy
 from numba import jit
 
@@ -36,6 +39,9 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and not trial.optimized:
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
         return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walker_batch, trial)
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and trial.optimized == True and trial.ndet_chunks > 1:
+        # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
+        return local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walker_batch, trial)
     elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == True and trial.optimized == True:
         # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
         return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walker_batch, trial)
