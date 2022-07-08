@@ -41,7 +41,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                         walker_opts=walker_opts, index=index,
                         nprop_tot=nprop_tot, nbp=nbp, mpi_handler=mpi_handler)
         self.name = "MultiDetTrialWalkerBatch"
-        self.ndets = trial.psi.shape[0]
+        self.ndets = trial.ndets
 
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of
