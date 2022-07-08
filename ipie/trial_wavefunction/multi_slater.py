@@ -36,6 +36,24 @@ class MultiSlater(object):
         self.name = "MultiSlater"
         self.mixed_precision = hamiltonian.mixed_precision
         self.chunked = False
+        self.wicks = get_input_value(
+                        options,
+                        'wicks',
+                        default=False,
+                        verbose=verbose
+                        )
+        self.use_wicks_helper = get_input_value(
+                        options,
+                        'use_wicks_helper',
+                        default=False,
+                        verbose=verbose
+                        )
+        self.optimized = get_input_value(
+                            options,
+                            'optimized',
+                            default=False,
+                            alias=['optimize', 'optimise', 'optimised'],
+                            verbose=verbose)
         # TODO : Fix for MSD.
         # This is for the overlap trial
         if len(wfn) == 3:
@@ -58,6 +76,11 @@ class MultiSlater(object):
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
 
+        self.ndets = get_input_value(
+                        options,
+                        'ndets',
+                        default=len(self.coeffs),
+                        verbose=verbose)
         self.compute_trial_energy = get_input_value(
                                         options,
                                         'compute_trial_energy',
@@ -70,11 +93,6 @@ class MultiSlater(object):
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
 
-        self.ndets = get_input_value(
-                        options,
-                        'ndets',
-                        default=len(self.coeffs),
-                        verbose=verbose)
         # if self.verbose:
             # print("# Setting ndets: {}".format(self.ndets))
 
@@ -99,18 +117,6 @@ class MultiSlater(object):
             else:
                 self.init = self.psi.copy()
 
-        self.wicks = get_input_value(
-                        options,
-                        'wicks',
-                        default=False,
-                        verbose=verbose
-                        )
-        self.use_wicks_helper = get_input_value(
-                        options,
-                        'use_wicks_helper',
-                        default=False,
-                        verbose=verbose
-                        )
         self.ndets_props = get_input_value(
                         options,
                         'ndets_for_trial_props',
@@ -118,12 +124,6 @@ class MultiSlater(object):
                         alias=['ndets_prop'],
                         verbose=verbose
                         )
-        self.optimized = get_input_value(
-                            options,
-                            'optimized',
-                            default=False,
-                            alias=['optimize', 'optimise', 'optimised'],
-                            verbose=verbose)
         self.ndet_chunks = get_input_value(
                         options,
                         'ndet_chunks',
@@ -432,8 +432,12 @@ class MultiSlater(object):
     def from_phmsd(self, nup, ndown, nbasis, wfn, orbs):
         ndets = len(wfn[0])
         ne = nup + ndown
-        self.psi = numpy.zeros((ndets,nbasis,ne),
-                                dtype=numpy.float64)
+        if self.wicks:
+            self.psi = numpy.zeros((1,nbasis,ne),
+                                    dtype=numpy.float64)
+        else:
+            self.psi = numpy.zeros((ndets,nbasis,ne),
+                                    dtype=numpy.float64)
         if self.verbose:
             print("# Creating trial wavefunction from CI-like expansion.")
         if orbs is None:
@@ -447,9 +451,13 @@ class MultiSlater(object):
         self.occa = numpy.array(wfn[1], dtype=numpy.int32)
         self.occb = numpy.array(wfn[2], dtype=numpy.int32)
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
-        for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
-            self.psi[idet,:,:nup] = I[:,occa]
-            self.psi[idet,:,nup:] = I[:,occb]
+        if self.wicks:
+            self.psi[0,:,:nup] = I[:,wfn[1][0]]
+            self.psi[0,:,nup:] = I[:,wfn[2][0]]
+        else:
+            for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
+                self.psi[idet,:,:nup] = I[:,occa]
+                self.psi[idet,:,nup:] = I[:,occb]
 
     def recompute_ci_coeffs(self, nup, ndown, ham):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
