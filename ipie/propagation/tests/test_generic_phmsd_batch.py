@@ -149,7 +149,8 @@ def test_phmsd_overlap_batch():
                      ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
+    trial = MultiSlater(system, ham, wfn, init=init)
+    trial_wicks = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
 
     numpy.random.seed(70)
 
@@ -164,8 +165,8 @@ def test_phmsd_overlap_batch():
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
 
     ovlps0 = calc_overlap_multi_det(walker_batch, trial)
-    ovlps = calc_overlap_multi_det_wicks(walker_batch, trial)
-    ovlps_opt = calc_overlap_multi_det_wicks_opt(walker_batch, trial)
+    ovlps = calc_overlap_multi_det_wicks(walker_batch, trial_wicks)
+    ovlps_opt = calc_overlap_multi_det_wicks_opt(walker_batch, trial_wicks)
     for iw in range(nwalkers):
         assert numpy.allclose(walkers[iw].ovlp, walker_batch.ovlp[iw])
         assert numpy.allclose(ovlps[iw], walker_batch.ovlp[iw])
@@ -356,7 +357,7 @@ def test_phmsd_propagation_batch():
                      ecore=0,options = {"symmetry":False})
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks':True})
+    trial = MultiSlater(system, ham, wfn, init=init,options = {'wicks': False})
 
     numpy.random.seed(7)
 

@@ -140,8 +140,8 @@ def test_walker_energy():
     energies = numpy.zeros(nwalkers, dtype=numpy.complex128)
     for iw in range(nwalkers):
         for i in range(trial.ndets):
-            psia = trial.psi[i,:,:na]
-            psib = trial.psi[i,:,na:]
+            psia = trial_slow.psi[i,:,:na]
+            psib = trial_slow.psi[i,:,na:]
             oa = numpy.dot(psia.conj().T, init[:,:na])
             ob = numpy.dot(psib.conj().T, init[:,na:])
             isa = numpy.linalg.inv(oa)
