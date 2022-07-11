@@ -1,17 +1,19 @@
-import copy
 import cmath
-import h5py
+import copy
 import math
-import numpy
-import scipy.linalg
 import sys
 import time
+
+import h5py
+import numpy
+import scipy.linalg
+
+from ipie.legacy.walkers.multi_coherent import MultiCoherentWalker
+from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.multi_ghf import MultiGHFWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.walkers.multi_coherent import MultiCoherentWalker
-from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.walkers.stack import FieldConfig
+from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.utils.io import get_input_value
 from ipie.utils.misc import update_stack
 

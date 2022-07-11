@@ -1,11 +1,12 @@
-import numpy
-import cupy
-from numba import cuda
-from numba import vectorize
-import time
-from ipie.utils.pack import pack_cholesky, unpack_VHS_batch
-from ipie.utils.pack import pack_cholesky_fast
 import math
+import time
+
+import cupy
+import numpy
+from numba import cuda, vectorize
+
+from ipie.utils.pack import pack_cholesky, pack_cholesky_fast, unpack_VHS_batch
+
 
 @cuda.jit('void(int32[:],int32[:],complex128[:,:],complex128[:,:,:])',device=False)
 def unpack_VHS_batch_gpu(idx_i,idx_j,VHS_packed,VHS):

@@ -1,11 +1,14 @@
 import os
+
 # numpy.show_config()
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 
-from numba import jit
-import numpy as np
 import time
+
+import numpy as np
+from numba import jit
+
 
 @jit(nopython=True,fastmath=True)
 def force_bias_numba(rchol, walkers_batch_Ghalf):

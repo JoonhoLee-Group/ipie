@@ -1,19 +1,18 @@
 """Generate AFQMC data from PYSCF (molecular) simulation."""
+import time
+
 import h5py
 import numpy
-import time
 import scipy.linalg
-
-from pyscf import lib
-from pyscf import ao2mo, scf, fci
+from pyscf import ao2mo, fci, lib, scf
 from pyscf.tools import fcidump
 
-from ipie.utils.misc import dotdict
-from ipie.utils.io import write_qmcpack_sparse, write_qmcpack_dense, write_qmcpack_wfn
-from ipie.legacy.estimators.greens_function import gab
-
-from ipie.legacy.estimators.generic import local_energy_generic_cholesky
 from ipie.estimators.generic import core_contribution_cholesky
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky
+from ipie.legacy.estimators.greens_function import gab
+from ipie.utils.io import (write_qmcpack_dense, write_qmcpack_sparse,
+                           write_qmcpack_wfn)
+from ipie.utils.misc import dotdict
 
 
 def dump_ipie(

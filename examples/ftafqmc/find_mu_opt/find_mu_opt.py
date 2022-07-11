@@ -5,14 +5,16 @@ results stored in optimal.0.h5.
 
 Usage: srun -n 144 -N 4 python find_chem_pot.py
 """
+import sys
+
 import numpy
 from mpi4py import MPI
-import sys
+
+from ipie.analysis.thermal import analyse_energy
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.systems.ueg import UEG
-from ipie.qmc.options import QMCOpts
 from ipie.legacy.trial_density_matrices.onebody import OneBody
-from ipie.analysis.thermal import analyse_energy
+from ipie.qmc.options import QMCOpts
 
 
 def determine_nav(comm, options, mu, target):

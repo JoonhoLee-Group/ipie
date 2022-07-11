@@ -1,14 +1,12 @@
 import time
+
 import numpy
 import scipy.linalg
 
 try:
     from ipie.legacy.estimators.ueg_kernels import (
-        exchange_greens_function_per_qvec,
-        coulomb_greens_function_per_qvec,
-        build_J_opt,
-        build_K_opt,
-    )
+        build_J_opt, build_K_opt, coulomb_greens_function_per_qvec,
+        exchange_greens_function_per_qvec)
 except ImportError:
     pass
 
@@ -214,8 +212,9 @@ def fock_ueg(ham, G):
 
 
 def unit_test():
-    from ipie.legacy.systems.ueg import UEG
     import numpy as np
+
+    from ipie.legacy.systems.ueg import UEG
 
     inputs = {"nup": 7, "ndown": 7, "rs": 1.0, "ecut": 2.0}
     system = UEG(inputs, True)
@@ -232,8 +231,8 @@ def unit_test():
     etot, ekin, epot = local_energy_ueg(system, G=P)
     print("ERHF = {}, {}, {}".format(etot, ekin, epot))
 
-    from ipie.utils.linalg import exponentiate_matrix, reortho
     from ipie.legacy.estimators.greens_function import gab
+    from ipie.utils.linalg import exponentiate_matrix, reortho
 
     # numpy.random.seed()
     rCa = numpy.random.randn(nbsf, na)

@@ -1,17 +1,15 @@
 import numpy
 import pytest
-from ipie.legacy.hamiltonians.hubbard import Hubbard
-from ipie.systems.generic import Generic
-from ipie.legacy.estimators.thermal import (
-    greens_function,
-    one_rdm_from_G,
-    particle_number,
-)
+
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.trial_density_matrices.onebody import OneBody
-from ipie.legacy.trial_density_matrices.mean_field import MeanField
+from ipie.legacy.estimators.thermal import (greens_function, one_rdm_from_G,
+                                            particle_number)
+from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.thermal_propagation.hubbard import ThermalDiscrete
+from ipie.legacy.trial_density_matrices.mean_field import MeanField
+from ipie.legacy.trial_density_matrices.onebody import OneBody
 from ipie.legacy.walkers.thermal import ThermalWalker
+from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict, update_stack
 
 

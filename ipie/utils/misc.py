@@ -1,14 +1,15 @@
 """Various useful routines maybe not appropriate elsewhere"""
 
-import numpy
 import os
-import scipy.sparse
-import sys
-import subprocess
-import types
-import time
-from functools import reduce
 import socket
+import subprocess
+import sys
+import time
+import types
+from functools import reduce
+
+import numpy
+import scipy.sparse
 
 
 def is_cupy(obj):

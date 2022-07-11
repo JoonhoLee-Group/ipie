@@ -1,13 +1,15 @@
 import numpy
 import scipy.linalg
-from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.utils.linalg import sherman_morrison
-from ipie.legacy.walkers.stack import FieldConfig
-from ipie.walkers.walker_batch import WalkerBatch
-from ipie.utils.misc import get_numeric_names
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
+
 from ipie.estimators.greens_function_batch import greens_function
+from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
+    HarmonicOscillator
+from ipie.legacy.walkers.stack import FieldConfig
 from ipie.propagation.overlap import calc_overlap_single_det, get_calc_overlap
+from ipie.utils.linalg import sherman_morrison
+from ipie.utils.misc import get_numeric_names
+from ipie.walkers.walker_batch import WalkerBatch
 
 
 class SingleDetWalkerBatch(WalkerBatch):

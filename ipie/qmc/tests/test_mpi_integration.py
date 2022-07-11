@@ -1,12 +1,13 @@
-import numpy as np
 import json
 import os
-from mpi4py import MPI
-import pytest
 import uuid
 
+import numpy as np
+import pytest
+from mpi4py import MPI
+
 from ipie.analysis.extraction import extract_test_data_hdf5
-from ipie.qmc.calc import read_input, get_driver
+from ipie.qmc.calc import get_driver, read_input
 
 try:
     import pytest_mpi

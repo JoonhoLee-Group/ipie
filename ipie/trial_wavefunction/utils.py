@@ -1,8 +1,10 @@
-import numpy
 import sys
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.io import read_qmcpack_wfn_hdf, get_input_value
+
+import numpy
+
 from ipie.legacy.estimators.greens_function import gab_spin
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.io import get_input_value, read_qmcpack_wfn_hdf
 
 
 def get_trial_wavefunction(

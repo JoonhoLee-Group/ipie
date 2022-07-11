@@ -1,25 +1,20 @@
 import numpy
 
 try:
-    from ipie.legacy.estimators.ueg import local_energy_ueg
     from ipie.legacy.estimators.pw_fft import local_energy_pw_fft
+    from ipie.legacy.estimators.ueg import local_energy_ueg
 except ImportError as e:
     print(e)
-from ipie.legacy.estimators.hubbard import (
-    local_energy_hubbard,
-    local_energy_hubbard_ghf,
-    local_energy_hubbard_holstein,
-)
 from ipie.estimators.generic import local_energy_generic_opt
-from ipie.legacy.estimators.generic import (
-    local_energy_generic,
-    local_energy_generic_pno,
-    local_energy_generic_cholesky,
-    local_energy_generic_cholesky_opt,
-    local_energy_generic_cholesky_opt_stochastic,
-)
-from ipie.legacy.estimators.thermal import particle_number, one_rdm_from_G
 from ipie.legacy.estimators.ci import get_hmatel
+from ipie.legacy.estimators.generic import (
+    local_energy_generic, local_energy_generic_cholesky,
+    local_energy_generic_cholesky_opt,
+    local_energy_generic_cholesky_opt_stochastic, local_energy_generic_pno)
+from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
+                                            local_energy_hubbard_ghf,
+                                            local_energy_hubbard_holstein)
+from ipie.legacy.estimators.thermal import one_rdm_from_G, particle_number
 
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):

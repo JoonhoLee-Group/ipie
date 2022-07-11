@@ -1,10 +1,11 @@
 """Helper Routines for setting up a calculation"""
 # todo : handle more gracefully.
-import time
-import numpy
 import json
-import h5py
 import sys
+import time
+
+import h5py
+import numpy
 
 try:
     import mpi4py
@@ -18,14 +19,13 @@ try:
 except ImportError:
     parallel = False
 
-from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.estimators.handler import Estimators
-from ipie.utils.io import to_json, get_input_value
-from ipie.utils.misc import serialise
-from ipie.qmc.comm import FakeComm
-
-from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
+from ipie.legacy.walkers.handler import Walkers
+from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.comm import FakeComm
+from ipie.utils.io import get_input_value, to_json
+from ipie.utils.misc import serialise
 
 
 def init_communicator():

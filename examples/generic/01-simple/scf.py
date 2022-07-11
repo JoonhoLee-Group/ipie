@@ -1,4 +1,4 @@
-from pyscf import gto, scf, cc
+from pyscf import cc, gto, scf
 
 atom = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],

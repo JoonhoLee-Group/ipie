@@ -1,17 +1,17 @@
 import cmath
 import math
+import sys
+import time
+
 import numpy
 import scipy.sparse.linalg
 from scipy.linalg import sqrtm
-import sys
-import time
-from ipie.legacy.estimators.thermal import (
-    one_rdm_from_G,
-    inverse_greens_function_qr,
-)
+
+from ipie.legacy.estimators.thermal import (inverse_greens_function_qr,
+                                            one_rdm_from_G)
+from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import exponentiate_matrix
-from ipie.legacy.walkers.single_det import SingleDetWalker
 
 
 class PlaneWave(object):
@@ -643,14 +643,15 @@ class PlaneWave(object):
 
 def unit_test():
     import cProfile
-    from ipie.legacy.systems.ueg import UEG
-    from ipie.systems.pw_fft import PW_FFT
-    from ipie.legacy.estimators.ueg import local_energy_ueg
+
     from ipie.estimators.pw_fft import local_energy_pw_fft
-    from ipie.qmc.options import QMCOpts
+    from ipie.legacy.estimators.ueg import local_energy_ueg
+    from ipie.legacy.systems.ueg import UEG
     from ipie.legacy.trial_density_matrices.onebody import OneBody
-    from ipie.qmc.comm import FakeComm
     from ipie.legacy.walkers.thermal import ThermalWalker
+    from ipie.qmc.comm import FakeComm
+    from ipie.qmc.options import QMCOpts
+    from ipie.systems.pw_fft import PW_FFT
 
     beta = 16.0
     dt = 0.005

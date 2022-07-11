@@ -7,17 +7,17 @@ try:
     mpi_sum = MPI.SUM
 except ImportError:
     mpi_sum = None
-import scipy.linalg
 import time
-from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.greens_function import gab_mod_ovlp, gab_mod
-from ipie.legacy.estimators.thermal import particle_number, one_rdm_from_G
 
-from ipie.estimators.utils import H5EstimatorHelper
-from ipie.estimators.local_energy_batch import local_energy_batch
+import scipy.linalg
+
 from ipie.estimators.greens_function_batch import greens_function
-
-from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
+from ipie.estimators.local_energy_batch import local_energy_batch
+from ipie.estimators.utils import H5EstimatorHelper
+from ipie.legacy.estimators.greens_function import gab_mod, gab_mod_ovlp
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.thermal import one_rdm_from_G, particle_number
+from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 from ipie.utils.misc import dotdict, is_cupy
 
 

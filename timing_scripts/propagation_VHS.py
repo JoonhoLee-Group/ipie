@@ -1,5 +1,7 @@
-import numpy
 import time
+
+import numpy
+
 # import cProfile, pstats, io
 # from pstats import SortKey
 

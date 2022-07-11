@@ -1,11 +1,14 @@
-import numpy as np
-import time
 import os
+import time
+
+import numpy as np
+
 # numpy.show_config()
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 
 from numba import jit
+
 
 @jit(nopython=True,fastmath=True)
 def propagation_numba(VHS, walkers_batch_phi):

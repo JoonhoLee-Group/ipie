@@ -1,8 +1,10 @@
 import cmath
 import copy
-import numpy
 import math
+
+import numpy
 import scipy.linalg
+
 from ipie.legacy.estimators.thermal import one_rdm_from_G
 
 

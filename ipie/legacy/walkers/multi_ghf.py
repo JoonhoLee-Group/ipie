@@ -1,5 +1,7 @@
 import copy
+
 import numpy
+
 from ipie.legacy.estimators.hubbard import local_energy_hubbard_ghf
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 from ipie.utils.io import read_fortran_complex_numbers

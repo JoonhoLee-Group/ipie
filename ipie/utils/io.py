@@ -1,16 +1,15 @@
 import ast
-import h5py
 import json
-import numpy
 import os
-import scipy.sparse
 import sys
-from ipie.utils.misc import serialise, merge_dicts
-from ipie.utils.linalg import (
-    molecular_orbitals_rhf,
-    molecular_orbitals_uhf,
-    modified_cholesky,
-)
+
+import h5py
+import numpy
+import scipy.sparse
+
+from ipie.utils.linalg import (modified_cholesky, molecular_orbitals_rhf,
+                               molecular_orbitals_uhf)
+from ipie.utils.misc import merge_dicts, serialise
 
 
 def format_fixed_width_strings(strings):

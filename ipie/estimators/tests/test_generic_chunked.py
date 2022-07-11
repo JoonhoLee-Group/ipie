@@ -1,29 +1,22 @@
 import numpy
 import pytest
-from ipie.systems.generic import Generic
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.propagation.continuous import Continuous
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
-from ipie.estimators.generic import (
-    local_energy_cholesky_opt,
-)
 from mpi4py import MPI
-from ipie.utils.mpi import MPIHandler
 
-from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch,
-    local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf_batch,
-)
-
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.estimators.local_energy_sd_chunked import (
-    local_energy_single_det_uhf_batch_chunked,
-)
-from ipie.utils.pack import pack_cholesky
+from ipie.estimators.generic import local_energy_cholesky_opt
+from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
+                                             local_energy_single_det_rhf_batch,
+                                             local_energy_single_det_uhf_batch)
+from ipie.estimators.local_energy_sd_chunked import \
+    local_energy_single_det_uhf_batch_chunked
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.propagation.continuous import Continuous
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict, is_cupy
-from ipie.utils.mpi import get_shared_array, have_shared_mem
+from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
+from ipie.utils.pack import pack_cholesky
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()

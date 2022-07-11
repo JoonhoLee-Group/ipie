@@ -2,27 +2,24 @@
 """Run a reblocking analysis on ipie QMC output files."""
 
 import glob
-import h5py
 import json
+import warnings
+
+import h5py
 import numpy
 import pandas as pd
-import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     import pyblock
+
 import scipy.stats
-from ipie.analysis.extraction import (
-    extract_mixed_estimates,
-    extract_data,
-    get_metadata,
-    set_info,
-    extract_rdm,
-)
-from ipie.utils.misc import get_from_dict
-from ipie.utils.linalg import get_ortho_ao_mod
 
 from ipie.analysis.autocorr import reblock_by_autocorr
+from ipie.analysis.extraction import (extract_data, extract_mixed_estimates,
+                                      extract_rdm, get_metadata, set_info)
+from ipie.utils.linalg import get_ortho_ao_mod
+from ipie.utils.misc import get_from_dict
 
 
 def average_single(frame, delete=True, multi_sym=False):

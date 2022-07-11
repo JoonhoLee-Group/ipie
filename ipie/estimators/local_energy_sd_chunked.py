@@ -1,10 +1,10 @@
 import time
+
 import numpy
+
+from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
+                                             exx_kernel_batch_real_rchol)
 from ipie.utils.misc import is_cupy
-from ipie.estimators.local_energy_sd import (
-    exx_kernel_batch_real_rchol,
-    ecoul_kernel_batch_real_rchol_uhf,
-)
 
 
 def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial):

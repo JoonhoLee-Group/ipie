@@ -1,7 +1,8 @@
 import argparse
-import numpy as np
 import struct
 import sys
+
+import numpy as np
 
 from ipie.utils.io import write_qmcpack_wfn
 

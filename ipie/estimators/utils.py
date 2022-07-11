@@ -1,6 +1,6 @@
+import h5py
 import numpy
 import scipy
-import h5py
 
 
 class H5EstimatorHelper(object):

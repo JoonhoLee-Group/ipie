@@ -1,17 +1,15 @@
 import numpy
 import pytest
-from ipie.systems.generic import Generic
+
+from ipie.estimators.generic import (local_energy_cholesky_opt,
+                                     local_energy_generic_opt)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.estimators.generic import (
-    local_energy_generic_opt,
-    local_energy_cholesky_opt,
-)
 from ipie.legacy.estimators.generic import (
-    local_energy_generic_cholesky_opt_batched,
-    local_energy_generic_cholesky,
-)
+    local_energy_generic_cholesky, local_energy_generic_cholesky_opt_batched)
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
+
 
 # FDM Implement half rotated integrals
 # @pytest.mark.unit

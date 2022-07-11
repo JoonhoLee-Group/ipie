@@ -1,12 +1,14 @@
 import cmath
 import math
+import sys
+import time
+
 import numpy
 import scipy.sparse.linalg
-import time
-import sys
-from ipie.utils.linalg import exponentiate_matrix, reortho
+
 from ipie.legacy.propagation.operations import local_energy_bound
 from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.utils.linalg import exponentiate_matrix, reortho
 
 
 class PlaneWave(object):
@@ -191,9 +193,9 @@ def back_propagate_planewave(
 
 def unit_test():
     from ipie.legacy.systems.ueg import UEG
-    from ipie.qmc.options import QMCOpts
     from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
     from ipie.propagation.continuous import Continuous
+    from ipie.qmc.options import QMCOpts
 
     inputs = {"nup": 1, "ndown": 1, "rs": 1.0, "ecut": 1.0, "dt": 0.05, "nwalkers": 10}
 

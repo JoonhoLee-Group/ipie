@@ -1,11 +1,13 @@
-import numpy
 import os
+
+import numpy
 import pytest
-from ipie.legacy.systems.ueg import UEG
+
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.propagation.planewave import PlaneWave
-from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.utils.misc import dotdict
 
 

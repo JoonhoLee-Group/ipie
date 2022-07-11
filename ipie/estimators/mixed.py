@@ -7,14 +7,15 @@ try:
     mpi_sum = MPI.SUM
 except ImportError:
     mpi_sum = None
-import scipy.linalg
 import time
 
-from ipie.estimators.utils import H5EstimatorHelper
-from ipie.estimators.local_energy_batch import local_energy_batch as local_energy
-from ipie.estimators.greens_function_batch import greens_function
+import scipy.linalg
 
-from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
+from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.local_energy_batch import \
+    local_energy_batch as local_energy
+from ipie.estimators.utils import H5EstimatorHelper
+from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 from ipie.utils.misc import dotdict, is_cupy
 
 

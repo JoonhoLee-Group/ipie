@@ -1,19 +1,15 @@
 import math
+import sys
+
 import numpy
 import scipy.linalg
-import sys
-from ipie.legacy.estimators.thermal import (
-    greens_function,
-    particle_number,
-    one_rdm,
-    one_rdm_from_G,
-    one_rdm_stable,
-)
+
 from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.thermal import (greens_function, one_rdm,
+                                            one_rdm_from_G, one_rdm_stable,
+                                            particle_number)
 from ipie.legacy.trial_density_matrices.chem_pot import (
-    find_chemical_potential,
-    compute_rho,
-)
+    compute_rho, find_chemical_potential)
 from ipie.utils.misc import update_stack
 
 

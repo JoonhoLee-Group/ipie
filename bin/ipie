@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import sys
-from ipie.qmc.calc import setup_calculation
 import json
+import sys
+
+from ipie.qmc.calc import setup_calculation
 
 
 def main(input_file):

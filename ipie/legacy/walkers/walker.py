@@ -1,4 +1,5 @@
 import numpy
+
 from ipie.legacy.walkers.stack import FieldConfig
 
 

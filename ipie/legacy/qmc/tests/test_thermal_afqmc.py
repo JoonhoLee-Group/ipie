@@ -1,16 +1,16 @@
-import numpy
-from mpi4py import MPI
 import os
+
+import numpy
 import pytest
+from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_data
-from ipie.qmc.calc import setup_calculation
-from ipie.systems.generic import Generic
-from ipie.utils.testing import generate_hamiltonian
-
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
+from ipie.qmc.calc import setup_calculation
+from ipie.systems.generic import Generic
+from ipie.utils.testing import generate_hamiltonian
 
 
 @pytest.mark.driver

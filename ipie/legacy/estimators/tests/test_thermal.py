@@ -1,8 +1,9 @@
-import pytest
 import numpy
-from ipie.legacy.systems.ueg import UEG
-from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
+import pytest
+
 from ipie.legacy.estimators.thermal import entropy
+from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
+from ipie.legacy.systems.ueg import UEG
 
 
 def fermi_factor(ek, beta, mu):

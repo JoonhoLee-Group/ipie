@@ -1,16 +1,17 @@
 import numpy
 import pytest
-from ipie.systems.generic import Generic
-from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
-from ipie.legacy.propagation.hubbard import Hirsch
-from ipie.legacy.propagation.continuous import Continuous
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
-from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
-from ipie.legacy.walkers.handler import Walkers
-from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.utils.misc import dotdict
+
 from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
+from ipie.legacy.propagation.continuous import Continuous
+from ipie.legacy.propagation.hubbard import Hirsch
+from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
+from ipie.legacy.walkers.handler import Walkers
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.systems.generic import Generic
+from ipie.utils.misc import dotdict
 
 options = {"nx": 4, "ny": 4, "nup": 8, "ndown": 8, "U": 4}
 

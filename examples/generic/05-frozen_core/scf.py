@@ -1,4 +1,4 @@
-from pyscf import gto, scf, cc
+from pyscf import cc, gto, scf
 
 atom = gto.M(atom="P 0 0 0", basis="6-31G", verbose=4, spin=3, unit="Bohr")
 

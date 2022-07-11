@@ -1,6 +1,7 @@
-import numpy
 import h5py
-from pie.utils.io import write_qmcpack_wfn, write_qmcpack_dense, write_qmcpack_sparse
+import numpy
+from pie.utils.io import (write_qmcpack_dense, write_qmcpack_sparse,
+                          write_qmcpack_wfn)
 from pie.utils.linalg import modified_cholesky
 
 f = h5py.File("2FeIII_nat.h5", "r")

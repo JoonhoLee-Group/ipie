@@ -1,10 +1,12 @@
+import math
 import sys
+import time
+
 import numpy
 import scipy.linalg
 import scipy.sparse
+
 import ipie.utils
-import math
-import time
 from ipie.utils.io import write_qmcpack_sparse
 
 

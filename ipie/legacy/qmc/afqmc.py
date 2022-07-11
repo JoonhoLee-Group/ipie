@@ -1,25 +1,27 @@
 """Driver to perform AFQMC calculation"""
-import sys
-import json
-import time
-import numpy
-import warnings
-import uuid
-from math import exp
 import copy
+import json
+import sys
+import time
+import uuid
+import warnings
+from math import exp
+
 import h5py
+import numpy
+
 from ipie.legacy.estimators.handler import Estimators
 from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.hamiltonians.utils import get_hamiltonian
 from ipie.legacy.propagation.utils import get_propagator_driver
+from ipie.legacy.systems.utils import get_system
+from ipie.legacy.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.legacy.walkers.handler import Walkers
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
-from ipie.legacy.systems.utils import get_system
-from ipie.legacy.hamiltonians.utils import get_hamiltonian
-from ipie.legacy.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.utils.misc import get_git_revision_hash, get_sys_info, get_node_mem
-from ipie.utils.io import to_json, serialise, get_input_value
+from ipie.utils.io import get_input_value, serialise, to_json
+from ipie.utils.misc import get_git_revision_hash, get_node_mem, get_sys_info
 from ipie.utils.mpi import get_shared_comm
-from ipie.legacy.walkers.handler import Walkers
 
 
 class AFQMC(object):

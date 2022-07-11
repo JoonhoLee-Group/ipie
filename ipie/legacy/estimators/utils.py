@@ -1,6 +1,6 @@
+import h5py
 import numpy
 import scipy
-import h5py
 
 try:
     import pyfftw
@@ -10,7 +10,7 @@ import numpy
 import scipy
 
 try:
-    from scipy.fft._helper import next_fast_len, _init_nd_shape_and_axes
+    from scipy.fft._helper import _init_nd_shape_and_axes, next_fast_len
 except ModuleNotFoundError:
     pass
 

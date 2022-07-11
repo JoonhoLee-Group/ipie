@@ -1,10 +1,11 @@
-import numpy
 import h5py
+import numpy
 import scipy.sparse
-from pyscf import gto, scf, mcscf, fci, ao2mo, lib
+from pyscf import ao2mo, fci, gto, lib, mcscf, scf
+
 from ipie.systems.generic import Generic
 from ipie.utils.from_pyscf import generate_integrals
-from ipie.utils.io import write_qmcpack_wfn, write_qmcpack_dense, write_input
+from ipie.utils.io import write_input, write_qmcpack_dense, write_qmcpack_wfn
 
 nocca = 4
 noccb = 2

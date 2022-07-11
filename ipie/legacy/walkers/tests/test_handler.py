@@ -1,6 +1,5 @@
-import pytest
 import numpy
-
+import pytest
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD

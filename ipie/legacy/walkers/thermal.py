@@ -1,19 +1,16 @@
-import copy
 import cmath
+import copy
+
 import numpy
 import scipy.linalg
 
 from ipie.legacy.estimators.local_energy import local_energy_G
-from ipie.legacy.estimators.thermal import (
-    greens_function,
-    one_rdm_from_G,
-    particle_number,
-)
+from ipie.legacy.estimators.thermal import (greens_function, one_rdm_from_G,
+                                            particle_number)
 from ipie.legacy.walkers.stack import PropagatorStack
 from ipie.legacy.walkers.walker import Walker
-
 from ipie.utils.linalg import regularise_matrix_inverse
-from ipie.utils.misc import update_stack, get_numeric_names
+from ipie.utils.misc import get_numeric_names, update_stack
 
 
 class ThermalWalker(Walker):
@@ -615,8 +612,8 @@ class ThermalWalker(Walker):
 
 def unit_test():
     from ipie.legacy.systems.ueg import UEG
-    from ipie.legacy.trial_density_matrices.onebody import OneBody
     from ipie.legacy.thermal_propagation.planewave import PlaneWave
+    from ipie.legacy.trial_density_matrices.onebody import OneBody
     from ipie.qmc.options import QMCOpts
 
     inputs = {
@@ -730,9 +727,9 @@ def unit_test():
     # print(R)
 
     # Test walker green's function.
-    from ipie.legacy.hamiltonians.hubbard import Hubbard
-    from ipie.legacy.estimators.thermal import greens_function, one_rdm_from_G
     from ipie.legacy.estimators.hubbard import local_energy_hubbard
+    from ipie.legacy.estimators.thermal import greens_function, one_rdm_from_G
+    from ipie.legacy.hamiltonians.hubbard import Hubbard
 
     sys_dict = {
         "name": "Hubbard",

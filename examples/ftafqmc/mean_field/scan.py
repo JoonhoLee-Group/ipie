@@ -1,13 +1,14 @@
-from mpi4py import MPI
-from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
-from ipie.systems.generic import Generic
-from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.thermal import particle_number
-from ipie.legacy.trial_density_matrices.onebody import OneBody
-from ipie.legacy.trial_density_matrices.mean_field import MeanField
+import matplotlib.pyplot as pl
 import numpy
 import pandas as pd
-import matplotlib.pyplot as pl
+from mpi4py import MPI
+
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.thermal import particle_number
+from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
+from ipie.legacy.trial_density_matrices.mean_field import MeanField
+from ipie.legacy.trial_density_matrices.onebody import OneBody
+from ipie.systems.generic import Generic
 
 comm = MPI.COMM_WORLD
 

@@ -1,24 +1,22 @@
 import time
+
 import numpy
+from numba import jit
+
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf_batch,
-    local_energy_single_det_batch_einsum,
-    local_energy_single_det_batch_gpu,
-    local_energy_single_det_batch,
-)
+    local_energy_single_det_batch, local_energy_single_det_batch_einsum,
+    local_energy_single_det_batch_gpu, local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch)
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
-    local_energy_single_det_uhf_batch_chunked_gpu,
-)
+    local_energy_single_det_uhf_batch_chunked_gpu)
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
-    local_energy_multi_det_trial_wicks_batch_opt_chunked,
-)
+    local_energy_multi_det_trial_wicks_batch_opt_chunked)
 from ipie.utils.misc import is_cupy
-from numba import jit
+
 
 # TODO: should pass hamiltonian here and make it work for all possible types
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...

@@ -1,12 +1,13 @@
-import numpy
 import sys
 import time
 
-from ipie.hamiltonians.generic import read_integrals, construct_h1e_mod
+import numpy
+
+from ipie.hamiltonians.generic import construct_h1e_mod, read_integrals
 from ipie.hamiltonians.utils import get_generic_integrals
 from ipie.legacy.hamiltonians.generic import Generic
-from ipie.legacy.hamiltonians.ueg import UEG
 from ipie.legacy.hamiltonians.hubbard import Hubbard
+from ipie.legacy.hamiltonians.ueg import UEG
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
 

@@ -3,9 +3,10 @@
 import cmath
 import math
 from math import cos, pi, sqrt
-import numpy
+
 import numpy
 import scipy.linalg
+
 from ipie.utils.io import fcidump_header
 
 

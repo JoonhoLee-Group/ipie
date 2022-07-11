@@ -1,9 +1,10 @@
 import numpy
 import pandas as pd
-import scipy.stats
 import scipy.optimize
-from ipie.analysis.extraction import extract_data, set_info, get_metadata
+import scipy.stats
+
 from ipie.analysis.blocking import average_ratio
+from ipie.analysis.extraction import extract_data, get_metadata, set_info
 
 
 def analyse_energy(files):

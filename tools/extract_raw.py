@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import sys
+
 import h5py
 import numpy
-import sys
+
 from ipie.analysis.extraction import extract_mixed_estimates
 
 data = extract_mixed_estimates(sys.argv[1])

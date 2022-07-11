@@ -1,8 +1,10 @@
+import sys
+
 import h5py
 import numpy
-import scipy.sparse
 import scipy.linalg
-import sys
+import scipy.sparse
+
 from ipie.utils.io import to_qmcpack_complex
 
 

@@ -1,9 +1,11 @@
-import numpy
 import sys
+
+import numpy
+
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
-from ipie.systems.generic import Generic
 from ipie.legacy.systems.ueg import UEG
+from ipie.systems.generic import Generic
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
 

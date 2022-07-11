@@ -1,27 +1,29 @@
 #!/usr/bin/env python
 
 import glob
+
 import numpy
 
 try:
     import matplotlib.pyplot as pl
 except ImportError:
     pass
-import sys
-from ipie.analysis.thermal import analyse_energy, find_chem_pot
-from ipie.analysis.extraction import get_sys_param
-import scipy.optimize
-
 import argparse
+import json
 import os
 import sys
+
 import pandas as pd
-import json
+import scipy.optimize
+
+from ipie.analysis.extraction import get_sys_param
+from ipie.analysis.thermal import analyse_energy, find_chem_pot
 
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, "analysis"))
-from ipie.analysis.blocking import analyse_estimates
 import glob
+
+from ipie.analysis.blocking import analyse_estimates
 
 
 def parse_args(args):

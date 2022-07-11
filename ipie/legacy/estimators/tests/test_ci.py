@@ -1,8 +1,9 @@
 import pytest
-from ipie.legacy.systems.ueg import UEG
+
+from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
-from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
+from ipie.legacy.systems.ueg import UEG
 
 
 @pytest.mark.unit

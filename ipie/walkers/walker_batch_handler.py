@@ -1,20 +1,19 @@
-import copy
 import cmath
-import h5py
+import copy
 import math
-import numpy
-import scipy.linalg
 import sys
 import time
-from ipie.legacy.walkers.stack import FieldConfig
 
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-
-from ipie.utils.io import get_input_value
-from ipie.utils.misc import update_stack
+import h5py
+import numpy
+import scipy.linalg
 from mpi4py import MPI
-from ipie.utils.misc import is_cupy
+
+from ipie.legacy.walkers.stack import FieldConfig
+from ipie.utils.io import get_input_value
+from ipie.utils.misc import is_cupy, update_stack
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
 class WalkerBatchHandler(object):

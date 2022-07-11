@@ -1,18 +1,13 @@
 import numpy
 import scipy.linalg
-from ipie.legacy.estimators.thermal import (
-    one_rdm_stable,
-    particle_number,
-    entropy,
-    greens_function,
-)
-from ipie.legacy.estimators.local_energy import local_energy
+
 from ipie.legacy.estimators.fock import fock_matrix
-from ipie.legacy.trial_density_matrices.onebody import OneBody
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.estimators.thermal import (entropy, greens_function,
+                                            one_rdm_stable, particle_number)
 from ipie.legacy.trial_density_matrices.chem_pot import (
-    find_chemical_potential,
-    compute_rho,
-)
+    compute_rho, find_chemical_potential)
+from ipie.legacy.trial_density_matrices.onebody import OneBody
 
 
 class MeanField(OneBody):

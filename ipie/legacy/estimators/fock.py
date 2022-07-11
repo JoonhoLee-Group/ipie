@@ -1,6 +1,6 @@
-from ipie.legacy.estimators.ueg import fock_ueg
 from ipie.estimators.generic import fock_generic
 from ipie.legacy.estimators.hubbard import fock_hubbard
+from ipie.legacy.estimators.ueg import fock_ueg
 
 
 def fock_matrix(system, G):

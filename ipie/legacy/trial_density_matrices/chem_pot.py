@@ -1,6 +1,7 @@
 import numpy
+
 from ipie.legacy.estimators.thermal import one_rdm_stable, particle_number
-from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
+from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 
 
 def find_chemical_potential(

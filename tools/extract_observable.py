@@ -2,20 +2,21 @@
 """Exctact element of green's function"""
 
 import argparse
-import sys
-import numpy
-import os
-import pandas as pd
 import json
+import os
+import sys
+
+import numpy
+import pandas as pd
 
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, "analysis"))
 import matplotlib.pyplot as plt
+import matplotlib.pyplot as pl
 
 # from ipie.analysis.extraction import analysed_itcf
 # from ipie.analysis.extraction import analysed_energies, extract_hdf5_simple
 from ipie.analysis.extraction import extract_mixed_estimates, get_metadata
-import matplotlib.pyplot as pl
 
 
 def parse_args(args):

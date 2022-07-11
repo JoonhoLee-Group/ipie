@@ -5,16 +5,18 @@ By default data will be aggregated into a single output file with analysed_
 prefixed to input filename.
 """
 import argparse
+import json
 import os
 import sys
+
 import pandas as pd
-import json
 
 _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, "analysis"))
+import glob
+
 from ipie.analysis.blocking import analyse_estimates, average_fp
 from ipie.analysis.extraction import extract_data_sets
-import glob
 
 
 def parse_args(args):

@@ -1,11 +1,13 @@
 import os
 import unittest
+
 import numpy
 import pytest
 from mpi4py import MPI
-from ipie.systems.generic import Generic
+
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.hamiltonians.utils import get_generic_integrals
+from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
 
 

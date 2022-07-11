@@ -1,8 +1,10 @@
-import numpy
+import itertools
 import os
 import unittest
-import itertools
+
+import numpy
 from scipy.fftpack.helper import next_fast_len
+
 from ipie.legacy.estimators.greens_function import gab_mod
 from ipie.utils.testing import get_random_wavefunction
 

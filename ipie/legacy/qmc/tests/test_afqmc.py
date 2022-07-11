@@ -1,19 +1,18 @@
-import numpy
-from mpi4py import MPI
 import os
+
+import numpy
 import pytest
+from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_mixed_estimates, extract_rdm
-
+from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
+from ipie.legacy.qmc.afqmc import AFQMC
+from ipie.legacy.systems.ueg import UEG
+from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
 from ipie.qmc.calc import setup_calculation
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
-
-from ipie.legacy.qmc.afqmc import AFQMC
-from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.systems.ueg import UEG
-from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
-from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
 
 
 @pytest.mark.driver

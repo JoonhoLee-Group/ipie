@@ -1,20 +1,20 @@
 import os
+
 import pytest
 
 try:
-    from pyscf import gto, ao2mo, scf
-    from ipie.utils.from_pyscf import (
-        integrals_from_scf,
-        integrals_from_chkfile,
-        get_pyscf_wfn,
-        dump_ipie,
-    )
+    from pyscf import ao2mo, gto, scf
+
+    from ipie.utils.from_pyscf import (dump_ipie, get_pyscf_wfn,
+                                       integrals_from_chkfile,
+                                       integrals_from_scf)
 
     no_pyscf = False
 except (ImportError, OSError, ValueError):
     no_pyscf = True
 
-from ipie.utils.io import write_input, read_qmcpack_wfn_hdf, from_qmcpack_sparse
+from ipie.utils.io import (from_qmcpack_sparse, read_qmcpack_wfn_hdf,
+                           write_input)
 
 
 @pytest.mark.unit

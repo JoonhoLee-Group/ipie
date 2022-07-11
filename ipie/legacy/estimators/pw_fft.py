@@ -1,5 +1,6 @@
 try:
-    from ipie.legacy.estimators.ueg_kernels import exchange_greens_function_per_qvec
+    from ipie.legacy.estimators.ueg_kernels import \
+        exchange_greens_function_per_qvec
 except ImportError:
     pass
 
@@ -8,11 +9,12 @@ try:
 except ImportError:
     pass
 
-from ipie.legacy.estimators.ueg import coulomb_greens_function
-from ipie.legacy.estimators.utils import convolve
+import itertools
 
 import numpy
-import itertools
+
+from ipie.legacy.estimators.ueg import coulomb_greens_function
+from ipie.legacy.estimators.utils import convolve
 
 
 def local_energy_pw_fft(system, G, Ghalf, trial, two_rdm=None):
@@ -252,13 +254,13 @@ def local_energy_pw_fft_no_cython(system, G, Ghalf, two_rdm=None):
 
 def unit_test():
     import cProfile
-    from ipie.systems.pw_fft import PW_FFT
+
     import numpy as np
+
     from ipie.legacy.estimators.greens_function import gab_mod
-
-    from ipie.legacy.systems.ueg import UEG
     from ipie.legacy.estimators.ueg import local_energy_ueg
-
+    from ipie.legacy.systems.ueg import UEG
+    from ipie.systems.pw_fft import PW_FFT
     from ipie.utils.testing import get_random_wavefunction
 
     # ecuts = [128.0]

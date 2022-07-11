@@ -1,42 +1,34 @@
-import time
-import itertools
 import cmath
+import itertools
+import time
+
 import h5py
-
-from ipie.legacy.hamiltonians.hubbard import Hubbard
-from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from ipie.legacy.estimators.ci import simple_fci_bose_fermi, simple_fci
-
-from ipie.legacy.estimators.hubbard import (
-    local_energy_hubbard_holstein,
-    local_energy_hubbard,
-)
-from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
-from ipie.utils.linalg import reortho
-
-from ipie.legacy.estimators.greens_function import gab_spin
-
-from ipie.utils.linalg import diagonalise_sorted
-
-
-from ipie.legacy.estimators.greens_function import gab_spin
-
 import scipy
-from scipy.linalg import expm
 import scipy.sparse.linalg
+from scipy.linalg import expm
 from scipy.optimize import minimize
+
+from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
+from ipie.legacy.estimators.greens_function import gab_spin
+from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
+                                            local_energy_hubbard_holstein)
+from ipie.legacy.hamiltonians.hubbard import Hubbard
+from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
+from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
+    HarmonicOscillator
+from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
+from ipie.utils.linalg import diagonalise_sorted, reortho
 
 try:
     from jax.config import config
 
     config.update("jax_enable_x64", True)
     import jax
-    from jax import grad, jit
     import jax.numpy as np
     import jax.scipy.linalg as LA
     import numpy
+    from jax import grad, jit
 except (ModuleNotFoundError, ImportError):
     import numpy
 

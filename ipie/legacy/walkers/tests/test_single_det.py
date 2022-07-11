@@ -1,13 +1,14 @@
 import numpy
 import pytest
+
+from ipie.legacy.estimators.greens_function import gab
+from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.hamiltonians.hubbard import Hubbard
-from ipie.systems.generic import Generic
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.legacy.estimators.greens_function import gab
-from ipie.legacy.estimators.local_energy import local_energy
 
 
 @pytest.mark.unit

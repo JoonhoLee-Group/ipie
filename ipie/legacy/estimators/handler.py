@@ -3,12 +3,14 @@
 from __future__ import print_function
 
 import copy
-import h5py
-import numpy
 import os
-import scipy.linalg
 import time
 import warnings
+
+import h5py
+import numpy
+import scipy.linalg
+
 from ipie.legacy.estimators.back_propagation import BackPropagation
 from ipie.legacy.estimators.itcf import ITCF
 from ipie.legacy.estimators.mixed import Mixed

@@ -1,15 +1,15 @@
 import copy
+import random
+
 import numpy
 import scipy.linalg
-import random
-from ipie.utils.linalg import sherman_morrison
+
 from ipie.legacy.estimators.local_energy import local_energy_multi_det_hh
-from ipie.utils.misc import get_numeric_names
-from ipie.legacy.walkers.stack import PropagatorStack, FieldConfig
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import (
-    HarmonicOscillator,
-    HarmonicOscillatorMomentum,
-)
+    HarmonicOscillator, HarmonicOscillatorMomentum)
+from ipie.legacy.walkers.stack import FieldConfig, PropagatorStack
+from ipie.utils.linalg import sherman_morrison
+from ipie.utils.misc import get_numeric_names
 
 
 class MultiCoherentWalker(object):

@@ -1,37 +1,33 @@
-import numpy
 import os
+
+import numpy
 import pytest
-from ipie.systems.generic import Generic
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.propagation.continuous import Continuous
-from ipie.utils.misc import dotdict
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.legacy.estimators.greens_function import gab_spin, gab
 
 from ipie.estimators.greens_function_batch import (
-    greens_function_multi_det_wicks,
-    greens_function_multi_det,
-    greens_function_multi_det_wicks_opt,
-)
-from ipie.estimators.local_energy_batch import local_energy_multi_det_trial_batch
+    greens_function_multi_det, greens_function_multi_det_wicks,
+    greens_function_multi_det_wicks_opt)
+from ipie.estimators.local_energy_batch import \
+    local_energy_multi_det_trial_batch
 from ipie.estimators.local_energy_wicks import (
+    fill_opp_spin_factors_batched, fill_same_spin_contribution_batched,
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
-    local_energy_multi_det_trial_wicks_batch_opt_chunked,
-    fill_opp_spin_factors_batched,
-    fill_same_spin_contribution_batched,
-)
-
+    local_energy_multi_det_trial_wicks_batch_opt_chunked)
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.estimators.greens_function import gab, gab_spin
 from ipie.legacy.estimators.local_energy import local_energy_multi_det
-from ipie.propagation.overlap import (
-    get_overlap_one_det_wicks,
-    get_det_matrix_batched,
-    compute_determinants_batched,
-)
-from ipie.utils.linalg import minor_mask4, minor_mask
+from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.propagation.continuous import Continuous
+from ipie.propagation.overlap import (compute_determinants_batched,
+                                      get_det_matrix_batched,
+                                      get_overlap_one_det_wicks)
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.linalg import minor_mask, minor_mask4
+from ipie.utils.misc import dotdict
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 
 
 @pytest.mark.unit
@@ -176,9 +172,10 @@ def test_cofactor_matrix_4():
     cofactor_matrix = numpy.zeros(
         (nwalkers, ndets_b, nexcit - 2, nexcit - 2), dtype=numpy.complex128
     )
+    import itertools
+
     from ipie.propagation.wicks_kernels import get_cofactor_matrix_4_batched
     from ipie.utils.linalg import minor_mask4
-    import itertools
 
     for iex, jex, kex, lex in itertools.product(range(nexcit), repeat=4):
         if kex > iex and lex > jex:
@@ -431,12 +428,11 @@ def test_kernels_energy():
     greens_function_multi_det_wicks_opt(walker_batch, trial)
     from ipie.estimators.kernels.cpu import wicks as wk
     from ipie.estimators.local_energy_wicks import (
-        fill_opp_spin_factors_batched_singles,
         fill_opp_spin_factors_batched_doubles_chol,
+        fill_opp_spin_factors_batched_singles,
         fill_opp_spin_factors_batched_triples_chol,
-        get_same_spin_double_contribution_batched_contr,
         fill_same_spin_contribution_batched_contr,
-    )
+        get_same_spin_double_contribution_batched_contr)
 
     ndets = trial.ndets
     nchol = ham.nchol
@@ -552,7 +548,8 @@ def test_kernels_energy():
     )
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import fill_opp_spin_factors_batched_chol
+    from ipie.estimators.local_energy_wicks import \
+        fill_opp_spin_factors_batched_chol
 
     fill_opp_spin_factors_batched_chol(
         iexcit,
@@ -591,9 +588,8 @@ def test_kernels_energy():
     )
     ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import (
-        fill_same_spin_contribution_batched_contr,
-    )
+    from ipie.estimators.local_energy_wicks import \
+        fill_same_spin_contribution_batched_contr
 
     fill_same_spin_contribution_batched_contr(
         iexcit,
@@ -661,12 +657,11 @@ def test_kernels_gf():
 
     from ipie.estimators.kernels.cpu import wicks as wk
     from ipie.estimators.local_energy_wicks import (
-        fill_opp_spin_factors_batched_singles,
         fill_opp_spin_factors_batched_doubles_chol,
+        fill_opp_spin_factors_batched_singles,
         fill_opp_spin_factors_batched_triples_chol,
-        get_same_spin_double_contribution_batched_contr,
         fill_same_spin_contribution_batched_contr,
-    )
+        get_same_spin_double_contribution_batched_contr)
 
     ndets = trial.ndets
     nchol = ham.nchol
@@ -684,9 +679,7 @@ def test_kernels_gf():
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
     from ipie.estimators.greens_function_batch import (
-        build_CI_single_excitation,
-        build_CI_single_excitation_opt,
-    )
+        build_CI_single_excitation, build_CI_single_excitation_opt)
 
     build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     refa = walker_batch.CIa.copy()
@@ -697,9 +690,7 @@ def test_kernels_gf():
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
     from ipie.estimators.greens_function_batch import (
-        build_CI_double_excitation,
-        build_CI_double_excitation_opt,
-    )
+        build_CI_double_excitation, build_CI_double_excitation_opt)
 
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
@@ -712,9 +703,7 @@ def test_kernels_gf():
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
     from ipie.estimators.greens_function_batch import (
-        build_CI_triple_excitation,
-        build_CI_triple_excitation_opt,
-    )
+        build_CI_triple_excitation, build_CI_triple_excitation_opt)
 
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
@@ -727,9 +716,7 @@ def test_kernels_gf():
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
     from ipie.estimators.greens_function_batch import (
-        build_CI_nfold_excitation,
-        build_CI_nfold_excitation_opt,
-    )
+        build_CI_nfold_excitation, build_CI_nfold_excitation_opt)
 
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
@@ -839,11 +826,8 @@ def test_kernels_gf_active_space():
     walker_batch_ref.CIa.fill(0.0 + 0.0j)
     walker_batch_ref.CIb.fill(0.0 + 0.0j)
     from ipie.estimators.greens_function_batch import (
-        build_CI_single_excitation_opt,
-        build_CI_double_excitation_opt,
-        build_CI_triple_excitation_opt,
-        build_CI_nfold_excitation_opt,
-    )
+        build_CI_double_excitation_opt, build_CI_nfold_excitation_opt,
+        build_CI_single_excitation_opt, build_CI_triple_excitation_opt)
 
     methods = [
         build_CI_single_excitation_opt,
@@ -1148,7 +1132,8 @@ def test_kernels_energy_active_space():
     assert numpy.allclose(det_mat_test, det_mat_ref)
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import fill_opp_spin_factors_batched_chol
+    from ipie.estimators.local_energy_wicks import \
+        fill_opp_spin_factors_batched_chol
 
     cof_mat = numpy.zeros(
         (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
@@ -1179,9 +1164,8 @@ def test_kernels_energy_active_space():
     assert numpy.allclose(ref, test)
     ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import (
-        fill_same_spin_contribution_batched_contr,
-    )
+    from ipie.estimators.local_energy_wicks import \
+        fill_same_spin_contribution_batched_contr
 
     cof_mat = numpy.zeros(
         (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
@@ -1324,7 +1308,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         ecore=0,
         options={"symmetry": False},
     )
-    from ipie.utils.testing import shaped_normal, get_random_phmsd_opt
+    from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
     wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True)
     init = shaped_normal((nmo, system.ne))
@@ -1412,6 +1396,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         walker_batch.reortho()
 
     import copy
+
     from ipie.propagation.overlap import compute_determinants_batched
 
     G0a, G0b = walker_batch_ref.G0a, walker_batch_ref.G0b

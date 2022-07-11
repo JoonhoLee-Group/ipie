@@ -1,9 +1,11 @@
-import numpy as np
-import cupy as cp
-import time
-from mpi4py import MPI
-import sys
 import os
+import sys
+import time
+
+import cupy as cp
+import numpy as np
+from mpi4py import MPI
+
 os.environ["I_MPI_PMI_LIBRARY"] = '/cm/shared/apps/slurm/20.02.6/lib64/libpmi2.so'
 
 divide = 5

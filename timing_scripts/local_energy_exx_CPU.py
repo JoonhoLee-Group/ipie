@@ -1,11 +1,17 @@
 import os
+
 from line_profiler import LineProfiler
 
 os.environ['MKL_NUM_THREADS'] = '1'
-import numpy
-import timeit
 import time
-from ipie.estimators.opt_local_energy import local_energy_generic_cholesky_exx, local_energy_generic_cholesky_exx_batch, local_energy_generic_cholesky_exx_rhf_batch
+import timeit
+
+import numpy
+
+from ipie.estimators.opt_local_energy import (
+    local_energy_generic_cholesky_exx, local_energy_generic_cholesky_exx_batch,
+    local_energy_generic_cholesky_exx_rhf_batch)
+
 
 def local_energy_generic_cholesky_opt(Ghalfa, Ghalfb, rchola, rcholb):
     # Element wise multiplication.
@@ -227,6 +233,7 @@ print("new algorithm batch (RHF, Cython) = {}".format(time.time()-start))
 # # assert(numpy.allclose(energies,energies3))
 # # assert(numpy.allclose(energies,energies4))
 import cProfile
+
 pr = cProfile.Profile()
 pr.enable()
 

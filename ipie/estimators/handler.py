@@ -3,12 +3,13 @@
 from __future__ import print_function
 
 import copy
-import h5py
-import numpy
 import os
-import scipy.linalg
 import time
 import warnings
+
+import h5py
+import numpy
+import scipy.linalg
 
 from ipie.estimators.mixed import Mixed
 from ipie.utils.io import get_input_value

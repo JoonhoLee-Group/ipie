@@ -1,9 +1,11 @@
 import os
+
 os.environ['MKL_NUM_THREADS'] = '1'
-import numpy as np
 import timeit
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 
 def numpy_compute(rchol_a, rchol_b, GaT, GbT):

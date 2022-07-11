@@ -1,15 +1,18 @@
-import numpy
 import os
+
+import numpy
 import pytest
-from ipie.systems.generic import Generic
+
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
-from ipie.legacy.propagation.generic import GenericContinuous
+from ipie.legacy.estimators.greens_function import gab, gab_spin
 from ipie.legacy.propagation.continuous import Continuous
-from ipie.utils.misc import dotdict
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
+from ipie.legacy.propagation.generic import GenericContinuous
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.estimators.greens_function import gab_spin, gab
+from ipie.systems.generic import Generic
+from ipie.utils.misc import dotdict
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
 
 
 @pytest.mark.unit

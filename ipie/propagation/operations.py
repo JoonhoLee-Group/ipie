@@ -1,5 +1,7 @@
 import numpy
+
 from ipie.utils.misc import is_cupy
+
 
 # TODO: Rename this
 def kinetic_real(phi, system, bt2, H1diag=False):

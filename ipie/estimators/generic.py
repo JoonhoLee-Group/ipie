@@ -1,7 +1,9 @@
 import sys
+
 import numpy
-from ipie.utils.misc import is_cupy
 from numba import jit
+
+from ipie.utils.misc import is_cupy
 
 
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):

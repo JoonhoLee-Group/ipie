@@ -1,7 +1,9 @@
-import numpy
 import time
-from ipie.legacy.estimators.local_energy import local_energy
+
+import numpy
+
 from ipie.legacy.estimators.greens_function import gab, gab_mod
+from ipie.legacy.estimators.local_energy import local_energy
 from ipie.utils.io import read_qmcpack_wfn
 
 

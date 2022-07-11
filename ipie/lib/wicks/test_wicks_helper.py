@@ -1,18 +1,12 @@
-import pytest
 import numpy as np
+import pytest
 
 try:
-    from ipie.lib.wicks.wicks_helper import (
-            encode_det,
-            encode_dets,
-            count_set_bits,
-            get_excitation_level,
-            decode_det,
-            get_ia,
-            get_perm_ia,
-            print_bitstring,
-            compute_opdm
-            )
+    from ipie.lib.wicks.wicks_helper import (compute_opdm, count_set_bits,
+                                             decode_det, encode_det,
+                                             encode_dets, get_excitation_level,
+                                             get_ia, get_perm_ia,
+                                             print_bitstring)
     no_wicks = False
 except ImportError:
     no_wicks = True

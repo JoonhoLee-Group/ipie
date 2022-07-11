@@ -1,12 +1,13 @@
 import cmath
 import math
-import numpy
-import scipy.linalg
 import sys
 import time
-from ipie.utils.linalg import exponentiate_matrix
+
+import numpy
+import scipy.linalg
+
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.utils.linalg import reortho
+from ipie.utils.linalg import exponentiate_matrix, reortho
 from ipie.utils.misc import is_cupy
 
 

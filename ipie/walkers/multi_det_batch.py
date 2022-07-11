@@ -1,11 +1,13 @@
 import copy
+
 import numpy
 import scipy.linalg
-from ipie.legacy.estimators.local_energy import local_energy_multi_det
-from ipie.walkers.walker_batch import WalkerBatch
-from ipie.utils.misc import get_numeric_names
-from ipie.propagation.overlap import get_calc_overlap
+
 from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.legacy.estimators.local_energy import local_energy_multi_det
+from ipie.propagation.overlap import get_calc_overlap
+from ipie.utils.misc import get_numeric_names
+from ipie.walkers.walker_batch import WalkerBatch
 
 
 class MultiDetTrialWalkerBatch(WalkerBatch):

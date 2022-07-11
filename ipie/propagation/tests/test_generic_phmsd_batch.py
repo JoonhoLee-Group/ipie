@@ -1,32 +1,29 @@
-import pytest
 import numpy
-from ipie.utils.misc import dotdict
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
-from ipie.systems.generic import Generic
-from ipie.propagation.continuous import Continuous
-from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.propagation.force_bias import (
-    construct_force_bias_batch,
-    construct_force_bias_batch_multi_det_trial,
-    construct_force_bias_batch_single_det,
-)
+import pytest
+
+from ipie.estimators.greens_function_batch import (
+    greens_function_multi_det, greens_function_multi_det_wicks)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
+from ipie.legacy.trial_wavefunction.multi_slater import \
+    MultiSlater as LegacyMultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.propagation.overlap import (
-    calc_overlap_multi_det,
-    calc_overlap_multi_det_wicks,
-    calc_overlap_multi_det_wicks_opt,
-)
-from ipie.estimators.greens_function_batch import (
-    greens_function_multi_det,
-    greens_function_multi_det_wicks,
-)
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.propagation.continuous import Continuous
+from ipie.propagation.force_bias import (
+    construct_force_bias_batch, construct_force_bias_batch_multi_det_trial,
+    construct_force_bias_batch_single_det)
+from ipie.propagation.overlap import (calc_overlap_multi_det,
+                                      calc_overlap_multi_det_wicks,
+                                      calc_overlap_multi_det_wicks_opt)
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.misc import dotdict
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
 @pytest.mark.unit
@@ -246,8 +243,7 @@ def test_get_dets_single_excitation_batched():
     )
     from ipie.propagation.overlap import (
         get_dets_single_excitation_batched,
-        get_dets_single_excitation_batched_opt,
-    )
+        get_dets_single_excitation_batched_opt)
 
     test = get_dets_single_excitation_batched(G0, G0, trial)
     assert numpy.allclose(ref, test)
@@ -288,8 +284,7 @@ def test_get_dets_double_excitation_batched():
     )
     from ipie.propagation.overlap import (
         get_dets_double_excitation_batched,
-        get_dets_double_excitation_batched_opt,
-    )
+        get_dets_double_excitation_batched_opt)
 
     test = get_dets_double_excitation_batched(G0, G0, trial)
     assert numpy.allclose(ref, test)
@@ -336,8 +331,7 @@ def test_get_dets_triple_excitation_batched():
     )
     from ipie.propagation.overlap import (
         get_dets_triple_excitation_batched,
-        get_dets_triple_excitation_batched_opt,
-    )
+        get_dets_triple_excitation_batched_opt)
 
     test = get_dets_triple_excitation_batched(G0, G0, trial)
     assert numpy.allclose(ref, test)
@@ -386,8 +380,7 @@ def test_get_dets_nfold_excitation_batched():
     )
     from ipie.propagation.overlap import (
         get_dets_nfold_excitation_batched,
-        get_dets_nfold_excitation_batched_opt,
-    )
+        get_dets_nfold_excitation_batched_opt)
 
     test = get_dets_nfold_excitation_batched(5, G0, G0, trial)
     assert numpy.allclose(ref, test)

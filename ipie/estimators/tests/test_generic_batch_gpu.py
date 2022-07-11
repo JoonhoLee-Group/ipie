@@ -1,23 +1,23 @@
-import pytest
 import numpy
-from ipie.utils.misc import dotdict
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.systems.generic import Generic
+import pytest
+
+from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
+                                             local_energy_single_det_batch_gpu)
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.estimators.local_energy import \
+    local_energy_generic_cholesky_opt
+from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
-from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch,
-    local_energy_single_det_batch_gpu,
-)
-
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 try:
     import cupy
@@ -83,7 +83,8 @@ def test_local_energy_single_det_batch():
     energies_einsum = local_energy_single_det_batch_gpu(
         system, ham, walker_batch, trial
     )
-    from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
+    from ipie.estimators.local_energy_sd import \
+        local_energy_single_det_batch_gpu_old
 
     energies_einsum_old = local_energy_single_det_batch_gpu_old(
         system, ham, walker_batch, trial

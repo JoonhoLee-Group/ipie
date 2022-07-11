@@ -1,15 +1,15 @@
-import pytest
-import numpy
 import os
 
-from ipie.legacy.systems.ueg import UEG
-from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
-from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
-from ipie.legacy.estimators.back_propagation import BackPropagation
-from ipie.legacy.walkers.handler import Walkers
+import numpy
+import pytest
 
-from ipie.utils.misc import dotdict
+from ipie.legacy.estimators.back_propagation import BackPropagation
+from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.propagation.continuous import Continuous
+from ipie.legacy.systems.ueg import UEG
+from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
+from ipie.legacy.walkers.handler import Walkers
+from ipie.utils.misc import dotdict
 
 
 @pytest.mark.unit

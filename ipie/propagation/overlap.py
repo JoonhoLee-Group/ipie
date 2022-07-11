@@ -1,14 +1,17 @@
 import itertools
+
 import numpy
 import scipy.linalg
-from ipie.legacy.estimators.greens_function import gab_mod
+
 from ipie.estimators.kernels.cpu import wicks as wk
+from ipie.legacy.estimators.greens_function import gab_mod
 
 try:
     from ipie.propagation.wicks_kernels import get_det_matrix_batched
 except ImportError:
     pass
 from ipie.utils.misc import is_cupy
+
 
 # Later we will add walker kinds as an input too
 def get_calc_overlap(trial):

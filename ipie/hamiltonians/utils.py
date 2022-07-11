@@ -1,11 +1,13 @@
-import numpy
 import sys
 import time
 
-from ipie.hamiltonians.generic import Generic, read_integrals, construct_h1e_mod
+import numpy
+
+from ipie.hamiltonians.generic import (Generic, construct_h1e_mod,
+                                       read_integrals)
+from ipie.utils.io import get_input_value
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 from ipie.utils.pack import pack_cholesky
-from ipie.utils.io import get_input_value
 
 
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):

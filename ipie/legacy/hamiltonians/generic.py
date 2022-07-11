@@ -1,4 +1,5 @@
 import ast
+
 import h5py
 import numpy
 
@@ -7,15 +8,13 @@ zeros = numpy.zeros
 einsum = numpy.einsum
 isrealobj = numpy.isrealobj
 import sys
-import scipy.linalg
 import time
+
+import scipy.linalg
+
+from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
+                           write_qmcpack_dense, write_qmcpack_sparse)
 from ipie.utils.linalg import modified_cholesky
-from ipie.utils.io import (
-    from_qmcpack_sparse,
-    from_qmcpack_dense,
-    write_qmcpack_sparse,
-    write_qmcpack_dense,
-)
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
 

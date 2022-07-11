@@ -1,43 +1,42 @@
-import itertools
 import cmath
-from ipie.legacy.hamiltonians.hubbard import Hubbard
-from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
-from ipie.legacy.estimators.ci import simple_fci_bose_fermi, simple_fci
-from ipie.legacy.estimators.hubbard import (
-    local_energy_hubbard_holstein,
-    local_energy_hubbard,
-)
-from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
-from ipie.utils.linalg import reortho
+import itertools
+import time
 
-from ipie.legacy.estimators.greens_function import gab_spin
-
-import scipy
 import numpy
+import scipy
 import scipy.sparse.linalg
 from scipy.linalg import expm
 from scipy.optimize import minimize
 
-import time
-from ipie.utils.io import read_fortran_complex_numbers
-from ipie.utils.linalg import diagonalise_sorted
+from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
+from ipie.legacy.estimators.greens_function import gab_spin
+from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
+                                            local_energy_hubbard_holstein)
 from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.hamiltonians.hubbard import Hubbard
+from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
+from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
+    HarmonicOscillator
+from ipie.utils.io import read_fortran_complex_numbers
+from ipie.utils.linalg import diagonalise_sorted, reortho
 
 try:
     from jax.config import config
 
     config.update("jax_enable_x64", True)
     import jax
-    from jax import grad, jit
     import jax.numpy as np
     import jax.scipy.linalg as LA
     import numpy
-    from ipie.legacy.trial_wavefunction.coherent_state import gab, compute_exp
+    from jax import grad, jit
+
+    from ipie.legacy.trial_wavefunction.coherent_state import compute_exp, gab
 
 except ModuleNotFoundError:
-    from ipie.legacy.estimators.greens_function import gab
     import numpy
+
+    from ipie.legacy.estimators.greens_function import gab
 
     np = numpy
 

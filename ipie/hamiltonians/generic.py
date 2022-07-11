@@ -8,12 +8,9 @@ isrealobj = numpy.isrealobj
 
 import sys
 import time
-from ipie.utils.io import (
-    from_qmcpack_sparse,
-    from_qmcpack_dense,
-    write_qmcpack_sparse,
-    write_qmcpack_dense,
-)
+
+from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
+                           write_qmcpack_dense, write_qmcpack_sparse)
 
 
 class Generic(object):

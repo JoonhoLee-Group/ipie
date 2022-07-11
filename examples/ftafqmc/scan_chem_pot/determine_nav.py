@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
 import glob
-import numpy
+
 import matplotlib.pyplot as pl
-from ipie.legacy.trial_density_matrices.onebody import OneBody
-from ipie.qmc.calc import init_communicator, setup_calculation
+import numpy
+
+from ipie.analysis.thermal import analyse_energy
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.thermal_propagation.utils import get_propagator
-from ipie.analysis.thermal import analyse_energy
+from ipie.legacy.trial_density_matrices.onebody import OneBody
+from ipie.qmc.calc import init_communicator, setup_calculation
 from ipie.utils.io import to_json
 
 sys = {"name": "Hubbard", "t": 1.0, "U": 4, "nx": 4, "ny": 4, "nup": 7, "ndown": 7}

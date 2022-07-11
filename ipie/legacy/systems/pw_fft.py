@@ -1,18 +1,18 @@
+import itertools
+import math
 import sys
+import time
+
 import numpy
 import scipy.linalg
 import scipy.sparse
-import ipie.utils
-import math
-import time
-import itertools
 
+import ipie.utils
 # from ipie.utils.io import dump_qmcpack_cholesky
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 
 try:
-    from ipie.legacy.estimators.ueg_kernels import vq
-    from ipie.legacy.estimators.ueg_kernels import mod_one_body
+    from ipie.legacy.estimators.ueg_kernels import mod_one_body, vq
 except ImportError:
     print("ueg_kernels doesn't exist")
     pass

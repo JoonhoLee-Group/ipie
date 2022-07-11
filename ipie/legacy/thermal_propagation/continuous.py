@@ -1,14 +1,17 @@
 import cmath
 import math
-import numpy
-import scipy.sparse.linalg
 import sys
 import time
-from ipie.legacy.estimators.thermal import one_rdm_from_G, inverse_greens_function_qr
-from ipie.propagation.operations import kinetic_real
-from ipie.legacy.thermal_propagation.planewave import PlaneWave
+
+import numpy
+import scipy.sparse.linalg
+
+from ipie.legacy.estimators.thermal import (inverse_greens_function_qr,
+                                            one_rdm_from_G)
 from ipie.legacy.thermal_propagation.generic import GenericContinuous
 from ipie.legacy.thermal_propagation.hubbard import HubbardContinuous
+from ipie.legacy.thermal_propagation.planewave import PlaneWave
+from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import exponentiate_matrix
 
 

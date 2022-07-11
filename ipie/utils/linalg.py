@@ -1,7 +1,8 @@
 import functools
+import time
+
 import numpy
 import scipy.linalg
-import time
 
 
 def minor_mask(A, i, j):

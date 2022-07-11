@@ -1,29 +1,28 @@
 """Driver to perform AFQMC calculation"""
-import sys
-import json
-import time
-import numpy
-import warnings
-import uuid
-from math import exp
 import copy
+import json
+import sys
+import time
+import uuid
+import warnings
+from math import exp
+
 import h5py
+import numpy
 
-from ipie.qmc.options import QMCOpts
-from ipie.qmc.utils import set_rng_seed
-
-from ipie.systems.utils import get_system
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 from ipie.estimators.handler import Estimators
 from ipie.estimators.local_energy_batch import local_energy_batch
+from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.utils import get_propagator_driver
-
-from ipie.utils.misc import get_git_revision_hash, get_sys_info, get_node_mem
-from ipie.utils.io import to_json, serialise, get_input_value
+from ipie.qmc.options import QMCOpts
+from ipie.qmc.utils import set_rng_seed
+from ipie.systems.utils import get_system
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.utils.io import get_input_value, serialise, to_json
+from ipie.utils.misc import (get_git_revision_hash, get_node_mem, get_sys_info,
+                             is_cupy)
 from ipie.utils.mpi import MPIHandler
-from ipie.utils.misc import is_cupy
+from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
 class AFQMCBatch(object):

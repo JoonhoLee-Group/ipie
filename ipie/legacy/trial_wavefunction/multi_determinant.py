@@ -1,10 +1,13 @@
-import numpy
 import time
+
+import numpy
 import scipy.linalg
+
+from ipie.legacy.estimators.greens_function import (gab, gab_mod,
+                                                    gab_multi_det_full)
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.greens_function import gab, gab_multi_det_full, gab_mod
-from ipie.utils.linalg import diagonalise_sorted
 from ipie.utils.io import read_fortran_complex_numbers
+from ipie.utils.linalg import diagonalise_sorted
 
 
 class MultiDeterminant(object):

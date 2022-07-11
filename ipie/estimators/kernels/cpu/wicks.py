@@ -1,5 +1,6 @@
-from numba import jit
 import numpy
+from numba import jit
+
 
 # element wise
 @jit(nopython=True, fastmath=True)

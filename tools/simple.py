@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-from ipie.analysis import blocking
 import glob
 import sys
+
 import pandas as pd
+
+from ipie.analysis import blocking
 
 start_time = float(sys.argv[1])
 files = glob.glob(sys.argv[2:][0])

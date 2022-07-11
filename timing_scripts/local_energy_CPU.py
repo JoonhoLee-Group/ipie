@@ -1,8 +1,11 @@
 import os
+
 os.environ['MKL_NUM_THREADS'] = '1'
-import numpy
-import timeit
 import time
+import timeit
+
+import numpy
+
 
 def local_energy_generic_cholesky_opt(Ghalfa, Ghalfb, rchola, rcholb):
     # Element wise multiplication.

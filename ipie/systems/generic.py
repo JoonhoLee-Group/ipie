@@ -1,17 +1,15 @@
 import ast
+import sys
+import time
+
 import h5py
 import numpy
-import sys
 import scipy.linalg
-import time
 from scipy.sparse import csr_matrix
+
+from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
+                           write_qmcpack_dense, write_qmcpack_sparse)
 from ipie.utils.linalg import modified_cholesky
-from ipie.utils.io import (
-    from_qmcpack_sparse,
-    from_qmcpack_dense,
-    write_qmcpack_sparse,
-    write_qmcpack_dense,
-)
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
 

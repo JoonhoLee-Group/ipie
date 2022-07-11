@@ -1,20 +1,21 @@
-import numpy
-from mpi4py import MPI
 import os
+
+import numpy
 import pytest
+from mpi4py import MPI
+
 from ipie.analysis.extraction import extract_mixed_estimates, extract_rdm
-from ipie.qmc.calc import setup_calculation
-from ipie.qmc.afqmc_batch import AFQMCBatch
-
-from ipie.legacy.qmc.afqmc import AFQMC
-from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
-
-from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+from ipie.legacy.qmc.afqmc import AFQMC
+from ipie.legacy.trial_wavefunction.multi_slater import \
+    MultiSlater as LegacyMultiSlater
+from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.calc import setup_calculation
+from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 from ipie.utils.pack import pack_cholesky
+from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 
 steps = 25
 blocks = 5

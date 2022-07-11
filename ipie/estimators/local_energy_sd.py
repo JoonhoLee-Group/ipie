@@ -1,7 +1,8 @@
 import time
+from math import ceil
+
 import numpy
 from numba import jit
-from math import ceil
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.utils.misc import is_cupy

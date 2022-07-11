@@ -1,10 +1,12 @@
 import cmath
 import math
+import sys
+
 import numpy
 import scipy
-import sys
-from ipie.propagation.operations import kinetic_real
+
 from ipie.estimators.utils import convolve, scipy_fftconvolve
+from ipie.propagation.operations import kinetic_real
 
 
 class PW(object):
@@ -369,13 +371,14 @@ class PW(object):
 
 def unit_test():
     import cProfile
-    from ipie.propagation.continuous import Continuous
+
     from ipie.legacy.systems.ueg import UEG
-    from ipie.systems.pw_fft import PW_FFT
-    from ipie.qmc.options import QMCOpts
-    from ipie.legacy.walkers.single_det import SingleDetWalker
-    from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
     from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
+    from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
+    from ipie.legacy.walkers.single_det import SingleDetWalker
+    from ipie.propagation.continuous import Continuous
+    from ipie.qmc.options import QMCOpts
+    from ipie.systems.pw_fft import PW_FFT
 
     inputs = {
         "nup": 1,

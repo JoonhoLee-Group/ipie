@@ -1,9 +1,10 @@
+import itertools
 import math
+
 import numpy
 import scipy
 import scipy.linalg
 import scipy.sparse.linalg
-import itertools
 
 
 def simple_fci_bose_fermi(

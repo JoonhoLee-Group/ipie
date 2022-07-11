@@ -2,11 +2,12 @@
 
 import cmath
 from math import cos, pi
-import numpy
+
 import numpy
 import scipy.linalg
-from ipie.utils.io import fcidump_header
+
 from ipie.legacy.systems.hubbard_holstein import kinetic
+from ipie.utils.io import fcidump_header
 
 
 class Hubbard(object):

@@ -1,19 +1,19 @@
 import itertools
-import numpy
 import os
+
+import numpy
 import pytest
-from ipie.systems.generic import Generic
+
+from ipie.legacy.estimators.ci import simple_fci
+from ipie.legacy.estimators.local_energy import (local_energy,
+                                                 local_energy_generic_cholesky)
 from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
-from ipie.legacy.estimators.ci import simple_fci
-from ipie.legacy.estimators.local_energy import (
-    local_energy,
-    local_energy_generic_cholesky,
-)
-from ipie.utils.misc import dotdict
-from ipie.utils.linalg import reortho
-from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
 from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.systems.generic import Generic
+from ipie.utils.linalg import reortho
+from ipie.utils.misc import dotdict
+from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
 
 
 @pytest.mark.unit

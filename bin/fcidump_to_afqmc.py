@@ -1,12 +1,14 @@
 #! /usr/bin/env python3
 
 import argparse
-import scipy.sparse
 import sys
 import time
+
 import numpy
-from ipie.utils.io import write_qmcpack_dense
+import scipy.sparse
+
 from ipie.utils.hamiltonian_converter import read_fcidump
+from ipie.utils.io import write_qmcpack_dense
 from ipie.utils.linalg import modified_cholesky
 
 

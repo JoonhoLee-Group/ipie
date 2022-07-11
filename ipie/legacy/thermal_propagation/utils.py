@@ -1,8 +1,8 @@
 """Routines for performing propagation of a walker"""
 
 from ipie.legacy.thermal_propagation.continuous import Continuous
-from ipie.legacy.thermal_propagation.planewave import PlaneWave
 from ipie.legacy.thermal_propagation.hubbard import ThermalDiscrete
+from ipie.legacy.thermal_propagation.planewave import PlaneWave
 
 
 def get_propagator(

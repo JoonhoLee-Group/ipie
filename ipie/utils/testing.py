@@ -1,7 +1,9 @@
 import itertools
+
 import numpy
-from ipie.utils.misc import dotdict
+
 from ipie.utils.linalg import modified_cholesky
+from ipie.utils.misc import dotdict
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):

@@ -1,9 +1,9 @@
-import numpy as np
-import cupy as cp
 import time
-import numba
-from numba import cuda
 
+import cupy as cp
+import numba
+import numpy as np
+from numba import cuda
 
 BLOCK_SIZE = 512
 
@@ -189,6 +189,7 @@ rcholb_cp = cp.asarray(rcholb)
 ghalfa_cp = cp.asarray(ghalfa)
 ghalfb_cp = cp.asarray(ghalfb)
 from ipie.estimators.kernels import exchange_reduction
+
 for n in range(7, 8):
     nocc = 40
     nchol = nocc * 5 * n

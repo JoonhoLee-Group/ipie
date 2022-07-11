@@ -1,5 +1,6 @@
-import pandas as pd
 import numpy
+import pandas as pd
+
 from ipie.analysis.extraction import extract_rdm, get_param
 
 

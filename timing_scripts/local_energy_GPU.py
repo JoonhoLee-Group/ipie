@@ -1,12 +1,15 @@
 import os
+
 os.environ['MKL_NUM_THREADS'] = '1'
-import cupy
-from numba import cuda
-import numpy
-import timeit
-import time
 import math
+import time
+import timeit
+
+import cupy
+import numpy
 from mpi4py import MPI
+from numba import cuda
+
 os.environ["OMP_NUM_THREADS"] = '1'
 os.environ["MKL_NUM_THREADS"] = '1'
 

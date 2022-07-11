@@ -1,15 +1,17 @@
 import numpy
 import scipy.linalg
 
-# from ipie.estimators.mixed import local_energy, local_energy_hh
-
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
+    HarmonicOscillator
 from ipie.legacy.walkers.stack import FieldConfig
 from ipie.legacy.walkers.walker import Walker
-
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
+
+# from ipie.estimators.mixed import local_energy, local_energy_hh
+
+
 
 
 class SingleDetWalker(Walker):

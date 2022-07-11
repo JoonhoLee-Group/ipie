@@ -1,6 +1,7 @@
-from mpi4py import MPI
-from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 import numpy
+from mpi4py import MPI
+
+from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 
 comm = MPI.COMM_WORLD
 

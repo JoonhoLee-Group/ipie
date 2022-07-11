@@ -1,11 +1,12 @@
 import numpy
 import pytest
-from ipie.legacy.systems.ueg import UEG
-from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
-from ipie.legacy.estimators.ueg import fock_ueg, local_energy_ueg
+
 from ipie.legacy.estimators.greens_function import gab
-from ipie.utils.testing import get_random_wavefunction
+from ipie.legacy.estimators.ueg import fock_ueg, local_energy_ueg
+from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
+from ipie.legacy.systems.ueg import UEG
 from ipie.utils.misc import timeit
+from ipie.utils.testing import get_random_wavefunction
 
 
 @pytest.mark.unit

@@ -1,18 +1,21 @@
-import pytest
 import numpy
-from ipie.utils.misc import dotdict
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.systems.generic import Generic
-from ipie.propagation.continuous import Continuous
-from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
+import pytest
+
+from ipie.estimators.greens_function_batch import \
+    greens_function_single_det_batch
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
-from ipie.estimators.greens_function_batch import greens_function_single_det_batch
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.propagation.continuous import Continuous
 from ipie.propagation.overlap import calc_overlap_single_det_batch
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.misc import dotdict
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
 @pytest.mark.unit

@@ -1,8 +1,10 @@
 """Routines for performing propagation of a walker"""
 import sys
+
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.propagation.hubbard_holstein import HirschDMC
+
 
 # TODO: Fix for discrete transformation.
 def get_propagator_driver(system, hamiltonian, trial, qmc, options={}, verbose=False):

@@ -1,6 +1,8 @@
 import copy
+
 import numpy
 import scipy.linalg
+
 from ipie.legacy.estimators.local_energy import local_energy_multi_det
 from ipie.legacy.walkers.walker import Walker
 from ipie.utils.misc import get_numeric_names

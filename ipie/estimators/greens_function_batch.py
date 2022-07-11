@@ -1,23 +1,22 @@
 import numpy
 import scipy.linalg
+
+from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
+from ipie.propagation.overlap import (compute_determinants_batched,
+                                      get_overlap_one_det_wicks)
 from ipie.utils.linalg import minor_mask
 from ipie.utils.misc import is_cupy
-from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
-from ipie.propagation.overlap import (
-    get_overlap_one_det_wicks,
-    compute_determinants_batched,
-)
 
 try:
-    from ipie.propagation.wicks_kernels import (
-        get_det_matrix_batched,
-        get_cofactor_matrix_batched,
-        reduce_to_CI_tensor,
-    )
+    from ipie.propagation.wicks_kernels import (get_cofactor_matrix_batched,
+                                                get_det_matrix_batched,
+                                                reduce_to_CI_tensor)
 except ImportError:
     pass
-from ipie.estimators.kernels.cpu import wicks as wk
 from numba import jit
+
+from ipie.estimators.kernels.cpu import wicks as wk
+
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):

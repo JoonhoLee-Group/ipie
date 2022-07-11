@@ -1,5 +1,5 @@
-import sys
 import json
+import sys
 
 from ipie.analysis.extraction import extract_test_data_hdf5
 

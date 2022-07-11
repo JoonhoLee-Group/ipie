@@ -1,8 +1,10 @@
 import argparse
 import functools
-import numpy
-import h5py
 import sys
+
+import h5py
+import numpy
+
 from ipie.utils.from_pyscf import dump_ipie
 from ipie.utils.io import write_input
 

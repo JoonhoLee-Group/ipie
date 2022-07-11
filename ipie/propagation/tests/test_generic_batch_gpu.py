@@ -1,22 +1,24 @@
-import pytest
 import numpy
-from ipie.utils.misc import dotdict
-from ipie.systems.generic import Generic
-from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
+import pytest
 
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
+from ipie.legacy.trial_wavefunction.multi_slater import \
+    MultiSlater as LegacyMultiSlater
+from ipie.legacy.walkers.multi_det import MultiDetWalker
+from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
+from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
+from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+                                get_random_phmsd)
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 try:
     import cupy
