@@ -9,6 +9,7 @@ from ipie.legacy.hamiltonians.ueg import UEG
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
+
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     """Wrapper to select hamiltonian class
 
@@ -24,26 +25,33 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     ham : object
         Hamiltonian class.
     """
-    if ham_opts['name'] == 'Hubbard':
+    if ham_opts["name"] == "Hubbard":
         ham = Hubbard(ham_opts, verbose)
-    elif ham_opts['name'] == 'UEG':
+    elif ham_opts["name"] == "UEG":
         ham = UEG(system, ham_opts, verbose)
-    elif ham_opts['name'] == 'Generic':
-        filename = ham_opts.get('integrals', None)
+    elif ham_opts["name"] == "Generic":
+        filename = ham_opts.get("integrals", None)
         if filename is None:
             if comm.rank == 0:
                 print("# Error: integrals not specfied.")
                 sys.exit()
         start = time.time()
-        hcore, chol, h1e_mod, enuc = get_generic_integrals(filename,
-                                                           comm=comm,
-                                                           verbose=verbose)
+        hcore, chol, h1e_mod, enuc = get_generic_integrals(
+            filename, comm=comm, verbose=verbose
+        )
         if verbose:
-            print("# Time to read integrals: {:.6f}".format(time.time()-start))
-        ham = Generic(h1e = hcore, chol=chol, ecore=enuc, h1e_mod = h1e_mod, options=ham_opts, verbose = verbose)
+            print("# Time to read integrals: {:.6f}".format(time.time() - start))
+        ham = Generic(
+            h1e=hcore,
+            chol=chol,
+            ecore=enuc,
+            h1e_mod=h1e_mod,
+            options=ham_opts,
+            verbose=verbose,
+        )
     else:
         if comm.rank == 0:
-            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts['name']))
+            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts["name"]))
             sys.exit()
         ham = None
 

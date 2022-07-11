@@ -2,9 +2,11 @@ import pytest
 import numpy
 
 from mpi4py import MPI
+
 comm = MPI.COMM_WORLD
 numpy.random.seed(7)
 skip = comm.size == 1
+
 
 @pytest.mark.unit
 @pytest.mark.skipif(skip, reason="Test should be run on multiple cores.")
@@ -15,7 +17,7 @@ def test_pair_branch():
         weights = [1.2, 2.348, 4.4]
     walker_info = []
     for i, w in enumerate(weights):
-        walker_info.append([w,1,comm.rank,comm.rank])
+        walker_info.append([w, 1, comm.rank, comm.rank])
     comm.barrier()
     glob_inf = comm.allgather(walker_info)
     # print(comm.rank, glob_inf)
@@ -25,8 +27,8 @@ def test_pair_branch():
     # Unpack lists
     glob_inf = numpy.array([item for sub in glob_inf for item in sub])
     # glob_inf.sort(key=lambda x: x[0])
-    sort = numpy.argsort(glob_inf[:,0], kind='mergesort')
-    isort = numpy.argsort(sort, kind='mergesort')
+    sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
+    isort = numpy.argsort(sort, kind="mergesort")
     glob_inf = glob_inf[sort]
     s = 0
     e = len(glob_inf) - 1
@@ -62,15 +64,18 @@ def test_pair_branch():
     glob_inf = glob_inf[isort]
     reqs = []
     nw = len(weights)
-    for walker in glob_inf[comm.rank*nw:(comm.rank+1)*nw]:
+    for walker in glob_inf[comm.rank * nw : (comm.rank + 1) * nw]:
         if walker[1] > 1:
-            tag = comm.rank*len(walker_info) + walker[3]
-            reqs.append(comm.isend(comm.rank*numpy.ones(2),
-                        dest=int(round(walker[3])), tag=tag))
+            tag = comm.rank * len(walker_info) + walker[3]
+            reqs.append(
+                comm.isend(
+                    comm.rank * numpy.ones(2), dest=int(round(walker[3])), tag=tag
+                )
+            )
     buff = []
-    for walker in glob_inf[comm.rank*nw:(comm.rank+1)*nw]:
+    for walker in glob_inf[comm.rank * nw : (comm.rank + 1) * nw]:
         if walker[1] == 0:
-            tag = walker[3]*len(walker_info) + comm.rank
+            tag = walker[3] * len(walker_info) + comm.rank
             buff.append(comm.recv(source=int(round(walker[3])), tag=tag))
     for r in reqs:
         r.wait()
@@ -82,5 +87,6 @@ def test_pair_branch():
         assert sum(buff[0]) == 2
         assert sum(buff[1]) == 0
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     test_pair_branch()

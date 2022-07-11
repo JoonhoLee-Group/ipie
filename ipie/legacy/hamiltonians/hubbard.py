@@ -1,4 +1,4 @@
-'''Hubbard model specific classes and methods'''
+"""Hubbard model specific classes and methods"""
 
 import cmath
 from math import cos, pi
@@ -43,13 +43,13 @@ class Hubbard(object):
         # for backward compatibility
         self.mixed_precision = False
         self.chunked = False
-        self.t = options.get('t', 1.0)
-        self.U = options['U']
-        self.nx = options['nx']
-        self.ny = options['ny']
-        self.ktwist = numpy.array(options.get('ktwist'))
+        self.t = options.get("t", 1.0)
+        self.U = options["U"]
+        self.nx = options["nx"]
+        self.ny = options["ny"]
+        self.ktwist = numpy.array(options.get("ktwist"))
         self.control_variate = False
-        self.symmetric = options.get('symmetric', False)
+        self.symmetric = options.get("symmetric", False)
         self.sparse = False
         if self.symmetric:
             # An unusual convention for the sign of the chemical potential is
@@ -60,16 +60,16 @@ class Hubbard(object):
             self._alt_convention = True
         else:
             self._alt_convention = False
-        
-        self.ypbc = options.get('ypbc', True)
-        self.xpbc = options.get('xpbc', True)
+
+        self.ypbc = options.get("ypbc", True)
+        self.xpbc = options.get("xpbc", True)
 
         self.nbasis = self.nx * self.ny
         self.nactive = self.nbasis
         self.nfv = 0
         self.ncore = 0
         (self.kpoints, self.kc, self.eks) = kpoints(self.t, self.nx, self.ny)
-        self.pinning = options.get('pinning_fields', False)
+        self.pinning = options.get("pinning_fields", False)
         self._opt = True
         if verbose:
             print("# Setting up one-body operator.")
@@ -78,13 +78,19 @@ class Hubbard(object):
                 print("# Using pinning field.")
             self.T = kinetic_pinning_alt(self.t, self.nbasis, self.nx, self.ny)
         else:
-            self.T = kinetic(self.t, self.nbasis, self.nx,
-                             self.ny, self.ktwist, xpbc=self.xpbc, ypbc=self.ypbc)
+            self.T = kinetic(
+                self.t,
+                self.nbasis,
+                self.nx,
+                self.ny,
+                self.ktwist,
+                xpbc=self.xpbc,
+                ypbc=self.ypbc,
+            )
         self.H1 = self.T
         self.Text = scipy.linalg.block_diag(self.T[0], self.T[1])
-        self.P = transform_matrix(self.nbasis, self.kpoints,
-                                  self.kc, self.nx, self.ny)
-        self.mu = options.get('mu', None)
+        self.P = transform_matrix(self.nbasis, self.kpoints, self.kc, self.nx, self.ny)
+        self.mu = options.get("mu", None)
         # For interface consistency.
         self.ecore = 0.0
         # Number of field configurations per walker.
@@ -105,8 +111,8 @@ class Hubbard(object):
         to_string : bool
             Return fcidump as string. Default print to stdout.
         """
-        header = fcidump_header(nup+ndown, self.nbasis, nup-ndown)
-        for i in range(1, self.nbasis+1):
+        header = fcidump_header(nup + ndown, self.nbasis, nup - ndown)
+        for i in range(1, self.nbasis + 1):
             if self.T.dtype == complex:
                 fmt = "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
                 line = fmt.format(self.U.real, self.U.imag, i, i, i, i)
@@ -115,18 +121,17 @@ class Hubbard(object):
                 line = fmt.format(self.U, i, i, i, i)
             header += line
         for i in range(0, self.nbasis):
-            for j in range(i+1, self.nbasis):
-                integral = self.T[0][i,j]
-                if (abs(integral) > 1e-8):
+            for j in range(i + 1, self.nbasis):
+                integral = self.T[0][i, j]
+                if abs(integral) > 1e-8:
                     if self.T.dtype == complex:
-                        fmt = (
-                            "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
+                        fmt = "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
+                        line = fmt.format(
+                            integral.real, integral.imag, i + 1, j + 1, 0, 0
                         )
-                        line = fmt.format(integral.real, integral.imag,
-                                          i+1, j+1, 0, 0)
                     else:
                         fmt = "{: 10.8e} {:>3d} {:>3d} {:>3d} {:>3d}\n"
-                        line = fmt.format(integral, i+1, j+1, 0, 0)
+                        line = fmt.format(integral, i + 1, j + 1, 0, 0)
                     header += line
         if self.T.dtype == complex:
             fmt = "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
@@ -144,7 +149,7 @@ class Hubbard(object):
         # Eqn (17) of [Motta17]_
         if not self.symmetric:
             v0 = 0.5 * self.U * numpy.eye(self.nbasis)
-            self.h1e_mod = numpy.array([self.H1[0]-v0, self.H1[1]-v0])
+            self.h1e_mod = numpy.array([self.H1[0] - v0, self.H1[1] - v0])
         else:
             self.h1e_mod = self.H1
 
@@ -155,12 +160,13 @@ class Hubbard(object):
         else:
             return 0.0
 
+
 def transform_matrix(nbasis, kpoints, kc, nx, ny):
     U = numpy.zeros(shape=(nbasis, nbasis), dtype=complex)
     for (i, k_i) in enumerate(kpoints):
         for j in range(0, nbasis):
             r_j = decode_basis(nx, ny, j)
-            U[i,j] = numpy.exp(1j*numpy.dot(kc*k_i,r_j))
+            U[i, j] = numpy.exp(1j * numpy.dot(kc * k_i, r_j))
 
     return U
 
@@ -196,25 +202,26 @@ def kinetic_pinning(t, nbasis, nx, ny):
 
     Tup = numpy.zeros((nbasis, nbasis))
     Tdown = numpy.zeros((nbasis, nbasis))
-    nu0 = 0.25*t
+    nu0 = 0.25 * t
 
     for i in range(0, nbasis):
         # pinning field along y.
         xy1 = decode_basis(nx, ny, i)
-        if (xy1[1] == 0 or xy1[1] == ny-1):
-            Tup[i, i] += (-1.0)**(xy1[0]+xy1[1]) * nu0
-            Tdown[i, i] += (-1.0)**(xy1[0]+xy1[1]+1) * nu0
-        for j in range(i+1, nbasis):
+        if xy1[1] == 0 or xy1[1] == ny - 1:
+            Tup[i, i] += (-1.0) ** (xy1[0] + xy1[1]) * nu0
+            Tdown[i, i] += (-1.0) ** (xy1[0] + xy1[1] + 1) * nu0
+        for j in range(i + 1, nbasis):
             xy2 = decode_basis(nx, ny, j)
-            dij = abs(xy1-xy2)
+            dij = abs(xy1 - xy2)
             if sum(dij) == 1:
-                Tup[i, j] = Tdown[i,j] = -t
+                Tup[i, j] = Tdown[i, j] = -t
             # periodic bcs in x.
-            if (dij==[nx-1, 0]).all():
+            if (dij == [nx - 1, 0]).all():
                 Tup[i, j] += -t
                 Tdown[i, j] += -t
 
-    return numpy.array([Tup+numpy.triu(Tup,1).T, Tdown+numpy.triu(Tdown,1).T])
+    return numpy.array([Tup + numpy.triu(Tup, 1).T, Tdown + numpy.triu(Tdown, 1).T])
+
 
 def kinetic_pinning_alt(t, nbasis, nx, ny):
     r"""Kinetic part of the Hamiltonian in our one-electron basis.
@@ -247,25 +254,26 @@ def kinetic_pinning_alt(t, nbasis, nx, ny):
 
     Tup = numpy.zeros((nbasis, nbasis))
     Tdown = numpy.zeros((nbasis, nbasis))
-    h = 0.1*t
+    h = 0.1 * t
 
     for i in range(0, nbasis):
         # pinning field along y direction when i_x = 0.
         xy1 = decode_basis(nx, ny, i)
         if xy1[0] == 0:
-            Tup[i,i] += (-1.0)**(xy1[1]) * h
-            Tdown[i,i] += (-1.0)**(xy1[1]+1) * h
-        for j in range(i+1, nbasis):
+            Tup[i, i] += (-1.0) ** (xy1[1]) * h
+            Tdown[i, i] += (-1.0) ** (xy1[1] + 1) * h
+        for j in range(i + 1, nbasis):
             xy2 = decode_basis(nx, ny, j)
-            dij = abs(xy1-xy2)
+            dij = abs(xy1 - xy2)
             if sum(dij) == 1:
-                Tup[i,j] = Tdown[i,j] = -t
+                Tup[i, j] = Tdown[i, j] = -t
             # periodic bcs in y.
-            if (dij==[0, ny-1]).all():
-                Tup[i,j] += -t
-                Tdown[i,j] += -t
+            if (dij == [0, ny - 1]).all():
+                Tup[i, j] += -t
+                Tdown[i, j] += -t
 
-    return numpy.array([Tup+numpy.triu(Tup,1).T, Tdown+numpy.triu(Tdown,1).T])
+    return numpy.array([Tup + numpy.triu(Tup, 1).T, Tdown + numpy.triu(Tdown, 1).T])
+
 
 def decode_basis(nx, ny, i):
     """Return cartesian lattice coordinates from basis index.
@@ -288,9 +296,10 @@ def decode_basis(nx, ny, i):
         Basis index (same for up and down spins).
     """
     if ny == 1:
-        return numpy.array([i%nx])
+        return numpy.array([i % nx])
     else:
-        return numpy.array([i%nx, i//nx])
+        return numpy.array([i % nx, i // nx])
+
 
 def encode_basis(i, j, nx):
     """Encode 2d index to one dimensional index.
@@ -311,13 +320,15 @@ def encode_basis(i, j, nx):
     ix : int
         basis index.
     """
-    return i + j*nx
+    return i + j * nx
+
 
 def _super_matrix(U, nbasis):
-    '''Construct super-matrix from v_{ijkl}'''
+    """Construct super-matrix from v_{ijkl}"""
+
 
 def kpoints(t, nx, ny):
-    """ Construct kpoints for system.
+    """Construct kpoints for system.
 
     Parameters
     ----------
@@ -341,12 +352,12 @@ def kpoints(t, nx, ny):
     kp = []
     eigs = []
     if ny == 1:
-        kfac = numpy.array([2.0*pi/nx])
+        kfac = numpy.array([2.0 * pi / nx])
         for n in range(0, nx):
             kp.append(numpy.array([n]))
             eigs.append(ek(t, n, kfac, ny))
     else:
-        kfac = numpy.array([2.0*pi/nx, 2.0*pi/ny])
+        kfac = numpy.array([2.0 * pi / nx, 2.0 * pi / ny])
         for n in range(0, nx):
             for m in range(0, ny):
                 k = numpy.array([n, m])
@@ -359,7 +370,7 @@ def kpoints(t, nx, ny):
 
 
 def ek(t, k, kc, ny):
-    """ Calculate single-particle energies.
+    """Calculate single-particle energies.
 
     Parameters
     ----------
@@ -373,17 +384,18 @@ def ek(t, k, kc, ny):
         Number of y lattice points.
     """
     if ny == 1:
-        e = -2.0*t*cos(kc*k)
+        e = -2.0 * t * cos(kc * k)
     else:
-        e = -2.0*t*(cos(kc[0]*k[0])+cos(kc[1]*k[1]))
+        e = -2.0 * t * (cos(kc[0] * k[0]) + cos(kc[1] * k[1]))
 
     return e
 
+
 def get_strip(cfunc, cfunc_err, ix, nx, ny, stag=False):
     iy = [i for i in range(ny)]
-    idx = [encode_basis(ix,i,nx) for i in iy]
+    idx = [encode_basis(ix, i, nx) for i in iy]
     if stag:
-        c = [((-1)**(ix+i))*cfunc[ib] for (i, ib) in zip(iy,idx)]
+        c = [((-1) ** (ix + i)) * cfunc[ib] for (i, ib) in zip(iy, idx)]
     else:
         c = [cfunc[ib] for ib in idx]
     cerr = [cfunc_err[ib] for ib in idx]

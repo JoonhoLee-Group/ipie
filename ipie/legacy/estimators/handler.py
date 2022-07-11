@@ -53,21 +53,23 @@ class Estimators(object):
         True if calculating imaginary time correlation functions (ITCFs).
     """
 
-    def __init__(self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False):
+    def __init__(
+        self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False
+    ):
         if verbose:
-            print ("# Setting up estimator object.")
+            print("# Setting up estimator object.")
         if root:
-            self.index = estimates.get('index', 0)
-            self.filename = estimates.get('filename', None)
-            self.basename = estimates.get('basename', 'estimates')
+            self.index = estimates.get("index", 0)
+            self.filename = estimates.get("filename", None)
+            self.basename = estimates.get("basename", "estimates")
             if self.filename is None:
-                overwrite = estimates.get('overwrite', True)
-                self.filename = self.basename + '.%s.h5' % self.index
+                overwrite = estimates.get("overwrite", True)
+                self.filename = self.basename + ".%s.h5" % self.index
                 while os.path.isfile(self.filename) and not overwrite:
-                    self.index = int(self.filename.split('.')[1])
+                    self.index = int(self.filename.split(".")[1])
                     self.index = self.index + 1
-                    self.filename = self.basename + '.%s.h5' % self.index
-            with h5py.File(self.filename, 'w') as fh5:
+                    self.filename = self.basename + ".%s.h5" % self.index
+            with h5py.File(self.filename, "w") as fh5:
                 pass
             if verbose:
                 print("# Writing estimator data to {}.".format(self.filename))
@@ -75,38 +77,46 @@ class Estimators(object):
             self.filename = None
         # Sub-members:
         # 1. Back-propagation
-        mixed = estimates.get('mixed', {})
+        mixed = estimates.get("mixed", {})
         self.estimators = {}
         dtype = complex
-        self.estimators['mixed'] = Mixed(mixed, system, hamiltonian, root, self.filename,
-                                         qmc, trial, dtype)
-        bp = get_input_value(estimates, 'back_propagation', default=None,
-                              alias=['back_propagated'],
-                              verbose=verbose)
+        self.estimators["mixed"] = Mixed(
+            mixed, system, hamiltonian, root, self.filename, qmc, trial, dtype
+        )
+        bp = get_input_value(
+            estimates,
+            "back_propagation",
+            default=None,
+            alias=["back_propagated"],
+            verbose=verbose,
+        )
         self.back_propagation = bp is not None
         if self.back_propagation:
-            self.estimators['back_prop'] = BackPropagation(bp, root, self.filename,
-                                                           qmc, system, trial,
-                                                           dtype, BT2)
-            self.nprop_tot = self.estimators['back_prop'].nmax
-            self.nbp = self.estimators['back_prop'].nmax
+            self.estimators["back_prop"] = BackPropagation(
+                bp, root, self.filename, qmc, system, trial, dtype, BT2
+            )
+            self.nprop_tot = self.estimators["back_prop"].nmax
+            self.nbp = self.estimators["back_prop"].nmax
             if verbose:
                 print("# Performing back propagation.")
-                print("# Total number of back propagation steps: "
-                      "{:d}.".format(self.nprop_tot))
+                print(
+                    "# Total number of back propagation steps: "
+                    "{:d}.".format(self.nprop_tot)
+                )
         else:
             self.nprop_tot = None
             self.nbp = None
         # 2. Imaginary time correlation functions.
-        itcf = estimates.get('itcf', None)
+        itcf = estimates.get("itcf", None)
         self.calc_itcf = itcf is not None
         if self.calc_itcf:
-            itcf['stack_size'] = estimates.get('stack_size',1)
-            self.estimators['itcf'] = ITCF(itcf, qmc, trial, root, self.filename,
-                                           system, dtype, BT2)
-            self.nprop_tot = self.estimators['itcf'].nprop_tot
+            itcf["stack_size"] = estimates.get("stack_size", 1)
+            self.estimators["itcf"] = ITCF(
+                itcf, qmc, trial, root, self.filename, system, dtype, BT2
+            )
+            self.nprop_tot = self.estimators["itcf"].nprop_tot
         if verbose:
-            print ("# Finished settting up estimator object.")
+            print("# Finished settting up estimator object.")
 
     def reset(self, root):
         if root:
@@ -116,12 +126,12 @@ class Estimators(object):
                 e.setup_output(self.filename)
 
     def dump_metadata(self):
-        with h5py.File(self.filename, 'a') as fh5:
-            fh5['metadata'] = self.json_string
+        with h5py.File(self.filename, "a") as fh5:
+            fh5["metadata"] = self.json_string
 
     def increment_file_number(self):
         self.index = self.index + 1
-        self.filename = self.basename + '.%s.h5' % self.index
+        self.filename = self.basename + ".%s.h5" % self.index
 
     def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
         """Print QMC estimates.
@@ -138,7 +148,9 @@ class Estimators(object):
             Number of steps between measurements.
         """
         for k, e in self.estimators.items():
-            e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
+            e.print_step(
+                comm, nprocs, step, nsteps=nsteps, free_projection=free_projection
+            )
 
     def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators

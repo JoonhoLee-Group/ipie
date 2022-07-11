@@ -6,6 +6,7 @@ from ipie.systems.generic import Generic
 from ipie.legacy.systems.ueg import UEG
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
+
 def get_system(sys_opts=None, verbose=0, comm=None):
     """Wrapper to select system class
 
@@ -21,13 +22,17 @@ def get_system(sys_opts=None, verbose=0, comm=None):
     system : object
         System class.
     """
-    if not('name' in sys_opts):
-        sys_opts['name'] = 'Generic'
+    if not ("name" in sys_opts):
+        sys_opts["name"] = "Generic"
 
-    if sys_opts['name'] == 'UEG':
+    if sys_opts["name"] == "UEG":
         system = UEG(sys_opts, verbose)
-    elif sys_opts['name'] == 'Hubbard'or sys_opts['name'] == 'HubbardHolstein' or sys_opts['name'] == 'Generic':
-        nup, ndown = sys_opts.get('nup'), sys_opts.get('ndown')
+    elif (
+        sys_opts["name"] == "Hubbard"
+        or sys_opts["name"] == "HubbardHolstein"
+        or sys_opts["name"] == "Generic"
+    ):
+        nup, ndown = sys_opts.get("nup"), sys_opts.get("ndown")
         if nup is None or ndown is None:
             if comm.rank == 0:
                 print("# Error: Number of electrons not specified.")
@@ -36,7 +41,7 @@ def get_system(sys_opts=None, verbose=0, comm=None):
         system = Generic(nelec, sys_opts, verbose)
     else:
         if comm.rank == 0:
-            print("# Error: unrecognized system name {}.".format(sys_opts['name']))
+            print("# Error: unrecognized system name {}.".format(sys_opts["name"]))
             sys.exit()
 
     return system
