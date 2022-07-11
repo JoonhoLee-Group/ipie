@@ -1,6 +1,7 @@
+import h5py
 import numpy
 import scipy
-import h5py
+
 
 class H5EstimatorHelper(object):
     """Helper class for pushing data to hdf5 dataset of fixed length.
@@ -23,6 +24,7 @@ class H5EstimatorHelper(object):
     index : int
         Counter for incrementing data.
     """
+
     def __init__(self, filename, base, nav=1):
         # self.store = h5f.create_dataset(name, shape, dtype=dtype)
         self.filename = filename
@@ -41,9 +43,9 @@ class H5EstimatorHelper(object):
         """
         ix = str(self.index)
         # To ensure string indices are sorted properly.
-        padded = '0'*(self.nzero-len(ix)) + ix
-        dset = self.base + '/' + name + '/' + padded
-        with h5py.File(self.filename, 'a') as fh5:
+        padded = "0" * (self.nzero - len(ix)) + ix
+        dset = self.base + "/" + name + "/" + padded
+        with h5py.File(self.filename, "a") as fh5:
             fh5[dset] = data
 
     def increment(self):
@@ -51,4 +53,3 @@ class H5EstimatorHelper(object):
 
     def reset(self):
         self.index = 0
-

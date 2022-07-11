@@ -1,8 +1,11 @@
+import sys
+
 import numpy
 import scipy
-import sys
+
 from ipie.legacy.walkers.stack import FieldConfig
 from ipie.utils.misc import is_cupy
+
 
 class WalkerBatch(object):
     """WalkerBatch base class.
@@ -24,22 +27,41 @@ class WalkerBatch(object):
         Number of back propagation steps.
     """
 
-    def __init__(self, system, hamiltonian, trial, nwalkers, walker_opts={}, index=0, nprop_tot=None, nbp=None, mpi_handler=None):
+    def __init__(
+        self,
+        system,
+        hamiltonian,
+        trial,
+        nwalkers,
+        walker_opts={},
+        index=0,
+        nprop_tot=None,
+        nbp=None,
+        mpi_handler=None,
+    ):
         self.nwalkers = nwalkers
         self.nup = system.nup
         self.ndown = system.ndown
         self.total_weight = 0.0
         self.mpi_handler = mpi_handler
 
-        self.rhf = walker_opts.get('rhf', False)
+        self.rhf = walker_opts.get("rhf", False)
 
-        self.weight = numpy.array([walker_opts.get('weight', 1.0) for iw in range(self.nwalkers)])
+        self.weight = numpy.array(
+            [walker_opts.get("weight", 1.0) for iw in range(self.nwalkers)]
+        )
         self.unscaled_weight = self.weight.copy()
-        self.phase = numpy.array([1. + 0.j for iw in range(self.nwalkers)])
+        self.phase = numpy.array([1.0 + 0.0j for iw in range(self.nwalkers)])
         self.alive = numpy.array([1 for iw in range(self.nwalkers)])
-        self.phia = numpy.array([trial.init[:,:self.nup].copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
+        self.phia = numpy.array(
+            [trial.init[:, : self.nup].copy() for iw in range(self.nwalkers)],
+            dtype=numpy.complex128,
+        )
         if not self.rhf:
-            self.phib = numpy.array([trial.init[:,self.nup:].copy() for iw in range(self.nwalkers)], dtype=numpy.complex128)
+            self.phib = numpy.array(
+                [trial.init[:, self.nup :].copy() for iw in range(self.nwalkers)],
+                dtype=numpy.complex128,
+            )
         else:
             self.phib = None
 
@@ -59,44 +81,66 @@ class WalkerBatch(object):
         self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
         # Number of propagators to store for back propagation / ITCF.
-        num_propg = [walker_opts.get('num_propg', 1) for iw in range(self.nwalkers)]
+        num_propg = [walker_opts.get("num_propg", 1) for iw in range(self.nwalkers)]
         if nbp is not None:
-            self.field_configs = [FieldConfig(hamiltonian.nfields,
-                                             nprop_tot, nbp,
-                                             numpy.complex128) for iw in range(self.nwalkers)]
+            self.field_configs = [
+                FieldConfig(hamiltonian.nfields, nprop_tot, nbp, numpy.complex128)
+                for iw in range(self.nwalkers)
+            ]
         else:
             self.field_configs = None
         self.stack = None
         # Grab objects that are walker specific
         # WARNING!! One has to add names to the list here if new objects are added
-        # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi", 
+        # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi",
         #                    "ot", "ovlp", "eloc", "ot_bp", "weight_bp", "phi_old",
         #                    "hybrid_energy", "weights", "inv_ovlpa", "inv_ovlpb", "Ga", "Gb", "Ghalfa", "Ghalfb"]
-        self.buff_names = ["weight", "unscaled_weight", "phase", "phia", "phib", "hybrid_energy", "ovlp", "sgn_ovlp", "log_ovlp"]
-        self.buff_size = round(self.set_buff_size_single_walker()/float(self.nwalkers))
+        self.buff_names = [
+            "weight",
+            "unscaled_weight",
+            "phase",
+            "phia",
+            "phib",
+            "hybrid_energy",
+            "ovlp",
+            "sgn_ovlp",
+            "log_ovlp",
+        ]
+        self.buff_size = round(
+            self.set_buff_size_single_walker() / float(self.nwalkers)
+        )
 
     # This function casts relevant member variables into cupy arrays
-    def cast_to_cupy (self, verbose=False):
+    def cast_to_cupy(self, verbose=False):
         import cupy
 
-        size = self.weight.size + self.unscaled_weight.size + self.phase.size + self.log_shift.size
+        size = (
+            self.weight.size
+            + self.unscaled_weight.size
+            + self.phase.size
+            + self.log_shift.size
+        )
         size += self.phia.size
-        if (self.ndown >0 and not self.rhf):
+        if self.ndown > 0 and not self.rhf:
             size += self.phib.size
         size += self.hybrid_energy.size
         size += self.ovlp.size
         size += self.sgn_ovlp.size
         size += self.log_ovlp.size
         if verbose:
-            expected_bytes = size * 16.
-            print("# WalkerBatch: expected to allocate {:4.3f} GB".format(expected_bytes/1024**3))
+            expected_bytes = size * 16.0
+            print(
+                "# WalkerBatch: expected to allocate {:4.3f} GB".format(
+                    expected_bytes / 1024**3
+                )
+            )
 
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
         self.log_shift = cupy.asarray(self.log_shift)
         self.phia = cupy.asarray(self.phia)
-        if (self.ndown >0 and not self.rhf):
+        if self.ndown > 0 and not self.rhf:
             self.phib = cupy.asarray(self.phib)
         self.hybrid_energy = cupy.asarray(self.hybrid_energy)
         self.ovlp = cupy.asarray(self.ovlp)
@@ -106,11 +150,16 @@ class WalkerBatch(object):
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
-            print("# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(used_bytes/1024**3,total_bytes/1024**3))
+            print(
+                "# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
+                    used_bytes / 1024**3, total_bytes / 1024**3
+                )
+            )
 
     def set_buff_size_single_walker(self):
         if is_cupy(self.weight):
             import cupy
+
             ndarray = cupy.ndarray
             array = cupy.asnumpy
             isrealobj = cupy.isrealobj
@@ -126,7 +175,7 @@ class WalkerBatch(object):
             #     print(k, v.size)
             # except AttributeError:
             #     print("failed", k, v)
-            if (not (k in self.buff_names)):
+            if not (k in self.buff_names):
                 continue
             if isinstance(v, (ndarray)):
                 names.append(k)
@@ -155,6 +204,7 @@ class WalkerBatch(object):
         """
         if is_cupy(self.weight):
             import cupy
+
             ndarray = cupy.ndarray
             array = cupy.asnumpy
             isrealobj = cupy.isrealobj
@@ -169,27 +219,31 @@ class WalkerBatch(object):
             data = self.__dict__[d]
             if data is None:
                 continue
-            assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
+            assert (
+                data.size % self.nwalkers == 0
+            )  # Only walker-specific data is being communicated
             if isinstance(data[iw], (ndarray)):
-                buff[s:s+data[iw].size] = array(data[iw].ravel())
+                buff[s : s + data[iw].size] = array(data[iw].ravel())
                 s += data[iw].size
-            elif isinstance(data[iw], list): # when data is list
+            elif isinstance(data[iw], list):  # when data is list
                 for l in data[iw]:
                     if isinstance(l, (ndarray)):
-                        buff[s:s+l.size] = array(l.ravel())
+                        buff[s : s + l.size] = array(l.ravel())
                         s += l.size
-                    elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
-                        buff[s:s+1] = l
+                    elif isinstance(
+                        l, (int, float, complex, numpy.float64, numpy.complex128)
+                    ):
+                        buff[s : s + 1] = l
                         s += 1
             else:
-                buff[s:s+1] = array(data[iw])
+                buff[s : s + 1] = array(data[iw])
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
-            return numpy.concatenate((buff,stack_buff))
+            return numpy.concatenate((buff, stack_buff))
         elif self.stack is not None:
             stack_buff = self.stack.get_buffer()
-            return numpy.concatenate((buff,stack_buff))
+            return numpy.concatenate((buff, stack_buff))
         else:
             return buff
 
@@ -203,6 +257,7 @@ class WalkerBatch(object):
         """
         if is_cupy(self.weight):
             import cupy
+
             ndarray = cupy.ndarray
             array = cupy.asarray
             isrealobj = cupy.isrealobj
@@ -216,14 +271,20 @@ class WalkerBatch(object):
             data = self.__dict__[d]
             if data is None:
                 continue
-            assert(data.size % self.nwalkers == 0) # Only walker-specific data is being communicated
+            assert (
+                data.size % self.nwalkers == 0
+            )  # Only walker-specific data is being communicated
             if isinstance(data[iw], ndarray):
-                self.__dict__[d][iw] = array(buff[s:s+data[iw].size].reshape(data[iw].shape).copy())
+                self.__dict__[d][iw] = array(
+                    buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                )
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
                     if isinstance(l, (ndarray)):
-                        self.__dict__[d][iw][ix] = array(buff[s:s+l.size].reshape(l.shape).copy())
+                        self.__dict__[d][iw][ix] = array(
+                            buff[s : s + l.size].reshape(l.shape).copy()
+                        )
                         s += l.size
                     elif isinstance(l, (int, float, complex)):
                         self.__dict__[d][iw][ix] = buff[s]
@@ -237,10 +298,9 @@ class WalkerBatch(object):
                     self.__dict__[d][iw] = buff[s]
                 s += 1
         if self.field_configs is not None:
-            self.field_configs.set_buffer(buff[self.buff_size:])
+            self.field_configs.set_buffer(buff[self.buff_size :])
         if self.stack is not None:
-            self.stack.set_buffer(buff[self.buff_size:])
-
+            self.stack.set_buffer(buff[self.buff_size :])
 
     def reortho(self):
         """reorthogonalise walkers.
@@ -248,9 +308,10 @@ class WalkerBatch(object):
         parameters
         ----------
         """
-        if(is_cupy(self.phia)):
+        if is_cupy(self.phia):
             import cupy
-            assert(cupy.is_available())
+
+            assert cupy.is_available()
             array = cupy.array
             diag = cupy.diag
             zeros = cupy.zeros
@@ -261,7 +322,7 @@ class WalkerBatch(object):
             abs = cupy.abs
             exp = cupy.exp
             qr = cupy.linalg.qr
-            qr_mode = 'reduced'
+            qr_mode = "reduced"
         else:
             array = numpy.array
             diag = numpy.diag
@@ -273,17 +334,16 @@ class WalkerBatch(object):
             abs = numpy.abs
             exp = numpy.exp
             qr = scipy.linalg.qr
-            qr_mode = 'economic'
+            qr_mode = "economic"
 
         complex128 = numpy.complex128
 
-
         nup = self.nup
         ndown = self.ndown
-        
+
         detR = []
         for iw in range(self.nwalkers):
-            (self.phia[iw], Rup) = qr(self.phia[iw],mode=qr_mode)
+            (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
             Rdown = zeros(Rup.shape)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
@@ -308,12 +368,15 @@ class WalkerBatch(object):
             elif ndown > 0 and self.rhf:
                 log_det *= 2.0
 
-            detR += [exp(log_det-self.detR_shift[iw])]
+            detR += [exp(log_det - self.detR_shift[iw])]
             self.log_detR[iw] += log(detR[iw])
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
-        if is_cupy(self.phia): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(
+            self.phia
+        ):  # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
+
             cupy.cuda.stream.get_current_stream().synchronize()
         return detR

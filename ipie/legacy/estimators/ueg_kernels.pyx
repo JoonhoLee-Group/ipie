@@ -1,7 +1,10 @@
 import numpy
+
 cimport numpy
-import math
+
 import itertools
+import math
+
 from ipie.legacy.estimators.utils import convolve
 
 DTYPE_CX = numpy.complex128

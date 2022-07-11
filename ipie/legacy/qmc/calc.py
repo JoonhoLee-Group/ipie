@@ -1,26 +1,30 @@
 """Helper Routines for setting up a calculation"""
 # todo : handle more gracefully.
-import time
-import numpy
 import json
-import h5py
 import sys
+import time
+
+import h5py
+import numpy
+
 try:
     import mpi4py
+
     mpi4py.rc.recv_mprobe = False
     from mpi4py import MPI
+
     # import dill
     # MPI.pickle.__init__(dill.dumps, dill.loads)
     parallel = True
 except ImportError:
     parallel = False
+from ipie.estimators.handler import Estimators
 from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
-from ipie.estimators.handler import Estimators
-from ipie.utils.io import  to_json, get_input_value
-from ipie.utils.misc import serialise
 from ipie.legacy.walkers.handler import Walkers
 from ipie.qmc.comm import FakeComm
+from ipie.utils.io import get_input_value, to_json
+from ipie.utils.misc import serialise
 
 
 def init_communicator():
@@ -29,6 +33,7 @@ def init_communicator():
     else:
         comm = FakeComm()
     return comm
+
 
 def setup_calculation(input_options):
     comm = init_communicator()
@@ -39,25 +44,24 @@ def setup_calculation(input_options):
     afqmc = get_driver(options, comm)
     return (afqmc, comm)
 
+
 def get_driver(options, comm):
-    verbosity = options.get('verbosity', 1)
-    qmc_opts = get_input_value(options, 'qmc', default={},
-                               alias=['qmc_options'])
-    beta = get_input_value(qmc_opts, 'beta', default=None)
-    batched = get_input_value(qmc_opts, 'batched', default=True)#,
-            # verbose=verbosity)
+    verbosity = options.get("verbosity", 1)
+    qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
+    beta = get_input_value(qmc_opts, "beta", default=None)
+    batched = get_input_value(qmc_opts, "batched", default=True)  # ,
+    # verbose=verbosity)
     if beta is not None:
-        afqmc = ThermalAFQMC(comm, options=options,
-                             parallel=comm.size>1,
-                             verbose=verbosity)
+        afqmc = ThermalAFQMC(
+            comm, options=options, parallel=comm.size > 1, verbose=verbosity
+        )
     else:
-        if (comm.rank == 0):
+        if comm.rank == 0:
             print("# Non-batched AFQMC driver is used")
-        afqmc = AFQMC(comm, options=options,
-                      parallel=comm.size>1,
-                      verbose=verbosity)
+        afqmc = AFQMC(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
 
     return afqmc
+
 
 def read_input(input_file, comm, verbose=False):
     """Helper function to parse input file and setup parallel calculation.
@@ -79,7 +83,7 @@ def read_input(input_file, comm, verbose=False):
     """
     if comm.rank == 0:
         if verbose:
-            print('# Initialising pie simulation from %s'%input_file)
+            print("# Initialising pie simulation from %s" % input_file)
         with open(input_file) as inp:
             options = json.load(inp)
         inp.close()
@@ -95,11 +99,11 @@ def set_rng_seed(seed, comm):
         # only set "random" part of seed on parent processor so we can reproduce
         # results in when running in parallel.
         if comm.rank == 0:
-            seed = numpy.array([numpy.random.randint(0, 1e8)], dtype='i4')
+            seed = numpy.array([numpy.random.randint(0, 1e8)], dtype="i4")
             # Can't directly json serialise numpy arrays
-            qmc_opts['rng_seed'] = seed[0].item()
+            qmc_opts["rng_seed"] = seed[0].item()
         else:
-            seed = numpy.empty(1, dtype='i4')
+            seed = numpy.empty(1, dtype="i4")
         comm.Bcast(seed, root=0)
         seed = seed[0]
     seed = seed + comm.rank
@@ -143,43 +147,47 @@ def setup_parallel(options, comm=None, verbose=False):
     # We can't serialise '_io.BufferWriter' object, so just delay initialisation
     # of estimators object to after MPI communication.
     # Simpler to just ensure a fixed number of walkers per core.
-    afqmc.qmc.nwalkers = int(afqmc.qmc.nwalkers/afqmc.nprocs)
+    afqmc.qmc.nwalkers = int(afqmc.qmc.nwalkers / afqmc.nprocs)
     afqmc.qmc.ntot_walkers = afqmc.qmc.nwalkers * afqmc.nprocs
     if afqmc.qmc.nwalkers == 0:
         # This should occur on all processors so we don't need to worry about
         # race conditions / mpi4py hanging.
         if afqmc.root and afqmc.verbosity > 1:
-            print("# WARNING: Not enough walkers for selected core count."
-                  "There must be at least one walker per core set in the "
-                  "input file. Setting one walker per core.")
+            print(
+                "# WARNING: Not enough walkers for selected core count."
+                "There must be at least one walker per core set in the "
+                "input file. Setting one walker per core."
+            )
         afqmc.qmc.nwalkers = 1
 
-    estimator_opts = options.get('estimates', {})
-    walker_opts = options.get('walkers', {'weight': 1})
-    estimator_opts['stack_size'] = walker_opts.get('stack_size', 1)
-    afqmc.estimators = (
-        Estimators(estimator_opts,
-                   afqmc.root,
-                   afqmc.qmc,
-                   afqmc.system,
-                   afqmc.trial,
-                   afqmc.propagators.BT_BP,
-                   verbose=(comm.rank==0 and verbose))
+    estimator_opts = options.get("estimates", {})
+    walker_opts = options.get("walkers", {"weight": 1})
+    estimator_opts["stack_size"] = walker_opts.get("stack_size", 1)
+    afqmc.estimators = Estimators(
+        estimator_opts,
+        afqmc.root,
+        afqmc.qmc,
+        afqmc.system,
+        afqmc.trial,
+        afqmc.propagators.BT_BP,
+        verbose=(comm.rank == 0 and verbose),
     )
-    afqmc.psi = Walkers(walker_opts, afqmc.system,
-                        afqmc.trial,
-                        afqmc.qmc,
-                        verbose=(comm.rank==0 and verbose),
-                        comm=comm)
-    afqmc.psi.add_field_config(afqmc.estimators.nprop_tot,
-                               afqmc.estimators.nbp,
-                               afqmc.system,
-                               numpy.complex128)
+    afqmc.psi = Walkers(
+        walker_opts,
+        afqmc.system,
+        afqmc.trial,
+        afqmc.qmc,
+        verbose=(comm.rank == 0 and verbose),
+        comm=comm,
+    )
+    afqmc.psi.add_field_config(
+        afqmc.estimators.nprop_tot, afqmc.estimators.nbp, afqmc.system, numpy.complex128
+    )
     if comm.rank == 0:
         json_string = to_json(afqmc)
         afqmc.estimators.json_string = json_string
         afqmc.estimators.dump_metadata()
-        afqmc.estimators.estimators['mixed'].print_key()
-        afqmc.estimators.estimators['mixed'].print_header()
+        afqmc.estimators.estimators["mixed"].print_key()
+        afqmc.estimators.estimators["mixed"].print_header()
 
     return afqmc

@@ -1,23 +1,25 @@
-'''Various useful routines maybe not appropriate elsewhere'''
+"""Various useful routines maybe not appropriate elsewhere"""
+
+import os
+import socket
+import subprocess
+import sys
+import time
+import types
+from functools import reduce
 
 import numpy
-import os
 import scipy.sparse
-import sys
-import subprocess
-import types
-import time
-from functools import  reduce
-import socket
+
 
 def is_cupy(obj):
     t = str(type(obj))
-    cond = 'cupy' in t
+    cond = "cupy" in t
     return cond
 
 
 def get_git_revision_hash():
-    """ Return git revision.
+    """Return git revision.
 
     Adapted from:
         http://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script
@@ -29,37 +31,39 @@ def get_git_revision_hash():
     """
 
     try:
-        src = os.path.dirname(__file__) + '/../../'
-        sha1 = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
-                                       cwd=src).strip()
-        suffix = subprocess.check_output(['git', 'status',
-                                          '-uno',
-                                          './ipie'],
-                                         cwd=src).strip()
-        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                         cwd=src).strip()
+        src = os.path.dirname(__file__) + "/../../"
+        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src).strip()
+        suffix = subprocess.check_output(
+            ["git", "status", "-uno", "./ipie"], cwd=src
+        ).strip()
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
+        ).strip()
     except Exception as error:
         suffix = False
         print(f"couldn't determine git hash : {error}")
-        sha1 = 'none'.encode()
+        sha1 = "none".encode()
     if suffix:
-        return sha1.decode('utf-8') + '-dirty', branch.decode('utf-8')
+        return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8")
     else:
-        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                         cwd=src).strip()
-        return sha1.decode('utf-8'), branch.decode('utf_8')
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
+        ).strip()
+        return sha1.decode("utf-8"), branch.decode("utf_8")
 
 
 def is_h5file(obj):
     t = str(type(obj))
-    cond = 'h5py' in t
+    cond = "h5py" in t
     return cond
 
 
 def is_class(obj):
-    cond = (hasattr(obj, '__class__') and (('__dict__') in dir(obj)
-            and not isinstance(obj, types.FunctionType)
-            and not is_h5file(obj)))
+    cond = hasattr(obj, "__class__") and (
+        ("__dict__") in dir(obj)
+        and not isinstance(obj, types.FunctionType)
+        and not is_h5file(obj)
+    )
 
     return cond
 
@@ -86,33 +90,33 @@ def serialise(obj, verbose=0):
             # function
             if verbose == 1:
                 obj_dict[k] = str(v)
-        elif hasattr(v, '__self__'):
+        elif hasattr(v, "__self__"):
             # unbound function
             if verbose == 1:
                 obj_dict[k] = str(v)
-        elif k == 'estimates' or k == 'global_estimates':
+        elif k == "estimates" or k == "global_estimates":
             pass
-        elif k == 'walkers':
+        elif k == "walkers":
             obj_dict[k] = [str(x) for x in v][0]
         elif isinstance(v, numpy.ndarray):
             if verbose == 3:
                 if v.dtype == complex:
                     obj_dict[k] = [v.real.tolist(), v.imag.tolist()]
                 else:
-                    obj_dict[k] = v.tolist(),
+                    obj_dict[k] = (v.tolist(),)
             elif verbose == 2:
                 if len(v.shape) == 1:
                     if v[0] is not None and v.dtype == complex:
                         obj_dict[k] = [[v.real.tolist(), v.imag.tolist()]]
                     else:
-                        obj_dict[k] = v.tolist(),
+                        obj_dict[k] = (v.tolist(),)
             elif len(v.shape) == 1:
                 if v[0] is not None and numpy.linalg.norm(v) > 1e-8:
                     if v.dtype == complex:
                         obj_dict[k] = [[v.real.tolist(), v.imag.tolist()]]
                     else:
-                        obj_dict[k] = v.tolist(),
-        elif k == 'store':
+                        obj_dict[k] = (v.tolist(),)
+        elif k == "store":
             if verbose == 1:
                 obj_dict[k] = str(v)
         elif isinstance(v, (int, float, bool, str)):
@@ -129,21 +133,23 @@ def serialise(obj, verbose=0):
 
     return obj_dict
 
+
 class dotdict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
+
 def update_stack(stack_size, num_slices, name="stack", verbose=False):
     lower_bound = min(stack_size, num_slices)
     upper_bound = min(stack_size, num_slices)
 
-    while (num_slices//lower_bound) * lower_bound < num_slices:
+    while (num_slices // lower_bound) * lower_bound < num_slices:
         lower_bound -= 1
-    while (num_slices//upper_bound) * upper_bound < num_slices:
+    while (num_slices // upper_bound) * upper_bound < num_slices:
         upper_bound += 1
 
-    if (stack_size-lower_bound) <= (upper_bound - stack_size):
+    if (stack_size - lower_bound) <= (upper_bound - stack_size):
         stack_size = lower_bound
     else:
         stack_size = upper_bound
@@ -152,6 +158,7 @@ def update_stack(stack_size, num_slices, name="stack", verbose=False):
         print("# Initial {} lower_bound is {}".format(name, lower_bound))
         print("# Adjusted {} size is {}".format(name, stack_size))
     return stack_size
+
 
 def print_section_header(string):
     header = """
@@ -163,9 +170,9 @@ def print_section_header(string):
     box_len = len("################################################")
     str_len = len(string)
     start = box_len // 2 - str_len // 2 - 1
-    init = "#" + ' '*start
-    end = box_len - (box_len//2 + str_len // 2) - 1
-    fin = ' '*end + "#"
+    init = "#" + " " * start
+    end = box_len - (box_len // 2 + str_len // 2) - 1
+    fin = " " * end + "#"
     footer = """
     #                                              #
     #                                              #
@@ -174,19 +181,22 @@ def print_section_header(string):
     """
     print(header + init + string + fin + footer)
 
+
 def merge_dicts(a, b, path=None):
-    if path is None: path = []
+    if path is None:
+        path = []
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge_dicts(a[key], b[key], path + [str(key)])
             elif a[key] == b[key]:
-                pass # same leaf value
+                pass  # same leaf value
             else:
-                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                raise Exception("Conflict at %s" % ".".join(path + [str(key)]))
         else:
             a[key] = b[key]
     return a
+
 
 def get_from_dict(d, k):
     """Get value from nested dictionary.
@@ -210,6 +220,7 @@ def get_from_dict(d, k):
         # Value not found.
         return None
 
+
 def get_numeric_names(d):
     names = []
     size = 0
@@ -229,75 +240,96 @@ def get_numeric_names(d):
                     size += 1
     return names, size
 
+
 def get_node_mem():
     try:
-        return os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') / 1024**3.0
+        return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") / 1024**3.0
     except:
         return 0.0
 
+
 def get_sys_info(sha1, branch, uuid, nranks):
-    print('# Git hash: {:s}.'.format(sha1))
-    print('# Git branch: {:s}.'.format(branch))
-    print('# Calculation uuid: {:s}.'.format(uuid))
+    print("# Git hash: {:s}.".format(sha1))
+    print("# Git branch: {:s}.".format(branch))
+    print("# Calculation uuid: {:s}.".format(uuid))
     mem = get_node_mem()
-    print('# Approximate memory available per node: {:.4f} GB.'.format(mem))
-    print('# Running on {:d} MPI rank{:s}.'.format(nranks, 's' if nranks > 1 else ''))
+    print("# Approximate memory available per node: {:.4f} GB.".format(mem))
+    print("# Running on {:d} MPI rank{:s}.".format(nranks, "s" if nranks > 1 else ""))
     hostname = socket.gethostname()
-    print('# Root processor name: {}'.format(hostname))
+    print("# Root processor name: {}".format(hostname))
     py_ver = sys.version.splitlines()
-    print("# Python interpreter: {:s}".format(' '.join(py_ver)))
-    info = {'nranks': nranks, 'python': py_ver, 'branch': branch, 'sha1': sha1}
+    print("# Python interpreter: {:s}".format(" ".join(py_ver)))
+    info = {"nranks": nranks, "python": py_ver, "branch": branch, "sha1": sha1}
     from importlib import import_module
-    for lib in ['numpy', 'scipy', 'h5py', 'mpi4py', 'cupy']:
+
+    for lib in ["numpy", "scipy", "h5py", "mpi4py", "cupy"]:
         try:
             l = import_module(lib)
             # Strip __init__.py
             path = l.__file__[:-12]
             vers = l.__version__
             print("# Using {:s} v{:s} from: {:s}.".format(lib, vers, path))
-            info['{:s}'.format(lib)] = {'version': vers, 'path': path}
-            if lib == 'numpy':
+            info["{:s}".format(lib)] = {"version": vers, "path": path}
+            if lib == "numpy":
                 try:
-                    np_lib = l.__config__.blas_opt_info['libraries']
+                    np_lib = l.__config__.blas_opt_info["libraries"]
                 except AttributeError:
-                    np_lib = l.__config__.blas_ilp64_opt_info['libraries']
-                print("# - BLAS lib: {:s}".format(' '.join(np_lib)))
+                    np_lib = l.__config__.blas_ilp64_opt_info["libraries"]
+                print("# - BLAS lib: {:s}".format(" ".join(np_lib)))
                 try:
-                    lib_dir = l.__config__.blas_opt_info['library_dirs']
+                    lib_dir = l.__config__.blas_opt_info["library_dirs"]
                 except AttributeError:
-                    lib_dir = l.__config__.blas_ilp64_opt_info['library_dirs']
-                print("# - BLAS dir: {:s}".format(' '.join(lib_dir)))
-                info['{:s}'.format(lib)]['BLAS'] = {'lib': ' '.join(np_lib),
-                                                    'path': ' '.join(lib_dir)}
-            elif lib == 'mpi4py':
-                mpicc = l.get_config().get('mpicc', 'none')
+                    lib_dir = l.__config__.blas_ilp64_opt_info["library_dirs"]
+                print("# - BLAS dir: {:s}".format(" ".join(lib_dir)))
+                info["{:s}".format(lib)]["BLAS"] = {
+                    "lib": " ".join(np_lib),
+                    "path": " ".join(lib_dir),
+                }
+            elif lib == "mpi4py":
+                mpicc = l.get_config().get("mpicc", "none")
                 print("# - mpicc: {:s}".format(mpicc))
-                info['{:s}'.format(lib)]['mpicc'] = mpicc
-            elif lib == 'cupy':
+                info["{:s}".format(lib)]["mpicc"] = mpicc
+            elif lib == "cupy":
                 try:
                     cu_info = l.cuda.runtime.getDeviceProperties(0)
                     cuda_compute = l.cuda.Device().compute_capability
                     cuda_version = str(l.cuda.runtime.runtimeGetVersion())
-                    cuda_compute = cuda_compute[0] + '.' +cuda_compute[1]
-                    #info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
+                    cuda_compute = cuda_compute[0] + "." + cuda_compute[1]
+                    # info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
                     #                                    'path': ' '.join(lib_dir)}
-                    version_string = cuda_version[:2] + '.' + cuda_version[2:4] + '.' + cuda_version[4]
+                    version_string = (
+                        cuda_version[:2]
+                        + "."
+                        + cuda_version[2:4]
+                        + "."
+                        + cuda_version[4]
+                    )
                     print("# - CUDA compute capability: {:s}".format(cuda_compute))
                     print("# - CUDA version: {}".format(version_string))
-                    print("# - GPU Type: {:s}".format(str(cu_info['name'])[1:]))
-                    print("# - GPU Mem: {:.3f} GB".format(cu_info['totalGlobalMem']/(1024**3.0)))
-                    print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
+                    print("# - GPU Type: {:s}".format(str(cu_info["name"])[1:]))
+                    print(
+                        "# - GPU Mem: {:.3f} GB".format(
+                            cu_info["totalGlobalMem"] / (1024**3.0)
+                        )
+                    )
+                    print(
+                        "# - Number of GPUs: {:d}".format(
+                            l.cuda.runtime.getDeviceCount()
+                        )
+                    )
                 except:
                     print("# cupy import error")
-        except (ModuleNotFoundError,ImportError):
+        except (ModuleNotFoundError, ImportError):
             print("# Package {:s} not found.".format(lib))
     return info
+
 
 def timeit(func):
     def wrapper(*args, **kwargs):
         start = time.time()
         res = func(*args, **kwargs)
         end = time.time()
-        print(" # Time : {} ".format(end-start))
+        print(" # Time : {} ".format(end - start))
         return res
+
     return wrapper

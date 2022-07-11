@@ -1,8 +1,10 @@
 import sys
 import time
+
 import numpy
 from mpi4py import MPI
-from ipie.utils.mpi import get_shared_comm, get_shared_array, MPIHandler
+
+from ipie.utils.mpi import MPIHandler, get_shared_array, get_shared_comm
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()

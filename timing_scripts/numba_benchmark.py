@@ -1,13 +1,17 @@
-import numpy
 import os
+
+import numpy
+
 # numpy.show_config()
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 
 import time
+
 import numba
 from numba import jit
 from pyscf.lib.numpy_helper import zdot
+
 
 def local_energy_generic_cholesky_opt_rhf(Ghalfa, rchola):
     # Element wise multiplication.

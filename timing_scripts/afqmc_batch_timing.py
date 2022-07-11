@@ -1,21 +1,22 @@
-from ipie.qmc.afqmc_batch import AFQMCBatch
-import numpy
-from ipie.qmc.options import QMCOpts
-from ipie.propagation.utils import get_propagator_driver
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.legacy.estimators.local_energy import local_energy
-from ipie.systems.generic import Generic
-from ipie.utils.mpi import get_shared_comm
-from ipie.utils.io import  get_input_value
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.legacy.walkers.single_det import SingleDetWalker
-
 import mpi4py
-mpi4py.rc.recv_mprobe = False
-from mpi4py import MPI
+import numpy
 
+from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.propagation.utils import get_propagator_driver
+from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.options import QMCOpts
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.utils.io import get_input_value
+from ipie.utils.mpi import get_shared_comm
+
+mpi4py.rc.recv_mprobe = False
 import cProfile
+
+from mpi4py import MPI
 
 nelec = (5,5)
 nwalkers = 10

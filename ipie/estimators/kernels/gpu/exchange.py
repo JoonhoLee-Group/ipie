@@ -2,9 +2,10 @@ import cupy as cp
 import numba
 from numba import cuda
 
-_block_size = 512#
+_block_size = 512  #
 
-@cuda.jit('void(complex128[:,:,:,:], complex128[:])')
+
+@cuda.jit("void(complex128[:,:,:,:], complex128[:])")
 def kernel_exchange_reduction_old(T, exx_w):
     nwalker = T.shape[0]
     naux = T.shape[1]
@@ -36,7 +37,8 @@ def kernel_exchange_reduction_old(T, exx_w):
         cuda.atomic.add(exx_w.real, walker, shared_array[0].real)
         cuda.atomic.add(exx_w.imag, walker, shared_array[0].imag)
 
-@cuda.jit('void(complex128[:,:,:,:], complex128[:])')
+
+@cuda.jit("void(complex128[:,:,:,:], complex128[:])")
 def kernel_exchange_reduction(T, exx_w):
     naux = T.shape[0]
     nocc = T.shape[1]
@@ -68,6 +70,7 @@ def kernel_exchange_reduction(T, exx_w):
         cuda.atomic.add(exx_w.real, walker, shared_array[0].real)
         cuda.atomic.add(exx_w.imag, walker, shared_array[0].imag)
 
+
 def exchange_reduction_old(Twxij, exx_walker):
     """Reduce intermediate with itself.
 
@@ -81,6 +84,7 @@ def exchange_reduction_old(Twxij, exx_walker):
     # look into optimizations.
     kernel_exchange_reduction_old[blocks_per_grid, _block_size](Twxij, exx_walker)
     cp.cuda.stream.get_current_stream().synchronize()
+
 
 def exchange_reduction(Txiwj, exx_walker):
     """Reduce intermediate with itself.

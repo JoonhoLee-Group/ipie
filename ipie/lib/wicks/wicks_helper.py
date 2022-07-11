@@ -1,6 +1,7 @@
-import os
-import numpy as np
 import ctypes
+import os
+
+import numpy as np
 from numpy.ctypeslib import ndpointer
 
 _path = os.path.dirname(__file__)

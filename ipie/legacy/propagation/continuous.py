@@ -1,55 +1,57 @@
 import cmath
 import math
-import numpy
 import sys
 import time
 
-from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
-from ipie.legacy.propagation.planewave import PlaneWave
-from ipie.legacy.propagation.generic import GenericContinuous
+import numpy
 
 from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.legacy.estimators.local_energy import local_energy
+from ipie.legacy.propagation.generic import GenericContinuous
+from ipie.legacy.propagation.hubbard import (HubbardContinuous,
+                                             HubbardContinuousSpin)
+from ipie.legacy.propagation.planewave import PlaneWave
+from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from ipie.propagation.overlap import get_calc_overlap
-from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.utils.misc import is_cupy
 
+
 class Continuous(object):
-    """Propagation with continuous HS transformation.
-    """
+    """Propagation with continuous HS transformation."""
+
     def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False):
         if verbose:
             print("# Parsing input options for propagation.Continuous.")
             print("# Using continuous Hubbard--Stratonovich transformations.")
         # Input options
-        self.free_projection = options.get('free_projection', False)
-        self.hybrid = options.get('hybrid', True)
+        self.free_projection = options.get("free_projection", False)
+        self.hybrid = options.get("hybrid", True)
         if verbose:
-            print("# Using phaseless approximation: %r"%(not self.free_projection))
-        self.force_bias = options.get('force_bias', True)
-        
+            print("# Using phaseless approximation: %r" % (not self.free_projection))
+        self.force_bias = options.get("force_bias", True)
+
         if self.free_projection:
             if verbose:
                 print("# Setting force_bias to False with free projection.")
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r."%self.force_bias)
-        self.exp_nmax = options.get('expansion_order', 6)
+                print("# Setting force bias to %r." % self.force_bias)
+        self.exp_nmax = options.get("expansion_order", 6)
         # Derived Attributes
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
-        self.isqrt_dt = 1j*self.sqrt_dt
+        self.isqrt_dt = 1j * self.sqrt_dt
 
-        self.propagator = get_continuous_propagator(system, hamiltonian, trial, qmc,
-                                                    options=options,
-                                                    verbose=verbose)
+        self.propagator = get_continuous_propagator(
+            system, hamiltonian, trial, qmc, options=options, verbose=verbose
+        )
         # self.calc_overlap = get_calc_overlap(trial)
         # self.compute_greens_function = get_greens_function(trial)
 
-        assert(qmc.batched==False or qmc.batched == None)
-        
+        assert qmc.batched == False or qmc.batched == None
+
         if self.hybrid:
             if verbose:
                 print("# Using hybrid weight update.")
@@ -60,9 +62,9 @@ class Continuous(object):
             self.update_weight = self.update_weight_local_energy
         # Constant core contribution modified by mean field shift.
         mf_core = self.propagator.mf_core
-        
-        self.log_mf_const_fac = -self.dt*mf_core.real
-        
+
+        self.log_mf_const_fac = -self.dt * mf_core.real
+
         # JOONHO - isn't this repeating the work? We will check this later; it's used by Hubbard Continuous
         self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
 
@@ -71,7 +73,7 @@ class Continuous(object):
         self.nfb_trig = 0
         self.nhe_trig = 0
 
-        self.ebound = (2.0/self.dt)**0.5
+        self.ebound = (2.0 / self.dt) ** 0.5
 
         if self.free_projection:
             if verbose:
@@ -133,9 +135,12 @@ class Continuous(object):
         phi : numpy array
             Exp(VHS) * phi
         """
-        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+        if is_cupy(
+            VHS
+        ):  # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
-            assert(cupy.is_available())
+
+            assert cupy.is_available()
             copy = cupy.copy
             copyto = cupy.copyto
             zeros = cupy.zeros
@@ -147,20 +152,23 @@ class Continuous(object):
         if debug:
             copy = numpy.copy(phi)
             c2 = scipy.linalg.expm(VHS).dot(copy)
-    
+
         # Temporary array for matrix exponentiation.
         Temp = zeros(phi.shape, dtype=phi.dtype)
 
         copyto(Temp, phi)
-        for n in range(1, self.exp_nmax+1):
+        for n in range(1, self.exp_nmax + 1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
-        
-        if is_cupy(VHS): # if even one array is a cupy array we should assume the rest is done with cupy
+
+        if is_cupy(
+            VHS
+        ):  # if even one array is a cupy array we should assume the rest is done with cupy
             import cupy
+
             cupy.cuda.stream.get_current_stream().synchronize()
 
         return phi
@@ -207,7 +215,7 @@ class Continuous(object):
         # Constant factor arising from force bias and mean field shift
         cmf = -self.sqrt_dt * xshifted.dot(self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
-        cfb = xi.dot(xbar) - 0.5*xbar.dot(xbar)
+        cfb = xi.dot(xbar) - 0.5 * xbar.dot(xbar)
 
         # Operator terms contributing to propagator.
         start_time = time.time()
@@ -216,14 +224,14 @@ class Continuous(object):
         start_time = time.time()
         if len(VHS.shape) == 3:
             # 2.b Apply two-body
-            self.apply_exponential(walker.phi[:,:system.nup], VHS[0])
+            self.apply_exponential(walker.phi[:, : system.nup], VHS[0])
             if system.ndown > 0:
-                self.apply_exponential(walker.phi[:,system.nup:], VHS[1])
+                self.apply_exponential(walker.phi[:, system.nup :], VHS[1])
         else:
             # 2.b Apply two-body
-            self.apply_exponential(walker.phi[:,:system.nup], VHS)
+            self.apply_exponential(walker.phi[:, : system.nup], VHS)
             if system.ndown > 0:
-                self.apply_exponential(walker.phi[:,system.nup:], VHS)
+                self.apply_exponential(walker.phi[:, system.nup :], VHS)
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -244,14 +252,16 @@ class Continuous(object):
         # 1. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2. Apply 2-body projector
-        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
+        (cmf, cfb, xmxbar) = self.two_body_propagator(
+            walker, system, hamiltonian, trial
+        )
         # 3. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         ovlp_new = walker.calc_overlap(trial)
         # Constant terms are included in the walker's weight.
-        (magn, dtheta) = cmath.polar(cmath.exp(cmf+self.dt*eshift))
+        (magn, dtheta) = cmath.polar(cmath.exp(cmf + self.dt * eshift))
         walker.weight *= magn
-        walker.phase *= cmath.exp(1j*dtheta)
+        walker.phase *= cmath.exp(1j * dtheta)
         walker.ot = ovlp_new
         walker.ovlp = ovlp_new
 
@@ -263,10 +273,10 @@ class Continuous(object):
             return ehyb
         eoriginal = ehyb
         if ehyb.real > eshift.real + self.ebound:
-            ehyb = eshift.real+self.ebound+1j*ehyb.imag
+            ehyb = eshift.real + self.ebound + 1j * ehyb.imag
             self.nhe_trig += 1
         elif ehyb.real < eshift.real - self.ebound:
-            ehyb = eshift.real-self.ebound+1j*ehyb.imag
+            ehyb = eshift.real - self.ebound + 1j * ehyb.imag
             self.nhe_trig += 1
         return ehyb
 
@@ -276,7 +286,7 @@ class Continuous(object):
         # first block until reasonable estimate of eshift can be computed.
         if abs(eshift) < 1e-10:
             return eloc
-        if eloc.real > eshift.real +  self.ebound:
+        if eloc.real > eshift.real + self.ebound:
             eloc_bounded = eshift.real + self.ebound
             self.nhe_trig += 1
         elif eloc.real < eshift.real - self.ebound:
@@ -304,20 +314,36 @@ class Continuous(object):
         # 2.a Apply one-body
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2.b Apply two-body
-        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
+        (cmf, cfb, xmxbar) = self.two_body_propagator(
+            walker, system, hamiltonian, trial
+        )
         # 2.c Apply one-body
         kinetic_real(walker.phi, system, self.propagator.BH1)
 
         # Now apply phaseless approximation
         ovlp_new = walker.calc_overlap(trial)
-        self.update_weight(system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift)
+        self.update_weight(
+            system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift
+        )
 
-    def update_weight_hybrid(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+    def update_weight_hybrid(
+        self,
+        system,
+        hamiltonian,
+        walker,
+        trial,
+        ovlp,
+        ovlp_new,
+        cfb,
+        cmf,
+        xmxbar,
+        eshift,
+    ):
         ovlp_ratio = ovlp_new / ovlp
-        hybrid_energy = -(cmath.log(ovlp_ratio) + cfb + cmf)/self.dt
+        hybrid_energy = -(cmath.log(ovlp_ratio) + cfb + cmf) / self.dt
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
-        importance_function = (
-                cmath.exp(-self.dt*(0.5*(hybrid_energy+walker.hybrid_energy)-eshift))
+        importance_function = cmath.exp(
+            -self.dt * (0.5 * (hybrid_energy + walker.hybrid_energy) - eshift)
         )
 
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
@@ -327,28 +353,40 @@ class Continuous(object):
             # Determine cosine phase from Arg(<psi_T|B(x-\bar{x})|phi>/<psi_T|phi>)
             # Note this doesn't include exponential factor from shifting
             # propability distribution.
-            dtheta = (-self.dt*hybrid_energy-cfb).imag
+            dtheta = (-self.dt * hybrid_energy - cfb).imag
             cosine_fac = max(0, math.cos(dtheta))
             walker.weight *= magn * cosine_fac
             walker.ot = ovlp_new
             walker.ovlp = ovlp_new
             if magn > 1e-16:
-                wfac = numpy.array([importance_function/magn, cosine_fac])
+                wfac = numpy.array([importance_function / magn, cosine_fac])
             else:
-                wfac = numpy.array([0,0])
+                wfac = numpy.array([0, 0])
             if walker.field_configs is not None:
                 walker.field_configs.update(xmxbar, wfac)
         else:
             walker.ot = ovlp_new
             walker.weight = 0.0
 
-    def update_weight_local_energy(self, system, hamiltonian, walker, trial, ovlp, ovlp_new, cfb, cmf, xmxbar, eshift):
+    def update_weight_local_energy(
+        self,
+        system,
+        hamiltonian,
+        walker,
+        trial,
+        ovlp,
+        ovlp_new,
+        cfb,
+        cmf,
+        xmxbar,
+        eshift,
+    ):
         ovlp_ratio = ovlp_new / ovlp
         eloc = local_energy(system, hamiltonian, walker, trial)[0]
         re_eloc = self.apply_bound_local_energy(eloc, eshift)
-        magn = numpy.exp(-0.5*self.dt*(re_eloc+walker.eloc-eshift).real)
+        magn = numpy.exp(-0.5 * self.dt * (re_eloc + walker.eloc - eshift).real)
         # for back propagation
-        wfac_imag = numpy.exp(-0.5*self.dt*(eloc+walker.eloc-eshift).imag)
+        wfac_imag = numpy.exp(-0.5 * self.dt * (eloc + walker.eloc - eshift).imag)
         walker.eloc = eloc
         if not math.isinf(magn):
             # Determine cosine phase from Arg(<psi_T|B(x-\bar{x})|phi>/<psi_T|phi>)
@@ -361,14 +399,17 @@ class Continuous(object):
             if magn > 1e-16:
                 wfac = numpy.array([wfac_imag, cosine_fac])
             else:
-                wfac = numpy.array([0,0])
+                wfac = numpy.array([0, 0])
             if walker.field_configs is not None:
                 walker.field_configs.update(xmxbar, wfac)
         else:
             walker.ot = ot_new
             walker.weight = 0.0
 
-def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbose=False):
+
+def get_continuous_propagator(
+    system, hamiltonian, trial, qmc, options={}, verbose=False
+):
     """Wrapper to select propagator class.
 
     Parameters
@@ -388,23 +429,23 @@ def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbo
         Propagator object.
     """
     if hamiltonian.name == "UEG":
-        propagator = PlaneWave(system, hamiltonian, trial, qmc,
-                               options=options,
-                               verbose=verbose)
+        propagator = PlaneWave(
+            system, hamiltonian, trial, qmc, options=options, verbose=verbose
+        )
     elif hamiltonian.name == "Hubbard":
-        charge = options.get('charge_decomposition', True)
+        charge = options.get("charge_decomposition", True)
         if charge:
-            propagator = HubbardContinuous(hamiltonian, trial, qmc,
-                                           options=options,
-                                           verbose=verbose)
+            propagator = HubbardContinuous(
+                hamiltonian, trial, qmc, options=options, verbose=verbose
+            )
         else:
-            propagator = HubbardContinuousSpin(hamiltonian, trial, qmc,
-                                               options=options,
-                                               verbose=verbose)
+            propagator = HubbardContinuousSpin(
+                hamiltonian, trial, qmc, options=options, verbose=verbose
+            )
     elif hamiltonian.name == "Generic":
-        propagator = GenericContinuous(system, hamiltonian, trial, qmc,
-                                       options=options,
-                                       verbose=verbose)
+        propagator = GenericContinuous(
+            system, hamiltonian, trial, qmc, options=options, verbose=verbose
+        )
     else:
         propagator = None
 
