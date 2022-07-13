@@ -71,8 +71,8 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 `.github/workflows/ci2.yml` for more details.
 
-.. image:: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml/badge.svg
-    :target: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
+    :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
 
 Documentation
 -------------
