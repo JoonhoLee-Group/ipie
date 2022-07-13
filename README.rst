@@ -1,10 +1,10 @@
 =====
-IPIE
+ipie
 =====
 
-IPIE stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
+ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
-IPIE inherits a lot of QMC features from pauxy.
+ipie inherits a lot of QMC features from pauxy.
 
 .. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
     :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
@@ -22,13 +22,11 @@ or one can open Github issues.
 
 Features
 --------
-ipie can currently:
+ipie currently supports:
 
-- estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
-- perform phaseless and constrained path AFQMC.
-- calculate expectation values and correlation functions using back propagation.
-- calculate imaginary time correlation functions.
-- perform simple data analysis.
+- estimation of the ground state energy of ab-initio systems using phaseless AFQMC with support for CPUs and GPUs.
+- simple data analysis.
+- other legacy functionalities available in pauxy such as UEG, Hubbard model, and Hubbard-Holstein model.
 
 Installation
 ------------
