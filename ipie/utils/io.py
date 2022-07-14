@@ -19,6 +19,9 @@ def format_fixed_width_strings(strings):
 def format_fixed_width_floats(floats):
     return " ".join("{: .10e}".format(f) for f in floats)
 
+def format_fixed_width_cmplx(floats):
+    return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)
+
 
 def read_fortran_complex_numbers(filename):
     with open(filename) as f:
@@ -361,7 +364,12 @@ def get_input_value(inputs, key, default=0, alias=None, verbose=False):
     """Helper routine to parse input options."""
     val = inputs.get(key, None)
     if val is not None and verbose:
-        print("# Setting {} to {}.".format(key, val))
+        if isinstance(val, dict):
+            print("# Options for {}".format(key))
+            for k, v in val.items():
+                print("# Setting {} to {}.".format(k, v))
+        else:
+            print("# Setting {} to {}.".format(key, val))
     if val is None:
         if alias is not None:
             for a in alias:
