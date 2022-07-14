@@ -11,6 +11,7 @@ import h5py
 import numpy
 import scipy.linalg
 
+from ipie.estimators.arbitrary import ArbitraryEstimators
 from ipie.estimators.mixed import Mixed
 from ipie.utils.io import get_input_value
 
@@ -83,6 +84,16 @@ class Estimators(object):
         self.estimators["mixed"] = Mixed(
             mixed, system, hamiltonian, root, self.filename, qmc, trial, dtype
         )
+        arbitrary = get_input_value(
+                estimates,
+                "arbitrary",
+                {},
+                alias=['user', 'miscellaneous'],
+                verbose=verbose)
+        if arbitrary != {}:
+            self.estimators["arbitrary"] = ArbitraryEstimators(
+                arbitrary, system, hamiltonian, root, self.filename, qmc, trial, dtype
+            )
         self.nprop_tot = None
         self.nbp = None
 
