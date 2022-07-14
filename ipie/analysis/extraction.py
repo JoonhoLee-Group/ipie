@@ -6,6 +6,18 @@ import pandas as pd
 
 from ipie.utils.misc import get_from_dict
 
+def extract_observable(filename, name):
+    with h5py.File(filename, 'r') as fh5:
+        keys = fh5['arbitrary/data'].keys()
+        data = numpy.concatenate([fh5[f'arbitrary/data/{d}'] for d in keys])
+
+    loc = numpy.where(data[:,0]+83<1e-12)[0]
+    if len(loc) == 0:
+        loc = len(data)
+    else:
+        loc = loc[0]
+    return data[:loc]
+
 
 def extract_data_sets(files, group, estimator, raw=False):
     data = []
