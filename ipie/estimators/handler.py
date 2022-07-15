@@ -55,11 +55,11 @@ class Estimators(object):
     """
 
     def __init__(
-        self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False
+        self, estimates, comm, qmc, system, hamiltonian, trial, BT2, verbose=False
     ):
         if verbose:
             print("# Setting up estimator object.")
-        if root:
+        if comm.rank == 0:
             self.index = estimates.get("index", 0)
             self.filename = estimates.get("filename", None)
             self.basename = estimates.get("basename", "estimates")
@@ -82,7 +82,7 @@ class Estimators(object):
         self.estimators = {}
         dtype = complex
         self.estimators["mixed"] = Mixed(
-            mixed, system, hamiltonian, root, self.filename, qmc, trial, dtype
+            mixed, system, hamiltonian, comm.rank==0, self.filename, qmc, trial, dtype
         )
         arbitrary = get_input_value(
                 estimates,
@@ -92,7 +92,7 @@ class Estimators(object):
                 verbose=verbose)
         if arbitrary != {}:
             self.estimators["arbitrary"] = ArbitraryEstimators(
-                arbitrary, system, hamiltonian, root, self.filename, qmc, trial, dtype
+                arbitrary, system, hamiltonian, comm, self.filename, qmc, trial, dtype
             )
         self.nprop_tot = None
         self.nbp = None

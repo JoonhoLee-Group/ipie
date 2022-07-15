@@ -267,7 +267,7 @@ class AFQMCBatch(object):
         est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
         self.estimators = Estimators(
             est_opts,
-            self.root,
+            comm,
             self.qmc,
             self.system,
             self.hamiltonian,

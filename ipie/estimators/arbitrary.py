@@ -16,7 +16,7 @@ class ArbitraryEstimators(object):
             options,
             system,
             hamiltonian,
-            root,
+            comm,
             filename,
             qmc,
             trial,
@@ -25,7 +25,7 @@ class ArbitraryEstimators(object):
 
         self.observables = {
                 'walker_overlaps': {
-                    'shape': (qmc.nwalkers,),
+                    'shape': (qmc.ntot_walkers,),
                     'function': compute_walker_overlaps
                     }
             }
@@ -41,7 +41,7 @@ class ArbitraryEstimators(object):
                 self.observables[k]['size'] = estim_size
                 total_size += estim_size
                 self.to_compute[k] = self.observables[k]
-                if root:
+                if comm.rank == 0:
                     with h5py.File(filename, "a") as fh5:
                         fh5[f'arbitrary/{k}_shape'] = self.observables[k]['shape']
         total_size = max(1, total_size)
@@ -52,10 +52,11 @@ class ArbitraryEstimators(object):
             self.local_estimates = np.zeros(total_size, dtype=np.complex128)
         self.global_estimates = np.zeros(total_size, dtype=np.complex128)
 
-        if root:
+        if comm.rank == 0:
             self.output = H5EstimatorHelper(filename, "arbitrary",
                     chunk_size=self.buffer_size, shape=(total_size,)
                     )
+        self._slice = slice(comm.rank*qmc.nwalkers, (comm.rank+1)*qmc.nwalkers)
 
     def update_batch(
         self, qmc, system, hamiltonian, trial, walker_batch, step, free_projection=False
@@ -95,13 +96,10 @@ class ArbitraryEstimators(object):
             sum = np.sum
             abs = np.abs
 
-        start = 0
-        for names, obs in self.to_compute.items():
-            sl = slice(start, start + obs['size'])
-            self.local_estimates[sl] = (
+        for k, obs in self.to_compute.items():
+            self.local_estimates[self._slice] = (
                     obs['function'](walker_batch, trial).ravel()
                     )
-            start += obs['size']
 
     def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
         """Print mixed estimates to file.
