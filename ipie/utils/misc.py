@@ -34,7 +34,7 @@ def get_git_revision_hash():
         src = os.path.dirname(__file__) + "/../../"
         sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src).strip()
         suffix = subprocess.check_output(
-            ["git", "status", "-uno", "./ipie"], cwd=src
+            ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
