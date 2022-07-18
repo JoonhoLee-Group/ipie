@@ -74,7 +74,14 @@ def kernel_exchange_reduction(T, exx_w):
 def exchange_reduction_old(Twxij, exx_walker):
     """Reduce intermediate with itself.
 
-    equivalent to einsum('wxij,wxji->w', Txiwj, Txiwj)
+    equivalent to einsum('wxij,wxji->w', Twxij, Twxij)
+
+    Parameters
+    ---------
+    Txiwj : np.ndarray
+        Intemediate tensor of dimension (naux, nocca/b, nwalker, nocca/b).
+    exx_walker : np.ndarray
+        Exchange contribution for all walkers in batch.
     """
     nwalkers = Twxij.shape[0]
     nocc = Twxij.shape[2]
@@ -90,6 +97,13 @@ def exchange_reduction(Txiwj, exx_walker):
     """Reduce intermediate with itself.
 
     equivalent to einsum('xiwj,xjwi->w', Txiwj, Txiwj)
+
+    Parameters
+    ---------
+    Txiwj : np.ndarray
+        Intemediate tensor of dimension (naux, nocca/b, nwalker, nocca/b).
+    exx_walker : np.ndarray
+        Exchange contribution for all walkers in batch.
     """
     nwalkers = Txiwj.shape[0]
     nocc = Txiwj.shape[2]
