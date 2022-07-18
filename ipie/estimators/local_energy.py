@@ -10,6 +10,26 @@ from ipie.legacy.estimators.local_energy import \
 
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf):
+    """Compute local energy from a given Green's function G.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    system : hamiltonian object
+        Hamiltonian being studied.
+    trial : trial wavefunction object
+        Trial wavefunction.
+    G : np.ndarray
+        Walker Green's function.
+    Ghalf : np.ndarray
+        Walker half-rotated Green's function.
+
+    Returns
+    -------
+    local_energy : tuple / array
+        Total, one-body and two-body energies.
+    """
     assert len(G) == 2
     ghf = G[0].shape[-1] == 2 * hamiltonian.nbasis
     # unfortunate interfacial problem for the HH model
