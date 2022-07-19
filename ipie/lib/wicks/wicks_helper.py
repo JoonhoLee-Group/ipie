@@ -12,6 +12,20 @@ except OSError:
 DET_LEN = 2
 
 def encode_dets(occsa, occsb):
+    """Encode occupation as bit strings.
+
+    Parameters
+    ----------
+    occsa : list
+        list of alpha occupations.
+    occsb : list
+        list of beta occupations.
+
+    Returns
+    -------
+    dets : np.ndarray
+        List of determinants (uint64)
+    """
     assert isinstance(occsa, np.ndarray)
     assert isinstance(occsb, np.ndarray)
     assert len(occsa.shape) == 2
@@ -41,6 +55,20 @@ def encode_dets(occsa, occsb):
     return dets
 
 def encode_det(a, b):
+    """Encode single occupation as a bit string.
+
+    Parameters
+    ----------
+    a : list
+        alpha occupations.
+    b : list
+        beta occupations.
+
+    Returns
+    -------
+    det : np.ndarray
+        determinant (uint64)
+    """
     assert isinstance(a, np.ndarray)
     assert isinstance(b, np.ndarray)
     fun = _wicks_helper.encode_det
@@ -62,6 +90,18 @@ def encode_det(a, b):
     return out
 
 def count_set_bits(a):
+    """Count number of set bits in determinant.
+
+    Parameters
+    ----------
+    a : list
+        bit string respresentation of determinant.
+
+    Returns
+    -------
+    nset : int
+        Number of set bits
+    """
     fun = _wicks_helper.count_set_bits
     fun.restype = ctypes.c_int
     fun.argtypes = [ndpointer(shape=(DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS")]
@@ -71,6 +111,20 @@ def count_set_bits(a):
     return nset
 
 def get_excitation_level(a, b):
+    """Get excitation level between two determinants.
+
+    Parameters
+    ----------
+    a : list
+        bit string respresentation of determinant.
+    b : list
+        bit string respresentation of determinant.
+
+    Returns
+    -------
+    nexcit : int
+        Excitation level
+    """
     fun = _wicks_helper.get_excitation_level
     fun.restype = ctypes.c_int
     fun.argtypes = [
@@ -84,6 +138,19 @@ def get_excitation_level(a, b):
     return nexcit
 
 def decode_det(det, occs):
+    """Decode determinant into occupations.
+
+    Parameters
+    ----------
+    det : np.ndarray
+        Integer represenation of determinant.
+    occs : list
+        List of occupied orbitals in determinant.
+
+    Returns
+    -------
+    None, occs modified inplace.
+    """
     fun = _wicks_helper.decode_det
     fun.restype = None
     fun.argtypes = [
@@ -99,6 +166,21 @@ def decode_det(det, occs):
             )
 
 def get_ia(det_bra, det_ket, ia):
+    """Get ia for <bra | a^ i | ket >.
+
+    Parameters
+    ----------
+    det_bra : np.ndarray
+        bitstring represantation of bra.
+    det_ket : np.ndarray
+        bitstring represantation of ket.
+    ia : list
+        orbitals i and a. Modified in place
+
+    Returns
+    -------
+    None
+    """
     fun = _wicks_helper.get_ia
     fun.restype = None
     fun.argtypes = [
@@ -113,6 +195,22 @@ def get_ia(det_bra, det_ket, ia):
             )
 
 def get_perm_ia(det_ket, i, a):
+    """Get permutation for ia for <bra | a^ i | ket >.
+
+    Parameters
+    ----------
+    det_ket : np.ndarray
+        bitstring represantation of ket.
+    i : int
+        Occupied orbtial to excite from in ket.
+    a : int
+        Occupied orbtial to excite to in ket.
+
+    Returns
+    -------
+    perm : int
+        +/- 1 depending on orbital ordering (abab).
+    """
     fun = _wicks_helper.get_perm_ia
     fun.restype = ctypes.c_int
     fun.argtypes = [
@@ -133,6 +231,23 @@ def compute_opdm(
         dets,
         norbs,
         nelec):
+    """Compute one-particle reduced density matrix.
+
+    Parameters
+    ----------
+    ci_coeffs : np.ndarray
+        CI coefficients.
+    dets : np.ndarray
+        List of determinants making up wavefunction.
+    norbs : int
+        Number of orbitals
+    nelec : int
+        Total number of electrons
+    Returns
+    -------
+    opdm : np.ndarray
+        One-particle reduced density matrix.
+    """
     ndets = len(ci_coeffs)
     if ci_coeffs.dtype == np.complex128:
         fun = _wicks_helper.compute_density_matrix_cmplx
@@ -174,6 +289,20 @@ def compute_opdm(
     return opdm
 
 def convert_phase(occa, occb):
+    """Convert phase from abab to aabb ordering.
+
+    Parameters
+    ----------
+    occa : list
+        list of alpha occupations.
+    occb : list
+        list of beta occupations.
+
+    Returns
+    -------
+    phases : np.ndarray
+        phase factors.
+    """
     ndet = len(occa)
     phases = np.zeros(ndet)
     for i in range(ndet):
