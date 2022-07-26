@@ -17,7 +17,8 @@ import scipy.stats
 
 from ipie.analysis.autocorr import reblock_by_autocorr
 from ipie.analysis.extraction import (extract_data, extract_mixed_estimates,
-                                      extract_rdm, get_metadata, set_info)
+                                      extract_rdm, get_metadata, set_info,
+                                      extract_data_from_textfile)
 from ipie.utils.linalg import get_ortho_ao_mod
 from ipie.utils.misc import get_from_dict
 
@@ -323,6 +324,21 @@ def analyse_back_prop(files, start_time):
         columns = set_info(res, md)
         full.append(res)
     return pd.concat(full).sort_values("tau_bp")
+
+def reblock_minimal(files, start_block=0, verbose=False):
+    """Minimal blocking analysis using approximate autocorrelation time.
+
+    Parses from textfile.
+    """
+    reblocked = []
+    for f in files:
+        data = extract_data_from_textfile(f)[start_block:]
+        y = data["ETotal"].values
+        rb = reblock_by_autocorr(y, verbose=verbose)
+        rb['filename'] = f
+        reblocked.append(rb)
+    df = pd.concat(reblocked)
+    return df
 
 
 def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=False):

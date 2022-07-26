@@ -15,7 +15,11 @@ _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, "analysis"))
 import glob
 
-from ipie.analysis.blocking import analyse_estimates, average_fp
+from ipie.analysis.blocking import (
+        analyse_estimates,
+        reblock_minimal,
+        average_fp
+        )
 from ipie.analysis.extraction import extract_data_sets
 
 
@@ -43,6 +47,15 @@ def parse_args(args):
         help="Imaginary time in a.u. after which we " "gather statistics.  Default: 0",
     )
     parser.add_argument(
+        "-b",
+        "--block-start",
+        type=int,
+        dest="block_start",
+        default=0,
+        help="Simulation block to start blocking analysis from (equilibration "
+        "time): Default 0",
+    )
+    parser.add_argument(
         "-m",
         "--multi-sim",
         action="store_true",
@@ -57,6 +70,13 @@ def parse_args(args):
         default=False,
         dest="free_proj",
         help="Free projection error analysis using mulitple" " simulations",
+    )
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        default=False,
+        dest="legacy",
+        help="Perform legacy heavyweight analysis.",
     )
     parser.add_argument(
         "-t",
@@ -119,7 +139,7 @@ def main(args):
         data = extract_data_sets(files, "basic", "energies")
         res = average_fp(data)
         print(res.to_string(index=False))
-    else:
+    elif options.legacy:
         analyse_estimates(
             files,
             start_time=options.start_time,
@@ -127,6 +147,13 @@ def main(args):
             av_tau=options.av_tau,
             verbose=options.verbose,
         )
+    else:
+        results = reblock_minimal(
+            files,
+            start_block=options.block_start,
+            verbose=options.verbose,
+        )
+        print(results.to_string(index=False))
 
 
 if __name__ == "__main__":
