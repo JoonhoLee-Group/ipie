@@ -40,6 +40,20 @@ def parse_args(args):
         "--nmo", type=int, dest="nmo", default=0, help="Total number of MOs"
     )
     parser.add_argument(
+        "--dice-wfn",
+        type=str,
+        dest="dice_file",
+        default="dets.bin",
+        help="Wavefunction file containing dice determinants. Default: dets.bin.",
+    )
+    parser.add_argument(
+        "--filename",
+        type=str,
+        dest="filename",
+        default="wfn.h5",
+        help="Wavefunction file for AFQMC MSD. Default: dets.bin.",
+    )
+    parser.add_argument(
         "--nfrozen",
         type=int,
         dest="nfrozen",
@@ -142,14 +156,19 @@ def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
 if __name__ == "__main__":
     options = parse_args(sys.argv[1:])
     for key, val in vars(options).items():
-        print(f"{key:<10s} : {val:>10d}")
+        if isinstance(val, str):
+            print(f"{key:<10s} : {val:>10s}")
+        else:
+            print(f"{key:<10s} : {val:>10d}")
     if options.ndets > 0:
         ndets = options.ndets
     else:
         ndets = None
-    coeffs0, occa0, occb0 = read_dice_wavefunction("dets.bin", ndets=ndets)
+    coeffs0, occa0, occb0 = read_dice_wavefunction(options.dice_file, ndets=ndets)
     coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
     if options.nfrozen > 0:
+        if options.verbose:
+            print(f"Reinserting {options.nfrozen} frozen core orbitals")
         core = [i for i in range(options.nfrozen)]
         occa = [
             np.array(core + [orb + options.nfrozen for orb in oa], dtype=np.int32)
@@ -160,7 +179,7 @@ if __name__ == "__main__":
             for ob in occb
         ]
     write_qmcpack_wfn(
-        "wfn.h5",
+        options.filename,
         (coeffs, occa, occb),
         "UHF",
         (options.nalpha, options.nbeta),
