@@ -133,6 +133,10 @@ class MultiSlater(object):
             alias=["nchunks", "chunks"],
             verbose=verbose,
         )
+        if self.ndet_chunks > self.ndets:
+            print("WARNING: ndet_chunks > ndets. Overriding input option.")
+            print("Setting ndet_chunks to 1.")
+            self.net_chunks = 1
         self.nact = get_input_value(
             options,
             "nact_orbitals",
