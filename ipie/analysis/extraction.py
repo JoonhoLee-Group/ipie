@@ -13,6 +13,23 @@ def extract_data_sets(files, group, estimator, raw=False):
         data.append(extract_data(f, group, estimator, raw))
     return pd.concat(data)
 
+def extract_data_from_textfile(filename):
+    output = []
+    start_collecting = False
+    header = ''
+    with open(filename, 'r') as f:
+        for line in f:
+            if 'End Time' in line:
+                break
+            if start_collecting and 'End Time' not in line:
+                data = [float(s) for s in line.split()]
+                output.append(data)
+            if 'Iteration' in line and ':' not in line:
+                header = line.split()
+                start_collecting = True
+    data = numpy.array(output)
+    results = pd.DataFrame({k: v for k, v in zip(header, data.T)})
+    return results
 
 def extract_data(filename, group, estimator, raw=False):
     fp = get_param(filename, ["propagators", "free_projection"])
@@ -100,8 +117,8 @@ def set_info(frame, md):
         if trial is not None:
             frame["mu_T"] = trial.get("mu")
             frame["Nav_T"] = trial.get("nav")
-    else:
-        frame["E_T"] = trial.get("energy")
+    # else:
+        # frame["E_T"] = trial.get("energy")
     if system["name"] == "UEG":
         frame["rs"] = system.get("rs")
         frame["ecut"] = system.get("ecut")
