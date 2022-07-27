@@ -46,6 +46,23 @@ def autocorr_gw2010(y, c=5.0):
 
 
 def reblock_by_autocorr(y, name="ETotal", verbose=False):
+    """Perform error analysis on ipie data using autocorrelation function
+
+    Parameters
+    ----------
+    y : pd.DataFrame
+        Output of of QMC calculation (mixed estimates). 
+    name : string
+        Which column to "reblock".
+    verbose : bool
+        Print information about statistics to stdout.
+
+    Returns
+    -------
+    df : pd.DataFrame 
+        Analysed data with errorbars attached. Will contain mean, standard error
+        (1-sigma), number of samples, block size for independent samples. 
+    """
     if verbose:
         print("# Reblock based on autocorrelation time")
     Nmax = int(numpy.log2(len(y)))

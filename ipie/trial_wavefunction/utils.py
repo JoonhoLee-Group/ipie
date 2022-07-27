@@ -8,20 +8,24 @@ from ipie.utils.io import get_input_value, read_qmcpack_wfn_hdf
 
 
 def get_trial_wavefunction(
-    system, hamiltonian, options={}, mf=None, comm=None, scomm=None, verbose=0
+    system, hamiltonian, options={}, comm=None, scomm=None, verbose=0
 ):
     """Wrapper to select trial wavefunction class.
 
     Parameters
     ----------
-    options : dict
-        Trial wavefunction input options.
     system : class
         System class.
-    cplx : bool
-        If true then trial wavefunction will be complex.
-    parallel : bool
-        If true then running in parallel.
+    hamiltonian : class
+        Hamiltonian class.
+    options : dict
+        Trial wavefunction input options.
+    comm : mpi communicator
+        Global MPI communicator
+    scomm : mpi communicator
+        Shared communicator
+    verbose : bool
+        Print information.
 
     Returns
     -------
