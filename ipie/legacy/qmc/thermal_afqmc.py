@@ -20,7 +20,7 @@ from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.utils.io import get_input_value, to_json
-from ipie.utils.misc import get_git_info, print_sys_info
+from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import get_shared_comm
 
 
@@ -117,7 +117,7 @@ class ThermalAFQMC(object):
             else:
                 self.sha1 = "None"
             if verbose:
-                self.sys_info = print_sys_info(
+                self.sys_info = print_env_info(
                     self.sha1, self.branch, self.local_mods, self.uuid, comm.size
                 )
         # Hack - this is modified later if running in parallel on

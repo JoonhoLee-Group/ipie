@@ -19,7 +19,7 @@ from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
-from ipie.utils.misc import (get_git_info, get_node_mem, print_sys_info,
+from ipie.utils.misc import (get_git_info, get_node_mem, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
