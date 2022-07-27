@@ -117,8 +117,8 @@ def set_info(frame, md):
         if trial is not None:
             frame["mu_T"] = trial.get("mu")
             frame["Nav_T"] = trial.get("nav")
-    else:
-        frame["E_T"] = trial.get("energy")
+    # else:
+        # frame["E_T"] = trial.get("energy")
     if system["name"] == "UEG":
         frame["rs"] = system.get("rs")
         frame["ecut"] = system.get("ecut")
