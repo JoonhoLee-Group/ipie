@@ -260,7 +260,7 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
     print("# Git hash: {:s}.".format(sha1))
     print("# Git branch: {:s}.".format(branch))
     if len(local_mods)  > 0:
-        print("# Found untracked / uncommitted changes.")
+        print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
             if prefix == 'M':
                 print("# Modified : {:s}".format(file))
