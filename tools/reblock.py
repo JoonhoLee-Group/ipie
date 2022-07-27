@@ -140,20 +140,24 @@ def main(args):
         res = average_fp(data)
         print(res.to_string(index=False))
     elif options.legacy:
-        analyse_estimates(
+        res = analyse_estimates(
             files,
             start_time=options.start_time,
             multi_sim=options.multi_sim,
             av_tau=options.av_tau,
             verbose=options.verbose,
         )
+        fmt = lambda x: "{:13.8f}".format(x)
+        print(res.to_string(index=False, float_format=fmt))
     else:
         results = reblock_minimal(
             files,
             start_block=options.block_start,
             verbose=options.verbose,
         )
+        fmt = lambda x: "{:13.8f}".format(x)
         print(results.to_string(index=False))
+        print(res.to_string(index=False, float_format=fmt))
 
 
 if __name__ == "__main__":
