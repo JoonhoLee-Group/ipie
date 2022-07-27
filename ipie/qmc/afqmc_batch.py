@@ -19,7 +19,7 @@ from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
-from ipie.utils.misc import (get_git_revision_hash, get_node_mem, get_sys_info,
+from ipie.utils.misc import (get_git_info, get_node_mem, print_sys_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
@@ -101,16 +101,18 @@ class AFQMCBatch(object):
             get_sha1 = options.get("get_sha1", True)
             if get_sha1:
                 try:
-                    self.sha1, self.branch = get_git_revision_hash()
+                    self.sha1, self.branch, self.local_mods = get_git_info()
                 except:
                     self.sha1 = "None"
                     self.branch = "None"
+                    self.local_mods = []
             else:
                 self.sha1 = "None"
                 self.branch = "None"
+                self.local_mods = []
             if verbose:
-                self.sys_info = get_sys_info(
-                    self.sha1, self.branch, self.uuid, comm.size
+                self.sys_info = print_env_info(
+                    self.sha1, self.branch, self.local_mods, self.uuid, comm.size
                 )
         # Hack - this is modified later if running in parallel on
         # initialisation.

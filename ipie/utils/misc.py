@@ -18,8 +18,8 @@ def is_cupy(obj):
     return cond
 
 
-def get_git_revision_hash():
-    """Return git revision.
+def get_git_info():
+    """Return git info.
 
     Adapted from:
         http://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script
@@ -28,6 +28,10 @@ def get_git_revision_hash():
     -------
     sha1 : string
         git hash with -dirty appended if uncommitted changes.
+    branch : string
+        Current branch
+    local_mod : list of strings
+        List of locally modified files tracked and untracked.
     """
 
     try:
@@ -36,6 +40,9 @@ def get_git_revision_hash():
         suffix = subprocess.check_output(
             ["git", "status", "-uno", "./ipie"], cwd=src
         ).strip()
+        local_mods = subprocess.check_output(
+            ["git", "status", "--porcelain", "./ipie"], cwd=src
+        ).strip().decode('utf-8').split()
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
@@ -43,13 +50,14 @@ def get_git_revision_hash():
         suffix = False
         print(f"couldn't determine git hash : {error}")
         sha1 = "none".encode()
+        local_mods = []
     if suffix:
-        return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8")
+        return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8"), local_mods
     else:
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
-        return sha1.decode("utf-8"), branch.decode("utf_8")
+        return sha1.decode("utf-8"), branch.decode("utf_8"), local_mods
 
 
 def is_h5file(obj):
@@ -248,9 +256,16 @@ def get_node_mem():
         return 0.0
 
 
-def get_sys_info(sha1, branch, uuid, nranks):
+def print_env_info(sha1, branch, local_mods, uuid, nranks):
     print("# Git hash: {:s}.".format(sha1))
     print("# Git branch: {:s}.".format(branch))
+    if len(local_mods)  > 0:
+        print("# Found untracked / uncommitted changes.")
+        for prefix, file in zip(local_mods[::2], local_mods[1::2]):
+            if prefix == 'M':
+                print("# Modified : {:s}".format(file))
+            elif prefix == '??':
+                print("# Untracked : {:s}".format(file))
     print("# Calculation uuid: {:s}.".format(uuid))
     mem = get_node_mem()
     print("# Approximate memory available per node: {:.4f} GB.".format(mem))
