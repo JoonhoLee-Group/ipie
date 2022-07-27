@@ -179,36 +179,3 @@ def extract_test_data_hdf5(filename, skip=10):
     # itcf = itcf[abs(itcf) > 1e-10].flatten()
     # data = pd.DataFrame(itcf)
     return data
-
-
-# TODO : FDM FIX.
-# def analysed_itcf(filename, elements, spin, order, kspace):
-# data = h5py.File(filename, 'r')
-# md = json.loads(data['metadata'][:][0])
-# dt = md['qmc']['dt']
-# mode = md['estimators']['estimators']['itcf']['mode']
-# stack_size = md['psi']['stack_size']
-# convert = {'up': 0, 'down': 1, 'greater': 0, 'lesser': 1}
-# if kspace:
-# gf = data['kspace_itcf'][:]
-# gf_err = data['kspace_itcf_err'][:]
-# else:
-# gf = data['real_itcf'][:]
-# gf_err = data['real_itcf_err'][:]
-# tau = stack_size * dt * numpy.arange(0,gf.shape[0])
-# isp = convert[spin]
-# it = convert[order]
-# results = pd.DataFrame()
-# results['tau'] = tau
-# # note that the interpretation of elements necessarily changes if we
-# # didn't store the full green's function.
-# if mode == 'full':
-# name = 'G_'+order+'_spin_'+spin+'_%s%s'%(elements[0],elements[1])
-# results[name] = gf[:,isp,it,elements[0],elements[1]]
-# results[name+'_err'] = gf_err[:,isp,it,elements[0],elements[1]]
-# else:
-# name = 'G_'+order+'_spin_'+spin+'_%s%s'%(elements[0],elements[0])
-# results[name] = gf[:,isp,it,elements[0]]
-# results[name+'_err'] = gf_err[:,isp,it,elements[0]]
-
-# return results

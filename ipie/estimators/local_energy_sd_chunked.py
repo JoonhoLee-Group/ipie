@@ -7,7 +7,32 @@ from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
 from ipie.utils.misc import is_cupy
 
 
+# Local energy routies for chunked (distributed) integrals. Distributed here
+# means over MPI processes with information typically residing on different
+# nodes. Green's funtions are sent round-robin and local energy contributions
+# are accumulated.
+
 def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant UHF case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     if is_cupy(
         trial.psi
     ):  # if even one array is a cupy array we should assume the rest is done with cupy
@@ -116,6 +141,24 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
 
 
 def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb):
+    """Compute coulomb contribution for rchol with UHF trial.
+
+    Parameters
+    ----------
+    rchola_chunk : :class:`numpy.ndarray`
+        Half-rotated cholesky (alpha).
+    rcholb_chunk : :class:`numpy.ndarray`
+        Half-rotated cholesky (beta).
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis.
+    Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
     import cupy
 
     einsum = cupy.einsum
@@ -142,6 +185,20 @@ def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
 
 
 def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
+    """Compute exchange contribution for complex rchol.
+
+    Parameters
+    ----------
+    rchol_chunk : :class:`numpy.ndarray`
+        Chunk of Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for all walkers.
+    """
     import cupy
 
     einsum = cupy.einsum
@@ -162,6 +219,26 @@ def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
 def local_energy_single_det_uhf_batch_chunked_gpu(
     system, hamiltonian, walker_batch, trial
 ):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant case, GPU, chunked integrals.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     import cupy
 
     assert cupy.is_available()

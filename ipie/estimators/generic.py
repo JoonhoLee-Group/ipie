@@ -6,11 +6,15 @@ from numba import jit
 from ipie.utils.misc import is_cupy
 
 
+# FDM: deprecated remove?
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
+    """Compute local energy using half-rotated eri tensor.
+    """
 
     na = system.nup
     nb = system.ndown
     M = system.nbasis
+    assert eri is not None
 
     vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
     vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape(
@@ -47,11 +51,13 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
+    Ghalf : :class:`numpy.ndarray`
+        Walker's "half-rotated" "green's function"
 
     Returns
     -------
     (E, T, V): tuple
-        Local, kinetic and potential energies.
+        Total , one and two-body energies.
     """
     # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
@@ -103,8 +109,29 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
 
-# density difference trick
 def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
+    r"""Calculate local for generic two-body hamiltonian.
+
+    This uses the density difference trick.
+
+    Parameters
+    ----------
+    system : :class:`Generic`
+        generic system information
+    ecore : float
+        Core energy
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's "half-rotated" alpha "green's function"
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's "half-rotated" beta "green's function"
+    trial : ipie trial object
+        Trial wavefunction object.
+
+    Returns
+    -------
+    (E, T, V): tuple
+        Total, one and two-body energies.
+    """
     if is_cupy(
         trial._rchola
     ):  # if even one array is a cupy array we should assume the rest is done with cupy
@@ -149,19 +176,17 @@ def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     ----------
     system : :class:`Generic`
         System information for Generic.
-    ham : :class:`Abinitio`
-        Contains necessary hamiltonian information
-    G : :class:`numpy.ndarray`
-        Walker's "green's function"
-    Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nocc x nbasis
-    rchol : :class:`numpy.ndarray`
-        trial's half-rotated choleksy vectors
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis
+    trial : ipie trial object
+        Trial wavefunction
 
     Returns
     -------
     (E, T, V): tuple
-        Local, kinetic and potential energies.
+        Total, one and two-body energies.
     """
     e1b = half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial)
     eJ, eK = half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial)
@@ -171,6 +196,26 @@ def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
 
 
 def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
+    r"""Calculate local for generic two-body hamiltonian.
+
+    This uses the half-rotated core hamiltonian.
+
+    Parameters
+    ----------
+    system : :class:`Generic`
+        System information for Generic.
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis
+    trial : ipie trial object
+        Trial wavefunction
+
+    Returns
+    -------
+    e1b : :class:`numpy.ndarray`
+        One-body energy.
+    """
     rH1a = trial._rH1a
     rH1b = trial._rH1b
 
@@ -191,6 +236,20 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
 
 @jit(nopython=True, fastmath=True)
 def exx_kernel_rchol_real(rchol, Ghalf):
+    """Compute exchange contribution for real rchol.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for given green's function.
+    """
     naux = rchol.shape[0]
     nwalkers = Ghalf.shape[0]
     nocc = Ghalf.shape[0]
@@ -209,6 +268,20 @@ def exx_kernel_rchol_real(rchol, Ghalf):
 
 @jit(nopython=True, fastmath=True)
 def exx_kernel_rchol_complex(rchol, Ghalf):
+    """Compute exchange contribution for complex rchol.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for given green's function.
+    """
     naux = rchol.shape[0]
     nwalkers = Ghalf.shape[0]
     nocc = Ghalf.shape[0]
@@ -225,6 +298,26 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
 
 
 def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
+    """Compute exchange and coulomb contributions via jitted kernels.
+
+    Parameters
+    ----------
+    system : :class:`Generic`
+        System information for Generic.
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis
+    trial : ipie trial object
+        Trial wavefunction
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb energy.
+    exx : :class:`numpy.ndarray`
+        Exchange energy.
+    """
 
     rchola = trial._rchola
     rcholb = trial._rcholb
@@ -281,6 +374,7 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     return 0.5 * ecoul, -0.5 * exx  # JK energy
 
 
+# FDM: Mark for deletion
 def core_contribution(system, Gcore):
     hc_a = numpy.einsum("pqrs,pq->rs", system.h2e, Gcore[0]) - 0.5 * numpy.einsum(
         "prsq,pq->rs", system.h2e, Gcore[0]
