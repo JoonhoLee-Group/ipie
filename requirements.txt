@@ -7,3 +7,4 @@ pandas
 mpi4py >= 3.0.0
 bigmpi4py
 numba
+pyblock

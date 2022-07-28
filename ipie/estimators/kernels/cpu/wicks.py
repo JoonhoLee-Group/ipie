@@ -9,13 +9,60 @@ def dot_real_cplx(
     B_real,
     B_cplx,
 ):
+    """Element wise multiplication of a real number with a complex one.
+
+    C = A * B
+
+    Numba complains if types aren't matched so split it up.
+
+    Parameters
+    ----------
+    A : float
+        Real number / array.
+    B : complex
+        Complex number / array.
+
+    Returns
+    -------
+    C : complex
+        result
+    """
 
     return A * B_real + 1j * (A * B_cplx)
 
 
 # Overlap
+
+# Note mapping arrays account for occupied indices not matching compressed
+# format which may arise when the reference determinant does not follow aufbau
+# principle (i.e. not doubly occupied up to the fermi level.
+# e.g. D0a = [0, 1, 4], mapping = [0, 1, 0, 0, 2]
+# mapping[orb] is then used to address arrays of dimension nocc * nmo and
+# similar (half rotated Green's functio) and avoid out of bounds errors.
+
 @jit(nopython=True, fastmath=True)
 def get_dets_singles(cre, anh, mapping, offset, G0, dets):
+    """Get overlap from singly excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
     qs = anh[:, 0] + offset
     ndets = qs.shape[0]
     nwalkers = G0.shape[0]
@@ -26,6 +73,27 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
 
 @jit(nopython=True, fastmath=True)
 def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
+    """Get overlap from double excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
     qs = anh[:, 0] + offset
     ss = anh[:, 1] + offset
     ndets = qs.shape[0]
@@ -49,6 +117,27 @@ def get_dets_triples(
     G0,
     dets,
 ):
+    """Get overlap from triply excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
     ndets = len(cre)
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
@@ -69,6 +158,27 @@ def get_dets_triples(
 
 @jit(nopython=True, fastmath=True)
 def get_dets_nfold(cre, anh, mapping, offset, G0, dets):
+    """Get overlap from n-fold excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
     ndets = len(cre)
     nwalkers = G0.shape[0]
     nex = cre.shape[-1]
@@ -89,7 +199,27 @@ def get_dets_nfold(cre, anh, mapping, offset, G0, dets):
 
 @jit(nopython=True, fastmath=True)
 def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
+    """Build matrix of determinants for n-fold excitations.
 
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    det_matrix : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
     nwalker = det_mat.shape[0]
     ndet = det_mat.shape[1]
     if ndet == 0:
@@ -110,9 +240,27 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
 
 # Green's function
 
-
 @jit(nopython=False, fastmath=False)
 def reduce_CI_singles(cre, anh, mapping, phases, CI):
+    """Reduction to CI intermediate for singles.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    phases : np.ndarray
+        Phase factors.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
     ps = cre[:, 0]
     qs = anh[:, 0]
     ndets = len(cre)
@@ -126,6 +274,27 @@ def reduce_CI_singles(cre, anh, mapping, phases, CI):
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
+    """Reduction to CI intermediate for doubles.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    phases : np.ndarray
+        Phase factors.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
     ps = cre[:, 0]
     qs = anh[:, 0]
     rs = cre[:, 1]
@@ -150,6 +319,27 @@ def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
+    """Reduction to CI intermediate for triples.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    phases : np.ndarray
+        Phase factors.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
     ps = cre[:, 0]
     qs = anh[:, 0]
     rs = cre[:, 1]
@@ -207,6 +397,27 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 def _reduce_nfold_cofactor_contribution(
     ps, qs, mapping, sign, phases, cofactor_matrix, CI
 ):
+    """Reduction to CI intermediate from cofactor contributions.
+
+    Parameters
+    ----------
+    ps : np.ndarray
+        Array containing orbitals excitations of occupied.
+    qs : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    signs : int
+        Phase factor arrising from excitation level.
+    cofactor_matrix : np.ndarray
+        Cofactor matrix previously constructed.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
     nwalkers = cofactor_matrix.shape[0]
     ndets = cofactor_matrix.shape[1]
     for iw in range(nwalkers):
@@ -220,6 +431,31 @@ def _reduce_nfold_cofactor_contribution(
 
 @jit(nopython=True, fastmath=True)
 def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
+    """Reduction to CI intermediate for n-fold excitations.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    phases : np.ndarray
+        Phase factors.
+    det_mat: np.ndarray
+        Array of determinants <D_I|phi>.
+    cof_mat: np.ndarray
+        Cofactor matrix previously constructed.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
     ndets = len(cre)
     nwalkers = CI.shape[0]
     nexcit = det_mat.shape[-1]
@@ -227,6 +463,8 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
         p = cre[:, iex]
         for jex in range(nexcit):
             q = anh[:, jex]
+            # TODO FDM: effectively looping over wavefunction twice here, for
+            # CPU may be better to squash building and reduction.
             build_cofactor_matrix(iex, jex, det_mat, cof_mat)
             sign = (-1 + 0.0j) ** (iex + jex)
             _reduce_nfold_cofactor_contribution(
@@ -236,9 +474,31 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
 
 # Energy evaluation
 
-
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(cre, anh, mapping, offset, chol_factor, spin_buffer, det_sls):
+    """Fill opposite spin (os) contributions from singles.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     ps = cre[:, 0]
     qs = anh[:, 0]
     ndets = ps.shape[0]
@@ -249,6 +509,31 @@ def fill_os_singles(cre, anh, mapping, offset, chol_factor, spin_buffer, det_sls
 
 @jit(nopython=True, fastmath=True)
 def fill_os_doubles(cre, anh, mapping, offset, G0, chol_factor, spin_buffer, det_sls):
+    """Fill opposite spin (os) contributions from doubles.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    G0 : np.ndarray
+        Half-rotated reference Green's function.
+    offset : int
+        Offset for frozen core.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     start = det_sls.start
     ndets = cre.shape[0]
     nwalkers = G0.shape[0]
@@ -282,6 +567,31 @@ def fill_os_doubles(cre, anh, mapping, offset, G0, chol_factor, spin_buffer, det
 
 @jit(nopython=True, fastmath=True)
 def fill_os_triples(cre, anh, mapping, offset, G0w, chol_factor, spin_buffer, det_sls):
+    """Fill opposite spin (os) contributions from triples.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        Half-rotated reference Green's function.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     start = det_sls.start
     ndets = cre.shape[0]
     nwalkers = G0w.shape[0]
@@ -340,6 +650,27 @@ def fill_os_triples(cre, anh, mapping, offset, G0w, chol_factor, spin_buffer, de
 
 @jit(nopython=True, fastmath=True)
 def get_ss_doubles(cre, anh, mapping, chol_fact, buffer, det_sls):
+    """Fill same spin (ss) contributions from doubles.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    chol_fact : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     start = det_sls.start
     ndets = cre.shape[0]
     nwalkers = chol_fact.shape[0]
@@ -359,7 +690,23 @@ def get_ss_doubles(cre, anh, mapping, chol_fact, buffer, det_sls):
 
 @jit(nopython=True, fastmath=True)
 def build_cofactor_matrix(row, col, det_matrix, cofactor):
+    """Build cofactor matrix.
 
+    Parameters
+    ----------
+    row : int
+        Row to delete when building cofactor.
+    col : int
+        Column to delete when building cofactor.
+    det_matrix : np.ndarray
+        Precomputed array of determinants <D_I|phi> for given excitation level.
+    cofactor : np.ndarray
+        Cofactor matrix.
+
+    Returns
+    -------
+    None
+    """
     nwalker = det_matrix.shape[0]
     ndet = det_matrix.shape[1]
     nexcit = det_matrix.shape[2]
@@ -389,7 +736,27 @@ def build_cofactor_matrix(row, col, det_matrix, cofactor):
 
 @jit(nopython=True, fastmath=True)
 def build_cofactor_matrix_4(row_1, col_1, row_2, col_2, det_matrix, cofactor):
+    """Build cofactor matrix with 2 rows/cols deleted.
 
+    Parameters
+    ----------
+    row_1 : int
+        Row to delete when building cofactor.
+    col_1 : int
+        Column to delete when building cofactor.
+    row_2 : int
+        Row to delete when building cofactor.
+    col_2 : int
+        Column to delete when building cofactor.
+    det_matrix : np.ndarray
+        Precomputed array of determinants <D_I|phi> for given excitation level.
+    cofactor : np.ndarray
+        Cofactor matrix.
+
+    Returns
+    -------
+    None
+    """
     nwalker = det_matrix.shape[0]
     ndet = det_matrix.shape[1]
     nexcit = det_matrix.shape[2]
@@ -432,6 +799,31 @@ def build_cofactor_matrix_4(row_1, col_1, row_2, col_2, det_matrix, cofactor):
 def reduce_os_spin_factor(
     ps, qs, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls
 ):
+    """Reduce opposite spin (os) contributions into spin_buffer.
+
+    Parameters
+    ----------
+    ps : np.ndarray
+        Array containing orbitals excitations of occupied.
+    qs : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    phases : np.ndarray
+        Phase factors.
+    cof_mat: np.ndarray
+        Cofactor matrix previously constructed.
+    chol_fact : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     nwalker = chol_factor.shape[0]
     ndet = cof_mat.shape[1]
     start = det_sls.start
@@ -451,6 +843,31 @@ def reduce_os_spin_factor(
 def fill_os_nfold(
     cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls
 ):
+    """Fill opposite spin (os) n-fold contributions into spin_buffer.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    det_matrix : np.ndarray
+        Array of determinants <D_I|phi> for n-fold excitation.
+    cof_mat: np.ndarray
+        Cofactor matrix buffer.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     nwalkers = cof_mat.shape[0]
     ndet = cof_mat.shape[1]
     nexcit = det_matrix.shape[-1]
@@ -470,6 +887,35 @@ def fill_os_nfold(
 def reduce_ss_spin_factor(
     ps, qs, rs, ss, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls
 ):
+    """Reduce same-spin (ss) n-fold contributions into spin_buffer.
+
+    Parameters
+    ----------
+    ps : np.ndarray
+        Array containing orbitals excitations of occupied.
+    qs : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    rs : np.ndarray
+        Array containing orbitals excitations of occupied.
+    ss : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    phases : np.ndarray
+        Phase factors.
+    cof_mat: np.ndarray
+        Cofactor matrix buffer.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    spin_buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     nwalker = chol_factor.shape[0]
     ndet = cof_mat.shape[1]
     start = det_sls.start
@@ -498,6 +944,31 @@ def reduce_ss_spin_factor(
 
 @jit(nopython=True, fastmath=True)
 def get_ss_nfold(cre, anh, mapping, dets_mat, cof_mat, chol_fact, buffer, det_sls):
+    """Build same-spin (ss) n-fold contributions.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    det_matrix : np.ndarray
+        Output array of determinants <D_I|phi>.
+    cof_mat: np.ndarray
+        Cofactor matrix buffer.
+    chol_factor : np.ndarray
+        Lxqp intermediate constructed elsewhere.
+    buffer : np.ndarray
+        Buffer for holding contribution.
+    det_sls : np.ndarray
+        Index slice for this exctitation level's contributions.
+
+    Returns
+    -------
+    None
+    """
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
     nexcit = dets_mat.shape[-1]

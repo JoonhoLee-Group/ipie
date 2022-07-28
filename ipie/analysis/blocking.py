@@ -17,7 +17,8 @@ import scipy.stats
 
 from ipie.analysis.autocorr import reblock_by_autocorr
 from ipie.analysis.extraction import (extract_data, extract_mixed_estimates,
-                                      extract_rdm, get_metadata, set_info)
+                                      extract_rdm, get_metadata, set_info,
+                                      extract_data_from_textfile)
 from ipie.utils.linalg import get_ortho_ao_mod
 from ipie.utils.misc import get_from_dict
 
@@ -324,6 +325,21 @@ def analyse_back_prop(files, start_time):
         full.append(res)
     return pd.concat(full).sort_values("tau_bp")
 
+def reblock_minimal(files, start_block=0, verbose=False):
+    """Minimal blocking analysis using approximate autocorrelation time.
+
+    Parses from textfile.
+    """
+    reblocked = []
+    for f in files:
+        data = extract_data_from_textfile(f)[start_block:]
+        y = data["ETotal"].values
+        rb = reblock_by_autocorr(y, verbose=verbose)
+        rb['filename'] = f
+        reblocked.append(rb)
+    df = pd.concat(reblocked)
+    return df
+
 
 def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=False):
     mds = []
@@ -337,7 +353,6 @@ def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=
         print(av.apply(numpy.real).to_string())
     else:
         for f in files:
-            print("filename = {}".format(f))
             md = get_metadata(f)
             read_rs = get_from_dict(md, ["psi", "read_rs"])
             step = get_from_dict(md, ["qmc", "nsteps"])
@@ -365,8 +380,6 @@ def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=
 
         base = files[0].split("/")[-1]
         outfile = "analysed_" + base
-        fmt = lambda x: "{:13.8f}".format(x)
-        print(basic_av.to_string(index=False, float_format=fmt))
         with h5py.File(outfile, "w") as fh5:
             fh5["metadata"] = numpy.array(mds).astype("S")
             try:
@@ -376,6 +389,8 @@ def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=
             except KeyError:
                 pass
             fh5["basic/headers"] = numpy.array(basic_av.columns.values).astype("S")
+
+    return basic_av
 
 
 def analyse_ekt_ipea(filename, ix=None, cutoff=1e-14, screen_factor=1):

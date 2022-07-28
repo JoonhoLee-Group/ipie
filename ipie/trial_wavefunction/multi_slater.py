@@ -133,6 +133,7 @@ class MultiSlater(object):
             alias=["nchunks", "chunks"],
             verbose=verbose,
         )
+        assert self.ndet_chunks <= self.ndets, "ndet_chunks > ndets"
         self.nact = get_input_value(
             options,
             "nact_orbitals",

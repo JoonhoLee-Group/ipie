@@ -20,7 +20,7 @@ from ipie.estimators.kernels.cpu import wicks as wk
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
-    """Wrapper to select the calc_overlap function
+    """Wrapper to select the compute_greens_function function.
 
     Parameters
     ----------
@@ -560,6 +560,22 @@ def greens_function_multi_det_wicks(walker_batch, trial):
 
 
 def build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Single excitation contributions to CI intermediate for wicks.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[1])
     nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[1].shape[0] == 0:
@@ -592,6 +608,24 @@ def build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
 
 
 def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Single excitation contributions to CI intermediate for wicks.
+
+    Optimized using numba.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[1])
     nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[1].shape[0] == 0:
@@ -622,6 +656,22 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
 
 
 def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Double excitation contributions to CI intermediate for wicks.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[2])
     nwalkers = walker_batch.G0a.shape[0]
     if ndets_a == 0:
@@ -716,6 +766,24 @@ def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
 
 
 def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Double excitation contributions to CI intermediate for wicks.
+
+    Optimized using numba.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[2])
     nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[2].shape[0] == 0:
@@ -748,6 +816,24 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
 
 
 def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Triple excitation contributions to CI intermediate for wicks.
+
+    Optimized using numba.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[3])
     nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[3].shape[0] == 0:
@@ -780,6 +866,22 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
 
 
 def build_CI_triple_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
+    """Triple excitation contributions to CI intermediate for wicks.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[3])
     nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[3].shape[0] == 0:
@@ -1028,23 +1130,23 @@ def build_CI_triple_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
 def build_CI_nfold_excitation(
     nexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
 ):
-    """Compute alpha and beta CI tensor at arbitrary excitation level.
+    """N-fold excitation contributions to CI intermediate for wicks.
 
     Parameters
     ----------
-    G0wa : numpy.ndarray
-        Alpha reference Green's function (all walkers).
-    G0wb : numpy.ndarray
-        Bewa reference Green's function (all walkers).
-    trial : MultiSlater
-        Trial wavefunction instance.
-
+    nexcit : int
+        Excitation level
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
     Returns
     -------
-    dets_a : numpy.ndarray
-        Alpha overlaps shape (nw, ndets_excitn_alpha)
-    dets_b : numpy.ndarray
-        Beta overlaps shape (nw, ndets_excitn_beta)
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = walker_batch.G0a.shape[0]
@@ -1123,6 +1225,26 @@ def build_CI_nfold_excitation(
 def build_CI_nfold_excitation_opt(
     nexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
 ):
+    """N-fold excitation contributions to CI intermediate for wicks.
+
+    Optimized using numba.
+
+    Parameters
+    ----------
+    nexcit : int
+        Excitation level
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = walker_batch.G0a.shape[0]
     if ndets_a == 0:
@@ -1186,6 +1308,22 @@ def build_CI_nfold_excitation_opt(
 
 @jit(nopython=True, fastmath=True)
 def contract_CI(Q0_act, CI, Ghalf, G):
+    """numba kernel to contract Q, CI and Ghalf to form G
+
+    Parameters
+    ----------
+    Q0_act : numpy.ndarray
+        1-G.
+    CI : numpy.ndarray
+        Intermediate tensor.
+    Ghalf : numpy.ndarray
+        Walker half rotated Green's function
+    G: numpy.ndarray
+        Walker Green's function
+    Returns
+    -------
+    None, modifies G in place
+    """
     nwalkers = Ghalf.shape[0]
     for iw in range(nwalkers):
         G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))

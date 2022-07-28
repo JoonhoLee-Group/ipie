@@ -24,10 +24,16 @@ class Mixed(object):
 
     Parameters
     ----------
-    mixed : dict
+    mixed_opts : dict
         Input options for mixed estimates.
+    system : system object
+        System being studied
+    hamiltonian : hamiltonian object
+        Hamiltonian object.
     root : bool
         True if on root/master processor.
+    filename : string
+        Filename for hdf5 output.
     qmc : :class:`ipie.state.QMCOpts` object.
         Container for qmc input options.
     trial : :class:`ipie.trial_wavefunction.X' object
