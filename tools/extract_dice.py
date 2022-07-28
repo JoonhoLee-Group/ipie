@@ -27,14 +27,16 @@ def parse_args(args):
         type=int,
         dest="nalpha",
         default=0,
-        help="Total number of alpha electrons.",
+        help="Total number of alpha electrons. If nfrozen > 0 it should be "
+        "nfrozen + number of electrons in active space.",
     )
     parser.add_argument(
         "--nbeta",
         type=int,
         dest="nbeta",
         default=0,
-        help="Total number of beta electrons.",
+        help="Total number of beta electrons. If nfrozen > 0 it should be "
+        "nfrozen + number of electrons in active space.",
     )
     parser.add_argument(
         "--nmo", type=int, dest="nmo", default=0, help="Total number of MOs"
@@ -59,6 +61,12 @@ def parse_args(args):
         dest="nfrozen",
         default=0,
         help="Number of frozen core orbitals to" " reinclude.",
+    )
+    parser.add_argument(
+        "--sort",
+        dest="sort",
+        action="store_true",
+        help="Sort wavefunction by ci coefficient magnitude.",
     )
     parser.add_argument(
         "--ndets",
@@ -98,7 +106,7 @@ def decode_dice_det(occs):
     return occ_a, occ_b
 
 
-def read_dice_wavefunction(filename, ndets=None):
+def read_dice_wavefunction(filename):
     print("Reading Dice wavefunction from dets.bin")
     with open(filename, "rb") as f:
         data = f.read()
@@ -111,10 +119,9 @@ def read_dice_wavefunction(filename, ndets=None):
     coeffs = []
     occs = []
     start = 0
-    print(f"Number of determinants specified: {ndets}")
     print(f"Number of determinants in dets.bin : {ndets_in_file}")
     print(f"Number of orbitals : {norbs}")
-    for idet in range(ndets):
+    for idet in range(ndets_in_file):
         coeff = struct.unpack("<d", wfn_data[start : start + _dou])[0]
         coeffs.append(coeff)
         start += _dou
@@ -122,8 +129,9 @@ def read_dice_wavefunction(filename, ndets=None):
         occ_lists = decode_dice_det(str(occ_i)[2:-1])
         occs.append(occ_lists)
         start += norbs
+    print("Finished reading wavefunction from file.")
     oa, ob = zip(*occs)
-    return np.array(coeffs, dtype=np.complex128), oa, ob
+    return np.array(coeffs, dtype=np.complex128), np.array(oa, dtype=np.int32), np.array(ob, dtype=np.int32)
 
 
 def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
@@ -160,11 +168,17 @@ if __name__ == "__main__":
             print(f"{key:<10s} : {val:>10s}")
         else:
             print(f"{key:<10s} : {val:>10d}")
-    if options.ndets > 0:
-        ndets = options.ndets
-    else:
-        ndets = None
-    coeffs0, occa0, occb0 = read_dice_wavefunction(options.dice_file, ndets=ndets)
+    coeffs0, occa0, occb0 = read_dice_wavefunction(options.dice_file)
+    if options.sort:
+        ix = np.argsort(np.abs(coeffs0))[::-1]
+        coeffs0 = coeffs0[ix]
+        occa0 = occa0[ix]
+        occb0 = occb0[ix]
+    if options.ndets > -1:
+        print(f"Number of determinants specified: {options.ndets}")
+        coeffs0 = coeffs0[:options.ndets]
+        occa0 = occa0[:options.ndets]
+        occb0 = occb0[:options.ndets]
     coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
     if options.nfrozen > 0:
         if options.verbose:
