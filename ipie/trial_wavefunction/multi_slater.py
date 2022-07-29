@@ -307,6 +307,8 @@ class MultiSlater(object):
                         self.phase_b[j] = -1
                     else:
                         self.phase_b[j] = +1
+                if j == self.ndets:
+                    break
 
             self.ndets_per_chunk = [
                 sum(len(ex) for ex in cre_ex_a_chunk[ichunk])
