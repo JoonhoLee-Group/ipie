@@ -53,7 +53,7 @@ def parse_args(args):
         type=str,
         dest="filename",
         default="wfn.h5",
-        help="Wavefunction file for AFQMC MSD. Default: dets.bin.",
+        help="Wavefunction file for AFQMC MSD. Default: wfn.h5.",
     )
     parser.add_argument(
         "--nfrozen",
