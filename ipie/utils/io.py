@@ -1,6 +1,7 @@
 import ast
 import json
 import os
+from typing import Tuple
 import sys
 
 import h5py
@@ -12,6 +13,35 @@ from ipie.utils.linalg import (modified_cholesky, molecular_orbitals_rhf,
 from ipie.utils.misc import merge_dicts, serialise
 
 
+def write_hamiltonian(
+        hcore: numpy.ndarray,
+        LXmn: numpy.ndarray,
+        e0: float,
+        filename: str='hamiltonian.h5') -> None:
+    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
+    nmo = hcore.shape[0]
+    naux = LXmn.size // (nmo*nmo)
+    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    assert LXmn.shape[0] == naux, message
+    with h5py.File(filename, 'w') as fh5:
+        fh5['hcore'] = hcore
+        fh5['LXmn'] = LXmn
+        fh5['e0'] = e0
+
+def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
+    with h5py.File(filename, 'r') as fh5:
+        hcore = fh5['hcore'][:]
+        LXmn = fh5['LXmn'][:]
+        e0 = float(fh5['e0'][()])
+    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
+    nmo = hcore.shape[0]
+    naux = LXmn.size // (nmo*nmo)
+    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    assert LXmn.shape[0] == naux, message
+    return hcore, LXmn, e0
+
 def format_fixed_width_strings(strings):
     return " ".join("{:>17}".format(s) for s in strings)
 
@@ -19,6 +49,77 @@ def format_fixed_width_strings(strings):
 def format_fixed_width_floats(floats):
     return " ".join("{: .16e}".format(f) for f in floats)
 
+def write_input(filename, hamil, wfn, est, bp=False, options={}):
+    with h5py.File(wfn, "r") as fh5:
+        try:
+            dims = fh5["Wavefunction/NOMSD/dims"][:]
+        except KeyError:
+            dims = fh5["Wavefunction/PHMSD/dims"][:]
+        except:
+            print("Unknown wavefunction file format.")
+    nmo = int(dims[0])
+    na = int(dims[1])
+    nb = int(dims[2])
+    basic = {
+        "system": {
+            "nup": na,
+            "ndown": nb,
+        },
+        "hamiltonian": {"name": "Generic", "integrals": hamil},
+        "qmc": {
+            "dt": 0.005,
+            "nwalkers": 640,
+            "nsteps": 25,
+            "blocks": 50000,
+            "batched": True,
+            "pop_control_freq": 5,
+            "stabilise_freq": 5,
+        },
+        "trial": {"filename": wfn},
+        "estimators": {"filename": est},
+    }
+    if bp:
+        basic["estimators"]["back_propagated"] = {"tau_bp": 2.0, "nsplit": 4}
+    # try:
+    # full = {**basic, **options}
+    # except SyntaxError:
+    # TODO with python2 support.
+    full = merge_dicts(basic, options)
+    with open(filename, "w") as f:
+        f.write(json.dumps(full, indent=4, separators=(",", ": ")))
+
+
+def to_json(afqmc):
+    json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
+    json_string = json.dumps(
+        serialise(afqmc, verbose=afqmc.verbosity), sort_keys=False, indent=4
+    )
+    return json_string
+
+
+def get_input_value(inputs, key, default=0, alias=None, verbose=False):
+    """Helper routine to parse input options."""
+    val = inputs.get(key, None)
+    if val is not None and verbose:
+        print("# Setting {} to {}.".format(key, val))
+    if val is None:
+        if alias is not None:
+            for a in alias:
+                val = inputs.get(a, None)
+                if val is not None:
+                    if verbose:
+                        print("# Setting {} to {}.".format(key, val))
+                    break
+        if val is None:
+            val = default
+            if verbose:
+                print(
+                    "# Note: {} not specified. Setting to default value"
+                    " of {}.".format(key, default)
+                )
+    return val
+
+# QMCPACK Utilities
 
 def read_fortran_complex_numbers(filename):
     with open(filename) as f:
@@ -44,14 +145,6 @@ def fcidump_header(nel, norb, spin):
         "&END\n"
     )
     return header
-
-
-def to_json(afqmc):
-    json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
-    json_string = json.dumps(
-        serialise(afqmc, verbose=afqmc.verbosity), sort_keys=False, indent=4
-    )
-    return json_string
 
 
 def to_qmcpack_index(matrix, offset=0):
@@ -148,7 +241,6 @@ def write_qmcpack_sparse(
 
 def from_qmcpack_complex(data, shape):
     return data.view(numpy.complex128).ravel().reshape(shape)
-
 
 def from_qmcpack_sparse(filename):
     with h5py.File(filename, "r") as fh5:
@@ -356,28 +448,6 @@ def write_phfmol_wavefunction(coeffs, dets, filename="wfn.dat", padding=0):
             for cij in numpy.ravel(padded, order="F"):
                 f.write("({:13.8e},{:13.8e})\n".format(cij.real, cij.imag))
 
-
-def get_input_value(inputs, key, default=0, alias=None, verbose=False):
-    """Helper routine to parse input options."""
-    val = inputs.get(key, None)
-    if val is not None and verbose:
-        print("# Setting {} to {}.".format(key, val))
-    if val is None:
-        if alias is not None:
-            for a in alias:
-                val = inputs.get(a, None)
-                if val is not None:
-                    if verbose:
-                        print("# Setting {} to {}.".format(key, val))
-                    break
-        if val is None:
-            val = default
-            if verbose:
-                print(
-                    "# Note: {} not specified. Setting to default value"
-                    " of {}.".format(key, default)
-                )
-    return val
 
 
 def read_qmcpack_wfn_hdf(filename, nelec=None):
@@ -628,41 +698,3 @@ def to_qmcpack_complex(array):
     return array.view(numpy.float64).reshape(shape + (2,))
 
 
-def write_input(filename, hamil, wfn, est, bp=False, options={}):
-    with h5py.File(wfn, "r") as fh5:
-        try:
-            dims = fh5["Wavefunction/NOMSD/dims"][:]
-        except KeyError:
-            dims = fh5["Wavefunction/PHMSD/dims"][:]
-        except:
-            print("Unknown wavefunction file format.")
-    nmo = int(dims[0])
-    na = int(dims[1])
-    nb = int(dims[2])
-    basic = {
-        "system": {
-            "nup": na,
-            "ndown": nb,
-        },
-        "hamiltonian": {"name": "Generic", "integrals": hamil},
-        "qmc": {
-            "dt": 0.005,
-            "nwalkers": 640,
-            "nsteps": 25,
-            "blocks": 50000,
-            "batched": True,
-            "pop_control_freq": 5,
-            "stabilise_freq": 5,
-        },
-        "trial": {"filename": wfn},
-        "estimators": {"filename": est},
-    }
-    if bp:
-        basic["estimators"]["back_propagated"] = {"tau_bp": 2.0, "nsplit": 4}
-    # try:
-    # full = {**basic, **options}
-    # except SyntaxError:
-    # TODO with python2 support.
-    full = merge_dicts(basic, options)
-    with open(filename, "w") as f:
-        f.write(json.dumps(full, indent=4, separators=(",", ": ")))
