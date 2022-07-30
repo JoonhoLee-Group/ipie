@@ -1,7 +1,7 @@
 import ast
 import json
 import os
-from typing import Tuple
+from typing import Tuple, Union
 import sys
 
 import h5py
@@ -29,6 +29,7 @@ def write_hamiltonian(
         fh5['LXmn'] = LXmn
         fh5['e0'] = e0
 
+
 def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
     with h5py.File(filename, 'r') as fh5:
         hcore = fh5['hcore'][:]
@@ -41,6 +42,112 @@ def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float
     message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
     assert LXmn.shape[0] == naux, message
     return hcore, LXmn, e0
+
+
+def write_wavefunction(
+        wfn: Union[tuple, numpy.ndarray, list],
+        filename: str='wavefunction.h5',
+        ) -> None:
+    if isinstance(wfn, numpy.ndarray) or isinstance(wfn, list):
+        write_single_det_wavefunction(wfn, filename)
+    else:
+        if len(wfn) == 3:
+            write_particle_hole_wavefunction(wfn, filename)
+        elif len(wfn) == 2:
+            write_noci_wavefunction(wfn, filename)
+        else:
+            raise RuntimeError("Unknown wavefunction time.") 
+
+
+def read_wavefunction(filename: str):
+    try:
+        return read_particle_hole_wavefunction(filename)
+    except KeyError:
+        pass
+    try:
+        return read_noci_wavefunction(filename)
+    except KeyError:
+        pass
+    try:
+        return read_single_det_wavefunction(filename)
+    except:
+        raise RuntimeError("Unknown file format.")
+
+
+def write_single_det_wavefunction(
+        wfn: Union[numpy.ndarray, list],
+        filename: str
+        ) -> None:
+    with h5py.File(filename, 'w') as fh5:
+        if isinstance(wfn, list):
+            assert len(wfn) == 2, "Expected list for UHF wavefunction."
+            fh5['psi_T_alpha'] = wfn[0]
+            fh5['psi_T_beta'] = wfn[1]
+        else:
+            assert len(wfn.shape) == 2, "Expected 2D array for RHF wavefunction."
+            fh5['psi_T_alpha'] = wfn
+
+
+def write_particle_hole_wavefunction(
+        wfn: tuple,
+        filename: str
+        ) -> None:
+    assert len(wfn) == 3, "Expected (ci, occa, occb)."
+    with h5py.File(filename, 'w') as fh5:
+        fh5['ci_coeffs'] = wfn[0]
+        fh5['occ_alpha'] = wfn[1]
+        fh5['occ_beta'] = wfn[2]
+
+
+def write_noci_wavefunction(
+        wfn: tuple,
+        filename: str
+        ) -> None:
+    assert len(wfn) == 2, "Expected (ci, psi)."
+    assert isinstance(wfn[1], list)
+    assert len(wfn[1][0].shape) == 3, "Expected psi.shape = (ndet, nmo, nocca)"
+    assert len(wfn[1][1].shape) == 3, "Expected psi.shape = (ndet, nmo, noccb)"
+    ndet = len(wfn[0])
+    with h5py.File(filename, 'w') as fh5:
+        fh5['ci_coeffs'] = wfn[0]
+        fh5[f'psi_T_alpha'] = wfn[1][0]
+        fh5[f'psi_T_beta'] = wfn[1][1]
+
+
+def read_particle_hole_wavefunction(
+        filename: str
+        ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    with h5py.File(filename, 'r') as fh5:
+        ci_coeffs = fh5['ci_coeffs'][:]
+        occ_alpha = fh5['occ_alpha'][:]
+        occ_beta = fh5['occ_beta'][:]
+    return ci_coeffs, occ_alpha, occ_beta
+
+
+def read_noci_wavefunction(
+        filename: str
+        ) -> Tuple[numpy.ndarray, list]:
+    with h5py.File(filename, 'r') as fh5:
+        ci_coeffs = fh5['ci_coeffs'][:]
+        ndets = len(ci_coeffs)
+        for idet in range(ndets):
+            psia = fh5[f'psi_T_alpha'][:]
+            psib = fh5[f'psi_T_beta'][:]
+    return ci_coeffs, [psia, psib]
+
+
+def read_single_det_wavefunction(
+        filename: str
+        ) -> Tuple[numpy.ndarray, list]:
+    with h5py.File(filename, 'r') as fh5:
+        psia = fh5['psi_T_alpha'][:]
+        try:
+            psib = fh5['psi_T_beta'][:]
+            wfn = [psia, psib]
+        except KeyError:
+            wfn = psia
+    return wfn
+
 
 def format_fixed_width_strings(strings):
     return " ".join("{:>17}".format(s) for s in strings)
