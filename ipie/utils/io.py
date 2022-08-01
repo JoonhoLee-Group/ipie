@@ -156,17 +156,8 @@ def format_fixed_width_strings(strings):
 def format_fixed_width_floats(floats):
     return " ".join("{: .16e}".format(f) for f in floats)
 
-def write_input(filename, hamil, wfn, est, bp=False, options={}):
-    with h5py.File(wfn, "r") as fh5:
-        try:
-            dims = fh5["Wavefunction/NOMSD/dims"][:]
-        except KeyError:
-            dims = fh5["Wavefunction/PHMSD/dims"][:]
-        except:
-            print("Unknown wavefunction file format.")
-    nmo = int(dims[0])
-    na = int(dims[1])
-    nb = int(dims[2])
+def write_json_input_file(filename, hamil, wfn, est, nelec, options={}):
+    na, nb = nelec
     basic = {
         "system": {
             "nup": na,
@@ -185,12 +176,6 @@ def write_input(filename, hamil, wfn, est, bp=False, options={}):
         "trial": {"filename": wfn},
         "estimators": {"filename": est},
     }
-    if bp:
-        basic["estimators"]["back_propagated"] = {"tau_bp": 2.0, "nsplit": 4}
-    # try:
-    # full = {**basic, **options}
-    # except SyntaxError:
-    # TODO with python2 support.
     full = merge_dicts(basic, options)
     with open(filename, "w") as f:
         f.write(json.dumps(full, indent=4, separators=(",", ": ")))

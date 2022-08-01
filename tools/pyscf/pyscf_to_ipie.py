@@ -5,8 +5,12 @@ import sys
 import h5py
 import numpy
 
-from ipie.utils.from_pyscf import dump_ipie
-from ipie.utils.io import write_input
+from ipie.utils.from_pyscf import (
+        gen_ipie_input_from_pyscf_chk,
+        load_from_pyscf_chkfile
+        )
+from ipie.utils.io import write_json_input_file
+
 
 
 def parse_args(args):
@@ -37,7 +41,7 @@ def parse_args(args):
         "--output",
         dest="output",
         type=str,
-        default="afqmc.h5",
+        default="hamiltonian.h5",
         help="Output file Hamiltonian.",
     )
     parser.add_argument(
@@ -45,7 +49,7 @@ def parse_args(args):
         "--wavefile",
         dest="wfn",
         type=str,
-        default="afqmc.h5",
+        default="wavefunction.h5",
         help="Output file name for qmcpack trial.",
     )
     parser.add_argument(
@@ -110,6 +114,10 @@ def parse_args(args):
         "-ao", "--ao", dest="ao", type=int, default=0, help="whether to do ao"
     )
     parser.add_argument(
+        "--lin-dep", dest="lin_dep", type=float, default=0, help="Linear "
+        "dependency threshold for canonical orthogonalization."
+    )
+    parser.add_argument(
         "-v", "--verbose", dest="verbose", type=int, default=1, help="Verbose output."
     )
 
@@ -132,20 +140,19 @@ def main(args):
     """
 
     options = parse_args(args)
-    dump_ipie(
-        chkfile=options.input_scf,
+    gen_ipie_input_from_pyscf_chk(
+        options.input_scf,
         hamil_file=options.output,
-        verbose=options.verbose,
         wfn_file=options.wfn,
+        verbose=options.verbose,
         chol_cut=options.thresh,
-        sparse=options.sparse,
-        cas=options.cas,
-        sparse_zero=options.sparse_zero,
         ortho_ao=options.oao,
-        ao=options.ao,
+        linear_dep_thresh=options.lin_dep,
     )
-    write_input(
-        options.json_input, options.output, options.wfn, options.est, options.bp
+    scf_data = load_from_pyscf_chkfile(options.input_scf)
+    nelec = scf_data['mol'].nelec
+    write_json_input_file(
+        options.json_input, options.output, options.wfn, options.est, nelec
     )
 
 
