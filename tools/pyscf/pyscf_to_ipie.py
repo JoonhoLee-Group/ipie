@@ -37,16 +37,14 @@ def parse_args(args):
         help="PYSCF scf chkfile.",
     )
     parser.add_argument(
-        "-o",
-        "--output",
+        "--hamiltonian",
         dest="output",
         type=str,
         default="hamiltonian.h5",
         help="Output file Hamiltonian.",
     )
     parser.add_argument(
-        "-w",
-        "--wavefile",
+        "--wavefunction",
         dest="wfn",
         type=str,
         default="wavefunction.h5",
@@ -69,37 +67,6 @@ def parse_args(args):
         help="Cholesky convergence threshold.",
     )
     parser.add_argument(
-        "-s",
-        "--sparse",
-        dest="sparse",
-        action="store_true",
-        default=False,
-        help="Write in sparse format.",
-    )
-    parser.add_argument(
-        "-sz",
-        "--sparse_zero",
-        dest="sparse_zero",
-        type=float,
-        default=1e-16,
-        help="Sparsity threshold",
-    )
-    parser.add_argument(
-        "-c",
-        "--cas",
-        help="Specify a CAS in the form of nelec,norb.",
-        type=lambda s: [int(item) for item in s.split(",")],
-        default=None,
-    )
-    parser.add_argument(
-        "-b",
-        "--back-prop",
-        dest="bp",
-        action="store_true",
-        default=False,
-        help="Add back propagation option to json" "input file.",
-    )
-    parser.add_argument(
         "-j",
         "--json-input",
         dest="json_input",
@@ -108,10 +75,7 @@ def parse_args(args):
         help="Name of input file.",
     )
     parser.add_argument(
-        "-oao", "--oao", dest="oao", type=int, default=1, help="whether to do oao"
-    )
-    parser.add_argument(
-        "-ao", "--ao", dest="ao", type=int, default=0, help="whether to do ao"
+        "-o", "--ortho-ao", dest="oao", type=int, default=1, help="whether to do oao"
     )
     parser.add_argument(
         "--lin-dep", dest="lin_dep", type=float, default=0, help="Linear "
