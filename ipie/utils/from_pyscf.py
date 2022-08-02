@@ -20,35 +20,36 @@ def gen_ipie_input_from_pyscf_chk(
         verbose: bool=True,
         chol_cut: float=1e-5,
         ortho_ao: bool=False,
+        mcscf: bool=False,
         linear_dep_thresh: float=1e-8,
         num_frozen_core: int=0,
 ) -> None:
-    scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
-    mol = scf_data["mol"]
-    hcore = scf_data["hcore"]
-    mo_coeff = scf_data["mo_coeff"]
-    uhf = isinstance(mo_coeff, list)
-    if uhf:
-        if ortho_ao:
-            X = get_ortho_ao(mol.intor('s1e_ovlp_sph'), linear_dep_thresh)
-        else:
-            X = mo_coeff[0]
-    else:
-        X = mo_coeff
 
-    mcscf_dict = scf_data.get('mcscf')
-    if mcscf_dict is not None:
-        if num_melting == 0:
-            hcore, chol, e0 = generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None)
-        else:
-            pass
-        write_hamiltonian(hcore, chol, enuc, filename=hamil_file)
-        ci_coeffs = mcscf_dict['ci_coeffs']
-        occa0 = mcscf_dict['occa']
-        occb0 = mcscf_dict['occb']
-        occa, occb = insert_melting_core(occa0, occb0, num_melting)
-        write_wavefunction((ci_coeffs, occa, occb), filename=wfn_file)
+    if mcscf:
+        scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
+        mol = scf_data["mol"]
+        hcore = scf_data["hcore"]
+        mo_coeff = scf_data['mo_coeff']
+        hcore, chol, e0 = generate_integrals(mol, hcore, mo_coeff,
+                                             chol_cut=chol_cut,
+                                             verbose=verbose)
+        write_hamiltonian(hcore, chol, e0, filename=hamil_file)
+        ci_coeffs = scf_data['ci_coeffs']
+        occa = scf_data['occa']
+        occb = scf_data['occb']
+        write_wavefunction((ci_coeffs, occa, occb), wfn_file, mol.nelec)
     else:
+        mol = scf_data["mol"]
+        hcore = scf_data["hcore"]
+        mo_coeff = scf_data["mo_coeff"]
+        uhf = isinstance(mo_coeff, list)
+        if uhf:
+            if ortho_ao:
+                X = get_ortho_ao(mol.intor('s1e_ovlp_sph'), linear_dep_thresh)
+            else:
+                X = mo_coeff[0]
+        else:
+            X = mo_coeff
         hcore, chol, e0 = generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None)
         write_hamiltonian(hcore, chol, e0, filename=hamil_file)
         write_wavefunction_from_mo_coeff(mo_coeff, X, wfn_file, mol.nelec)
@@ -481,6 +482,10 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         except KeyError:
             s1e = mol.intor("int1e_ovlp_sph")
             X = get_ortho_ao(s1e)
+        if base == "mcscf":
+            ci_coeffs =  fh5['mcscf/ci_coeffs'][:]
+            occa =  fh5['mcscf/occs_alpha'][:]
+            occb =  fh5['mcscf/occs_beta'][:]
     mo_occ = numpy.array(lib.chkfile.load(chkfile, base + "/mo_occ"))
     mo_coeff = numpy.array(lib.chkfile.load(chkfile, base + "/mo_coeff"))
     scf_data = {
@@ -490,4 +495,8 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         "X": X,
         "mo_coeff": mo_coeff,
     }
+    if base == "mcscf":
+        scf_data['ci_coeffs'] = ci_coeffs
+        scf_data['occa'] = occa
+        scf_data['occb'] = occb
     return scf_data
