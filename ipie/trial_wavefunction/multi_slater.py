@@ -61,7 +61,8 @@ class MultiSlater(object):
             self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
             self.ortho_expansion = True
         else:
-            self.psi = wfn[1]
+            psit = wfn[1]
+            self.psi = psit
             imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
             if imag_norm <= 1e-8:
                 # print("# making trial wavefunction MO coefficient real")

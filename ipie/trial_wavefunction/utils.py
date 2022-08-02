@@ -4,7 +4,10 @@ import numpy
 
 from ipie.legacy.estimators.greens_function import gab_spin
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.io import get_input_value, read_qmcpack_wfn_hdf
+from ipie.utils.io import (
+        get_input_value,
+        read_qmcpack_wfn_hdf,
+        read_wavefunction)
 
 
 def get_trial_wavefunction(
@@ -44,7 +47,14 @@ def get_trial_wavefunction(
         if wfn_file is not None:
             if verbose:
                 print("# Reading wavefunction from {}.".format(wfn_file))
-            read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
+            try:
+                psit, psi0 = read_wavefunction(wfn_file)
+                psi0 = numpy.hstack(psi0)
+                psit = numpy.hstack(psit)
+                read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
+            except KeyError:
+                # Fall back to old format.
+                read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
             thresh = options.get("threshold", None)
             if thresh is not None:
                 coeff = read[0]
