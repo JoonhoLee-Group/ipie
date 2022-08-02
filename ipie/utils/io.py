@@ -141,7 +141,7 @@ def read_particle_hole_wavefunction(
         ci_coeffs = fh5['ci_coeffs'][:]
         occ_alpha = fh5['occ_alpha'][:]
         occ_beta = fh5['occ_beta'][:]
-    return ci_coeffs, occ_alpha, occ_beta
+    return (ci_coeffs, occ_alpha, occ_beta), None
 
 
 def read_noci_wavefunction(
