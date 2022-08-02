@@ -75,6 +75,13 @@ def parse_args(args):
         help="Name of input file.",
     )
     parser.add_argument(
+        "--mcscf",
+        dest="mcscf",
+        action="store_true",
+        default=False,
+        help="Use mcscf input to generate multi-slater trial wavefunction.",
+    )
+    parser.add_argument(
         "-o", "--ortho-ao", dest="oao", type=int, default=1, help="whether to do oao"
     )
     parser.add_argument(
@@ -111,6 +118,7 @@ def main(args):
         verbose=options.verbose,
         chol_cut=options.thresh,
         ortho_ao=options.oao,
+        mcscf=options.mcscf,
         linear_dep_thresh=options.lin_dep,
     )
     scf_data = load_from_pyscf_chkfile(options.input_scf)
