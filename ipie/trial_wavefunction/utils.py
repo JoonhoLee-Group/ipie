@@ -49,9 +49,14 @@ def get_trial_wavefunction(
                 print("# Reading wavefunction from {}.".format(wfn_file))
             try:
                 psit, psi0 = read_wavefunction(wfn_file)
-                psi0 = numpy.hstack(psi0)
-                psit = numpy.hstack(psit)
-                read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
+                # TODO make this saner during wavefunction refactor.
+                if psi0 is not None:
+                    psi0 = numpy.hstack(psi0)
+                if len(psit) < 3:
+                    psit = numpy.hstack(psit)
+                    read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
+                else:
+                    read = psit
             except KeyError:
                 # Fall back to old format.
                 read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
