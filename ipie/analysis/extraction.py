@@ -25,6 +25,23 @@ def extract_data_sets(files, group, estimator, raw=False):
         data.append(extract_data(f, group, estimator, raw))
     return pd.concat(data)
 
+def extract_data_from_textfile(filename):
+    output = []
+    start_collecting = False
+    header = ''
+    with open(filename, 'r') as f:
+        for line in f:
+            if 'End Time' in line:
+                break
+            if start_collecting and 'End Time' not in line:
+                data = [float(s) for s in line.split()]
+                output.append(data)
+            if 'Iteration' in line and ':' not in line:
+                header = line.split()
+                start_collecting = True
+    data = numpy.array(output)
+    results = pd.DataFrame({k: v for k, v in zip(header, data.T)})
+    return results
 
 def extract_data(filename, group, estimator, raw=False):
     fp = get_param(filename, ["propagators", "free_projection"])
@@ -112,8 +129,8 @@ def set_info(frame, md):
         if trial is not None:
             frame["mu_T"] = trial.get("mu")
             frame["Nav_T"] = trial.get("nav")
-    else:
-        frame["E_T"] = trial.get("energy")
+    # else:
+        # frame["E_T"] = trial.get("energy")
     if system["name"] == "UEG":
         frame["rs"] = system.get("rs")
         frame["ecut"] = system.get("ecut")
@@ -191,36 +208,3 @@ def extract_test_data_hdf5(filename, skip=10):
     # itcf = itcf[abs(itcf) > 1e-10].flatten()
     # data = pd.DataFrame(itcf)
     return data
-
-
-# TODO : FDM FIX.
-# def analysed_itcf(filename, elements, spin, order, kspace):
-# data = h5py.File(filename, 'r')
-# md = json.loads(data['metadata'][:][0])
-# dt = md['qmc']['dt']
-# mode = md['estimators']['estimators']['itcf']['mode']
-# stack_size = md['psi']['stack_size']
-# convert = {'up': 0, 'down': 1, 'greater': 0, 'lesser': 1}
-# if kspace:
-# gf = data['kspace_itcf'][:]
-# gf_err = data['kspace_itcf_err'][:]
-# else:
-# gf = data['real_itcf'][:]
-# gf_err = data['real_itcf_err'][:]
-# tau = stack_size * dt * numpy.arange(0,gf.shape[0])
-# isp = convert[spin]
-# it = convert[order]
-# results = pd.DataFrame()
-# results['tau'] = tau
-# # note that the interpretation of elements necessarily changes if we
-# # didn't store the full green's function.
-# if mode == 'full':
-# name = 'G_'+order+'_spin_'+spin+'_%s%s'%(elements[0],elements[1])
-# results[name] = gf[:,isp,it,elements[0],elements[1]]
-# results[name+'_err'] = gf_err[:,isp,it,elements[0],elements[1]]
-# else:
-# name = 'G_'+order+'_spin_'+spin+'_%s%s'%(elements[0],elements[0])
-# results[name] = gf[:,isp,it,elements[0]]
-# results[name+'_err'] = gf_err[:,isp,it,elements[0]]
-
-# return results

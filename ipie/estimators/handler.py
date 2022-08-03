@@ -39,19 +39,8 @@ class Estimators(object):
 
     Attributes
     ----------
-    h5f : :class:`h5py.File`
-        Output file object.
-    estimates : dict
+    estimators : dict
         Dictionary of estimator objects.
-    back_propagation : bool
-        True if doing back propagation, specified in estimates dict.
-    nbp : int
-        Number of back propagation steps.
-    nprop_tot : int
-        Total number of auxiliary field configurations we store / use for back
-        propagation and itcf calculation.
-    calc_itcf : bool
-        True if calculating imaginary time correlation functions (ITCFs).
     """
 
     def __init__(
@@ -147,6 +136,7 @@ class Estimators(object):
             Container for qmc input options.
         trial : :class:`ipie.trial_wavefunction.X' object
             Trial wavefunction class.
+        # TODO FDM: Mark for removal
         psi : :class:`ipie.legacy.walkers.WalkersBatch` object
             CPMC wavefunction.
         step : int

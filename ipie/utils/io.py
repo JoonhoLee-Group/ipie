@@ -17,7 +17,7 @@ def format_fixed_width_strings(strings):
 
 
 def format_fixed_width_floats(floats):
-    return " ".join("{: .10e}".format(f) for f in floats)
+    return " ".join("{: .16e}".format(f) for f in floats)
 
 def format_fixed_width_cmplx(floats):
     return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)

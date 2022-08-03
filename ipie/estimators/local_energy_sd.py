@@ -7,9 +7,29 @@ from numba import jit
 from ipie.estimators.local_energy import local_energy_G
 from ipie.utils.misc import is_cupy
 
+# Note specialisations occur to because:
+# 1. Numba does not allow for mixing types without a warning so need to split
+# real and complex components apart when rchol is real. Green's function is
+# complex in general.
+# Optimize for case when wavefunction is RHF (factor of 2 saving)
+
 
 @jit(nopython=True, fastmath=True)
 def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
+    """Compute exchange contribution for real rchol.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -34,6 +54,20 @@ def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
 
 @jit(nopython=True, fastmath=True)
 def exx_kernel_batch_complex_rchol(rchola, Ghalfa_batch):
+    """Compute exchange contribution for complex rchol.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -57,6 +91,20 @@ def exx_kernel_batch_complex_rchol(rchola, Ghalfa_batch):
 
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
+    """Compute coulomb contribution for real rchol with RHF trial.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -76,6 +124,24 @@ def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
 
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch):
+    """Compute coulomb contribution for real rchol with UHF trial.
+
+    Parameters
+    ----------
+    rchola : :class:`numpy.ndarray`
+        Half-rotated cholesky (alpha).
+    rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky (beta).
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis.
+    Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -100,6 +166,20 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
 
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_complex_rchol_rhf(rchola, Ghalfa_batch):
+    """Compute coulomb contribution for complex rchol with RHF trial.
+
+    Parameters
+    ----------
+    rchol : :class:`numpy.ndarray`
+        Half-rotated cholesky.
+    Ghalf : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -114,6 +194,24 @@ def ecoul_kernel_batch_complex_rchol_rhf(rchola, Ghalfa_batch):
 
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_complex_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch):
+    """Compute coulomb contribution for real rchol with UHF trial.
+
+    Parameters
+    ----------
+    rchola : :class:`numpy.ndarray`
+        Half-rotated cholesky (alpha).
+    rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky (beta).
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis.
+    Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
@@ -129,9 +227,47 @@ def ecoul_kernel_batch_complex_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_ba
 
 
 def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     if is_cupy(
         trial.psi
     ):  # if even one array is a cupy array we should assume the rest is done with cupy
+        """Compute local energy for walker batch (all walkers at once).
+
+        Parameters
+        ----------
+        system : system object
+            System being studied.
+        hamiltonian : hamiltonian object
+            Hamiltonian being studied.
+        walker_batch : WalkerBatch
+            Walkers object.
+        trial : trial object
+            Trial wavefunctioni.
+
+        Returns
+        -------
+        local_energy : np.ndarray
+            Total, one-body and two-body energies.
+        """
         import cupy
 
         assert cupy.is_available()
@@ -151,6 +287,28 @@ def local_energy_single_det_batch(system, hamiltonian, walker_batch, trial):
 
 
 def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Use einsum rather than numba kernels.
+
+    Single determinant case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
 
     if is_cupy(
         trial.psi
@@ -239,6 +397,26 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walker_batch, tria
 
 
 def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant RHF case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
 
     if is_cupy(
         trial.psi
@@ -286,6 +464,24 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walker_batch, trial):
 
 
 def two_body_energy_uhf(trial, walker_batch):
+    """Compute two body energy only.
+
+    Single determinant case (UHF). For use in Wick's code.
+
+    TODO FDM: Is this used any more (maybe delete.
+
+    Parameters
+    ----------
+    trial : trial object
+        Trial wavefunctioni.
+    walker_batch : WalkerBatch
+        Walkers object.
+
+    Returns
+    -------
+    two_body_energy : np.ndarray
+        Coulomb + exchange (no core constant contribution).
+    """
     if is_cupy(trial.psi):
         isrealobj = cupy.isrealobj
     else:
@@ -314,7 +510,26 @@ def two_body_energy_uhf(trial, walker_batch):
 
 
 def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
 
+    Single determinant UHF case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     if is_cupy(
         trial.psi
     ):  # if even one array is a cupy array we should assume the rest is done with cupy
@@ -370,6 +585,28 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
 
 
 def local_energy_single_det_batch_gpu_old(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant UHF GPU case.
+
+    einsum code path very memory intensive will OOM without warning.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
 
     if is_cupy(
         trial.psi
@@ -448,6 +685,31 @@ def local_energy_single_det_batch_gpu_old(system, hamiltonian, walker_batch, tri
 def local_energy_single_det_batch_gpu(
     system, hamiltonian, walker_batch, trial, max_mem=2
 ):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant UHF GPU case.
+
+    Numba kernel jitted route (qmcpack algorithm)
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+    max_mem : float
+        Maximum memory in GB for intermediates. Optional. Default 2GB.
+        TODO FDM: Remove following config setup.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
 
     if is_cupy(
         trial.psi
