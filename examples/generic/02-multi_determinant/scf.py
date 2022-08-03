@@ -24,7 +24,6 @@ e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
 coeff, occa, occb = zip(
     *fci.addons.large_ci(fcivec, M, (nocca, noccb), tol=1e-8, return_strs=False)
 )
-print(len(coeff))
 # Need to write wavefunction to checkpoint file.
 with h5py.File("scf.chk", 'r+') as fh5:
     fh5['mcscf/ci_coeffs'] = coeff
