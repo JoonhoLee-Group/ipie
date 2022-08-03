@@ -11,31 +11,33 @@ import h5py
 import numpy
 import scipy.linalg
 
-from ipie.estimators.arbitrary import ArbitraryEstimators
-from ipie.estimators.mixed import Mixed
+from ipie.estimators.energy import EnergyEstimator
 from ipie.utils.io import get_input_value
 
+# Some supported (non-custom) estimators
+_predefined_estimators = {
+        'energy': EnergyEstimator,
+        }
 
-class Estimators(object):
-    """Container for qmc estimates of observables.
+
+class EstimatorHandler(object):
+    """Container for qmc options of observables.
 
     Parameters
     ----------
-    estimates : dict
-        input options detailing which estimators to calculate. By default only
-        mixed estimates will be calculated.
-    root : bool
-        True if on root/master processor.
+    comm : MPI.COMM_WORLD
+        MPI Communicator
     qmc : :class:`ipie.state.QMCOpts` object.
         Container for qmc input options.
     system : :class:`ipie.hubbard.Hubbard` / system object in general.
         Container for model input options.
     trial : :class:`ipie.trial_wavefunction.X' object
         Trial wavefunction class.
-    BT2 : :class:`numpy.ndarray`
-        One body propagator.
     verbose : bool
         If true we print out additional setup information.
+    options: dict
+        input options detailing which estimators to calculate. By default only
+        mixed options will be calculated.
 
     Attributes
     ----------
@@ -44,16 +46,23 @@ class Estimators(object):
     """
 
     def __init__(
-        self, estimates, comm, qmc, system, hamiltonian, trial, BT2, verbose=False
+        self,
+        comm,
+        qmc,
+        system
+        hamiltonian,
+        trial,
+        options={},
+        verbose=False
     ):
         if verbose:
             print("# Setting up estimator object.")
         if comm.rank == 0:
-            self.index = estimates.get("index", 0)
-            self.filename = estimates.get("filename", None)
-            self.basename = estimates.get("basename", "estimates")
+            self.index = options.get("index", 0)
+            self.filename = options.get("filename", None)
+            self.basename = options.get("basename", "options")
             if self.filename is None:
-                overwrite = estimates.get("overwrite", True)
+                overwrite = options.get("overwrite", True)
                 self.filename = self.basename + ".%s.h5" % self.index
                 while os.path.isfile(self.filename) and not overwrite:
                     self.index = int(self.filename.split(".")[1])
@@ -65,27 +74,22 @@ class Estimators(object):
                 print("# Writing estimator data to {}.".format(self.filename))
         else:
             self.filename = None
-        # Sub-members:
-        # 1. Back-propagation
-        mixed = estimates.get("mixed", {})
+        observables = options.get("observables", {"energy": {}})
         self.estimators = {}
-        dtype = complex
-        self.estimators["mixed"] = Mixed(
-            mixed, system, hamiltonian, comm.rank==0, self.filename, qmc, trial, dtype
-        )
-        arbitrary = get_input_value(
-                estimates,
-                "arbitrary",
-                {},
-                alias=['user', 'miscellaneous'],
-                verbose=verbose)
-        if arbitrary != {}:
-            self.estimators["arbitrary"] = ArbitraryEstimators(
-                arbitrary, system, hamiltonian, comm, self.filename, qmc, trial, dtype
-            )
-        self.nprop_tot = None
-        self.nbp = None
-
+        for obs, obs_dict in observables.items():
+            try:
+                self.estimators[obs] = (
+                        predefined_estimators[obs](
+                            comm=comm,
+                            qmc=qmc,
+                            system=system,
+                            ham=hamiltonian,
+                            trial=trial,
+                            options=obs_dict
+                            )
+                        )
+            except KeyError:
+                raise RuntimeError(f"unknown observable: {obs}")
         if verbose:
             print("# Finished settting up estimator object.")
 
@@ -105,7 +109,7 @@ class Estimators(object):
         self.filename = self.basename + ".%s.h5" % self.index
 
     def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
-        """Print QMC estimates.
+        """Print QMC options.
 
         Parameters
         ----------
