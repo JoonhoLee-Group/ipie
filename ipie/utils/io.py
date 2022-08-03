@@ -13,7 +13,7 @@ from ipie.utils.misc import merge_dicts, serialise
 
 
 def format_fixed_width_strings(strings):
-    return " ".join("{:>17}".format(s) for s in strings)
+    return " ".join("{:>23}".format(s) for s in strings)
 
 
 def format_fixed_width_floats(floats):
