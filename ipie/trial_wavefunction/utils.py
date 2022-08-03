@@ -57,7 +57,7 @@ def get_trial_wavefunction(
                     read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
                 else:
                     read = psit
-            except KeyError:
+            except RuntimeError:
                 # Fall back to old format.
                 read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
             thresh = options.get("threshold", None)
