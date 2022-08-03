@@ -12,6 +12,7 @@ import numpy
 import scipy.linalg
 
 from ipie.estimators.energy import EnergyEstimator
+from ipie.estimators.utils import H5EstimatorHelper
 from ipie.utils.io import get_input_value
 
 # Some supported (non-custom) estimators
@@ -49,7 +50,7 @@ class EstimatorHandler(object):
         self,
         comm,
         qmc,
-        system
+        system,
         hamiltonian,
         trial,
         options={},
@@ -93,13 +94,6 @@ class EstimatorHandler(object):
         if verbose:
             print("# Finished settting up estimator object.")
 
-    def reset(self, root):
-        if root:
-            self.increment_file_number()
-            self.dump_metadata()
-            for k, e in self.estimators.items():
-                e.setup_output(self.filename)
-
     def dump_metadata(self):
         with h5py.File(self.filename, "a") as fh5:
             fh5["metadata"] = self.json_string
@@ -108,45 +102,65 @@ class EstimatorHandler(object):
         self.index = self.index + 1
         self.filename = self.basename + ".%s.h5" % self.index
 
-    def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
-        """Print QMC options.
+    def setup_output(self, comm):
+        if comm.rank == 0:
+            for k, e in self.estimators.items():
+                self.output = H5EstimatorHelper(self.filename,
+                        chunk_size=self.buffer_size,
+                        shape=(self.estimators.total_size,)
+                        )
 
-        Parameters
-        ----------
-        comm :
-            MPI communicator.
-        nprocs : int
-            Number of processors.
-        step : int
-            Current iteration number.
-        nmeasure : int
-            Number of steps between measurements.
-        """
-        for k, e in self.estimators.items():
-            e.print_step(
-                comm, nprocs, step, nsteps=nsteps, free_projection=free_projection
-            )
-
-    def update_batch(
-        self, qmc, system, hamiltonian, trial, psi, step, free_projection=False
+    def compute_estimators(
+        self, comm, system, hamiltonian, trial, walker_batch
     ):
         """Update estimators with bached psi
 
         Parameters
         ----------
-        system : system object in general.
-            Container for model input options.
-        qmc : :class:`ipie.state.QMCOpts` object.
-            Container for qmc input options.
-        trial : :class:`ipie.trial_wavefunction.X' object
-            Trial wavefunction class.
-        # TODO FDM: Mark for removal
-        psi : :class:`ipie.legacy.walkers.WalkersBatch` object
-            CPMC wavefunction.
-        step : int
-            Current simulation step
-        free_projection : bool
-            True if doing free projection.
         """
+        # Compute all estimators
+        # For the moment only consider estimators compute per block.
+        # TODO: generalize for different block groups (loop over groups)
         for k, e in self.estimators.items():
-            e.update_batch(qmc, system, hamiltonian, trial, psi, step, free_projection)
+            estimator_slice = self.estimators[k].slice
+            self.local_estimates[estimator_slice] = (
+                e.compute_estimators(qmc, system, walker_batch, hamiltonian, trial)
+                )
+        comm.Reduce(self.local_estimates, self.global_estimates, op=MPI.SUM)
+        output_string = ''
+        for k, e in self.estimators.items():
+            e.post_reduce_hook(self.global_estimates)
+            if comm.rank == 0:
+                self.output.push_to_chunk(
+                        self.global_estimates,
+                        f"data_{e.write_frequency}")
+                self.output.increment()
+            if e.print_to_stdout:
+                pass
+        self.zero()
+
+# TODO: Will have to take block index if we ever accumulate things on longer
+# time scale
+def EstimatorHelper(object):
+    """Smaller wrapper around dict that stores shapes."""
+
+    def __init__(self):
+        self._estimators = {}
+        self._shapes = []
+        self._offset = {}
+        self._num_estim = 0
+
+    def push(name: str, estimator: EstimatorBase) -> None:
+        self._estimators[name] = estimator
+        shape = estimator.shape
+        self._shapes.append(estimator.shape)
+        self._num_estim += 1
+        prev_obs = self._offsets.items()[-1]
+        offset = np.prod(shape) + self._offsets[pre_obs]
+        self._offsets.append(offset)
+
+    @property
+    def offset(name: str) -> int:
+        offset = self._offsets.get(name)
+        assert offset is not None, f"Unknown estimator name {name}"
+        return offset
