@@ -9,6 +9,9 @@ from typing import Union, Tuple
 from pyscf import ao2mo, fci, lib, scf, mcscf
 from pyscf.tools import fcidump
 
+from ipie.estimators.generic import core_contribution_cholesky
+from ipie.legacy.estimators.greens_function import gab
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky
 from ipie.utils.io import write_wavefunction, write_hamiltonian
 from ipie.utils.misc import dotdict
 
@@ -27,32 +30,38 @@ def gen_ipie_input_from_pyscf_chk(
 
     if mcscf:
         scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
-        mol = scf_data["mol"]
-        hcore = scf_data["hcore"]
-        mo_coeff = scf_data['mo_coeff']
-        hcore, chol, e0 = generate_integrals(mol, hcore, mo_coeff,
-                                             chol_cut=chol_cut,
-                                             verbose=verbose)
+    else:
+        scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
+    mol = scf_data["mol"]
+    hcore = scf_data["hcore"]
+    ortho_ao_mat = scf_data['X']
+    mo_coeffs = scf_data['mo_coeff']
+    if ortho_ao:
+        basis_change_matrix = ortho_ao_mat
+    else:
+        basis_change_matrix = mo_coeffs
+    if len(mo_coeffs) == 3 and not ortho_ao:
+        if verbose:
+            print("# UHF mo coefficients found and ortho-ao == False. Using"
+            " alpha mo coefficients for basis transformation.")
+        basis_change_matrix = mo_coeffs[0]
+    hcore, chol, e0 = generate_integrals(mol, hcore, basis_change_matrix,
+                                         chol_cut=chol_cut,
+                                         verbose=verbose)
+    if num_frozen_core > 0:
+        assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
+        h1eff, chol_act, e0_eff = freeze_core(hcore, chol, e0, mo_coeffs,
+                num_frozen_core, verbose=verbose)
+        write_hamiltonian(h1eff[0], chol_act, e0_eff, filename=hamil_file)
+    else:
         write_hamiltonian(hcore, chol, e0, filename=hamil_file)
+    if mcscf:
         ci_coeffs = scf_data['ci_coeffs']
         occa = scf_data['occa']
         occb = scf_data['occb']
         write_wavefunction((ci_coeffs, occa, occb), wfn_file, mol.nelec)
     else:
-        mol = scf_data["mol"]
-        hcore = scf_data["hcore"]
-        mo_coeff = scf_data["mo_coeff"]
-        uhf = isinstance(mo_coeff, list)
-        if uhf:
-            if ortho_ao:
-                X = get_ortho_ao(mol.intor('s1e_ovlp_sph'), linear_dep_thresh)
-            else:
-                X = mo_coeff[0]
-        else:
-            X = mo_coeff
-        hcore, chol, e0 = generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None)
-        write_hamiltonian(hcore, chol, e0, filename=hamil_file)
-        write_wavefunction_from_mo_coeff(mo_coeff, X, wfn_file, mol.nelec)
+        write_wavefunction_from_mo_coeff(mo_coeffs, basis_change_matrix, wfn_file, mol.nelec)
 
 
 def write_wavefunction_from_mo_coeff(
@@ -72,11 +81,11 @@ def write_wavefunction_from_mo_coeff(
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
-            wfna = numpy.dot(Xinv, C[0])[:, :nalpha]
-            wfnb = numpy.dot(Xinv, C[1])[:, :nbeta]
+            wfna = numpy.dot(Xinv, mo_coeff[0])[:, :nalpha]
+            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
-            wfna = numpy.dot(Xinv, C)[:, :nalpha]
+            wfna = numpy.dot(Xinv, mo_coeff)[:, :nalpha]
             write_wavefunction(wfna, filename=filename)
     else:
         if uhf:
@@ -204,7 +213,6 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         nc = mol.bas_nctr(i)
         nao_per_i += (2 * l + 1) * nc
         dims.append(nao_per_i)
-    # print (dims)
     for i in range(0, mol.nbas):
         shls = (i, i + 1, 0, mol.nbas, i, i + 1, 0, mol.nbas)
         buf = mol.intor("int2e_sph", shls_slice=shls)
@@ -500,3 +508,82 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         scf_data['occa'] = occa
         scf_data['occb'] = occb
     return scf_data
+
+def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
+    # 1. Construct one-body hamiltonian
+    nbasis = h1e.shape[-1]
+    nchol = chol.shape[0]
+    chol = chol.reshape((nchol, nbasis, nbasis))
+    ham = dotdict(
+        {
+            "H1": numpy.array([h1e, h1e]),
+            "chol_vecs": chol.T.copy().reshape((nbasis * nbasis, nchol)),
+            "nchol": nchol,
+            "ecore": ecore,
+            "nbasis": nbasis,
+        }
+    )
+    system = dotdict({"nup": 0, "ndown": 0})
+    if len(X.shape) == 2:
+        psi_a = numpy.identity(nbasis)[:, :nfrozen]
+        psi_b = numpy.identity(nbasis)[:, :nfrozen]
+    elif len(X.shape) == 3:
+        C = X
+        psi_a = numpy.identity(nbasis)[:, :nfrozen]
+        Xinv = scipy.linalg.inv(X[0])
+        psi_b = numpy.dot(Xinv, C[1])[:, :nfrozen]
+
+    Gcore_a = gab(psi_a, psi_a)
+    Gcore_b = gab(psi_b, psi_b)
+    ecore = local_energy_generic_cholesky(system, ham, [Gcore_a, Gcore_b])[0]
+
+    (hc_a, hc_b) = core_contribution_cholesky(chol, [Gcore_a, Gcore_b])
+    h1e = numpy.array([h1e, h1e])
+    h1e[0] = h1e[0] + 2 * hc_a
+    h1e[1] = h1e[1] + 2 * hc_b
+    h1e = h1e[:, nfrozen:, nfrozen:]
+    nchol = chol.shape[0]
+    nact = h1e.shape[-1]
+    chol = chol[:, nfrozen:, nfrozen:].reshape((nchol, nact, nact))
+    # 4. Subtract one-body term from writing H2 as sum of squares.
+    if verbose:
+        print(f"# Number of active orbitals: {nact}")
+        print(
+            f"# Freezing {nfrozen} core orbitals."
+        )
+        print(f"# Frozen core energy : {ecore.real:15.12e}")
+    return h1e, chol, ecore
+
+def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
+    mol = mf.mol
+    ecore = mf.energy_nuc()
+    hcore = mf.get_hcore()
+    if ortho_ao:
+        s1e = mf.mol.intor("int1e_ovlp_sph")
+        X = get_ortho_ao(s1e)
+    else:
+        X = mf.mo_coeff
+        if len(X.shape) == 3:
+            X = X[0]
+    h1e, chol, enuc = generate_integrals(
+        mol, hcore, X, chol_cut=chol_cut, verbose=verbose
+    )
+    return h1e, chol, enuc, X
+
+
+def integrals_from_chkfile(
+    chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
+):
+    scf_data = load_from_pyscf_chkfile(chkfile)
+    mol = scf_data["mol"]
+    hcore = scf_data["hcore"]
+    if ortho_ao:
+        oao = scf_data["X"]
+    else:
+        X = scf_data['mo_coeff']
+        if len(X.shape) == 3:
+            X = X[0]
+    h1e, chol, enuc = generate_integrals(
+        mol, hcore, X, chol_cut=chol_cut, verbose=verbose,
+    )
+    return h1e, chol, enuc, X
