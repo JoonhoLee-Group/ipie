@@ -115,7 +115,7 @@ def test_analyse_estimates_textfile():
 
 def teardown_module():
     cwd = os.getcwd()
-    files = ["test.h5", "test.dat"]
+    files = ["test.h5", "test.dat", "analysed_test.h5"]
     for f in files:
         try:
             os.remove(cwd + "/" + f)
