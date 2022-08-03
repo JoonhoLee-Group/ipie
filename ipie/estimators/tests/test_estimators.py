@@ -29,6 +29,17 @@ def test_energy_estimator():
     assert estim.shape == (7,)
     header = estim.header_to_text
     data_to_text = estim.data_to_text(data)
-    print("")
-    print(header)
-    print(data_to_text)
+
+@pytest.mark.unit
+def test_estimator_helper():
+    nmo = 10
+    nocc = 8
+    naux = 30
+    nwalker = 10
+    system, ham, walker_batch, trial = gen_random_test_instances(nmo, nocc, naux, nwalker)
+    estim = EnergyEstimator(system=system, ham=ham, trial=trial)
+    helper = EstimatorHelper()
+    helper.push("energy1", estim)
+    helper.push("energy2", estim)
+    assert helper.get_offset('energy1') == 0
+    assert helper.get_offset('energy2') == 7

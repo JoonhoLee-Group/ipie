@@ -12,6 +12,7 @@ import numpy
 import scipy.linalg
 
 from ipie.estimators.energy import EnergyEstimator
+from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.utils.io import get_input_value
 
@@ -141,26 +142,28 @@ class EstimatorHandler(object):
 
 # TODO: Will have to take block index if we ever accumulate things on longer
 # time scale
-def EstimatorHelper(object):
+class EstimatorHelper(object):
     """Smaller wrapper around dict that stores shapes."""
 
     def __init__(self):
         self._estimators = {}
         self._shapes = []
-        self._offset = {}
+        self._offsets = {}
         self._num_estim = 0
 
-    def push(name: str, estimator: EstimatorBase) -> None:
+    def push(self, name: str, estimator: EstimatorBase) -> None:
         self._estimators[name] = estimator
         shape = estimator.shape
         self._shapes.append(estimator.shape)
-        self._num_estim += 1
-        prev_obs = self._offsets.items()[-1]
-        offset = np.prod(shape) + self._offsets[pre_obs]
-        self._offsets.append(offset)
+        if len(self._offsets.keys()) == 0:
+            self._offsets[name] = 0
+            prev_obs = name
+        else:
+            prev_obs = list(self._offsets.keys())[-1]
+            offset = numpy.prod(shape) + self._offsets[prev_obs]
+            self._offsets[name] = offset
 
-    @property
-    def offset(name: str) -> int:
+    def get_offset(self, name: str) -> int:
         offset = self._offsets.get(name)
         assert offset is not None, f"Unknown estimator name {name}"
         return offset
