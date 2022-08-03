@@ -76,11 +76,11 @@ def test_pyscf_to_ipie():
             num_frozen_core=2, verbose=False)
     wfn = read_wavefunction("wavefunction.h5")
     assert len(wfn[0][0].shape) == 2
-    mc = mcscf.CASSCF(mf, 4, 4)
+    mc = mcscf.CASSCF(mf, 2, 2)
     mc.chkfile = 'scf.chk'
     e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
     coeff, occa, occb = zip(
-        *fci.addons.large_ci(fcivec, 4, (2, 2), tol=1e-8, return_strs=False)
+        *fci.addons.large_ci(fcivec, 2, (1, 1), tol=1e-8, return_strs=False)
     )
     with h5py.File("scf.chk", 'r+') as fh5:
         fh5['mcscf/ci_coeffs'] = coeff

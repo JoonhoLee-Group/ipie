@@ -43,7 +43,7 @@ def test_read_write_single_det_uhf():
     wfnb = np.random.random((nmo, nbeta))
     wfn = [wfna, wfnb]
     write_wavefunction(wfn)
-    wfn_read = read_wavefunction("wavefunction.h5")
+    wfn_read, _ = read_wavefunction("wavefunction.h5")
     assert np.allclose(wfn[0], wfn_read[0])
     assert np.allclose(wfn[1], wfn_read[1])
 
@@ -59,7 +59,7 @@ def test_read_write_noci_wavefunction():
     ci_coeffs = np.random.random((ndet))
     wfn = (ci_coeffs, [wfna, wfnb])
     write_wavefunction(wfn)
-    wfn_read = read_wavefunction("wavefunction.h5")
+    wfn_read, _ = read_wavefunction("wavefunction.h5")
     assert np.allclose(wfn[0], wfn_read[0])
     assert np.allclose(wfn[1][0], wfn_read[1][0])
     assert np.allclose(wfn[1][1], wfn_read[1][1])
@@ -76,7 +76,7 @@ def test_read_write_particle_hole_wavefunction():
     ci_coeffs = np.random.random((ndet))
     wfn = (ci_coeffs, occa, occb)
     write_wavefunction(wfn)
-    wfn_read = read_wavefunction("wavefunction.h5")
+    wfn_read, _ = read_wavefunction("wavefunction.h5")
     assert np.allclose(wfn[0], wfn_read[0])
     assert np.allclose(wfn[1], wfn_read[1])
     assert np.allclose(wfn[2], wfn_read[2])

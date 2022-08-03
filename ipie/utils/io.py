@@ -153,7 +153,7 @@ def read_noci_wavefunction(
         for idet in range(ndets):
             psia = fh5[f'psi_T_alpha'][:]
             psib = fh5[f'psi_T_beta'][:]
-    return ci_coeffs, [psia, psib]
+    return (ci_coeffs, [psia, psib]), None
 
 
 def read_single_det_wavefunction(

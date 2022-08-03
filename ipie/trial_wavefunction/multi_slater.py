@@ -504,7 +504,7 @@ class MultiSlater(object):
                 print("# Assuming RHF reference.")
             I = numpy.eye(nbasis, dtype=numpy.float64)
         nocca_in_wfn = len(wfn[1][0])
-        noccb_in_wfn = len(wfn[2][1])
+        noccb_in_wfn = len(wfn[2][0])
         if nup != nocca_in_wfn and ndown != noccb_in_wfn:
             occa0 = wfn[1]
             occb0 = wfn[2]
@@ -531,8 +531,8 @@ class MultiSlater(object):
         self.occb = numpy.array(occb, dtype=numpy.int32)
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         if self.wicks:
-            self.psi[0, :, :nup] = I[:, occa[1][0]]
-            self.psi[0, :, nup:] = I[:, occb[2][0]]
+            self.psi[0, :, :nup] = I[:, occa[0]]
+            self.psi[0, :, nup:] = I[:, occb[0]]
         else:
             for idet, (oa, ob) in enumerate(zip(occa, occb)):
                 self.psi[idet, :, :nup] = I[:, oa]

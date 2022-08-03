@@ -50,8 +50,8 @@ def gen_ipie_input_from_pyscf_chk(
                                          verbose=verbose)
     if num_frozen_core > 0:
         assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
-        assert num_frozen_core < mol.nelec[0]
-        assert num_frozen_core < mol.nelec[1]
+        assert num_frozen_core <= mol.nelec[0], f"{num_frozen_core} < {mol.nelec[0]}"
+        assert num_frozen_core <= mol.nelec[1], f"{num_frozen_core} < {mol.nelec[1]}"
         h1eff, chol_act, e0_eff = freeze_core(hcore, chol, e0, mo_coeffs,
                 num_frozen_core, verbose=verbose)
         write_hamiltonian(h1eff[0], chol_act, e0_eff, filename=hamil_file)
@@ -105,7 +105,7 @@ def write_wavefunction_from_mo_coeff(
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
-            norb = wfn.shape[1]
+            norb = mo_coeff.shape[1]
             I = numpy.identity(norb, dtype=numpy.float64)
             wfna = I[:, :nalpha]
             write_wavefunction(wfna, filename=filename)
