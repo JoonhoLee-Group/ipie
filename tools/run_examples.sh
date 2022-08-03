@@ -8,11 +8,11 @@ cd examples/generic
 root_dir=$(pwd)
 cd 01-simple
 python scf.py
-python $tool_dir/pyscf/pyscf_to_ipie.py -i scf.chk -o afqmc.h5
+python $tool_dir/pyscf/pyscf_to_ipie.py -i scf.chk
 err_status=$?
 cd $root_dir
 cd 02-multi_determinant
-python gen_msd.py
+python $tool_dir/pyscf/pyscf_to_ipie.py -i scf.chk --mcscf
 total_error=$(($? + $err_status))
 
 if [[ $total_error > 0 ]]; then
