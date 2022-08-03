@@ -1,31 +1,66 @@
+from abc import abstractmethod
+
 import numpy as np
+
+from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
 
 class EstimatorBase(object):
 
-    @property
-    @abstractmethod
-    def get_shape(self):
-        return self.shape
+    def __init__(self):
+        self._ascii_filename = None
+        self._print_to_stdout = False
+        # default to once per block
+        self._write_frequency = 1
+        self._data = {}
 
     @property
-    @abstractmethod
-    def get_group_name(self):
-        return self.group_name
+    def print_to_stdout(self) -> bool:
+        return self._print_to_stdout
+
+    @print_to_stdout.setter
+    def print_to_stdout(self, val) -> None:
+        self._print_to_stdout = val
 
     @property
-    @abstractmethod
-    def ascii_filename(self):
-        self.ascii_filename
+    def ascii_filename(self) -> str:
+        """Text file for output"""
+        self._ascii_filename
 
     @property
-    @abstractmethod
-    def get_estimator_names(self):
-        return self.shape
+    def write_frequency(self) -> str:
+        """Group name for hdf5 file."""
+        return self._write_frequency
+
+    @property
+    def shape(self) -> tuple:
+        """Shape of estimator."""
+        return self._shape
+
+    @shape.setter
+    def shape(self, shape) -> tuple:
+        """Shape of estimator."""
+        self._shape = shape
 
     @abstractmethod
-    def get_data(self):
-        return self.data
+    def compute_estimator(self, walker_batch, trial_wavefunction) -> np.ndarray:
+        pass
 
-    @abstractmethod
-    def compute_estimator(self, walker_batch, trial_wavefunction):
+    @property
+    def names(self):
+        return self._data.keys()
+
+    @property
+    def data(self):
+        return np.array(list(self._data.values()))
+
+    @property
+    def header_to_text(self) -> str:
+        return format_fixed_width_strings(self.names)
+
+    def data_to_text(self, vals) -> str:
+        vals
+        assert len(vals) == len(self.names)
+        return format_fixed_width_floats(vals.real)
+
+    def post_reduce_hook(self) -> None:
         pass
