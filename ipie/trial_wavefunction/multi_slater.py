@@ -61,7 +61,8 @@ class MultiSlater(object):
             self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
             self.ortho_expansion = True
         else:
-            self.psi = wfn[1]
+            psit = wfn[1]
+            self.psi = psit
             imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
             if imag_norm <= 1e-8:
                 # print("# making trial wavefunction MO coefficient real")
@@ -80,7 +81,8 @@ class MultiSlater(object):
             options, "ndets", default=len(self.coeffs), verbose=verbose
         )
         self.compute_trial_energy = get_input_value(
-            options, "compute_trial_energy", default=True, verbose=verbose
+            options, "compute_trial_energy", default=True, verbose=verbose,
+            alias=['calculate_variational_energy']
         )
         if self.verbose:
             if self.ortho_expansion:
@@ -501,20 +503,40 @@ class MultiSlater(object):
             if self.verbose:
                 print("# Assuming RHF reference.")
             I = numpy.eye(nbasis, dtype=numpy.float64)
+        nocca_in_wfn = len(wfn[1][0])
+        noccb_in_wfn = len(wfn[2][0])
+        if nup != nocca_in_wfn and ndown != noccb_in_wfn:
+            occa0 = wfn[1]
+            occb0 = wfn[2]
+            assert nocca_in_wfn < nup and noccb_in_wfn < ndown
+            nmelting_a = nup - nocca_in_wfn
+            nmelting_b = ndown - noccb_in_wfn
+            num_melting = nmelting_a
+            if self.verbose:
+                print("# Trial wavefunction contains different number of "
+                      " electrons than specified in input file.")
+                print(f"# Inserting {num_melting} melting cores.")
+            assert nmelting_a == nmelting_b
+            core = [i for i in range(num_melting)]
+            occa = [numpy.array(core + [o + num_melting for o in oa]) for oa in occa0]
+            occb = [numpy.array(core + [o + num_melting for o in ob]) for ob in occb0]
+        else:
+            occa = wfn[1]
+            occb = wfn[2]
         # Store alpha electrons first followed by beta electrons.
         nb = nbasis
-        dets = [list(a) + [i + nb for i in c] for (a, c) in zip(wfn[1], wfn[2])]
+        dets = [list(a) + [i + nb for i in c] for (a, c) in zip(occa, occb)]
         self.spin_occs = [numpy.sort(d) for d in dets]
-        self.occa = numpy.array(wfn[1], dtype=numpy.int32)
-        self.occb = numpy.array(wfn[2], dtype=numpy.int32)
+        self.occa = numpy.array(occa, dtype=numpy.int32)
+        self.occb = numpy.array(occb, dtype=numpy.int32)
         self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
         if self.wicks:
-            self.psi[0, :, :nup] = I[:, wfn[1][0]]
-            self.psi[0, :, nup:] = I[:, wfn[2][0]]
+            self.psi[0, :, :nup] = I[:, occa[0]]
+            self.psi[0, :, nup:] = I[:, occb[0]]
         else:
-            for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
-                self.psi[idet, :, :nup] = I[:, occa]
-                self.psi[idet, :, nup:] = I[:, occb]
+            for idet, (oa, ob) in enumerate(zip(occa, occb)):
+                self.psi[idet, :, :nup] = I[:, oa]
+                self.psi[idet, :, nup:] = I[:, ob]
 
     def recompute_ci_coeffs(self, nup, ndown, ham):
         H = numpy.zeros((self.ndets, self.ndets), dtype=numpy.complex128)
