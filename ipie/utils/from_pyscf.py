@@ -40,7 +40,7 @@ def gen_ipie_input_from_pyscf_chk(
         basis_change_matrix = ortho_ao_mat
     else:
         basis_change_matrix = mo_coeffs
-    if len(mo_coeffs) == 3 and not ortho_ao:
+    if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
         if verbose:
             print("# UHF mo coefficients found and ortho-ao == False. Using"
             " alpha mo coefficients for basis transformation.")
@@ -50,18 +50,25 @@ def gen_ipie_input_from_pyscf_chk(
                                          verbose=verbose)
     if num_frozen_core > 0:
         assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
+        assert num_frozen_core < mol.nelec[0]
+        assert num_frozen_core < mol.nelec[1]
         h1eff, chol_act, e0_eff = freeze_core(hcore, chol, e0, mo_coeffs,
                 num_frozen_core, verbose=verbose)
         write_hamiltonian(h1eff[0], chol_act, e0_eff, filename=hamil_file)
+        nelec = (mol.nelec[0]-num_frozen_core, mol.nelec[1]-num_frozen_core)
     else:
         write_hamiltonian(hcore, chol, e0, filename=hamil_file)
+        nelec = mol.nelec
+    if verbose:
+        print(f"# Number of electrons in simulation: {nelec}")
     if mcscf:
         ci_coeffs = scf_data['ci_coeffs']
         occa = scf_data['occa']
         occb = scf_data['occb']
-        write_wavefunction((ci_coeffs, occa, occb), wfn_file, mol.nelec)
+        write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
     else:
-        write_wavefunction_from_mo_coeff(mo_coeffs, basis_change_matrix, wfn_file, mol.nelec)
+        write_wavefunction_from_mo_coeff(mo_coeffs, basis_change_matrix,
+                wfn_file, nelec, num_frozen_core=num_frozen_core)
 
 
 def write_wavefunction_from_mo_coeff(
@@ -70,14 +77,15 @@ def write_wavefunction_from_mo_coeff(
         filename: str,
         nelec: tuple,
         ortho_ao: bool=False,
-        num_melting_core: int=0
+        num_frozen_core: int=0
 ) -> None:
     """Generate QMCPACK trial wavefunction.
     """
-    uhf = isinstance(mo_coeff, list)
-    norb = X.shape[1]
+    uhf = isinstance(mo_coeff, list) or len(mo_coeff.shape) == 3
     nalpha, nbeta = nelec
+    nmo = X.shape[1] - num_frozen_core
     if ortho_ao:
+        norb = X.shape[1]
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
@@ -90,13 +98,14 @@ def write_wavefunction_from_mo_coeff(
     else:
         if uhf:
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
-            I = numpy.identity(norb, dtype=numpy.float64)
+            I = numpy.identity(nmo, dtype=numpy.float64)
             wfna = I[:, :nalpha]
-            Xinv = scipy.linalg.inv(X)
+            Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
             wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
+            norb = wfn.shape[1]
             I = numpy.identity(norb, dtype=numpy.float64)
             wfna = I[:, :nalpha]
             write_wavefunction(wfna, filename=filename)
@@ -494,8 +503,8 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
             ci_coeffs =  fh5['mcscf/ci_coeffs'][:]
             occa =  fh5['mcscf/occs_alpha'][:]
             occb =  fh5['mcscf/occs_beta'][:]
-    mo_occ = numpy.array(lib.chkfile.load(chkfile, base + "/mo_occ"))
-    mo_coeff = numpy.array(lib.chkfile.load(chkfile, base + "/mo_coeff"))
+    mo_occ = lib.chkfile.load(chkfile, base + "/mo_occ")
+    mo_coeff = lib.chkfile.load(chkfile, base + "/mo_coeff")
     scf_data = {
         "mol": mol,
         "mo_occ": mo_occ,
@@ -552,7 +561,7 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
             f"# Freezing {nfrozen} core orbitals."
         )
         print(f"# Frozen core energy : {ecore.real:15.12e}")
-    return h1e, chol, ecore
+    return h1e, chol, ecore.real
 
 def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     mol = mf.mol

@@ -83,20 +83,21 @@ def parse_args(args):
     )
     parser.add_argument(
         "--frozen-core",
-        dest="frozen_core",
-        type=int
+        dest="num_frozen_core",
+        type=int,
         default=0,
         help="Number of core orbitals to freeze.",
     )
     parser.add_argument(
-        "-o", "--ortho-ao", dest="oao", type=int, default=1, help="whether to do oao"
+        "-o", "--ortho-ao", dest="oao", action="store_true", help="Whether to do"
+        " use orthogonalized AO basis."
     )
     parser.add_argument(
         "--lin-dep", dest="lin_dep", type=float, default=0, help="Linear "
         "dependency threshold for canonical orthogonalization."
     )
     parser.add_argument(
-        "-v", "--verbose", dest="verbose", type=int, default=1, help="Verbose output."
+        "-v", "--verbose", dest="verbose", action="store_true", help="Verbose output."
     )
 
     options = parser.parse_args(args)
@@ -126,13 +127,15 @@ def main(args):
         chol_cut=options.thresh,
         ortho_ao=options.oao,
         mcscf=options.mcscf,
-        num_frozen=options.num_frozen,
+        num_frozen_core=options.num_frozen_core,
         linear_dep_thresh=options.lin_dep,
     )
     scf_data = load_from_pyscf_chkfile(options.input_scf)
-    nelec = scf_data['mol'].nelec
+    nelec_mol = scf_data['mol'].nelec
+    nfzn = options.num_frozen_core
+    nelec_sim = (nelec_mol[0]-nfzn, nelec_mol[1]-nfzn)
     write_json_input_file(
-        options.json_input, options.output, options.wfn, options.est, nelec
+        options.json_input, options.output, options.wfn, options.est, nelec_sim
     )
 
 

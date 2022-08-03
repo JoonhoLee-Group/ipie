@@ -81,7 +81,7 @@ def write_single_det_wavefunction(
         phi0: Union[None, list]=None
         ) -> None:
     with h5py.File(filename, 'w') as fh5:
-        if isinstance(wfn, list):
+        if isinstance(wfn, list) or len(wfn.shape) == 3:
             assert len(wfn) == 2, "Expected list for UHF wavefunction."
             fh5['psi_T_alpha'] = wfn[0]
             fh5['psi_T_beta'] = wfn[1]
