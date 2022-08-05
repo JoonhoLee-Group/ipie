@@ -73,16 +73,20 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
         Ndata += [n]
         tacs += [autocorr_gw2010(y[:n])]
     if verbose:
-        for n, tac in zip(Ndata, tacs):
+        for n, tac in zip(reversed(Ndata), reversed(tacs)):
             print("nsamples, tac = {}, {}".format(n, tac))
 
-    block_size = int(numpy.round(numpy.max(tacs)))
+    # block_size = int(numpy.round(numpy.max(tacs)))
+    block_size = int(numpy.round(tacs[0])) # should take the one with the largest sample size
     nblocks = len(y) // block_size
     yblocked = []
 
     for i in range(nblocks):
         offset = i * block_size
-        yblocked += [numpy.mean(y[offset : offset + block_size])]
+        if i == nblocks-1: # including everything that's left
+            yblocked += [numpy.mean(y[offset :])]
+        else:
+            yblocked += [numpy.mean(y[offset : offset + block_size])]
 
     yavg = numpy.mean(yblocked)
     ystd = numpy.std(yblocked) / numpy.sqrt(nblocks)
