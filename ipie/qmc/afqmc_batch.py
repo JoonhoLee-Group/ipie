@@ -10,7 +10,7 @@ from math import exp
 import h5py
 import numpy
 
-from ipie.estimators.handler import Estimators
+from ipie.estimators.handler import EstimatorHandler
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.utils import get_propagator_driver
@@ -267,16 +267,14 @@ class AFQMCBatch(object):
             verbose=self.verbosity > 1,
         )
         est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
-        self.estimators = Estimators(
-            est_opts,
-            comm,
-            self.qmc,
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.propagators.BT_BP,
-            verbose,
-        )
+        self.estimators = EstimatorHandler(
+                comm,
+                self.system,
+                self.hamiltonian,
+                self.trial,
+                self.qmc.nsteps,
+                options=est_opts,
+                verbose=(comm.rank == 0 and verbose))
         if comm.rank == 0:
             print("# Getting WalkerBatchHandler")
         self.psi = WalkerBatchHandler(
@@ -286,8 +284,6 @@ class AFQMCBatch(object):
             self.qmc,
             walker_opts=wlk_opts,
             mpi_handler=self.mpi_handler,
-            nprop_tot=self.estimators.nprop_tot,
-            nbp=self.estimators.nbp,
             verbose=verbose,
         )
 
@@ -334,9 +330,6 @@ class AFQMCBatch(object):
             json_string = to_json(self)
             self.estimators.json_string = json_string
             self.estimators.dump_metadata()
-            if verbose:
-                self.estimators.estimators["mixed"].print_key()
-                self.estimators.estimators["mixed"].print_header()
 
     def run(self, psi=None, comm=None, verbose=True):
         """Perform AFQMC simulation on state object using open-ended random walk.
@@ -379,16 +372,19 @@ class AFQMCBatch(object):
         self.setup_timers()
         eshift = 0.0
 
+        # Delay initialization incase user defined estimators added after
+        # construction.
+        self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators["mixed"].update_batch(
-            self.qmc,
+        self.estimators.compute_estimators(
+            comm,
             self.system,
             self.hamiltonian,
             self.trial,
             self.psi.walkers_batch,
-            0,
-            self.propagators.free_projection,
+            0
         )
+        self.estimators.print(comm, 0, div_factor=1)
 
         # Print out zeroth step for convenience.
         if verbose:
@@ -448,25 +444,23 @@ class AFQMCBatch(object):
 
             # calculate estimators
             start = time.time()
-            self.estimators.update_batch(
-                self.qmc,
+            self.estimators.compute_estimators(
+                comm,
                 self.system,
                 self.hamiltonian,
                 self.trial,
                 self.psi.walkers_batch,
-                step,
-                self.propagators.free_projection,
+                step
             )
-            self.estimators.print_step(comm, comm.size, step)
+            if step % self.qmc.nsteps == 0:
+                self.estimators.print(comm, step//self.qmc.nsteps)
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators.estimators["mixed"].get_shift(
-                    self.propagators.hybrid
-                )
+                eshift = self.estimators["energy"].get_shift()
             else:
-                eshift += self.estimators.estimators["mixed"].get_shift() - eshift
+                eshift += self.estimators.estimators["energy"].get_shift() - eshift
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):
