@@ -259,6 +259,17 @@ class AFQMCBatch(object):
             alias=["walker", "walker_opts"],
             verbose=self.verbosity > 1,
         )
+        if comm.rank == 0:
+            print("# Getting WalkerBatchHandler")
+        self.psi = WalkerBatchHandler(
+            self.system,
+            self.hamiltonian,
+            self.trial,
+            self.qmc,
+            walker_opts=wlk_opts,
+            mpi_handler=self.mpi_handler,
+            verbose=verbose,
+        )
         est_opts = get_input_value(
             options,
             "estimators",
@@ -272,20 +283,9 @@ class AFQMCBatch(object):
                 self.system,
                 self.hamiltonian,
                 self.trial,
-                nsteps=self.qmc.nsteps,
+                walker_state=self.psi.accumulator_factors,
                 options=est_opts,
                 verbose=(comm.rank == 0 and verbose))
-        if comm.rank == 0:
-            print("# Getting WalkerBatchHandler")
-        self.psi = WalkerBatchHandler(
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.qmc,
-            walker_opts=wlk_opts,
-            mpi_handler=self.mpi_handler,
-            verbose=verbose,
-        )
 
         if self.mpi_handler.nmembers > 1:
             if comm.rank == 0:
@@ -384,7 +384,9 @@ class AFQMCBatch(object):
             self.psi.walkers_batch,
             0
         )
-        self.estimators.print(comm, 0, div_factor=1)
+        self.psi.update_accumulators()
+        self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
+        self.psi.zero_accumulators()
 
         self.tsetup += time.time() - tzero_setup
 
@@ -438,25 +440,31 @@ class AFQMCBatch(object):
                 self.tpopc_comm = self.psi.communication_time
                 self.tpopc_non_comm = self.psi.non_communication_time
 
+            # accumulate weight, hybrid energy etc. across block
+            self.psi.update_accumulators()
             # calculate estimators
             start = time.time()
-            self.estimators.compute_estimators(
-                comm,
-                self.system,
-                self.hamiltonian,
-                self.trial,
-                self.psi.walkers_batch,
-                step
-            )
             if step % self.qmc.nsteps == 0:
-                self.estimators.print(comm, step//self.qmc.nsteps, div_factor=self.qmc.nsteps)
+                self.estimators.compute_estimators(
+                    comm,
+                    self.system,
+                    self.hamiltonian,
+                    self.trial,
+                    self.psi.walkers_batch,
+                    step
+                )
+                self.estimators.print_block(
+                        comm, step//self.qmc.nsteps,
+                        self.psi.accumulator_factors
+                        )
+                self.psi.zero_accumulators()
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators["energy"].get_shift()
+                eshift = self.estimators.eshift
             else:
-                eshift += self.estimators.estimators["energy"].get_shift() - eshift
+                eshift += self.estimators.eshift - eshift
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):

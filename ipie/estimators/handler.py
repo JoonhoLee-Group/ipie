@@ -16,7 +16,7 @@ from mpi4py import MPI
 from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
-from ipie.utils.io import get_input_value
+from ipie.utils.io import get_input_value, format_fixed_width_strings
 
 # Some supported (non-custom) estimators
 _predefined_estimators = {
@@ -53,7 +53,7 @@ class EstimatorHandler(object):
         system,
         hamiltonian,
         trial,
-        nsteps=1,
+        walker_state=None,
         options={},
         verbose=False
     ):
@@ -87,11 +87,15 @@ class EstimatorHandler(object):
                 default={"energy": {}},
                 alias=["estimators", "observable"],
                 verbose=verbose)
+        if walker_state is not None:
+            self.num_walker_props = walker_state.size
+            self.walker_header = walker_state.names
+        else:
+            self.num_walker_props = 0
+            self.walker_header = ''
         self._estimators = {}
         self._shapes = []
         self._offsets = {}
-        self._num_estim = 0
-        self.nsteps = nsteps
         for obs, obs_dict in observables.items():
             try:
                 est = _predefined_estimators[obs](
@@ -100,7 +104,6 @@ class EstimatorHandler(object):
                             ham=hamiltonian,
                             trial=trial,
                             options=obs_dict,
-                            nsteps=self.nsteps
                             )
                 self.__setitem__(obs, est)
             except KeyError:
@@ -137,18 +140,20 @@ class EstimatorHandler(object):
         return sum(numpy.prod(o.shape) for k, o in self._estimators.items())
 
     def initialize(self, comm):
-        self.local_estimates = numpy.zeros((self.size),
+        self.local_estimates = numpy.zeros((self.size+self.num_walker_props),
                 dtype=numpy.complex128)
-        self.global_estimates = numpy.zeros((self.size),
+        self.global_estimates = numpy.zeros((self.size+self.num_walker_props),
                 dtype=numpy.complex128)
         header = '{:>17s}  '.format('Block')
+        header +=  format_fixed_width_strings(self.walker_header)
+        header += ' '
         for k, e in self.items():
             if e.print_to_stdout:
                 header += e.header_to_text
         self.output = H5EstimatorHelper(self.filename,
                 base="block_size_1",
                 chunk_size=self.buffer_size,
-                shape=(self.size,)
+                shape=(self.size+self.num_walker_props,)
                 )
         if comm.rank == 0:
             with h5py.File(self.filename, 'r+') as fh5:
@@ -181,30 +186,36 @@ class EstimatorHandler(object):
         # Compute all estimators
         # For the moment only consider estimators compute per block.
         # TODO: generalize for different block groups (loop over groups)
+        offset = self.num_walker_props
         for k, e in self.items():
             e.compute_estimator(system, walker_batch, hamiltonian, trial, istep=istep)
-            start = self.get_offset(k)
+            start = offset + self.get_offset(k)
             end = start + self[k].size
             self.local_estimates[start:end] += e.data
 
-    def print(self, comm, block, div_factor=None):
+    def print_block(self, comm, block, walker_factors, div_factor=None):
+        self.local_estimates[:walker_factors.size] = walker_factors.buffer
         comm.Reduce(self.local_estimates, self.global_estimates, op=MPI.SUM)
         output_string = ' '
+        # Get walker data.
+        offset = walker_factors.size
+        output_string += walker_factors.to_text(self.global_estimates[:offset])
+        output_string += ' '
         for k, e in self.items():
             if comm.rank == 0:
-                start = self.get_offset(k)
+                start = offset + self.get_offset(k)
                 end = start + self[k].size
                 est_data = self.global_estimates[start:end]
-                e.post_reduce_hook(est_data, div_factor=div_factor)
+                e.post_reduce_hook(est_data)
                 est_string = e.data_to_text(est_data)
                 e.to_ascii_file(est_string)
                 if e.print_to_stdout:
                     output_string += est_string
         if comm.rank == 0:
-            shift = self['energy'].get_shift()
+            shift = est_data[walker_factors.get_index('HybridEnergy')]
         else:
             shift = None
-        self['energy']._eshift = comm.bcast(shift)
+        self.eshift = comm.bcast(shift)
         if comm.rank == 0:
             self.output.push_to_chunk(
                     self.global_estimates,

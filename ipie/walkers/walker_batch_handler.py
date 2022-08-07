@@ -10,7 +10,7 @@ import scipy.linalg
 from mpi4py import MPI
 
 from ipie.legacy.walkers.stack import FieldConfig
-from ipie.utils.io import get_input_value
+from ipie.utils.io import get_input_value, format_fixed_width_floats
 from ipie.utils.misc import is_cupy, update_stack
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
@@ -50,6 +50,11 @@ class WalkerBatchHandler(object):
         self.write_freq = walker_opts.get("write_freq", 0)
         self.write_file = walker_opts.get("write_file", "restart.h5")
         self.read_file = walker_opts.get("read_file", None)
+        # weight, unscaled weight and hybrid energy accumulated across a block.
+        # Mostly here for legacy purposes.
+        self.accumulator_factors = WalkerAccumulator(
+                ["WeightFactor", "Weight", "HybridEnergy"]
+                )
 
         if mpi_handler is None:
             rank = 0
@@ -161,6 +166,12 @@ class WalkerBatchHandler(object):
 
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
+
+    def update_accumulators(self):
+        self.accumulator_factors.update(self.walkers_batch)
+
+    def zero_accumulators(self):
+        self.accumulator_factors.zero()
 
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
@@ -733,3 +744,31 @@ class WalkerBatchHandler(object):
                 self.set_walkers_batch_from_buffer(fh5["walker_%d" % comm.rank][:])
             except KeyError:
                 print(" # Could not read walker data from:" " %s" % (self.read_file))
+
+class WalkerAccumulator(object):
+    """Small class to handle passing around walker state."""
+    def __init__(self, names):
+        self.names = names
+        self.size = len(names)
+        self.buffer = numpy.zeros((self.size,), dtype=numpy.complex128)
+        self._data_index = {k: i for i, k in enumerate(self.names)}
+
+    def update(self, walker_batch):
+        self.buffer += numpy.array([
+                    numpy.sum(walker_batch.weight),
+                    numpy.sum(walker_batch.unscaled_weight),
+                    numpy.sum(walker_batch.hybrid_energy)
+                    ])
+
+    def zero(self):
+        self.buffer.fill(0.0j)
+
+    def get_index(self, name):
+        index = self._data_index.get(name, None)
+        if index is None:
+            raise RuntimeError(f"Unknown walker property {name}")
+        return index
+
+    def to_text(self, vals):
+        assert len(vals) == len(self.names)
+        return format_fixed_width_floats(vals.real)
