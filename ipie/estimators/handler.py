@@ -201,6 +201,11 @@ class EstimatorHandler(object):
                 if e.print_to_stdout:
                     output_string += est_string
         if comm.rank == 0:
+            shift = self['energy'].get_shift()
+        else:
+            shift = None
+        self['energy']._eshift = comm.bcast(shift)
+        if comm.rank == 0:
             self.output.push_to_chunk(
                     self.global_estimates,
                     f"data")
