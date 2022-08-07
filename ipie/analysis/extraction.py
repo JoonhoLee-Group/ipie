@@ -6,17 +6,39 @@ import pandas as pd
 
 from ipie.utils.misc import get_from_dict
 
-def extract_observable(filename, name):
+def extract_hdf5_data(filename, block_idx=1):
+    shapes = {}
     with h5py.File(filename, 'r') as fh5:
-        keys = fh5['arbitrary/data'].keys()
-        data = numpy.concatenate([fh5[f'arbitrary/data/{d}'] for d in keys])
+        keys = fh5[f'block_size_{block_idx}/data/'].keys()
+        shape_keys = fh5[f'block_size_{block_idx}/shape/'].keys()
+        data = numpy.concatenate([fh5[f'block_size_{block_idx}/data/{d}'] for d in keys])
+        for k in shape_keys:
+            shapes[k] = {
+                    'names': fh5[f'block_size_{block_idx}/names/{k}'][()],
+                    'shape': fh5[f'block_size_{block_idx}/shape/{k}'][:],
+                    'offset': fh5[f'block_size_{block_idx}/offset/{k}'][()],
+                    'size': fh5[f'block_size_{block_idx}/size/{k}'][()]
+                    }
 
     loc = numpy.where(data[:,0]+83<1e-12)[0]
     if len(loc) == 0:
         loc = len(data)
     else:
         loc = loc[0]
-    return data[:loc]
+    return data[:loc], shapes
+
+def extract_observable(filename, name='energy', block_idx=1):
+    data, info = extract_hdf5_data(filename, block_idx=block_idx)
+    obs_info = info.get(name)
+    if obs_info is None:
+        raise RuntimeError(f"Unknown value for name={name}")
+    obs_slice = slice(obs_info['offset'], obs_info['size'])
+    if len(obs_info['shape']) == 1:
+        results = pd.DataFrame(data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape'])))
+        results.columns = [n.decode('utf-8') for n in obs_info['names'].split()]
+        return results
+    else:
+        return data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
 
 
 def extract_data_sets(files, group, estimator, raw=False):
