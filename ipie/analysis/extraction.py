@@ -197,9 +197,13 @@ def get_sys_param(filename, param):
 
 def extract_test_data_hdf5(filename, skip=10):
     """For use with testcode"""
-    data = extract_mixed_estimates(filename)
-    # use list so can json serialise easily.
-    data = data.drop(["Iteration", "Time"], axis=1)[::skip].to_dict(orient="list")
+    try:
+        data = extract_observable(filename, 'energy')[::skip].to_dict(orient="list")
+    except KeyError:
+        # Fall back to legacy
+        data = extract_mixed_estimates(filename)
+        # use list so can json serialise easily.
+        data = data.drop(["Iteration", "Time"], axis=1)[::skip].to_dict(orient="list")
     data["sys_info"] = get_metadata(filename)["sys_info"]
     try:
         mrdm = extract_rdm(filename, est_type="mixed", rdm_type="one_rdm")

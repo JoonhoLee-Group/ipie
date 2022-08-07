@@ -27,15 +27,15 @@ _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 # glob is a bit dangerous.
 # _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
 _test_dirs = [
-    "4x4_hubbard_discrete",
-    "ft_4x4_hubbard_discrete",
-    "ft_ueg_ecut1.0_rs1.0",
-    "ueg_ecut2.5_rs2.0_ne14",
+    # "4x4_hubbard_discrete",
+    # "ft_4x4_hubbard_discrete",
+    # "ft_ueg_ecut1.0_rs1.0",
+    # "ueg_ecut2.5_rs2.0_ne14",
     "h10_cc-pvtz_batched",
-    "h10_cc-pvtz_pair_branch",
-    "neon_cc-pvdz_rhf",
-    "benzene_cc-pvdz_batched",  # disabling
-    "benzene_cc-pvdz_chunked",
+    # "h10_cc-pvtz_pair_branch",
+    # "neon_cc-pvdz_rhf",
+    # "benzene_cc-pvdz_batched",  # disabling
+    # "benzene_cc-pvdz_chunked",
 ]
 _tests = [
     (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
@@ -47,8 +47,11 @@ def compare_test_data(ref, test):
     for k, v in ref.items():
         if k == "sys_info":
             continue
-        print(k, np.array(ref[k]) - np.array(test[k]))
-        return np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
+        try:
+            print(k, np.array(ref[k]), np.array(test[k]))
+            return np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
+        except ValueError:
+            raise RuntimeError("Issue with test vs reference data")
 
 
 def run_test_system(input_file, benchmark_file):
@@ -70,7 +73,10 @@ def run_test_system(input_file, benchmark_file):
             ref_data = json.load(f)
         skip_val = ref_data.get("extract_skip_value", 10)
         test_data = extract_test_data_hdf5(output_file, skip=skip_val)
-        _passed = compare_test_data(ref_data, test_data)
+        try:
+            _passed = compare_test_data(ref_data, test_data)
+        except RuntimeError:
+            _passed = False
     else:
         _passed = None
     passed = comm.bcast(_passed)
