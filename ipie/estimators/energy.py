@@ -73,6 +73,12 @@ class EnergyEstimator(EstimatorBase):
     def get_shift(self):
         return self._eshift.real
 
+    def get_index(self, name):
+        index = self._data_index.get(name, None)
+        if index is None:
+            raise RuntimeError(f"Unknown estimator {name}")
+        return index
+
     def post_reduce_hook(self, reduced_data, div_factor=None):
         if div_factor is None:
             div_factor = self.nsteps

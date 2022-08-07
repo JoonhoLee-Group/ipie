@@ -53,7 +53,7 @@ class EstimatorHandler(object):
         system,
         hamiltonian,
         trial,
-        nsteps,
+        nsteps=1,
         options={},
         verbose=False
     ):

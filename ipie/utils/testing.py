@@ -222,5 +222,5 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     trial._rcholb = shaped_normal((naux, nocc * nmo))
     trial._rH1a = shaped_normal((nocc, nmo))
     trial._rH1b = shaped_normal((nocc, nmo))
-    trial.psi = trial.psi[0]
+    # trial.psi = trial.psi[0]
     return system, ham, walker_batch, trial
