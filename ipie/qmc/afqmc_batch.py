@@ -272,7 +272,7 @@ class AFQMCBatch(object):
                 self.system,
                 self.hamiltonian,
                 self.trial,
-                self.qmc.nsteps,
+                nsteps=self.qmc.nsteps,
                 options=est_opts,
                 verbose=(comm.rank == 0 and verbose))
         if comm.rank == 0:
@@ -453,7 +453,7 @@ class AFQMCBatch(object):
                 step
             )
             if step % self.qmc.nsteps == 0:
-                self.estimators.print(comm, step//self.qmc.nsteps)
+                self.estimators.print(comm, step//self.qmc.nsteps, div_factor=self.qmc.nsteps)
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)

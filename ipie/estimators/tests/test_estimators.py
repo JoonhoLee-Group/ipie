@@ -50,7 +50,7 @@ def test_estimator_handler():
 
 def teardown_module():
     cwd = os.getcwd()
-    files = ["estimates.0.h5", "test.txt", "test2.text"]
+    files = ["estimates.0.h5", "test.txt", "test2.txt"]
     for f in files:
         try:
             os.remove(cwd + "/" + f)

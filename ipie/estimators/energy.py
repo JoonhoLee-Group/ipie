@@ -37,7 +37,7 @@ class EnergyEstimator(EstimatorBase):
                 }
         self._shape = (len(self.names),)
         self._data_index = {k: i for i, k in enumerate(list(self._data.keys()))}
-        self.nsteps = nsteps
+        self.frequency = get_input_value(options, 'frequency', nsteps)
         self.print_to_stdout = True
         self.ascii_filename = get_input_value(options, 'filename', default=None)
 
@@ -57,7 +57,7 @@ class EnergyEstimator(EstimatorBase):
             zeros = np.zeros
             sum = np.sum
             abs = np.abs
-        if istep % self.nsteps == 0:
+        if istep % self.frequency == 0:
             greens_function(walker_batch, trial_wavefunction)
             energy = local_energy_batch(system, hamiltonian, walker_batch, trial_wavefunction)
             self._data['ENumer'] = sum(walker_batch.weight * energy[:,0].real)
@@ -81,7 +81,7 @@ class EnergyEstimator(EstimatorBase):
 
     def post_reduce_hook(self, reduced_data, div_factor=None):
         if div_factor is None:
-            div_factor = self.nsteps
+            div_factor = self.frequency
         ix_proj = self._data_index["ETotal"]
         ix_nume = self._data_index["ENumer"]
         ix_deno = self._data_index["EDenom"]
