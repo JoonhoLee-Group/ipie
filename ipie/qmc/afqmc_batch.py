@@ -386,10 +386,6 @@ class AFQMCBatch(object):
         )
         self.estimators.print(comm, 0, div_factor=1)
 
-        # Print out zeroth step for convenience.
-        if verbose:
-            self.estimators.estimators["mixed"].print_step(comm, comm.size, 0, 1)
-
         self.tsetup += time.time() - tzero_setup
 
         for step in range(1, self.qmc.total_steps + 1):
