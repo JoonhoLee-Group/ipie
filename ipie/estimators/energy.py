@@ -24,6 +24,7 @@ class EnergyEstimator(EstimatorBase):
         assert trial is not None
         super().__init__()
         self._eshift = 0.0
+        self.scalar_estimator = True
         self._data = {
                 "ENumer": 0.0j,
                 "EDenom": 0.0j,
