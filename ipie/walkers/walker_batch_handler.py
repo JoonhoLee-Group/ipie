@@ -53,7 +53,8 @@ class WalkerBatchHandler(object):
         # weight, unscaled weight and hybrid energy accumulated across a block.
         # Mostly here for legacy purposes.
         self.accumulator_factors = WalkerAccumulator(
-                ["WeightFactor", "Weight", "HybridEnergy"]
+                ["Weight", "WeightFactor", "HybridEnergy"],
+                qmc.nsteps
                 )
 
         if mpi_handler is None:
@@ -747,17 +748,19 @@ class WalkerBatchHandler(object):
 
 class WalkerAccumulator(object):
     """Small class to handle passing around walker state."""
-    def __init__(self, names):
+    def __init__(self, names, nsteps):
         self.names = names
         self.size = len(names)
         self.buffer = numpy.zeros((self.size,), dtype=numpy.complex128)
         self._data_index = {k: i for i, k in enumerate(self.names)}
+        self.nsteps_per_block = nsteps
+        self._eshift = 0.0
 
     def update(self, walker_batch):
         self.buffer += numpy.array([
                     numpy.sum(walker_batch.weight),
                     numpy.sum(walker_batch.unscaled_weight),
-                    numpy.sum(walker_batch.hybrid_energy)
+                    numpy.sum(walker_batch.weight*walker_batch.hybrid_energy)
                     ])
 
     def zero(self):
@@ -769,6 +772,18 @@ class WalkerAccumulator(object):
             raise RuntimeError(f"Unknown walker property {name}")
         return index
 
+    @property
+    def eshift(self):
+        return self._eshift.real
+
+    @eshift.setter
+    def eshift(self, value):
+        self._eshift = value
+
     def to_text(self, vals):
         assert len(vals) == len(self.names)
-        return format_fixed_width_floats(vals.real)
+        block_av = vals.real / self.nsteps_per_block
+        nume = self.get_index('HybridEnergy')
+        deno = self.get_index('Weight')
+        block_av[nume] = block_av[nume] / block_av[deno]
+        return format_fixed_width_floats(block_av.real)
