@@ -158,7 +158,7 @@ class AFQMCBatch(object):
                 self.system, ham_opts, verbose=verbose, comm=self.shared_comm
             )
 
-        self.qmc = QMCOpts(qmc_opt, self.system, verbose=self.verbosity > 1)
+        self.qmc = QMCOpts(qmc_opt, verbose=self.verbosity > 1)
         if self.qmc.gpu:
             try:
                 import cupy
@@ -372,6 +372,7 @@ class AFQMCBatch(object):
         self.setup_timers()
         eshift = 0.0
 
+        total_steps = self.qmc.nsteps * self.qmc.nblocks
         # Delay initialization incase user defined estimators added after
         # construction.
         self.estimators.initialize(comm)
@@ -382,7 +383,6 @@ class AFQMCBatch(object):
             self.hamiltonian,
             self.trial,
             self.psi.walkers_batch,
-            0
         )
         self.psi.update_accumulators()
         self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
@@ -390,7 +390,7 @@ class AFQMCBatch(object):
 
         self.tsetup += time.time() - tzero_setup
 
-        for step in range(1, self.qmc.total_steps + 1):
+        for step in range(1, total_steps + 1):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
@@ -451,7 +451,6 @@ class AFQMCBatch(object):
                     self.hamiltonian,
                     self.trial,
                     self.psi.walkers_batch,
-                    step
                 )
                 self.estimators.print_block(
                         comm, step//self.qmc.nsteps,
