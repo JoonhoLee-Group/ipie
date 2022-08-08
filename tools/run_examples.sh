@@ -4,7 +4,7 @@ if [[ ! -d examples/generic ]]; then
     echo "Error: Run from pie base directory."
     exit 1
 fi
-cd examples/generic
+cd examples
 root_dir=$(pwd)
 cd 01-simple
 python scf.py
