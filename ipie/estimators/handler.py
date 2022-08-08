@@ -201,7 +201,7 @@ class EstimatorHandler(object):
         output_string = ' '
         # Get walker data.
         offset = walker_factors.size
-        walker_factors.post_reduce_hook(self.global_estimates[:offset])
+        walker_factors.post_reduce_hook(self.global_estimates[:offset], block)
         output_string += walker_factors.to_text(self.global_estimates[:offset])
         output_string += ' '
         for k, e in self.items():
