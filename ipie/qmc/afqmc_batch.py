@@ -462,9 +462,9 @@ class AFQMCBatch(object):
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators.eshift
+                eshift = self.psi.accumulator_factors.eshift
             else:
-                eshift += self.estimators.eshift - eshift
+                eshift += self.psi.accumulator_factors.eshift - eshift
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):
