@@ -491,4 +491,166 @@ def to_qmcpack_complex(array):
     shape = array.shape
     return array.view(numpy.float64).reshape(shape + (2,))
 
+def from_qmcpack_dense(filename):
+    with h5py.File(filename, "r") as fh5:
+        enuc = fh5["Hamiltonian/Energies"][:][0]
+        dims = fh5["Hamiltonian/dims"][:]
+        nmo = dims[3]
+        nchol = dims[-1]
+        real_ints = False
+        try:
+            hcore = fh5["Hamiltonian/hcore"][:]
+            hcore = from_qmcpack_complex(hcore, (nmo, nmo))
+            chol = fh5["Hamiltonian/DenseFactorized/L"][:]
+            chol = from_qmcpack_complex(chol, (nmo * nmo, -1))
+        except ValueError:
+            # Real format.
+            hcore = fh5["Hamiltonian/hcore"][:]
+            chol = fh5["Hamiltonian/DenseFactorized/L"][:]
+            real_ints = True
+        nalpha = dims[4]
+        nbeta = dims[5]
+        return (hcore, chol, enuc, int(nmo), int(nalpha), int(nbeta))
 
+def from_qmcpack_sparse(filename):
+    with h5py.File(filename, "r") as fh5:
+        enuc = fh5["Hamiltonian/Energies"][:][0]
+        dims = fh5["Hamiltonian/dims"][:]
+        nmo = dims[3]
+        real_ints = False
+        try:
+            hcore = fh5["Hamiltonian/hcore"][:]
+            hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
+        except KeyError:
+            # Old sparse format.
+            hcore = fh5["Hamiltonian/H1"][:].view(numpy.complex128).ravel()
+            idx = fh5["Hamiltonian/H1_indx"][:]
+            row_ix = idx[::2]
+            col_ix = idx[1::2]
+            hcore = scipy.sparse.csr_matrix((hcore, (row_ix, col_ix))).toarray()
+            hcore = numpy.tril(hcore, -1) + numpy.tril(hcore, 0).conj().T
+        except ValueError:
+            # Real format.
+            hcore = fh5["Hamiltonian/hcore"][:]
+            real_ints = True
+        chunks = dims[2]
+        block_sizes = fh5["Hamiltonian/Factorized/block_sizes"][:]
+        nchol = dims[7]
+        nval = sum(block_sizes)
+        if real_ints:
+            vals = numpy.zeros(nval, dtype=numpy.float64)
+        else:
+            vals = numpy.zeros(nval, dtype=numpy.complex128)
+        row_ix = numpy.zeros(nval, dtype=numpy.int32)
+        col_ix = numpy.zeros(nval, dtype=numpy.int32)
+        s = 0
+        for ic, bs in enumerate(block_sizes):
+            ixs = fh5["Hamiltonian/Factorized/index_%i" % ic][:]
+            row_ix[s : s + bs] = ixs[::2]
+            col_ix[s : s + bs] = ixs[1::2]
+            if real_ints:
+                vals[s : s + bs] = numpy.real(
+                    fh5["Hamiltonian/Factorized/vals_%i" % ic][:]
+                ).ravel()
+            else:
+                vals[s : s + bs] = (
+                    fh5["Hamiltonian/Factorized/vals_%i" % ic][:]
+                    .view(numpy.complex128)
+                    .ravel()
+                )
+            s += bs
+        nalpha = dims[4]
+        nbeta = dims[5]
+        chol_vecs = scipy.sparse.csr_matrix(
+            (vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol)
+        )
+        return (hcore, chol_vecs, enuc, int(nmo), int(nalpha), int(nbeta))
+
+def write_qmcpack_dense(
+    hcore,
+    chol,
+    nelec,
+    nmo,
+    enuc=0.0,
+    filename="hamiltonian.h5",
+    real_chol=True,
+    verbose=False,
+    ortho=None,
+):
+    assert len(chol.shape) == 2
+    assert chol.shape[0] == nmo * nmo
+    with h5py.File(filename, "w") as fh5:
+        fh5["Hamiltonian/Energies"] = numpy.array([enuc, 0])
+        if real_chol:
+            fh5["Hamiltonian/hcore"] = numpy.real(hcore)
+            fh5["Hamiltonian/DenseFactorized/L"] = numpy.real(chol)
+        else:
+            fh5["Hamiltonian/hcore"] = to_qmcpack_complex(
+                hcore.astype(numpy.complex128)
+            )
+            fh5["Hamiltonian/DenseFactorized/L"] = to_qmcpack_complex(
+                chol.astype(numpy.complex128)
+            )
+        fh5["Hamiltonian/dims"] = numpy.array(
+            [0, 0, 0, nmo, nelec[0], nelec[1], 0, chol.shape[-1]]
+        )
+        if ortho is not None:
+            fh5["Hamiltonian/X"] = ortho
+
+def write_qmcpack_sparse(
+    hcore,
+    chol,
+    nelec,
+    nmo,
+    enuc=0.0,
+    filename="hamiltonian.h5",
+    real_chol=False,
+    verbose=False,
+    cutoff=1e-16,
+    ortho=None,
+):
+    with h5py.File(filename, "w") as fh5:
+        fh5["Hamiltonian/Energies"] = numpy.array([enuc, 0])
+        if real_chol:
+            fh5["Hamiltonian/hcore"] = hcore
+        else:
+            shape = hcore.shape
+            hcore = hcore.astype(numpy.complex128).view(numpy.float64)
+            hcore = hcore.reshape(shape + (2,))
+            fh5["Hamiltonian/hcore"] = hcore
+        if ortho is not None:
+            fh5["Hamiltonian/X"] = ortho
+        # number of cholesky vectors
+        nchol_vecs = chol.shape[-1]
+        ix, vals = to_sparse(chol, cutoff=cutoff)
+        nnz = len(vals)
+        mem = (8 if real_chol else 16) * nnz / (1024.0**3)
+        if verbose:
+            print(
+                " # Total number of non-zero elements in sparse cholesky ERI"
+                " tensor: %d" % nnz
+            )
+            nelem = chol.shape[0] * chol.shape[1]
+            print(
+                " # Sparsity of ERI Cholesky tensor: " "%f" % (1 - float(nnz) / nelem)
+            )
+            print(" # Total memory required for ERI tensor: %13.8e GB" % (mem))
+        fh5["Hamiltonian/Factorized/block_sizes"] = numpy.array([nnz])
+        fh5["Hamiltonian/Factorized/index_0"] = numpy.array(ix)
+        if real_chol:
+            fh5["Hamiltonian/Factorized/vals_0"] = numpy.array(vals)
+        else:
+            fh5["Hamiltonian/Factorized/vals_0"] = to_qmcpack_complex(
+                numpy.array(vals, dtype=numpy.complex128)
+            )
+        # Number of integral blocks used for chunked HDF5 storage.
+        # Currently hardcoded for simplicity.
+        nint_block = 1
+        (nalpha, nbeta) = nelec
+        unused = 0
+        fh5["Hamiltonian/dims"] = numpy.array(
+            [unused, nnz, nint_block, nmo, nalpha, nbeta, unused, nchol_vecs]
+        )
+        occups = [i for i in range(0, nalpha)]
+        occups += [i + nmo for i in range(0, nbeta)]
+        fh5["Hamiltonian/occups"] = numpy.array(occups)
