@@ -20,8 +20,6 @@ except ImportError:
     parallel = False
 
 from ipie.estimators.handler import EstimatorHandler
-from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
-from ipie.legacy.walkers.handler import Walkers
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.comm import FakeComm
 from ipie.utils.io import get_input_value, to_json
@@ -54,12 +52,11 @@ def get_driver(options, comm):
         verbosity = 0
     batched = get_input_value(qmc_opts, "batched", default=True, verbose=verbosity)
 
-    if beta is not None or batched == False:
-        return legacy_get_driver(options, comm)
-    else:
-        afqmc = AFQMCBatch(
-            comm, options=options, parallel=comm.size > 1, verbose=verbosity
-        )
+    afqmc = AFQMCBatch(
+        comm, options=options, parallel=comm.size > 1, verbose=verbosity
+    )
+
+    return afqmc
 
     return afqmc
 

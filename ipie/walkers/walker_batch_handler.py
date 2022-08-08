@@ -9,7 +9,6 @@ import numpy
 import scipy.linalg
 from mpi4py import MPI
 
-from ipie.legacy.walkers.stack import FieldConfig
 from ipie.utils.io import get_input_value, format_fixed_width_floats
 from ipie.utils.misc import is_cupy, update_stack
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
@@ -190,22 +189,6 @@ class WalkerBatchHandler(object):
             self.walkers_batch.weight *= magn
             self.walkers_batch.phase *= cmath.exp(1j * dtheta)
 
-    def add_field_config(self, nprop_tot, nbp, system, dtype):
-        """Add FieldConfig object to walker object.
-
-        Parameters
-        ----------
-        nprop_tot : int
-            Total number of propagators to store for back propagation + itcf.
-        nbp : int
-            Number of back propagation steps.
-        nfields : int
-            Number of fields to store for each back propagation step.
-        dtype : type
-            Field configuration type.
-        """
-        for fc in self.walkers_batch.field_configs:
-            fc = FieldConfig(system.nfields, nprop_tot, nbp, dtype)
 
     def copy_historic_wfn(self):
         """Copy current wavefunction to psi_n for next back propagation step."""
