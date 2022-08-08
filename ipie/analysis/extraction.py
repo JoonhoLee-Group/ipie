@@ -17,7 +17,9 @@ def extract_hdf5_data(filename, block_idx=1):
                     'names': fh5[f'block_size_{block_idx}/names/{k}'][()],
                     'shape': fh5[f'block_size_{block_idx}/shape/{k}'][:],
                     'offset': fh5[f'block_size_{block_idx}/offset/{k}'][()],
-                    'size': fh5[f'block_size_{block_idx}/size/{k}'][()]
+                    'size': fh5[f'block_size_{block_idx}/size/{k}'][()],
+                    'num_walker_props': fh5[f'block_size_{block_idx}/num_walker_props'][()],
+                    'walker_header': fh5[f'block_size_{block_idx}/walker_prop_header'][()]
                     }
 
     loc = numpy.where(data[:,0]+83<1e-12)[0]
@@ -34,8 +36,12 @@ def extract_observable(filename, name='energy', block_idx=1):
         raise RuntimeError(f"Unknown value for name={name}")
     obs_slice = slice(obs_info['offset'], obs_info['offset'] + obs_info['size'])
     if len(obs_info['shape']) == 1:
-        results = pd.DataFrame(data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape'])))
-        results.columns = [n.decode('utf-8') for n in obs_info['names'].split()]
+        obs_data = data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
+        nwalk_prop = obs_info['num_walker_props']
+        weight_data = data[:,:nwalk_prop].reshape((-1,nwalk_prop))
+        results = pd.DataFrame(numpy.hstack([weight_data, obs_data]))
+        header = list(obs_info['walker_header']) + obs_info['names'].split()
+        results.columns = [n.decode('utf-8') for n in header]
         return results
     else:
         return data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
