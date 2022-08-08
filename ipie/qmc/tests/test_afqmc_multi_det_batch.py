@@ -47,7 +47,6 @@ def test_generic_multi_det_batch():
             "filename": "estimates.test_generic_multi_det_batch.h5",
             "observables": {
                 "energy": {
-                    "frequency": 1
                     },
                 }
         },
@@ -84,7 +83,6 @@ def test_generic_multi_det_batch():
     afqmc = AFQMCBatch(
         comm=comm, system=sys, hamiltonian=ham, trial=trial, options=options
     )
-    # afqmc.estimators.estimators["mixed"].print_header()
     afqmc.run(comm=comm, verbose=1)
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
@@ -93,11 +91,9 @@ def test_generic_multi_det_batch():
         afqmc.hamiltonian,
         afqmc.trial,
         afqmc.psi.walkers_batch,
-        0
     )
     numer_batch = afqmc.estimators['energy']['ENumer']
     denom_batch = afqmc.estimators['energy']['EDenom']
-    weight_batch = afqmc.estimators['energy']['Weight']
 
     data_batch = extract_observable("estimates.test_generic_multi_det_batch.h5", 'energy')
 
@@ -117,7 +113,7 @@ def test_generic_multi_det_batch():
         },
         "estimates": {
             "filename": "estimates.test_generic_multi_det_batch.h5",
-            "mixed": {"energy_eval_freq": 1},
+            "mixed": {"energy_eval_freq": steps},
         },
         "trial": {"name": "MultiSlater"},
         "walkers": {"population_control": "pair_branch"},
@@ -151,12 +147,13 @@ def test_generic_multi_det_batch():
     denom = afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
     weight = afqmc.estimators.estimators["mixed"].estimates[enum.weight]
 
+    print(numer, numer_batch)
     assert numer.real == pytest.approx(numer_batch.real)
     assert denom.real == pytest.approx(denom_batch.real)
-    assert weight.real == pytest.approx(weight_batch.real)
+    # assert weight.real == pytest.approx(weight_batch.real)
     assert numer.imag == pytest.approx(numer_batch.imag)
     assert denom.imag == pytest.approx(denom_batch.imag)
-    assert weight.imag == pytest.approx(weight_batch.imag)
+    # assert weight.imag == pytest.approx(weight_batch.imag)
     data = extract_mixed_estimates("estimates.test_generic_multi_det_batch.h5")
 
     assert numpy.mean(data_batch.WeightFactor.values[:-1].real) == pytest.approx(
@@ -180,7 +177,7 @@ def test_generic_multi_det_batch():
     assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
         numpy.mean(data.E2Body.values[:-1].real)
     )
-    assert numpy.mean(data_batch.EHybrid.values[:-1].real) == pytest.approx(
+    assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
         numpy.mean(data.EHybrid.values[:-1].real)
     )
     # assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(
