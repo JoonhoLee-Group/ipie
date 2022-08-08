@@ -780,10 +780,14 @@ class WalkerAccumulator(object):
     def eshift(self, value):
         self._eshift = value
 
-    def to_text(self, vals):
+    def post_reduce_hook(self, vals):
         assert len(vals) == len(self.names)
-        block_av = vals.real / self.nsteps_per_block
         nume = self.get_index('HybridEnergy')
         deno = self.get_index('Weight')
-        block_av[nume] = block_av[nume] / block_av[deno]
-        return format_fixed_width_floats(block_av.real)
+        vals[nume] = vals[nume] / vals[deno]
+        vals[deno] = vals[deno] / self.nsteps_per_block
+        ix = self.get_index('WeightFactor')
+        vals[ix] = vals[ix] / self.nsteps_per_block
+
+    def to_text(self, vals):
+        return format_fixed_width_floats(vals.real)
