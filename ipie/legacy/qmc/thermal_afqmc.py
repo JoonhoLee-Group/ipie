@@ -16,9 +16,9 @@ from ipie.legacy.hamiltonians.utils import get_hamiltonian
 from ipie.legacy.thermal_propagation.utils import get_propagator
 from ipie.legacy.trial_density_matrices.utils import get_trial_density_matrix
 from ipie.legacy.walkers.handler import Walkers
-from ipie.qmc.options import QMCOpts
+from ipie.legacy.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
-from ipie.systems.utils import get_system
+from ipie.legacy.systems.utils import get_system
 from ipie.utils.io import get_input_value, to_json
 from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import get_shared_comm

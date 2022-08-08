@@ -650,7 +650,7 @@ def unit_test():
     from ipie.legacy.trial_density_matrices.onebody import OneBody
     from ipie.legacy.walkers.thermal import ThermalWalker
     from ipie.qmc.comm import FakeComm
-    from ipie.qmc.options import QMCOpts
+    from ipie.legacy.qmc.options import QMCOpts
     from ipie.systems.pw_fft import PW_FFT
 
     beta = 16.0
