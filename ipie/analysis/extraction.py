@@ -32,7 +32,7 @@ def extract_observable(filename, name='energy', block_idx=1):
     obs_info = info.get(name)
     if obs_info is None:
         raise RuntimeError(f"Unknown value for name={name}")
-    obs_slice = slice(obs_info['offset'], obs_info['size'])
+    obs_slice = slice(obs_info['offset'], obs_info['offset'] + obs_info['size'])
     if len(obs_info['shape']) == 1:
         results = pd.DataFrame(data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape'])))
         results.columns = [n.decode('utf-8') for n in obs_info['names'].split()]
