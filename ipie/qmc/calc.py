@@ -58,6 +58,33 @@ def get_driver(options, comm):
 
     return afqmc
 
+def build_afqmc_driver(
+        comm,
+        nelec,
+        wavefunction_file='wavefunction.h5',
+        hamiltonian_file='hamiltonian.h5',
+        verbosity=0,
+        ):
+    if comm.rank != 0:
+        verbosity = 0
+    options = {
+            'system': {
+                'nup': nelec[0],
+                'ndown': nelec[1],
+                },
+            'hamiltonian': {
+                'integrals': hamiltonian_file
+                },
+            'trial': {
+                'filename': wavefunction_file
+                },
+            'estimates': {
+                'overwrite': True
+                }
+            }
+    afqmc = AFQMCBatch(
+        comm, options=options, parallel=comm.size > 1, verbose=verbosity
+    )
     return afqmc
 
 
