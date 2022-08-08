@@ -156,8 +156,7 @@ def main(args):
             verbose=options.verbose,
         )
         fmt = lambda x: "{:13.8f}".format(x)
-        print(results.to_string(index=False))
-        print(res.to_string(index=False, float_format=fmt))
+        print(results.to_string(index=False, float_format=fmt))
 
 
 if __name__ == "__main__":

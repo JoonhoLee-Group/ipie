@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from ipie.utils.io import write_qmcpack_wfn
+from ipie.utils.io import write_wavefunction
 
 
 def parse_args(args):
@@ -27,19 +27,14 @@ def parse_args(args):
         type=int,
         dest="nalpha",
         default=0,
-        help="Total number of alpha electrons. If nfrozen > 0 it should be "
-        "nfrozen + number of electrons in active space.",
+        help="Number of alpha electrons in dice calculation"
     )
     parser.add_argument(
         "--nbeta",
         type=int,
         dest="nbeta",
         default=0,
-        help="Total number of beta electrons. If nfrozen > 0 it should be "
-        "nfrozen + number of electrons in active space.",
-    )
-    parser.add_argument(
-        "--nmo", type=int, dest="nmo", default=0, help="Total number of MOs"
+        help="Number of beta electrons in dice calculation"
     )
     parser.add_argument(
         "--dice-wfn",
@@ -56,13 +51,6 @@ def parse_args(args):
         help="Wavefunction file for AFQMC MSD. Default: wfn.h5.",
     )
     parser.add_argument(
-        "--nfrozen",
-        type=int,
-        dest="nfrozen",
-        default=0,
-        help="Number of frozen core orbitals to" " reinclude.",
-    )
-    parser.add_argument(
         "--sort",
         dest="sort",
         action="store_true",
@@ -73,19 +61,19 @@ def parse_args(args):
         type=int,
         dest="ndets",
         default=-1,
-        help="Number of frozen core orbitals to" " reinclude.",
+        help="Number of determinants to write.",
     )
     parser.add_argument(
         "--verbose",
         dest="verbose",
         action="store_true",
         default=False,
-        help="Number of frozen core orbitals to" " reinclude.",
+        help="Verbose output.",
     )
 
     options = parser.parse_args(args)
 
-    if (options.nalpha == 0 and options.nbeta == 0) or options.nmo == 0:
+    if options.nalpha == 0 and options.nbeta == 0
         parser.print_help()
         sys.exit(1)
 
@@ -139,7 +127,7 @@ def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
     ndets = len(coeff0)
     coeffs = np.zeros(len(coeff0), dtype=np.complex128)
     for i in range(ndets):
-        if verbose and i % (int(0.1 * ndets)) == 0 and i > 0:
+        if verbose and i % max(1, (int(0.1 * ndets))) == 0 and i > 0:
             done = float(i) / ndets
             print(f"convert phase {i}. Percent: {done}")
         doubles = list(set(occa_ref[i]) & set(occb_ref[i]))
@@ -180,22 +168,7 @@ if __name__ == "__main__":
         occa0 = occa0[:options.ndets]
         occb0 = occb0[:options.ndets]
     coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
-    if options.nfrozen > 0:
-        if options.verbose:
-            print(f"Reinserting {options.nfrozen} frozen core orbitals")
-        core = [i for i in range(options.nfrozen)]
-        occa = [
-            np.array(core + [orb + options.nfrozen for orb in oa], dtype=np.int32)
-            for oa in occa
-        ]
-        occb = [
-            np.array(core + [orb + options.nfrozen for orb in ob], dtype=np.int32)
-            for ob in occb
-        ]
-    write_qmcpack_wfn(
-        options.filename,
+    write_wavefunction(
         (coeffs, occa, occb),
-        "UHF",
-        (options.nalpha, options.nbeta),
-        options.nmo,
+        filename=options.filename,
     )

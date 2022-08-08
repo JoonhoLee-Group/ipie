@@ -21,7 +21,7 @@ ipie currently supports:
 
 - estimation of the ground state energy of ab-initio systems using phaseless AFQMC with support for CPUs and GPUs.
 - simple data analysis.
-- other legacy functionalities available in pauxy such as the ground state and finite-temperature properties of the UEG, Hubbard model, and Hubbard-Holstein models.
+- other legacy functionalities available in pauxy such as the ground state and finite-temperature energies and properties (via backpropagation) of the ab initio, UEG, Hubbard, and Hubbard-Holstein models.
 
 Installation
 ------------
