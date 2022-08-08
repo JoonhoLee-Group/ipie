@@ -105,7 +105,7 @@ class EstimatorHandler(object):
                             trial=trial,
                             options=obs_dict,
                             )
-                self.__setitem__(obs, est)
+                self[obs] = est
             except KeyError:
                 raise RuntimeError(f"unknown observable: {obs}")
         if verbose:
@@ -157,6 +157,8 @@ class EstimatorHandler(object):
                 )
         if comm.rank == 0:
             with h5py.File(self.filename, 'r+') as fh5:
+                fh5['block_size_1/num_walker_props'] = self.num_walker_props
+                fh5['block_size_1/walker_prop_header'] = self.walker_header
                 for k, o in self.items():
                     fh5[f'block_size_1/shape/{k}'] = o.shape
                     fh5[f'block_size_1/size/{k}'] = o.size
@@ -199,6 +201,7 @@ class EstimatorHandler(object):
         output_string = ' '
         # Get walker data.
         offset = walker_factors.size
+        walker_factors.post_reduce_hook(self.global_estimates[:offset])
         output_string += walker_factors.to_text(self.global_estimates[:offset])
         output_string += ' '
         for k, e in self.items():
@@ -214,8 +217,6 @@ class EstimatorHandler(object):
         if comm.rank == 0:
             shift = (
                     self.global_estimates[walker_factors.get_index('HybridEnergy')]
-                    /
-                    self.global_estimates[walker_factors.get_index('Weight')]
                     )
 
         else:
