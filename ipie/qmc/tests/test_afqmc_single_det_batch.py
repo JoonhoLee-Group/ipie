@@ -300,17 +300,17 @@ def test_generic_single_det_batch_density_diff():
     # )
 
 
-# def teardown_module():
-    # cwd = os.getcwd()
-    # files = [
-        # "estimates.test_generic_single_det_batch_density_diff.h5",
-        # "estimates.test_generic_single_det_batch.h5",
-    # ]
-    # for f in files:
-        # try:
-            # os.remove(cwd + "/" + f)
-        # except OSError:
-            # pass
+def teardown_module():
+    cwd = os.getcwd()
+    files = [
+        "estimates.test_generic_single_det_batch_density_diff.h5",
+        "estimates.test_generic_single_det_batch.h5",
+    ]
+    for f in files:
+        try:
+            os.remove(cwd + "/" + f)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":
