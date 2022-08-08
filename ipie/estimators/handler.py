@@ -70,8 +70,6 @@ class EstimatorHandler(object):
                     self.index = int(self.filename.split(".")[1])
                     self.index = self.index + 1
                     self.filename = self.basename + ".%s.h5" % self.index
-            with h5py.File(self.filename, "w") as fh5:
-                pass
             if verbose:
                 print("# Writing estimator data to {}.".format(self.filename))
         else:
@@ -113,14 +111,14 @@ class EstimatorHandler(object):
 
     def __setitem__(self, name: str, estimator: EstimatorBase) -> None:
         self._estimators[name] = estimator
-        shape = estimator.shape
+        size = estimator.size
         self._shapes.append(estimator.shape)
         if len(self._offsets.keys()) == 0:
             self._offsets[name] = 0
             prev_obs = name
         else:
             prev_obs = list(self._offsets.keys())[-1]
-            offset = numpy.prod(shape) + self._offsets[prev_obs]
+            offset = self._estimators[prev_obs].size + self._offsets[prev_obs]
             self._offsets[name] = offset
 
     def get_offset(self, name: str) -> int:
@@ -137,7 +135,7 @@ class EstimatorHandler(object):
 
     @property
     def size(self):
-        return sum(numpy.prod(o.shape) for k, o in self._estimators.items())
+        return sum(o.size for k, o in self._estimators.items())
 
     def initialize(self, comm):
         self.local_estimates = numpy.zeros((self.size+self.num_walker_props),
@@ -150,6 +148,8 @@ class EstimatorHandler(object):
         for k, e in self.items():
             if e.print_to_stdout:
                 header += e.header_to_text
+        with h5py.File(self.filename, "w") as fh5:
+            pass
         self.output = H5EstimatorHelper(self.filename,
                 base="block_size_1",
                 chunk_size=self.buffer_size,
@@ -162,6 +162,7 @@ class EstimatorHandler(object):
                 for k, o in self.items():
                     fh5[f'block_size_1/shape/{k}'] = o.shape
                     fh5[f'block_size_1/size/{k}'] = o.size
+                    fh5[f'block_size_1/scalar/{k}'] = int(o.scalar_estimator)
                     fh5[f'block_size_1/names/{k}'] = ' '.join(name for name in o.names)
                     fh5[f'block_size_1/offset/{k}'] = self.num_walker_props + self.get_offset(k)
         if comm.rank == 0:
@@ -178,7 +179,7 @@ class EstimatorHandler(object):
 
 
     def compute_estimators(
-        self, comm, system, hamiltonian, trial, walker_batch, istep
+        self, comm, system, hamiltonian, trial, walker_batch
     ):
         """Update estimators with bached psi
 
@@ -190,7 +191,7 @@ class EstimatorHandler(object):
         # TODO: generalize for different block groups (loop over groups)
         offset = self.num_walker_props
         for k, e in self.items():
-            e.compute_estimator(system, walker_batch, hamiltonian, trial, istep=istep)
+            e.compute_estimator(system, walker_batch, hamiltonian, trial)
             start = offset + self.get_offset(k)
             end = start + self[k].size
             self.local_estimates[start:end] += e.data
