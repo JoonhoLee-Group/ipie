@@ -14,6 +14,15 @@ class EstimatorBase(object):
         self._data = {}
 
     @property
+    def scalar_estimator(self):
+        return self._scalar_estimator
+
+    @scalar_estimator.setter
+    def scalar_estimator(self, val):
+        assert isinstance(val, bool)
+        self._scalar_estimator = val
+
+    @property
     def print_to_stdout(self) -> bool:
         return self._print_to_stdout
 
@@ -47,7 +56,13 @@ class EstimatorBase(object):
     @property
     def size(self) -> int:
         """Shape of estimator."""
-        return np.prod(self._shape)
+        size = 0
+        for k, v in self._data.items():
+            if isinstance(v, np.ndarray):
+                size += np.prod(v.shape)
+            else:
+                size += 1
+        return size
 
     @shape.setter
     def shape(self, shape) -> tuple:
@@ -64,15 +79,22 @@ class EstimatorBase(object):
 
     @property
     def data(self):
-        return np.array(list(self._data.values()))
+        if self.scalar_estimator:
+            return np.array(list(self._data.values()))
+        else:
+            # return np.concatenate(list(self._data.values()))
+            return np.concatenate(list(self._data.values()))
 
     @property
     def header_to_text(self) -> str:
         return format_fixed_width_strings(self.names)
 
     def data_to_text(self, vals) -> str:
-        assert len(vals) == len(self.names)
-        return format_fixed_width_floats(vals.real)
+        if self._ascii_filename is not None or self._print_to_stdout:
+            assert len(vals) == len(self.names)
+            return format_fixed_width_floats(vals.real)
+        else:
+            return ''
 
     def to_ascii_file(self, vals: str) -> None:
         if self.ascii_filename is not None:
@@ -89,7 +111,10 @@ class EstimatorBase(object):
         data = self._data.get(name)
         if data is None:
             raise RuntimeError(f"Unknown estimator {name}")
-        self._data[name] = val
+        if isinstance(self._data[name], np.ndarray):
+            self._data[name][:] = val
+        else:
+            self._data[name] = val
 
     def zero(self):
         for k, v in self._data.items():
@@ -98,5 +123,5 @@ class EstimatorBase(object):
             else:
                 self._data[k] = 0.0j
 
-    def post_reduce_hook(self) -> None:
+    def post_reduce_hook(self, data) -> None:
         pass
