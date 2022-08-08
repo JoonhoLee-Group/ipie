@@ -161,7 +161,7 @@ class EstimatorHandler(object):
                     fh5[f'block_size_1/shape/{k}'] = o.shape
                     fh5[f'block_size_1/size/{k}'] = o.size
                     fh5[f'block_size_1/names/{k}'] = ' '.join(name for name in o.names)
-                    fh5[f'block_size_1/offset/{k}'] = self.get_offset(k)
+                    fh5[f'block_size_1/offset/{k}'] = self.num_walker_props + self.get_offset(k)
         if comm.rank == 0:
             print(header)
 
@@ -212,10 +212,15 @@ class EstimatorHandler(object):
                 if e.print_to_stdout:
                     output_string += est_string
         if comm.rank == 0:
-            shift = est_data[walker_factors.get_index('HybridEnergy')]
+            shift = (
+                    self.global_estimates[walker_factors.get_index('HybridEnergy')]
+                    /
+                    self.global_estimates[walker_factors.get_index('Weight')]
+                    )
+
         else:
             shift = None
-        self.eshift = comm.bcast(shift)
+        walker_factors.eshift = comm.bcast(shift)
         if comm.rank == 0:
             self.output.push_to_chunk(
                     self.global_estimates,
