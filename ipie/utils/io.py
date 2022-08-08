@@ -654,3 +654,49 @@ def write_qmcpack_sparse(
         occups = [i for i in range(0, nalpha)]
         occups += [i + nmo for i in range(0, nbeta)]
         fh5["Hamiltonian/occups"] = numpy.array(occups)
+
+
+def read_fortran_complex_numbers(filename):
+    with open(filename) as f:
+        content = f.readlines()
+    # Converting fortran complex numbers to python. ugh
+    # Be verbose for clarity.
+    useable = [c.strip() for c in content]
+    tuples = [ast.literal_eval(u) for u in useable]
+    orbs = [complex(t[0], t[1]) for t in tuples]
+    return numpy.array(orbs)
+
+def fcidump_header(nel, norb, spin):
+    header = (
+        "&FCI\n"
+        + "NORB=%d,\n" % int(norb)
+        + "NELEC=%d,\n" % int(nel)
+        + "MS2=%d,\n" % int(spin)
+        + "UHF=.FALSE.,\n"
+        + "ORBSYM="
+        + ",".join([str(1)] * norb)
+        + ",\n"
+        "&END\n"
+    )
+    return header
+
+
+def read_qmcpack_wfn(filename, skip=9):
+    with open(filename) as f:
+        content = f.readlines()[skip:]
+    useable = numpy.array([c.split() for c in content]).flatten()
+    tuples = [ast.literal_eval(u) for u in useable]
+    orbs = [complex(t[0], t[1]) for t in tuples]
+    return numpy.array(orbs)
+
+
+def from_qmcpack_complex(data, shape):
+    return data.view(numpy.complex128).ravel().reshape(shape)
+
+def to_sparse(vals, offset=0, cutoff=1e-8):
+    nz = numpy.where(numpy.abs(vals) > cutoff)
+    ix = numpy.empty(nz[0].size + nz[1].size, dtype=numpy.int32)
+    ix[0::2] = nz[0]
+    ix[1::2] = nz[1]
+    vals = numpy.array(vals[nz], dtype=numpy.complex128)
+    return ix, vals
