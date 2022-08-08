@@ -18,6 +18,7 @@ def extract_hdf5_data(filename, block_idx=1):
                     'shape': fh5[f'block_size_{block_idx}/shape/{k}'][:],
                     'offset': fh5[f'block_size_{block_idx}/offset/{k}'][()],
                     'size': fh5[f'block_size_{block_idx}/size/{k}'][()],
+                    'scalar': bool(fh5[f'block_size_{block_idx}/scalar/{k}'][()]),
                     'num_walker_props': fh5[f'block_size_{block_idx}/num_walker_props'][()],
                     'walker_header': fh5[f'block_size_{block_idx}/walker_prop_header'][()]
                     }
@@ -35,7 +36,7 @@ def extract_observable(filename, name='energy', block_idx=1):
     if obs_info is None:
         raise RuntimeError(f"Unknown value for name={name}")
     obs_slice = slice(obs_info['offset'], obs_info['offset'] + obs_info['size'])
-    if len(obs_info['shape']) == 1:
+    if obs_info['scalar']:
         obs_data = data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
         nwalk_prop = obs_info['num_walker_props']
         weight_data = data[:,:nwalk_prop].reshape((-1,nwalk_prop))
@@ -44,7 +45,10 @@ def extract_observable(filename, name='energy', block_idx=1):
         results.columns = [n.decode('utf-8') for n in header]
         return results
     else:
-        return data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
+        obs_data = data[:,obs_slice]
+        nsamp = data.shape[0]
+        walker_averaged = obs_data[:,:-1] / obs_data[:,-1].reshape((nsamp, -1))
+        return walker_averaged.reshape((nsamp,) + tuple(obs_info['shape']))
 
 
 def extract_data_sets(files, group, estimator, raw=False):
