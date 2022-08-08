@@ -84,14 +84,14 @@ class QMCOpts(object):
         Estimate for mean energy for continuous Hubbard-Stratonovich transformation.
     """
 
-    def __init__(self, inputs, system, verbose=False):
+    def __init__(self, inputs={}, verbose=False):
         self.nwalkers = get_input_value(
             inputs, "num_walkers", default=10, alias=["nwalkers"], verbose=verbose
         )
         self.nwalkers_per_task = get_input_value(
             inputs,
             "num_walkers",
-            default=None,
+            default=10,
             alias=["nwalkers_per_task"],
             verbose=verbose,
         )
@@ -103,7 +103,7 @@ class QMCOpts(object):
         self.batched = get_input_value(inputs, "batched", default=True, verbose=verbose)
         self.gpu = get_input_value(inputs, "gpu", default=False, verbose=verbose)
         self.nsteps = get_input_value(
-            inputs, "num_steps", default=10, alias=["nsteps", "steps"], verbose=verbose
+            inputs, "num_steps", default=25, alias=["nsteps", "steps"], verbose=verbose
         )
         self.nblocks = get_input_value(
             inputs,
@@ -112,7 +112,6 @@ class QMCOpts(object):
             alias=["num_blocks", "nblocks"],
             verbose=verbose,
         )
-        self.total_steps = self.nsteps * self.nblocks
         self.nstblz = get_input_value(
             inputs,
             "stabilise_freq",
@@ -135,17 +134,6 @@ class QMCOpts(object):
             verbose=verbose,
         )
         self.neqlb = int(self.eqlb_time / self.dt)
-        self.beta = get_input_value(inputs, "beta", default=None, verbose=verbose)
-        self.scaled_temp = get_input_value(
-            inputs,
-            "scaled_temperature",
-            default=False,
-            alias=["reduced_temperature"],
-            verbose=verbose,
-        )
-        if self.scaled_temp:
-            self.beta_scaled = self.beta
-            self.dt, self.beta = convert_from_reduced_unit(system, inputs, verbose)
         self.rng_seed = get_input_value(
             inputs,
             "rng_seed",
@@ -153,3 +141,9 @@ class QMCOpts(object):
             alias=["random_seed", "seed"],
             verbose=verbose,
         )
+
+    def __str__(self, verbose=0):
+        _str = ''
+        for k, v in self.__dict__.items():
+            _str += f"# {k:<25s} : {v}\n"
+        return _str
