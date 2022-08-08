@@ -81,6 +81,7 @@ class WalkerBatch(object):
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
         # Number of propagators to store for back propagation / ITCF.
         self.field_configs = None
+        self.stack = None
         num_propg = [walker_opts.get("num_propg", 1) for iw in range(self.nwalkers)]
         # Grab objects that are walker specific
         # WARNING!! One has to add names to the list here if new objects are added
