@@ -130,12 +130,12 @@ def test_generic_single_det_batch():
     # assert weight.imag == pytest.approx(weight_batch.imag)
     data = extract_mixed_estimates("estimates.test_generic_single_det_batch.h5")
 
-    # assert numpy.mean(data_batch.WeightFactor.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.WeightFactor.values[:-1].real)
-    # )
-    # assert numpy.mean(data_batch.Weight.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.Weight.values[:-1].real)
-    # )
+    assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
+        numpy.mean(data.WeightFactor.values[1:-1].real)
+    )
+    assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
+        numpy.mean(data.Weight.values[1:-1].real)
+    )
     assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
         numpy.mean(data.ENumer.values[:-1].real)
     )
@@ -151,9 +151,9 @@ def test_generic_single_det_batch():
     assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
         numpy.mean(data.E2Body.values[:-1].real)
     )
-    # assert numpy.mean(data_batch.EHybrid.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.EHybrid.values[:-1].real)
-    # )
+    assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
+        numpy.mean(data.EHybrid.values[:-1].real)
+    )
     # no longer computed
     # assert numpy.mean(data_batch.Overlap.values[:-2].real) == pytest.approx(
         # numpy.mean(data.Overlap.values[:-1].real)
@@ -271,12 +271,12 @@ def test_generic_single_det_batch_density_diff():
 
     # print(data_batch.ENumer)
     # print(data.ENumer)
-    # assert numpy.mean(data_batch.WeightFactor.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.WeightFactor.values[:-1].real)
-    # )
-    # assert numpy.mean(data_batch.Weight.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.Weight.values[:-1].real)
-    # )
+    assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
+        numpy.mean(data.WeightFactor.values[1:-1].real)
+    )
+    assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
+        numpy.mean(data.Weight.values[1:-1].real)
+    )
     assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
         numpy.mean(data.ENumer.values[:-1].real)
     )
@@ -292,9 +292,9 @@ def test_generic_single_det_batch_density_diff():
     assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
         numpy.mean(data.E2Body.values[:-1].real)
     )
-    # assert numpy.mean(data_batch.EHybrid.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.EHybrid.values[:-1].real)
-    # )
+    assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
+        numpy.mean(data.EHybrid.values[:-1].real)
+    )
     # assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(
         # numpy.mean(data.Overlap.values[:-1].real)
     # )
