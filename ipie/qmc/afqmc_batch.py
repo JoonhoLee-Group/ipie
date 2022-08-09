@@ -158,7 +158,7 @@ class AFQMCBatch(object):
                 self.system, ham_opts, verbose=verbose, comm=self.shared_comm
             )
 
-        self.qmc = QMCOpts(qmc_opt, verbose=self.verbosity > 1)
+        self.qmc = QMCOpts(qmc_opt, verbose=verbose)
         if self.qmc.gpu:
             try:
                 import cupy
@@ -180,10 +180,10 @@ class AFQMCBatch(object):
                         )
                     )
 
-        if self.qmc.nwalkers == None:
+        if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
             self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
-        if self.qmc.nwalkers_per_task == None:
+        if self.qmc.nwalkers_per_task is None:
             assert self.qmc.nwalkers is not None
             self.qmc.nwalkers_per_task = int(self.qmc.nwalkers / comm.size)
         # Reset number of walkers so they are evenly distributed across
@@ -329,7 +329,6 @@ class AFQMCBatch(object):
             json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
             json_string = to_json(self)
             self.estimators.json_string = json_string
-            self.estimators.dump_metadata()
 
     def run(self, psi=None, comm=None, verbose=True):
         """Perform AFQMC simulation on state object using open-ended random walk.
