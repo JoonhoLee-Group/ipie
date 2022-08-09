@@ -1,6 +1,7 @@
 import numpy
 
-from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
 
 
 def construct_force_bias_batch(hamiltonian, walker_batch, trial, mpi_handler=None):
@@ -82,42 +83,23 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        isrealobj = cupy.isrealobj
-        empty = cupy.empty
-    else:
-        isrealobj = numpy.isrealobj
-        empty = numpy.empty
-
     if walker_batch.rhf:
         Ghalfa = walker_batch.Ghalfa.reshape(
             walker_batch.nwalkers, walker_batch.nup * hamiltonian.nbasis
         )
-        if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
+        if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
             vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
             vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
-            vbias_batch = empty(
+            vbias_batch = xp.empty(
                 (walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
             )
             vbias_batch.real = vbias_batch_real.T.copy()
             vbias_batch.imag = vbias_batch_imag.T.copy()
-            if is_cupy(trial.psi):
-                import cupy
-
-                cupy.cuda.stream.get_current_stream().synchronize()
+            synchronize()
             return vbias_batch
         else:
             vbias_batch_tmp = 2.0 * trial._rchola.dot(Ghalfa.T)
-            if is_cupy(trial.psi):
-                import cupy
-
-                cupy.cuda.stream.get_current_stream().synchronize()
-
+            return vbias_batch
             return vbias_batch_tmp.T
 
     else:
@@ -136,7 +118,7 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
             )
             dGhalfa = dGhalfa.astype(numpy.complex64)
             dGhalfb = dGhalfb.astype(numpy.complex64)
-            if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
+            if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
                 # single precision
                 vbias_batch_real = trial._rchola.dot(
                     dGhalfa.T.real
@@ -145,28 +127,20 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
                     dGhalfa.T.imag
                 ) + trial._rcholb.dot(dGhalfb.T.imag)
                 # double precision
-                vbias_batch = empty(
+                vbias_batch = xp.empty(
                     (walker_batch.nwalkers, hamiltonian.nchol),
                     dtype=walker_batch.Ghalfa.dtype,
                 )
                 vbias_batch.real = vbias_batch_real.T.copy() + trial._vbias0.real
                 vbias_batch.imag = vbias_batch_imag.T.copy() + trial._vbias0.imag
-                if is_cupy(trial.psi):
-                    import cupy
-
-                    cupy.cuda.stream.get_current_stream().synchronize()
-
+                synchronize()
                 return vbias_batch
             else:
                 vbias_batch_tmp = trial._rchola.dot(dGhalfa.T) + trial._rcholb.dot(
                     dGhalfb.T
                 )
                 vbias_batch_tmp += trial._vbias0
-                if is_cupy(trial.psi):
-                    import cupy
-
-                    cupy.cuda.stream.get_current_stream().synchronize()
-
+                synchronize()
                 return vbias_batch_tmp.T
         else:
             Ghalfa = walker_batch.Ghalfa.reshape(
@@ -175,33 +149,25 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
             Ghalfb = walker_batch.Ghalfb.reshape(
                 walker_batch.nwalkers, walker_batch.ndown * hamiltonian.nbasis
             )
-            if isrealobj(trial._rchola) and isrealobj(trial._rcholb):
+            if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
                 vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(
                     Ghalfb.T.real
                 )
                 vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(
                     Ghalfb.T.imag
                 )
-                vbias_batch = empty(
+                vbias_batch = xp.empty(
                     (walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
                 )
                 vbias_batch.real = vbias_batch_real.T.copy()
                 vbias_batch.imag = vbias_batch_imag.T.copy()
-                if is_cupy(trial.psi):
-                    import cupy
-
-                    cupy.cuda.stream.get_current_stream().synchronize()
-
+                synchronize()
                 return vbias_batch
             else:
                 vbias_batch_tmp = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(
                     Ghalfb.T
                 )
-                if is_cupy(trial.psi):
-                    import cupy
-
-                    cupy.cuda.stream.get_current_stream().synchronize()
-
+                synchronize()
                 return vbias_batch_tmp.T
 
 
@@ -228,23 +194,6 @@ def construct_force_bias_batch_single_det_chunked(
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        isrealobj = cupy.isrealobj
-        empty = cupy.empty
-        zeros_like = cupy.zeros_like
-        zeros = cupy.zeros
-    else:
-        isrealobj = numpy.isrealobj
-        empty = numpy.empty
-        zeros_like = numpy.zeros_like
-        zeros = numpy.zeros
-    where = numpy.where
-
     assert hamiltonian.chunked
     assert isrealobj(trial._rchola)
 
@@ -257,8 +206,8 @@ def construct_force_bias_batch_single_det_chunked(
 
     chol_idxs_chunk = hamiltonian.chol_idxs_chunk
 
-    Ghalfa_recv = zeros_like(Ghalfa)
-    Ghalfb_recv = zeros_like(Ghalfb)
+    Ghalfa_recv = xp.zeros_like(Ghalfa)
+    Ghalfb_recv = xp.zeros_like(Ghalfb)
 
     Ghalfa_send = Ghalfa.copy()
     Ghalfb_send = Ghalfb.copy()
@@ -266,11 +215,11 @@ def construct_force_bias_batch_single_det_chunked(
     ssize = handler.scomm.size
     srank = handler.scomm.rank
 
-    vbias_batch_real_recv = zeros((hamiltonian.nchol, walker_batch.nwalkers))
-    vbias_batch_imag_recv = zeros((hamiltonian.nchol, walker_batch.nwalkers))
+    vbias_batch_real_recv = xp.zeros((hamiltonian.nchol, walker_batch.nwalkers))
+    vbias_batch_imag_recv = xp.zeros((hamiltonian.nchol, walker_batch.nwalkers))
 
-    vbias_batch_real_send = zeros((hamiltonian.nchol, walker_batch.nwalkers))
-    vbias_batch_imag_send = zeros((hamiltonian.nchol, walker_batch.nwalkers))
+    vbias_batch_real_send = xp.zeros((hamiltonian.nchol, walker_batch.nwalkers))
+    vbias_batch_imag_send = xp.zeros((hamiltonian.nchol, walker_batch.nwalkers))
 
     vbias_batch_real_send[chol_idxs_chunk, :] = trial._rchola_chunk.dot(
         Ghalfa.T.real
@@ -289,7 +238,7 @@ def construct_force_bias_batch_single_det_chunked(
                 handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=3)
                 handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=4)
             elif srank == receivers[isend]:
-                sender = where(receivers == srank)[0]
+                sender = numpy.where(receivers == srank)[0]
                 handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
                 handler.scomm.Recv(Ghalfb_recv, source=sender, tag=2)
                 handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=3)
@@ -313,17 +262,12 @@ def construct_force_bias_batch_single_det_chunked(
             handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=1)
             handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=2)
         elif srank == receivers[isend]:
-            sender = where(receivers == srank)[0]
+            sender = numpy.where(receivers == srank)[0]
             handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=1)
             handler.scomm.Recv(vbias_batch_imag_recv, source=sender, tag=2)
 
-    vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
+    vbias_batch = xp.empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
     vbias_batch.real = vbias_batch_real_recv.T.copy()
     vbias_batch.imag = vbias_batch_imag_recv.T.copy()
-
-    if is_cupy(trial.psi):
-        import cupy
-
-        cupy.cuda.stream.get_current_stream().synchronize()
-
+    synchronize()
     return vbias_batch

@@ -3,7 +3,9 @@ import sys
 import numpy
 from numba import jit
 
-from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
+
 
 
 # FDM: deprecated remove?
@@ -132,21 +134,11 @@ def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     (E, T, V): tuple
         Total, one and two-body energies.
     """
-    if is_cupy(
-        trial._rchola
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        sum = cupy.sum
-    else:
-        sum = numpy.sum
-
     dGhalfa = Ghalfa - trial.psia.T
     dGhalfb = Ghalfb - trial.psib.T
 
-    de1 = sum(trial._rH1a * dGhalfa) + sum(trial._rH1b * dGhalfb) + ecore
-    dde2 = sum(trial._rFa_corr * Ghalfa) + sum(trial._rFb_corr * Ghalfb)
+    de1 = xp.sum(trial._rH1a * dGhalfa) + xp.sum(trial._rH1b * dGhalfb) + ecore
+    dde2 = xp.sum(trial._rFa_corr * Ghalfa) + xp.sum(trial._rFb_corr * Ghalfb)
 
     if trial.mixed_precision:
         dGhalfa = dGhalfa.astype(numpy.complex64)
@@ -220,17 +212,7 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
     rH1b = trial._rH1b
 
     # Element wise multiplication.
-    if is_cupy(
-        rH1a
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        sum = cupy.sum
-    else:
-        sum = numpy.sum
-
-    e1b = sum(rH1a * Ghalfa) + sum(rH1b * Ghalfb)
+    e1b = xp.sum(rH1a * Ghalfa) + sum(rH1b * Ghalfb)
     return e1b
 
 
@@ -323,40 +305,22 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     rcholb = trial._rcholb
 
     # Element wise multiplication.
-    if is_cupy(
-        rchola
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        zeros = cupy.zeros
-        dot = cupy.dot
-        trace = cupy.trace
-        isrealobj = cupy.isrealobj
-        einsum = cupy.einsum
-    else:
-        zeros = numpy.zeros
-        trace = numpy.trace
-        dot = numpy.dot
-        einsum = numpy.einsum
-        isrealobj = numpy.isrealobj
-
     nalpha, nbeta = system.nup, system.ndown
     nbasis = Ghalfa.shape[-1]
     if rchola is not None:
         naux = rchola.shape[0]
-    if isrealobj(rchola) and isrealobj(rcholb):
+    if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
     else:
         Xa = rchola.dot(Ghalfa.ravel())
         Xb = rcholb.dot(Ghalfb.ravel())
 
-    ecoul = dot(Xa, Xa)
-    ecoul += dot(Xb, Xb)
-    ecoul += 2 * dot(Xa, Xb)
+    ecoul = xp.dot(Xa, Xa)
+    ecoul += xp.dot(Xb, Xb)
+    ecoul += 2 * xp.dot(Xa, Xb)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if isrealobj(rchola) and isrealobj(rcholb):
+    if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(
             rcholb, Ghalfb
         )
@@ -365,12 +329,7 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
             rcholb, Ghalfb
         )
 
-    if is_cupy(
-        rchola
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        cupy.cuda.stream.get_current_stream().synchronize()
+    synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy
 
 

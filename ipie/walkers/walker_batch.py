@@ -4,7 +4,8 @@ import numpy
 import scipy
 
 from ipie.legacy.walkers.stack import FieldConfig
-from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import to_host, synchronize, qr
 
 
 class WalkerBatch(object):
@@ -157,17 +158,6 @@ class WalkerBatch(object):
             )
 
     def set_buff_size_single_walker(self):
-        if is_cupy(self.weight):
-            import cupy
-
-            ndarray = cupy.ndarray
-            array = cupy.asnumpy
-            isrealobj = cupy.isrealobj
-        else:
-            ndarray = numpy.ndarray
-            array = numpy.array
-            isrealobj = numpy.isrealobj
-
         names = []
         size = 0
         for k, v in self.__dict__.items():
@@ -177,7 +167,7 @@ class WalkerBatch(object):
             #     print("failed", k, v)
             if not (k in self.buff_names):
                 continue
-            if isinstance(v, (ndarray)):
+            if isinstance(v, (xp.ndarray)):
                 names.append(k)
                 size += v.size
             elif isinstance(v, (int, float, complex)):
@@ -186,7 +176,7 @@ class WalkerBatch(object):
             elif isinstance(v, list):
                 names.append(k)
                 for l in v:
-                    if isinstance(l, (ndarray)):
+                    if isinstance(l, (xp.ndarray)):
                         size += l.size
                     elif isinstance(l, (int, float, complex)):
                         size += 1
@@ -202,17 +192,6 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
-        if is_cupy(self.weight):
-            import cupy
-
-            ndarray = cupy.ndarray
-            array = cupy.asnumpy
-            isrealobj = cupy.isrealobj
-        else:
-            ndarray = numpy.ndarray
-            array = numpy.array
-            isrealobj = numpy.isrealobj
-
         s = 0
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
@@ -222,13 +201,13 @@ class WalkerBatch(object):
             assert (
                 data.size % self.nwalkers == 0
             )  # Only walker-specific data is being communicated
-            if isinstance(data[iw], (ndarray)):
-                buff[s : s + data[iw].size] = array(data[iw].ravel())
+            if isinstance(data[iw], (xp.ndarray)):
+                buff[s : s + data[iw].size] = to_host(data[iw].ravel())
                 s += data[iw].size
             elif isinstance(data[iw], list):  # when data is list
                 for l in data[iw]:
-                    if isinstance(l, (ndarray)):
-                        buff[s : s + l.size] = array(l.ravel())
+                    if isinstance(l, (xp.ndarray)):
+                        buff[s : s + l.size] = to_host(l.ravel())
                         s += l.size
                     elif isinstance(
                         l, (int, float, complex, numpy.float64, numpy.complex128)
@@ -236,7 +215,7 @@ class WalkerBatch(object):
                         buff[s : s + 1] = l
                         s += 1
             else:
-                buff[s : s + 1] = array(data[iw])
+                buff[s : s + 1] = to_host(data[iw])
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
@@ -255,17 +234,6 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
-        if is_cupy(self.weight):
-            import cupy
-
-            ndarray = cupy.ndarray
-            array = cupy.asarray
-            isrealobj = cupy.isrealobj
-        else:
-            ndarray = numpy.ndarray
-            array = numpy.asarray
-            isrealobj = numpy.isrealobj
-
         s = 0
         for d in self.buff_names:
             data = self.__dict__[d]
@@ -274,15 +242,15 @@ class WalkerBatch(object):
             assert (
                 data.size % self.nwalkers == 0
             )  # Only walker-specific data is being communicated
-            if isinstance(data[iw], ndarray):
-                self.__dict__[d][iw] = array(
+            if isinstance(data[iw], xp.ndarray):
+                self.__dict__[d][iw] = to_host(
                     buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
                 )
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
-                    if isinstance(l, (ndarray)):
-                        self.__dict__[d][iw][ix] = array(
+                    if isinstance(l, (xp.ndarray)):
+                        self.__dict__[d][iw][ix] = to_host(
                             buff[s : s + l.size].reshape(l.shape).copy()
                         )
                         s += l.size
@@ -308,75 +276,40 @@ class WalkerBatch(object):
         parameters
         ----------
         """
-        if is_cupy(self.phia):
-            import cupy
-
-            assert cupy.is_available()
-            array = cupy.array
-            diag = cupy.diag
-            zeros = cupy.zeros
-            sum = cupy.sum
-            dot = cupy.dot
-            log = cupy.log
-            sign = numpy.sign
-            abs = cupy.abs
-            exp = cupy.exp
-            qr = cupy.linalg.qr
-            qr_mode = "reduced"
-        else:
-            array = numpy.array
-            diag = numpy.diag
-            zeros = numpy.zeros
-            sum = numpy.sum
-            dot = numpy.dot
-            log = numpy.log
-            sign = numpy.sign
-            abs = numpy.abs
-            exp = numpy.exp
-            qr = scipy.linalg.qr
-            qr_mode = "economic"
-
         complex128 = numpy.complex128
-
         nup = self.nup
         ndown = self.ndown
-
         detR = []
         for iw in range(self.nwalkers):
             (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
-            Rdown = zeros(Rup.shape)
+            Rdown = xp.zeros(Rup.shape)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
             # Wanted detR factors to remain positive, dump the sign in orbitals.
-            Rup_diag = diag(Rup)
-            signs_up = sign(Rup_diag)
-            self.phia[iw] = dot(self.phia[iw], diag(signs_up))
+            Rup_diag = xp.diag(Rup)
+            signs_up = xp.sign(Rup_diag)
+            self.phia[iw] = xp.dot(self.phia[iw], xp.diag(signs_up))
 
             # include overlap factor
             # det(R) = \prod_ii R_ii
             # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
             # C factor included to avoid over/underflow
-            log_det = sum(log(abs(Rup_diag)))
+            log_det = xp.sum(xp.log(xp.abs(Rup_diag)))
 
             if ndown > 0 and not self.rhf:
                 (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
-                Rdn_diag = diag(Rdn)
-                signs_dn = sign(Rdn_diag)
-                self.phib[iw] = dot(self.phib[iw], diag(signs_dn))
-                log_det += sum(log(abs(Rdn_diag)))
+                Rdn_diag = xp.diag(Rdn)
+                signs_dn = xp.sign(Rdn_diag)
+                self.phib[iw] = xp.dot(self.phib[iw], xp.diag(signs_dn))
+                log_det += sum(xp.log(abs(Rdn_diag)))
             elif ndown > 0 and self.rhf:
                 log_det *= 2.0
 
-            detR += [exp(log_det - self.detR_shift[iw])]
-            self.log_detR[iw] += log(detR[iw])
+            detR += [xp.exp(log_det - self.detR_shift[iw])]
+            self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
-        if is_cupy(
-            self.phia
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            cupy.cuda.stream.get_current_stream().synchronize()
+        synchronize()
         return detR

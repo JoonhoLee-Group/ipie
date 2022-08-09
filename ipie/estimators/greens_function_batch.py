@@ -6,6 +6,8 @@ from ipie.propagation.overlap import (compute_determinants_batched,
                                       get_overlap_one_det_wicks)
 from ipie.utils.linalg import minor_mask
 from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize()
 
 try:
     from ipie.propagation.wicks_kernels import (get_cofactor_matrix_batched,
@@ -83,67 +85,46 @@ def greens_function_single_det(walker_batch, trial):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        array = cupy.array
-        dot = cupy.dot
-        exp = cupy.exp
-        inv = cupy.linalg.inv
-        slogdet = cupy.linalg.slogdet
-    else:
-        array = numpy.array
-        dot = numpy.dot
-        exp = numpy.exp
-        inv = scipy.linalg.inv
-        slogdet = numpy.linalg.slogdet
-
     nup = walker_batch.nup
     ndown = walker_batch.ndown
 
     det = []
 
     for iw in range(walker_batch.nwalkers):
-        ovlp = dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
-        ovlp_inv = inv(ovlp)
-        walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phia[iw].T)
+        ovlp = xp.dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
+        ovlp_inv = xp.linalg.inv(ovlp)
+        walker_batch.Ghalfa[iw] = xp.dot(ovlp_inv, walker_batch.phia[iw].T)
         if not trial.half_rotated:
-            walker_batch.Ga[iw] = dot(
+            walker_batch.Ga[iw] = xp.dot(
                 trial.psi[:, nup:].conj(), walker_batch.Ghalfa[iw]
             )
-        sign_a, log_ovlp_a = slogdet(ovlp)
+        sign_a, log_ovlp_a = xp.linagl.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0 and not walker_batch.rhf:
-            ovlp = dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
-            sign_b, log_ovlp_b = slogdet(ovlp)
-            walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phib[iw].T)
+            ovlp = xp.dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
+            sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp)
+            walker_batch.Ghalfb[iw] = xp.dot(xp.linalg.inv(ovlp), walker_batch.phib[iw].T)
             if not trial.half_rotated:
-                walker_batch.Gb[iw] = dot(
+                walker_batch.Gb[iw] = xp.dot(
                     trial.psi[:, nup:].conj(), walker_batch.Ghalfb[iw]
                 )
             det += [
                 sign_a
                 * sign_b
-                * exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift[iw])
+                * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift[iw])
             ]
         elif ndown > 0 and walker_batch.rhf:
             det += [
                 sign_a
                 * sign_a
-                * exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift[iw])
+                * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift[iw])
             ]
         elif ndown == 0:
-            det += [sign_a * exp(log_ovlp_a - walker_batch.log_shift)]
+            det += [sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)]
 
-    det = array(det, dtype=numpy.complex128)
+    det = xp.array(det, dtype=numpy.complex128)
 
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        cupy.cuda.stream.get_current_stream().synchronize()
+    synchronize()
 
     return det
 
@@ -162,67 +143,42 @@ def greens_function_single_det_batch(walker_batch, trial):
     ot : float64 / complex128
         Overlap with trial.
     """
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        assert cupy.is_available()
-        array = cupy.array
-        dot = cupy.dot
-        exp = cupy.exp
-        einsum = cupy.einsum
-        inv = cupy.linalg.inv
-        slogdet = cupy.linalg.slogdet
-    else:
-        array = numpy.array
-        dot = numpy.dot
-        exp = numpy.exp
-        einsum = numpy.einsum
-        inv = numpy.linalg.inv
-        slogdet = numpy.linalg.slogdet
-
     nup = walker_batch.nup
     ndown = walker_batch.ndown
 
-    ovlp_a = einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
-    ovlp_inv_a = inv(ovlp_a)
-    sign_a, log_ovlp_a = slogdet(ovlp_a)
+    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
+    ovlp_inv_a = xp.linalg.inv(ovlp_a)
+    sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
-    walker_batch.Ghalfa = einsum(
+    walker_batch.Ghalfa = xp.einsum(
         "wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True
     )
     if not trial.half_rotated:
-        walker_batch.Ga = einsum(
+        walker_batch.Ga = xp.einsum(
             "mi,win->wmn", trial.psia.conj(), walker_batch.Ghalfa, optimize=True
         )
 
     if ndown > 0 and not walker_batch.rhf:
-        ovlp_b = einsum(
+        ovlp_b = xp.einsum(
             "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
         )
-        ovlp_inv_b = inv(ovlp_b)
+        ovlp_inv_b = xp.linalg.inv(ovlp_b)
 
-        sign_b, log_ovlp_b = slogdet(ovlp_b)
-        walker_batch.Ghalfb = einsum(
+        sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
+        walker_batch.Ghalfb = xp.einsum(
             "wij,wmj->wim", ovlp_inv_b, walker_batch.phib, optimize=True
         )
         if not trial.half_rotated:
-            walker_batch.Gb = einsum(
+            walker_batch.Gb = xp.einsum(
                 "mi,win->wmn", trial.psib.conj(), walker_batch.Ghalfb, optimize=True
             )
-        ot = sign_a * sign_b * exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
+        ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
-        ot = sign_a * sign_a * exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
+        ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
     elif ndown == 0:
-        ot = sign_a * exp(log_ovlp_a - walker_batch.log_shift)
+        ot = sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)
 
-    if is_cupy(
-        trial.psi
-    ):  # if even one array is a cupy array we should assume the rest is done with cupy
-        import cupy
-
-        cupy.cuda.stream.get_current_stream().synchronize()
+    syncrhonize()
 
     return ot
 

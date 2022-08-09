@@ -10,7 +10,9 @@ try:
     from ipie.propagation.wicks_kernels import get_det_matrix_batched
 except ImportError:
     pass
-from ipie.utils.misc import is_cupy
+
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
 
 
 # Later we will add walker kinds as an input too
@@ -69,33 +71,21 @@ def calc_overlap_single_det(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
-    if is_cupy(trial.psi):
-        import cupy
-
-        assert cupy.is_available()
-        zeros = cupy.zeros
-        dot = cupy.dot
-        slogdet = cupy.linalg.slogdet
-        exp = cupy.exp
-    else:
-        zeros = numpy.zeros
-        dot = numpy.dot
-        slogdet = numpy.linalg.slogdet
-        exp = numpy.exp
-
     na = walker_batch.nup
     nb = walker_batch.ndown
-    ot = zeros(walker_batch.nwalkers, dtype=numpy.complex128)
+    ot = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
     for iw in range(walker_batch.nwalkers):
-        Oalpha = dot(trial.psia.conj().T, walker_batch.phia[iw])
-        sign_a, logdet_a = slogdet(Oalpha)
+        Oalpha = xp.dot(trial.psia.conj().T, walker_batch.phia[iw])
+        sign_a, logdet_a = xp.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
-            Obeta = dot(trial.psib.conj().T, walker_batch.phib[iw])
-            sign_b, logdet_b = slogdet(Obeta)
+            Obeta = xp.dot(trial.psib.conj().T, walker_batch.phib[iw])
+            sign_b, logdet_b = xp.slogdet(Obeta)
 
-        ot[iw] = sign_a * sign_b * exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
+        ot[iw] = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
+
+    synchronize()
 
     return ot
 
@@ -115,42 +105,23 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
-    if is_cupy(trial.psi):
-        import cupy
-
-        assert cupy.is_available()
-        zeros = cupy.zeros
-        dot = cupy.dot
-        einsum = cupy.einsum
-        slogdet = cupy.linalg.slogdet
-        exp = cupy.exp
-    else:
-        zeros = numpy.zeros
-        dot = numpy.dot
-        einsum = numpy.einsum
-        slogdet = numpy.linalg.slogdet
-        exp = numpy.exp
-
     nup = walker_batch.nup
     ndown = walker_batch.ndown
-    ovlp_a = einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
-    sign_a, log_ovlp_a = slogdet(ovlp_a)
+    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
+    sign_a, log_ovlp_a = xp.slogdet(ovlp_a)
 
     if ndown > 0 and not walker_batch.rhf:
-        ovlp_b = einsum(
+        ovlp_b = xp.einsum(
             "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
         )
-        sign_b, log_ovlp_b = slogdet(ovlp_b)
-        ot = sign_a * sign_b * exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
+        sign_b, log_ovlp_b = xp.slogdet(ovlp_b)
+        ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
-        ot = sign_a * sign_a * exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
+        ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
     elif ndown == 0:
-        ot = sign_a * exp(log_ovlp_a - walker_batch.log_shift)
+        ot = sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)
 
-    if is_cupy(trial.psi):
-        import cupy
-
-        cupy.cuda.stream.get_current_stream().synchronize()
+    synchronize()
 
     return ot
 

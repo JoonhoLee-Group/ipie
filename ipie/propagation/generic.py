@@ -4,13 +4,14 @@ import time
 import numpy
 import scipy.linalg
 
-from ipie.utils.misc import is_cupy
 from ipie.utils.pack import unpack_VHS_batch
 
 try:
     from ipie.utils.pack_numba_gpu import unpack_VHS_batch_gpu
 except:
     pass
+
+from ipie.utils.backend import arrraylib as xp
 
 
 class GenericContinuous(object):
@@ -150,22 +151,15 @@ class GenericContinuous(object):
         if is_cupy(
             xshifted
         ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            isrealobj = cupy.isrealobj
-            zeros = cupy.zeros
             iscupy = True
         else:
-            isrealobj = numpy.isrealobj
-            zeros = numpy.zeros
             iscupy = False
 
         if hamiltonian.mixed_precision:  # cast it to float
             xshifted = xshifted.astype(numpy.complex64)
 
         if hamiltonian.symmetry:
-            if isrealobj(hamiltonian.chol_vecs):
+            if xp.isrealobj(hamiltonian.chol_vecs):
                 VHS_packed = hamiltonian.chol_packed.dot(
                     xshifted.real
                 ) + 1.0j * hamiltonian.chol_packed.dot(xshifted.imag)
@@ -182,7 +176,7 @@ class GenericContinuous(object):
             if hamiltonian.mixed_precision:  # cast it to double
                 VHS_packed = VHS_packed.astype(numpy.complex128)
 
-            VHS = zeros(
+            VHS = xp.zeros(
                 (self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
                 dtype=VHS_packed.dtype,
             )
@@ -199,7 +193,7 @@ class GenericContinuous(object):
                     hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS
                 )
         else:
-            if isrealobj(hamiltonian.chol_vecs):
+            if xp.isrealobj(hamiltonian.chol_vecs):
                 VHS = hamiltonian.chol_vecs.dot(
                     xshifted.real
                 ) + 1.0j * hamiltonian.chol_vecs.dot(xshifted.imag)
@@ -234,32 +228,20 @@ class GenericContinuous(object):
         if is_cupy(
             xshifted
         ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            isrealobj = cupy.isrealobj
-            zeros_like = cupy.zeros_like
-            zeros = cupy.zeros
-            # where = cupy.where
             iscupy = True
         else:
-            isrealobj = numpy.isrealobj
-            zeros_like = numpy.zeros_like
-            zeros = numpy.zeros
             iscupy = False
-
-        where = numpy.where
 
         assert hamiltonian.chunked
         assert hamiltonian.symmetry
-        assert isrealobj(hamiltonian.chol_vecs)
+        assert xp.isrealobj(hamiltonian.chol_vecs)
 
         if hamiltonian.mixed_precision:  # cast it to float
             xshifted = xshifted.astype(numpy.complex64)
 
         #       xshifted is unique for each processor!
         xshifted_send = xshifted.copy()
-        xshifted_recv = zeros_like(xshifted)
+        xshifted_recv = xp.zeros_like(xshifted)
 
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
@@ -267,7 +249,7 @@ class GenericContinuous(object):
         VHS_send = chol_packed_chunk.dot(
             xshifted[idxs, :].real
         ) + 1.0j * chol_packed_chunk.dot(xshifted[idxs, :].imag)
-        VHS_recv = zeros_like(VHS_send)
+        VHS_recv = xp.zeros_like(VHS_send)
 
         ssize = handler.scomm.size
         srank = handler.scomm.rank
@@ -280,7 +262,7 @@ class GenericContinuous(object):
                     )
                     handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=2)
                 elif srank == handler.receivers[isend]:
-                    sender = where(handler.receivers == srank)[0]
+                    sender = numpy.where(handler.receivers == srank)[0]
                     handler.scomm.Recv(xshifted_recv, source=sender, tag=1)
                     handler.scomm.Recv(VHS_recv, source=sender, tag=2)
             handler.scomm.barrier()
@@ -296,14 +278,14 @@ class GenericContinuous(object):
             if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
                 handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=1)
             elif srank == handler.receivers[isend]:
-                sender = where(handler.receivers == srank)[0]
+                sender = numpy.where(handler.receivers == srank)[0]
                 handler.scomm.Recv(VHS_recv, source=sender, tag=1)
 
         VHS_recv = (
             self.isqrt_dt
             * VHS_recv.T.reshape(self.nwalkers, chol_packed_chunk.shape[0]).copy()
         )
-        VHS = zeros(
+        VHS = xp.zeros(
             (self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
             dtype=VHS_recv.dtype,
         )
@@ -318,10 +300,5 @@ class GenericContinuous(object):
             unpack_VHS_batch(
                 hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS
             )
-        if is_cupy(
-            xshifted
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            cupy.cuda.stream.get_current_stream().synchronize()
+        synchronize()
         return VHS

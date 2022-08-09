@@ -7,6 +7,7 @@ from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
     HarmonicOscillator
 from ipie.legacy.walkers.stack import FieldConfig
 from ipie.propagation.overlap import calc_overlap_single_det, get_calc_overlap
+from ipie.utils.backed import arraylib as xp
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
 from ipie.walkers.walker_batch import WalkerBatch
@@ -108,16 +109,15 @@ class SingleDetWalkerBatch(WalkerBatch):
                 )
             )
 
-        import cupy
+        self.ot = xp.asarray(self.ot)
+        self.ovlp = xp.asarray(self.ovlp)
+        self.Ga = xp.asarray(self.Ga)
+        self.Gb = xp.asarray(self.Gb)
+        self.Ghalfa = xp.asarray(self.Ghalfa)
+        self.Ghalfb = xp.asarray(self.Ghalfb)
 
-        self.ot = cupy.asarray(self.ot)
-        self.ovlp = cupy.asarray(self.ovlp)
-        self.Ga = cupy.asarray(self.Ga)
-        self.Gb = cupy.asarray(self.Gb)
-        self.Ghalfa = cupy.asarray(self.Ghalfa)
-        self.Ghalfb = cupy.asarray(self.Ghalfb)
-
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        # TODO should be some sort of host/device abstraction
+        free_bytes, total_bytes = xp.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
         if verbose:
             print(

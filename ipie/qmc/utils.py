@@ -1,7 +1,9 @@
 import numpy
 
+from ipie.utils.backend import arraylib as xp
 
-def set_rng_seed(seed, comm, gpu=False):
+
+def set_rng_seed(seed, comm):
     if seed is None:
         # only set "random" part of seed on parent processor so we can reproduce
         # results in when running in parallel.
@@ -13,12 +15,7 @@ def set_rng_seed(seed, comm, gpu=False):
         comm.Bcast(seed, root=0)
         seed = seed[0]
     seed = seed + comm.rank
-    if gpu:
-        import cupy
-
-        cupy.random.seed(seed)
-    else:
-        numpy.random.seed(seed)
+    xp.random.seed(seed)
     if comm.rank == 0:
         print("# random seed is {}".format(seed))
     return seed

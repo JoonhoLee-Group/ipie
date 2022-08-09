@@ -347,32 +347,6 @@ class AFQMCBatch(object):
             Initial wavefunction / distribution of walkers.
         comm : MPI communicator
         """
-
-        if is_cupy(
-            self.psi.walkers_batch.phia
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            zeros = cupy.zeros
-            ndarray = cupy.ndarray
-            array = cupy.asnumpy
-            abs = cupy.abs
-            sum = cupy.sum
-            min = cupy.min
-            clip = cupy.clip
-        else:
-            zeros = numpy.zeros
-            ndarray = numpy.ndarray
-            array = numpy.array
-            abs = numpy.abs
-            sum = numpy.sum
-            min = numpy.min
-            clip = numpy.clip
-
-        # import warnings
-        # warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
-
         tzero_setup = time.time()
         if psi is not None:
             self.psi = psi
@@ -423,7 +397,7 @@ class AFQMCBatch(object):
             if step > 1:
                 # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
                 wbound = self.psi.walkers_batch.total_weight * 0.10
-                clip(
+                xp.clip(
                     self.psi.walkers_batch.weight,
                     a_min=-wbound,
                     a_max=wbound,
