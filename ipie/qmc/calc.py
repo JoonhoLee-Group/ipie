@@ -52,39 +52,38 @@ def get_driver(options, comm):
         verbosity = 0
     batched = get_input_value(qmc_opts, "batched", default=True, verbose=verbosity)
 
-    afqmc = AFQMCBatch(
-        comm, options=options, parallel=comm.size > 1, verbose=verbosity
-    )
+    if beta is not None or batched == False:
+        from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
+
+        return legacy_get_driver(options, comm)
+    else:
+        afqmc = AFQMCBatch(
+            comm, options=options, parallel=comm.size > 1, verbose=verbosity
+        )
 
     return afqmc
 
+
 def build_afqmc_driver(
-        comm,
-        nelec,
-        wavefunction_file='wavefunction.h5',
-        hamiltonian_file='hamiltonian.h5',
-        verbosity=0,
-        ):
+    comm,
+    nelec,
+    wavefunction_file="wavefunction.h5",
+    hamiltonian_file="hamiltonian.h5",
+    verbosity=0,
+):
     if comm.rank != 0:
         verbosity = 0
     options = {
-            'system': {
-                'nup': nelec[0],
-                'ndown': nelec[1],
-                },
-            'hamiltonian': {
-                'integrals': hamiltonian_file
-                },
-            'trial': {
-                'filename': wavefunction_file
-                },
-            'estimates': {
-                'overwrite': True
-                }
-            }
-    afqmc = AFQMCBatch(
-        comm, options=options, parallel=comm.size > 1, verbose=verbosity
-    )
+        "system": {
+            "nup": nelec[0],
+            "ndown": nelec[1],
+        },
+        "qmc": {"nwalkers_per_task": 10},
+        "hamiltonian": {"integrals": hamiltonian_file},
+        "trial": {"filename": wavefunction_file},
+        "estimates": {"overwrite": True},
+    }
+    afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
     return afqmc
 
 
@@ -175,12 +174,13 @@ def setup_parallel(options, comm=None, verbose=False):
     estimator_opts = options.get("estimates", {})
     walker_opts = options.get("walkers", {"weight": 1})
     afqmc.estimators = EstimatorHandler(
-            comm,
-            afqmc.system,
-            afqmc.hamiltonian,
-            afqmc.trial,
-            options=estimator_opts,
-            verbose=(comm.rank == 0 and verbose))
+        comm,
+        afqmc.system,
+        afqmc.hamiltonian,
+        afqmc.trial,
+        options=estimator_opts,
+        verbose=(comm.rank == 0 and verbose),
+    )
     afqmc.psi = Walkers(
         walker_opts,
         afqmc.system,
