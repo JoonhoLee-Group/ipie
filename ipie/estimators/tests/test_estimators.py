@@ -43,6 +43,7 @@ def test_estimator_handler():
     options = {'block_size': 10, 'observables': {'energy': {'filename': 'test2.txt'}}}
     handler = EstimatorHandler(comm, system, ham, trial, options=options)
     handler["energy1"] = estim
+    handler.json_string = ''
     handler.initialize(comm)
     handler.compute_estimators(comm, system, ham, trial, walker_batch)
     handler.compute_estimators(comm, system, ham, trial, walker_batch)
