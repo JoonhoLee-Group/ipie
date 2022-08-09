@@ -22,13 +22,9 @@ def extract_hdf5_data(filename, block_idx=1):
                     'num_walker_props': fh5[f'block_size_{block_idx}/num_walker_props'][()],
                     'walker_header': fh5[f'block_size_{block_idx}/walker_prop_header'][()]
                     }
+        max_block = fh5[f'block_size_{block_idx}/max_block'][()]
 
-    loc = numpy.where(data[:,0]+83<1e-12)[0]
-    if len(loc) == 0:
-        loc = len(data)
-    else:
-        loc = loc[0]
-    return data[:loc], shapes
+    return data[:max_block+1], shapes
 
 def extract_observable(filename, name='energy', block_idx=1):
     data, info = extract_hdf5_data(filename, block_idx=block_idx)
