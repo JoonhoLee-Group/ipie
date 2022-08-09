@@ -10,7 +10,7 @@ from math import exp
 import h5py
 import numpy
 
-from ipie.estimators.handler import Estimators
+from ipie.estimators.handler import EstimatorHandler
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.utils import get_propagator_driver
@@ -158,7 +158,7 @@ class AFQMCBatch(object):
                 self.system, ham_opts, verbose=verbose, comm=self.shared_comm
             )
 
-        self.qmc = QMCOpts(qmc_opt, self.system, verbose=self.verbosity > 1)
+        self.qmc = QMCOpts(qmc_opt, verbose=verbose)
         if self.qmc.gpu:
             try:
                 import cupy
@@ -180,10 +180,10 @@ class AFQMCBatch(object):
                         )
                     )
 
-        if self.qmc.nwalkers == None:
+        if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
             self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
-        if self.qmc.nwalkers_per_task == None:
+        if self.qmc.nwalkers_per_task is None:
             assert self.qmc.nwalkers is not None
             self.qmc.nwalkers_per_task = int(self.qmc.nwalkers / comm.size)
         # Reset number of walkers so they are evenly distributed across
@@ -259,24 +259,6 @@ class AFQMCBatch(object):
             alias=["walker", "walker_opts"],
             verbose=self.verbosity > 1,
         )
-        est_opts = get_input_value(
-            options,
-            "estimators",
-            default={},
-            alias=["estimates", "estimator"],
-            verbose=self.verbosity > 1,
-        )
-        est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
-        self.estimators = Estimators(
-            est_opts,
-            self.root,
-            self.qmc,
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.propagators.BT_BP,
-            verbose,
-        )
         if comm.rank == 0:
             print("# Getting WalkerBatchHandler")
         self.psi = WalkerBatchHandler(
@@ -286,10 +268,24 @@ class AFQMCBatch(object):
             self.qmc,
             walker_opts=wlk_opts,
             mpi_handler=self.mpi_handler,
-            nprop_tot=self.estimators.nprop_tot,
-            nbp=self.estimators.nbp,
             verbose=verbose,
         )
+        est_opts = get_input_value(
+            options,
+            "estimators",
+            default={},
+            alias=["estimates", "estimator"],
+            verbose=self.verbosity > 1,
+        )
+        est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
+        self.estimators = EstimatorHandler(
+                comm,
+                self.system,
+                self.hamiltonian,
+                self.trial,
+                walker_state=self.psi.accumulator_factors,
+                options=est_opts,
+                verbose=(comm.rank == 0 and verbose))
 
         if self.mpi_handler.nmembers > 1:
             if comm.rank == 0:
@@ -333,10 +329,6 @@ class AFQMCBatch(object):
             json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
             json_string = to_json(self)
             self.estimators.json_string = json_string
-            self.estimators.dump_metadata()
-            if verbose:
-                self.estimators.estimators["mixed"].print_key()
-                self.estimators.estimators["mixed"].print_header()
 
     def run(self, psi=None, comm=None, verbose=True):
         """Perform AFQMC simulation on state object using open-ended random walk.
@@ -379,24 +371,25 @@ class AFQMCBatch(object):
         self.setup_timers()
         eshift = 0.0
 
+        total_steps = self.qmc.nsteps * self.qmc.nblocks
+        # Delay initialization incase user defined estimators added after
+        # construction.
+        self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators["mixed"].update_batch(
-            self.qmc,
+        self.estimators.compute_estimators(
+            comm,
             self.system,
             self.hamiltonian,
             self.trial,
             self.psi.walkers_batch,
-            0,
-            self.propagators.free_projection,
         )
-
-        # Print out zeroth step for convenience.
-        if verbose:
-            self.estimators.estimators["mixed"].print_step(comm, comm.size, 0, 1)
+        self.psi.update_accumulators()
+        self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
+        self.psi.zero_accumulators()
 
         self.tsetup += time.time() - tzero_setup
 
-        for step in range(1, self.qmc.total_steps + 1):
+        for step in range(1, total_steps + 1):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
@@ -446,27 +439,30 @@ class AFQMCBatch(object):
                 self.tpopc_comm = self.psi.communication_time
                 self.tpopc_non_comm = self.psi.non_communication_time
 
+            # accumulate weight, hybrid energy etc. across block
+            self.psi.update_accumulators()
             # calculate estimators
             start = time.time()
-            self.estimators.update_batch(
-                self.qmc,
-                self.system,
-                self.hamiltonian,
-                self.trial,
-                self.psi.walkers_batch,
-                step,
-                self.propagators.free_projection,
-            )
-            self.estimators.print_step(comm, comm.size, step)
+            if step % self.qmc.nsteps == 0:
+                self.estimators.compute_estimators(
+                    comm,
+                    self.system,
+                    self.hamiltonian,
+                    self.trial,
+                    self.psi.walkers_batch,
+                )
+                self.estimators.print_block(
+                        comm, step//self.qmc.nsteps,
+                        self.psi.accumulator_factors
+                        )
+                self.psi.zero_accumulators()
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators.estimators["mixed"].get_shift(
-                    self.propagators.hybrid
-                )
+                eshift = self.psi.accumulator_factors.eshift
             else:
-                eshift += self.estimators.estimators["mixed"].get_shift() - eshift
+                eshift += self.psi.accumulator_factors.eshift - eshift
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):

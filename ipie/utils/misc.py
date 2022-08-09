@@ -38,7 +38,7 @@ def get_git_info():
         src = os.path.dirname(__file__) + "/../../"
         sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src).strip()
         suffix = subprocess.check_output(
-            ["git", "status", "-uno", "./ipie"], cwd=src
+            ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
         local_mods = subprocess.check_output(
             ["git", "status", "--porcelain", "./ipie"], cwd=src

@@ -9,8 +9,7 @@ import numpy
 import scipy.linalg
 from mpi4py import MPI
 
-from ipie.legacy.walkers.stack import FieldConfig
-from ipie.utils.io import get_input_value
+from ipie.utils.io import get_input_value, format_fixed_width_floats
 from ipie.utils.misc import is_cupy, update_stack
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
@@ -50,6 +49,12 @@ class WalkerBatchHandler(object):
         self.write_freq = walker_opts.get("write_freq", 0)
         self.write_file = walker_opts.get("write_file", "restart.h5")
         self.read_file = walker_opts.get("read_file", None)
+        # weight, unscaled weight and hybrid energy accumulated across a block.
+        # Mostly here for legacy purposes.
+        self.accumulator_factors = WalkerAccumulator(
+                ["Weight", "WeightFactor", "HybridEnergy"],
+                qmc.nsteps
+                )
 
         if mpi_handler is None:
             rank = 0
@@ -162,6 +167,12 @@ class WalkerBatchHandler(object):
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
 
+    def update_accumulators(self):
+        self.accumulator_factors.update(self.walkers_batch)
+
+    def zero_accumulators(self):
+        self.accumulator_factors.zero()
+
     def orthogonalise(self, trial, free_projection):
         """Orthogonalise all walkers.
 
@@ -178,22 +189,6 @@ class WalkerBatchHandler(object):
             self.walkers_batch.weight *= magn
             self.walkers_batch.phase *= cmath.exp(1j * dtheta)
 
-    def add_field_config(self, nprop_tot, nbp, system, dtype):
-        """Add FieldConfig object to walker object.
-
-        Parameters
-        ----------
-        nprop_tot : int
-            Total number of propagators to store for back propagation + itcf.
-        nbp : int
-            Number of back propagation steps.
-        nfields : int
-            Number of fields to store for each back propagation step.
-        dtype : type
-            Field configuration type.
-        """
-        for fc in self.walkers_batch.field_configs:
-            fc = FieldConfig(system.nfields, nprop_tot, nbp, dtype)
 
     def copy_historic_wfn(self):
         """Copy current wavefunction to psi_n for next back propagation step."""
@@ -733,3 +728,53 @@ class WalkerBatchHandler(object):
                 self.set_walkers_batch_from_buffer(fh5["walker_%d" % comm.rank][:])
             except KeyError:
                 print(" # Could not read walker data from:" " %s" % (self.read_file))
+
+class WalkerAccumulator(object):
+    """Small class to handle passing around walker state."""
+    def __init__(self, names, nsteps):
+        self.names = names
+        self.size = len(names)
+        self.buffer = numpy.zeros((self.size,), dtype=numpy.complex128)
+        self._data_index = {k: i for i, k in enumerate(self.names)}
+        self.nsteps_per_block = nsteps
+        self._eshift = 0.0
+
+    def update(self, walker_batch):
+        self.buffer += numpy.array([
+                    numpy.sum(walker_batch.weight),
+                    numpy.sum(walker_batch.unscaled_weight),
+                    numpy.sum(walker_batch.weight*walker_batch.hybrid_energy)
+                    ])
+
+    def zero(self):
+        self.buffer.fill(0.0j)
+
+    def get_index(self, name):
+        index = self._data_index.get(name, None)
+        if index is None:
+            raise RuntimeError(f"Unknown walker property {name}")
+        return index
+
+    @property
+    def eshift(self):
+        return self._eshift.real
+
+    @eshift.setter
+    def eshift(self, value):
+        self._eshift = value
+
+    def post_reduce_hook(self, vals, block):
+        assert len(vals) == len(self.names)
+        if block == 0:
+            factor = 1
+        else:
+            factor = self.nsteps_per_block
+        nume = self.get_index('HybridEnergy')
+        deno = self.get_index('Weight')
+        vals[nume] = vals[nume] / vals[deno]
+        vals[deno] = vals[deno] / factor
+        ix = self.get_index('WeightFactor')
+        vals[ix] = vals[ix] / factor
+
+    def to_text(self, vals):
+        return format_fixed_width_floats(vals.real)

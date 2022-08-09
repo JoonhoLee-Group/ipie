@@ -64,12 +64,12 @@ def get_greens_function(trial):
     return compute_greens_function
 
 
-def greens_function(walker_batch, trial):
+def greens_function(walker_batch, trial, build_full=False):
     compute_greens_function = get_greens_function(trial)
-    return compute_greens_function(walker_batch, trial)
+    return compute_greens_function(walker_batch, trial, build_full=build_full)
 
 
-def greens_function_single_det(walker_batch, trial):
+def greens_function_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 
     Parameters
@@ -110,7 +110,7 @@ def greens_function_single_det(walker_batch, trial):
         ovlp = dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
         ovlp_inv = inv(ovlp)
         walker_batch.Ghalfa[iw] = dot(ovlp_inv, walker_batch.phia[iw].T)
-        if not trial.half_rotated:
+        if not trial.half_rotated or build_full:
             walker_batch.Ga[iw] = dot(
                 trial.psi[:, nup:].conj(), walker_batch.Ghalfa[iw]
             )
@@ -120,7 +120,7 @@ def greens_function_single_det(walker_batch, trial):
             ovlp = dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
             sign_b, log_ovlp_b = slogdet(ovlp)
             walker_batch.Ghalfb[iw] = dot(inv(ovlp), walker_batch.phib[iw].T)
-            if not trial.half_rotated:
+            if not trial.half_rotated or build_full:
                 walker_batch.Gb[iw] = dot(
                     trial.psi[:, nup:].conj(), walker_batch.Ghalfb[iw]
                 )
@@ -148,7 +148,7 @@ def greens_function_single_det(walker_batch, trial):
     return det
 
 
-def greens_function_single_det_batch(walker_batch, trial):
+def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     """Compute walker's green's function using only batched operations.
 
     Parameters
@@ -192,7 +192,7 @@ def greens_function_single_det_batch(walker_batch, trial):
     walker_batch.Ghalfa = einsum(
         "wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True
     )
-    if not trial.half_rotated:
+    if not trial.half_rotated or build_full:
         walker_batch.Ga = einsum(
             "mi,win->wmn", trial.psia.conj(), walker_batch.Ghalfa, optimize=True
         )
@@ -207,7 +207,7 @@ def greens_function_single_det_batch(walker_batch, trial):
         walker_batch.Ghalfb = einsum(
             "wij,wmj->wim", ovlp_inv_b, walker_batch.phib, optimize=True
         )
-        if not trial.half_rotated:
+        if not trial.half_rotated or build_full:
             walker_batch.Gb = einsum(
                 "mi,win->wmn", trial.psib.conj(), walker_batch.Ghalfb, optimize=True
             )
@@ -227,7 +227,7 @@ def greens_function_single_det_batch(walker_batch, trial):
     return ot
 
 
-def greens_function_multi_det(walker_batch, trial):
+def greens_function_multi_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 
     Parameters
@@ -294,7 +294,7 @@ def greens_function_multi_det(walker_batch, trial):
     return tot_ovlps
 
 
-def greens_function_multi_det_wicks(walker_batch, trial):
+def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
     Parameters
@@ -1329,7 +1329,7 @@ def contract_CI(Q0_act, CI, Ghalf, G):
         G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))
 
 
-def greens_function_multi_det_wicks_opt(walker_batch, trial):
+def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
     Parameters

@@ -6,6 +6,47 @@ import pandas as pd
 
 from ipie.utils.misc import get_from_dict
 
+def extract_hdf5_data(filename, block_idx=1):
+    shapes = {}
+    with h5py.File(filename, 'r') as fh5:
+        keys = fh5[f'block_size_{block_idx}/data/'].keys()
+        shape_keys = fh5[f'block_size_{block_idx}/shape/'].keys()
+        data = numpy.concatenate([fh5[f'block_size_{block_idx}/data/{d}'] for d in keys])
+        for k in shape_keys:
+            shapes[k] = {
+                    'names': fh5[f'block_size_{block_idx}/names/{k}'][()],
+                    'shape': fh5[f'block_size_{block_idx}/shape/{k}'][:],
+                    'offset': fh5[f'block_size_{block_idx}/offset/{k}'][()],
+                    'size': fh5[f'block_size_{block_idx}/size/{k}'][()],
+                    'scalar': bool(fh5[f'block_size_{block_idx}/scalar/{k}'][()]),
+                    'num_walker_props': fh5[f'block_size_{block_idx}/num_walker_props'][()],
+                    'walker_header': fh5[f'block_size_{block_idx}/walker_prop_header'][()]
+                    }
+        size_keys = fh5[f'block_size_{block_idx}/max_block'].keys()
+        max_block = sum(fh5[f'block_size_{block_idx}/max_block/{d}'][()] for d in size_keys)
+
+    return data[:max_block+1], shapes
+
+def extract_observable(filename, name='energy', block_idx=1):
+    data, info = extract_hdf5_data(filename, block_idx=block_idx)
+    obs_info = info.get(name)
+    if obs_info is None:
+        raise RuntimeError(f"Unknown value for name={name}")
+    obs_slice = slice(obs_info['offset'], obs_info['offset'] + obs_info['size'])
+    if obs_info['scalar']:
+        obs_data = data[:,obs_slice].reshape((-1,)+tuple(obs_info['shape']))
+        nwalk_prop = obs_info['num_walker_props']
+        weight_data = data[:,:nwalk_prop].reshape((-1,nwalk_prop))
+        results = pd.DataFrame(numpy.hstack([weight_data, obs_data]))
+        header = list(obs_info['walker_header']) + obs_info['names'].split()
+        results.columns = [n.decode('utf-8') for n in header]
+        return results
+    else:
+        obs_data = data[:,obs_slice]
+        nsamp = data.shape[0]
+        walker_averaged = obs_data[:,:-1] / obs_data[:,-1].reshape((nsamp, -1))
+        return walker_averaged.reshape((nsamp,) + tuple(obs_info['shape']))
+
 
 def extract_data_sets(files, group, estimator, raw=False):
     data = []
@@ -163,9 +204,13 @@ def get_sys_param(filename, param):
 
 def extract_test_data_hdf5(filename, skip=10):
     """For use with testcode"""
-    data = extract_mixed_estimates(filename)
-    # use list so can json serialise easily.
-    data = data.drop(["Iteration", "Time"], axis=1)[::skip].to_dict(orient="list")
+    try:
+        data = extract_observable(filename, 'energy')[::skip].to_dict(orient="list")
+    except KeyError:
+        # Fall back to legacy
+        data = extract_mixed_estimates(filename)
+        # use list so can json serialise easily.
+        data = data.drop(["Iteration", "Time"], axis=1)[::skip].to_dict(orient="list")
     data["sys_info"] = get_metadata(filename)["sys_info"]
     try:
         mrdm = extract_rdm(filename, est_type="mixed", rdm_type="one_rdm")

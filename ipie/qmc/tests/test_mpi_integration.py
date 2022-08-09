@@ -47,8 +47,11 @@ def compare_test_data(ref, test):
     for k, v in ref.items():
         if k == "sys_info":
             continue
-        print(k, np.array(ref[k]) - np.array(test[k]))
-        return np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
+        try:
+            print(k, np.array(ref[k]), np.array(test[k]))
+            return np.max(np.abs(np.array(ref[k]) - np.array(test[k]))) < 1e-10
+        except ValueError:
+            raise RuntimeError("Issue with test vs reference data")
 
 
 def run_test_system(input_file, benchmark_file):
@@ -70,7 +73,10 @@ def run_test_system(input_file, benchmark_file):
             ref_data = json.load(f)
         skip_val = ref_data.get("extract_skip_value", 10)
         test_data = extract_test_data_hdf5(output_file, skip=skip_val)
-        _passed = compare_test_data(ref_data, test_data)
+        try:
+            _passed = compare_test_data(ref_data, test_data)
+        except RuntimeError:
+            _passed = False
     else:
         _passed = None
     passed = comm.bcast(_passed)

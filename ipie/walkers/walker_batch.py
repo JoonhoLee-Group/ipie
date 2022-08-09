@@ -3,7 +3,6 @@ import sys
 import numpy
 import scipy
 
-from ipie.legacy.walkers.stack import FieldConfig
 from ipie.utils.misc import is_cupy
 
 
@@ -81,15 +80,9 @@ class WalkerBatch(object):
         self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
         # Number of propagators to store for back propagation / ITCF.
-        num_propg = [walker_opts.get("num_propg", 1) for iw in range(self.nwalkers)]
-        if nbp is not None:
-            self.field_configs = [
-                FieldConfig(hamiltonian.nfields, nprop_tot, nbp, numpy.complex128)
-                for iw in range(self.nwalkers)
-            ]
-        else:
-            self.field_configs = None
+        self.field_configs = None
         self.stack = None
+        num_propg = [walker_opts.get("num_propg", 1) for iw in range(self.nwalkers)]
         # Grab objects that are walker specific
         # WARNING!! One has to add names to the list here if new objects are added
         # self.buff_names = ["weight", "unscaled_weight", "phase", "alive", "phi",

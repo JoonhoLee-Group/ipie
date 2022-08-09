@@ -183,7 +183,8 @@ def shaped_normal(shape, cmplx=False):
     return arr.reshape(shape)
 
 
-def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7):
+def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
+    assert ndets == 1
     numpy.random.seed(seed)
     wfn = get_random_nomsd(nocc, nocc, nmo, ndet=1)
     h1e = shaped_normal((nmo, nmo))
@@ -203,16 +204,23 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7):
     from ipie.trial_wavefunction import MultiSlater
 
     trial = MultiSlater(system, ham, wfn, options={"build_greens_function": False})
-    trial.psia = trial.psi[0, :, :nocc].copy()
-    trial.psib = trial.psi[0, :, nocc:].copy()
+    if ndets == 1:
+        trial.psi = trial.psi[0]
+        trial.psia = trial.psi[:, :nocc].copy()
+        trial.psib = trial.psi[:, nocc:].copy()
+    else:
+        trial.psia = trial.psi[0, :, :nocc].copy()
+        trial.psib = trial.psi[0, :, nocc:].copy()
     from ipie.walkers import SingleDetWalkerBatch
 
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     Ghalfb = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
+    walker_batch.Ghalfa = Ghalfa
+    walker_batch.Ghalfb = Ghalfa
     trial._rchola = shaped_normal((naux, nocc * nmo))
     trial._rcholb = shaped_normal((naux, nocc * nmo))
     trial._rH1a = shaped_normal((nocc, nmo))
     trial._rH1b = shaped_normal((nocc, nmo))
-    trial.psi = trial.psi[0]
+    # trial.psi = trial.psi[0]
     return system, ham, walker_batch, trial
