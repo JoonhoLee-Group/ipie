@@ -86,12 +86,12 @@ class QMCOpts(object):
 
     def __init__(self, inputs={}, verbose=False):
         self.nwalkers = get_input_value(
-            inputs, "num_walkers", default=10, alias=["nwalkers"], verbose=verbose
+            inputs, "num_walkers", default=None, alias=["nwalkers"], verbose=verbose
         )
         self.nwalkers_per_task = get_input_value(
             inputs,
             "num_walkers",
-            default=10,
+            default=None,
             alias=["nwalkers_per_task"],
             verbose=verbose,
         )
