@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from ipie.utils.io import write_qmcpack_wfn
+from ipie.utils.io import write_wavefunction
 
 
 def parse_args(args):
@@ -27,43 +27,53 @@ def parse_args(args):
         type=int,
         dest="nalpha",
         default=0,
-        help="Total number of alpha electrons.",
+        help="Number of alpha electrons in dice calculation"
     )
     parser.add_argument(
         "--nbeta",
         type=int,
         dest="nbeta",
         default=0,
-        help="Total number of beta electrons.",
+        help="Number of beta electrons in dice calculation"
     )
     parser.add_argument(
-        "--nmo", type=int, dest="nmo", default=0, help="Total number of MOs"
+        "--dice-wfn",
+        type=str,
+        dest="dice_file",
+        default="dets.bin",
+        help="Wavefunction file containing dice determinants. Default: dets.bin.",
     )
     parser.add_argument(
-        "--nfrozen",
-        type=int,
-        dest="nfrozen",
-        default=0,
-        help="Number of frozen core orbitals to" " reinclude.",
+        "--filename",
+        type=str,
+        dest="filename",
+        default="wfn.h5",
+        help="Wavefunction file for AFQMC MSD. Default: wfn.h5.",
+    )
+    parser.add_argument(
+        "--sort",
+        dest="sort",
+        action="store_true",
+        help="Sort wavefunction by ci coefficient magnitude.",
     )
     parser.add_argument(
         "--ndets",
         type=int,
         dest="ndets",
         default=-1,
-        help="Number of frozen core orbitals to" " reinclude.",
+        help="Number of determinants to write.",
     )
     parser.add_argument(
         "--verbose",
         dest="verbose",
         action="store_true",
         default=False,
-        help="Number of frozen core orbitals to" " reinclude.",
+        help="Verbose output.",
     )
 
     options = parser.parse_args(args)
 
-    if (options.nalpha == 0 and options.nbeta == 0) or options.nmo == 0:
+    if options.nalpha == 0 and options.nbeta == 0
         parser.print_help()
         sys.exit(1)
 
@@ -84,7 +94,7 @@ def decode_dice_det(occs):
     return occ_a, occ_b
 
 
-def read_dice_wavefunction(filename, ndets=None):
+def read_dice_wavefunction(filename):
     print("Reading Dice wavefunction from dets.bin")
     with open(filename, "rb") as f:
         data = f.read()
@@ -97,10 +107,9 @@ def read_dice_wavefunction(filename, ndets=None):
     coeffs = []
     occs = []
     start = 0
-    print(f"Number of determinants specified: {ndets}")
     print(f"Number of determinants in dets.bin : {ndets_in_file}")
     print(f"Number of orbitals : {norbs}")
-    for idet in range(ndets):
+    for idet in range(ndets_in_file):
         coeff = struct.unpack("<d", wfn_data[start : start + _dou])[0]
         coeffs.append(coeff)
         start += _dou
@@ -108,8 +117,9 @@ def read_dice_wavefunction(filename, ndets=None):
         occ_lists = decode_dice_det(str(occ_i)[2:-1])
         occs.append(occ_lists)
         start += norbs
+    print("Finished reading wavefunction from file.")
     oa, ob = zip(*occs)
-    return np.array(coeffs, dtype=np.complex128), oa, ob
+    return np.array(coeffs, dtype=np.complex128), np.array(oa, dtype=np.int32), np.array(ob, dtype=np.int32)
 
 
 def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
@@ -117,7 +127,7 @@ def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
     ndets = len(coeff0)
     coeffs = np.zeros(len(coeff0), dtype=np.complex128)
     for i in range(ndets):
-        if verbose and i % (int(0.1 * ndets)) == 0 and i > 0:
+        if verbose and i % max(1, (int(0.1 * ndets))) == 0 and i > 0:
             done = float(i) / ndets
             print(f"convert phase {i}. Percent: {done}")
         doubles = list(set(occa_ref[i]) & set(occb_ref[i]))
@@ -142,27 +152,23 @@ def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
 if __name__ == "__main__":
     options = parse_args(sys.argv[1:])
     for key, val in vars(options).items():
-        print(f"{key:<10s} : {val:>10d}")
-    if options.ndets > 0:
-        ndets = options.ndets
-    else:
-        ndets = None
-    coeffs0, occa0, occb0 = read_dice_wavefunction("dets.bin", ndets=ndets)
+        if isinstance(val, str):
+            print(f"{key:<10s} : {val:>10s}")
+        else:
+            print(f"{key:<10s} : {val:>10d}")
+    coeffs0, occa0, occb0 = read_dice_wavefunction(options.dice_file)
+    if options.sort:
+        ix = np.argsort(np.abs(coeffs0))[::-1]
+        coeffs0 = coeffs0[ix]
+        occa0 = occa0[ix]
+        occb0 = occb0[ix]
+    if options.ndets > -1:
+        print(f"Number of determinants specified: {options.ndets}")
+        coeffs0 = coeffs0[:options.ndets]
+        occa0 = occa0[:options.ndets]
+        occb0 = occb0[:options.ndets]
     coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
-    if options.nfrozen > 0:
-        core = [i for i in range(options.nfrozen)]
-        occa = [
-            np.array(core + [orb + options.nfrozen for orb in oa], dtype=np.int32)
-            for oa in occa
-        ]
-        occb = [
-            np.array(core + [orb + options.nfrozen for orb in ob], dtype=np.int32)
-            for ob in occb
-        ]
-    write_qmcpack_wfn(
-        "wfn.h5",
+    write_wavefunction(
         (coeffs, occa, occb),
-        "UHF",
-        (options.nalpha, options.nbeta),
-        options.nmo,
+        filename=options.filename,
     )

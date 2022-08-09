@@ -21,6 +21,24 @@ from ipie.utils.misc import is_cupy
 # TODO: should pass hamiltonian here and make it work for all possible types
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...
 def local_energy_batch(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
 
     if walker_batch.name == "SingleDetWalkerBatch":
         if is_cupy(walker_batch.phia):
@@ -85,6 +103,26 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
 
 
 def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial):
+    """Compute local energy for walker batch (all walkers at once) with MSD.
+
+    Naive O(Ndet) algorithm, no optimizations.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walker_batch : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     energy = []
     ndets = trial.ndets
     nwalkers = walker_batch.nwalkers

@@ -10,7 +10,8 @@ import sys
 import time
 
 from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
+                           write_hamiltonian,
+                           read_hamiltonian)
 
 
 class Generic(object):
@@ -162,25 +163,12 @@ class Generic(object):
         return numpy.dot(self.chol_vecs[ik], self.chol_vecs[jl])
 
     def write_integrals(self, nelec, filename="hamil.h5"):
-        if self.sparse:
-            write_qmcpack_sparse(
-                self.H1[0],
-                self.chol_vecs.copy(),
-                nelec,
-                self.nbasis,
-                ecuc=self.ecore,
-                filename=filename,
-            )
-        else:
-            write_qmcpack_dense(
-                self.H1[0],
-                self.chol_vecs.copy(),
-                nelec,
-                self.nbasis,
-                enuc=self.ecore,
-                filename=filename,
-                real_chol=not self.cplx_chol,
-            )
+        write_hamiltonian(
+            self.H1[0],
+            self.chol_vecs.T.reshape((self.nchol, self.nbasis, self.nbasis)),
+            self.ecore,
+            filename=filename,
+        )
 
     def chunk(self, handler, verbose=False):
         self.chunked = True  # Boolean to indicate that chunked cholesky is available
@@ -288,13 +276,19 @@ def read_integrals(integral_file):
         chol_vecs = schol_vecs.toarray()
         return h1e, chol_vecs, ecore
     except KeyError:
+        pass
+    try:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_dense(integral_file)
         return h1e, chol_vecs, ecore
-    except OSError:
-        print("# Unknown Hamiltonian file {}.".format(integral_file))
-    except:
-        print("# Unknown Hamiltonian file format.")
-    return None
+    except KeyError:
+        pass
+    try:
+        (h1e, chol_vecs, ecore) = read_hamiltonian(integral_file)
+        naux = chol_vecs.shape[0]
+        nbsf = chol_vecs.shape[-1]
+        return h1e, chol_vecs.T.reshape((nbsf, nbsf, naux)), ecore
+    except KeyError:
+        return None
 
 
 def construct_h1e_mod(chol, h1e, h1e_mod):

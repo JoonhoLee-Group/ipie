@@ -1,10 +1,10 @@
 =====
-IPIE
+ipie
 =====
 
-IPIE stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
+ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
-IPIE inherits a lot of QMC features from pauxy.
+ipie inherits a lot of QMC features from pauxy.
 
 .. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
     :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
@@ -15,20 +15,13 @@ IPIE inherits a lot of QMC features from pauxy.
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
     :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
 
-Questions about the development should be sent to
-Joonho Lee (joonholee@g.harvard.edu) and
-Fionn Malone (fmalone@google.com)
-or one can open Github issues.
-
 Features
 --------
-ipie can currently:
+ipie currently supports:
 
-- estimate ground state properties of real (ab-initio) and model (Hubbard + UEG) systems.
-- perform phaseless and constrained path AFQMC.
-- calculate expectation values and correlation functions using back propagation.
-- calculate imaginary time correlation functions.
-- perform simple data analysis.
+- estimation of the ground state energy of ab-initio systems using phaseless AFQMC with support for CPUs and GPUs.
+- simple data analysis.
+- other legacy functionalities available in pauxy such as the ground state and finite-temperature energies and properties (via backpropagation) of the ab initio, UEG, Hubbard, and Hubbard-Holstein models.
 
 Installation
 ------------
@@ -78,8 +71,8 @@ running:
 in the base of the repo. Some longer parallel tests are also run through the CI. See
 `.github/workflows/ci2.yml` for more details.
 
-.. image:: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml/badge.svg
-    :target: https://github.com/linusjoonho/ipie/actions/workflows/ci2.yml
+.. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
+    :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
 
 Documentation
 -------------

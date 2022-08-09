@@ -34,21 +34,27 @@ information in `afqmc.h5`.
 
     {
         "system": {
-            "name": "Generic",
             "nup": 5,
-            "ndown": 5,
-            "integrals": "afqmc.h5"
+            "ndown": 5
+        },
+        "hamiltonian": {
+            "name": "Generic",
+            "integrals": "hamiltonian.h5"
         },
         "qmc": {
             "dt": 0.005,
-            "nsteps": 10,
+            "nwalkers": 640,
+            "nsteps": 25,
+            "blocks": 100,
             "batched": true,
-            "blocks": 1000,
-            "nwalkers": 100,
-            "pop_control_freq": 5
+            "pop_control_freq": 5,
+            "stabilise_freq": 5
         },
         "trial": {
-            "filename": "afqmc.h5"
+            "filename": "wavefunction.h5"
+        },
+        "estimators": {
+            "filename": "estimates.0.h5"
         }
     }
 
@@ -59,7 +65,7 @@ Run the AFQMC calculation by:
 
 .. code-block:: bash
 
-    mpirun -np N python /path/to/ipie/bin/ipie.py input.json
+    mpirun -np N python /path/to/ipie/bin/ipie.py input.json > output.dat
 
 See the documentation for more input options and the converter:
 
@@ -71,13 +77,14 @@ The data can be analysed using
 
 .. code-block:: bash
 
-    python /path/to/ipie/tools/reblock.py -s 1.0 -f estimates.0.h5
+    python /path/to/ipie/tools/reblock.py -b 10 -f output.dat 
 
-which will print a data table whose value for the total energy should be roughly
--5.38331344 +/- 0.0014386. This can be compared to value of -5.3819  +/- 0.0006 from the
-Simons hydrogen chain benchmark `value`_. The results are roughly within error bars of
-eachother, however we would typically recommend the use of a walker population of 1000 or
-greater. The `-s` flag tells reblock.py to discard the first 1 a.u. of the simulation for
-equilibration.
+which will print a data table whose value for the total energy which should be
+comparable to -5.3819  +/- 0.0006 from the Simons hydrogen chain benchmark
+`value`_. The results should roughly be within error bars of eachother, however we
+would typically recommend the use of a walker population of 1000 or greater. The
+`-b` flag tells reblock.py to discard the first 10 blocks of the simulation for
+equilibration. This is not automatic and a visual inspection of the ETotal
+column is typically necessary to determine the number of blocks to discard.
 
 .. _value: https://github.com/simonsfoundation/hydrogen-benchmark-PRX/blob/master/N_10_OBC/R_1.6/AFQMC_basis-STO

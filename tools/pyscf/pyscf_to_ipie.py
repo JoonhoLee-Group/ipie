@@ -5,8 +5,12 @@ import sys
 import h5py
 import numpy
 
-from ipie.utils.from_pyscf import dump_ipie
-from ipie.utils.io import write_input
+from ipie.utils.from_pyscf import (
+        gen_ipie_input_from_pyscf_chk,
+        load_from_pyscf_chkfile
+        )
+from ipie.utils.io import write_json_input_file
+
 
 
 def parse_args(args):
@@ -33,19 +37,17 @@ def parse_args(args):
         help="PYSCF scf chkfile.",
     )
     parser.add_argument(
-        "-o",
-        "--output",
+        "--hamiltonian",
         dest="output",
         type=str,
-        default="afqmc.h5",
+        default="hamiltonian.h5",
         help="Output file Hamiltonian.",
     )
     parser.add_argument(
-        "-w",
-        "--wavefile",
+        "--wavefunction",
         dest="wfn",
         type=str,
-        default="afqmc.h5",
+        default="wavefunction.h5",
         help="Output file name for qmcpack trial.",
     )
     parser.add_argument(
@@ -65,37 +67,6 @@ def parse_args(args):
         help="Cholesky convergence threshold.",
     )
     parser.add_argument(
-        "-s",
-        "--sparse",
-        dest="sparse",
-        action="store_true",
-        default=False,
-        help="Write in sparse format.",
-    )
-    parser.add_argument(
-        "-sz",
-        "--sparse_zero",
-        dest="sparse_zero",
-        type=float,
-        default=1e-16,
-        help="Sparsity threshold",
-    )
-    parser.add_argument(
-        "-c",
-        "--cas",
-        help="Specify a CAS in the form of nelec,norb.",
-        type=lambda s: [int(item) for item in s.split(",")],
-        default=None,
-    )
-    parser.add_argument(
-        "-b",
-        "--back-prop",
-        dest="bp",
-        action="store_true",
-        default=False,
-        help="Add back propagation option to json" "input file.",
-    )
-    parser.add_argument(
         "-j",
         "--json-input",
         dest="json_input",
@@ -104,13 +75,29 @@ def parse_args(args):
         help="Name of input file.",
     )
     parser.add_argument(
-        "-oao", "--oao", dest="oao", type=int, default=1, help="whether to do oao"
+        "--mcscf",
+        dest="mcscf",
+        action="store_true",
+        default=False,
+        help="Use mcscf input to generate multi-slater trial wavefunction.",
     )
     parser.add_argument(
-        "-ao", "--ao", dest="ao", type=int, default=0, help="whether to do ao"
+        "--frozen-core",
+        dest="num_frozen_core",
+        type=int,
+        default=0,
+        help="Number of core orbitals to freeze.",
     )
     parser.add_argument(
-        "-v", "--verbose", dest="verbose", type=int, default=1, help="Verbose output."
+        "-o", "--ortho-ao", dest="oao", action="store_true", help="Whether to do"
+        " use orthogonalized AO basis."
+    )
+    parser.add_argument(
+        "--lin-dep", dest="lin_dep", type=float, default=0, help="Linear "
+        "dependency threshold for canonical orthogonalization."
+    )
+    parser.add_argument(
+        "-v", "--verbose", dest="verbose", action="store_true", help="Verbose output."
     )
 
     options = parser.parse_args(args)
@@ -132,20 +119,23 @@ def main(args):
     """
 
     options = parse_args(args)
-    dump_ipie(
-        chkfile=options.input_scf,
+    gen_ipie_input_from_pyscf_chk(
+        options.input_scf,
         hamil_file=options.output,
-        verbose=options.verbose,
         wfn_file=options.wfn,
+        verbose=options.verbose,
         chol_cut=options.thresh,
-        sparse=options.sparse,
-        cas=options.cas,
-        sparse_zero=options.sparse_zero,
         ortho_ao=options.oao,
-        ao=options.ao,
+        mcscf=options.mcscf,
+        num_frozen_core=options.num_frozen_core,
+        linear_dep_thresh=options.lin_dep,
     )
-    write_input(
-        options.json_input, options.output, options.wfn, options.est, options.bp
+    scf_data = load_from_pyscf_chkfile(options.input_scf)
+    nelec_mol = scf_data['mol'].nelec
+    nfzn = options.num_frozen_core
+    nelec_sim = (nelec_mol[0]-nfzn, nelec_mol[1]-nfzn)
+    write_json_input_file(
+        options.json_input, options.output, options.wfn, options.est, nelec_sim
     )
 
 
