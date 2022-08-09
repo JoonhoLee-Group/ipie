@@ -65,11 +65,11 @@ class H5EstimatorHelper(object):
         with h5py.File(self.filename, "a") as fh5:
             if dset in fh5:
                 fh5[dset][self.chunk_index] = data
-                fh5[self.base+'/max_block'][()] = self.chunk_index
+                fh5[self.base+f'/max_block/{ix}'][()] = self.chunk_index
             else:
                 fh5[dset] = numpy.zeros(self.shape, dtype=numpy.complex128)
                 fh5[dset][self.chunk_index] = data
-                fh5[self.base+'/max_block'] = self.chunk_index
+                fh5[self.base+f'/max_block/{ix}'] = self.chunk_index
 
     def increment(self):
         self.index = self.index + 1

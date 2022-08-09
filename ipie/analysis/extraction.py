@@ -22,7 +22,8 @@ def extract_hdf5_data(filename, block_idx=1):
                     'num_walker_props': fh5[f'block_size_{block_idx}/num_walker_props'][()],
                     'walker_header': fh5[f'block_size_{block_idx}/walker_prop_header'][()]
                     }
-        max_block = fh5[f'block_size_{block_idx}/max_block'][()]
+        size_keys = fh5[f'block_size_{block_idx}/max_block'].keys()
+        max_block = sum(fh5[f'block_size_{block_idx}/max_block/{d}'][()] for d in size_keys)
 
     return data[:max_block+1], shapes
 
