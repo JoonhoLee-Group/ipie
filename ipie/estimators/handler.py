@@ -64,7 +64,7 @@ class EstimatorHandler(object):
             self.filename = get_input_value(options, "filename", default=None, verbose=verbose)
             self.basename = get_input_value(options, "basename", default="estimates", verbose=verbose)
             if self.filename is None:
-                overwrite = get_input_value(options, "overwrite", default=False, verbose=verbose)
+                overwrite = get_input_value(options, "overwrite", default=True, verbose=verbose)
                 self.filename = self.basename + ".%s.h5" % self.index
                 while os.path.isfile(self.filename) and not overwrite:
                     self.index = int(self.filename.split(".")[1])
