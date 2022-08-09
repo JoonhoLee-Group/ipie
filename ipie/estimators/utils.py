@@ -25,13 +25,15 @@ class H5EstimatorHelper(object):
         Counter for incrementing data.
     """
 
-    def __init__(self, filename, base, nav=1):
+    def __init__(self, filename, base, chunk_size=1, shape=(1,)):
         # self.store = h5f.create_dataset(name, shape, dtype=dtype)
         self.filename = filename
         self.base = base
         self.index = 0
+        self.chunk_index = 0
         self.nzero = 9
-        self.nav = nav
+        self.chunk_size = chunk_size
+        self.shape = (chunk_size,) + shape
 
     def push(self, data, name):
         """Push data to dataset.
@@ -48,8 +50,30 @@ class H5EstimatorHelper(object):
         with h5py.File(self.filename, "a") as fh5:
             fh5[dset] = data
 
+    def push_to_chunk(self, data, name):
+        """Push data to dataset.
+
+        Parameters
+        ----------
+        data : :class:`numpy.ndarray`
+            Data to push.
+        """
+        ix = str(self.index // self.chunk_size)
+        # To ensure string indices are sorted properly.
+        padded = "0" * (self.nzero - len(ix)) + ix
+        dset = self.base + "/" + name + "/" + padded
+        with h5py.File(self.filename, "a") as fh5:
+            if dset in fh5:
+                fh5[dset][self.chunk_index] = data
+                fh5[self.base+f'/max_block/{ix}'][()] = self.chunk_index
+            else:
+                fh5[dset] = numpy.zeros(self.shape, dtype=numpy.complex128)
+                fh5[dset][self.chunk_index] = data
+                fh5[self.base+f'/max_block/{ix}'] = self.chunk_index
+
     def increment(self):
-        self.index = (self.index + 1) // self.nav
+        self.index = self.index + 1
+        self.chunk_index = (self.chunk_index + 1) % self.chunk_size
 
     def reset(self):
         self.index = 0

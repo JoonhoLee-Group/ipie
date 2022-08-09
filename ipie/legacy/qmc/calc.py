@@ -18,7 +18,7 @@ try:
     parallel = True
 except ImportError:
     parallel = False
-from ipie.estimators.handler import Estimators
+from ipie.estimators.handler import EstimatorHandler
 from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.walkers.handler import Walkers
@@ -163,15 +163,13 @@ def setup_parallel(options, comm=None, verbose=False):
     estimator_opts = options.get("estimates", {})
     walker_opts = options.get("walkers", {"weight": 1})
     estimator_opts["stack_size"] = walker_opts.get("stack_size", 1)
-    afqmc.estimators = Estimators(
-        estimator_opts,
-        afqmc.root,
-        afqmc.qmc,
-        afqmc.system,
-        afqmc.trial,
-        afqmc.propagators.BT_BP,
-        verbose=(comm.rank == 0 and verbose),
-    )
+    afqmc.estimators = EstimatorHandler(
+            comm,
+            afqmc.system,
+            afqmc.hamiltonian,
+            afqmc.trial,
+            options=estimator_opts,
+            verbose=(comm.rank == 0 and verbose))
     afqmc.psi = Walkers(
         walker_opts,
         afqmc.system,

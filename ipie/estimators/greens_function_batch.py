@@ -66,12 +66,12 @@ def get_greens_function(trial):
     return compute_greens_function
 
 
-def greens_function(walker_batch, trial):
+def greens_function(walker_batch, trial, build_full=False):
     compute_greens_function = get_greens_function(trial)
-    return compute_greens_function(walker_batch, trial)
+    return compute_greens_function(walker_batch, trial, build_full=build_full)
 
 
-def greens_function_single_det(walker_batch, trial):
+def greens_function_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 
     Parameters
@@ -98,7 +98,7 @@ def greens_function_single_det(walker_batch, trial):
             walker_batch.Ga[iw] = xp.dot(
                 trial.psi[:, nup:].conj(), walker_batch.Ghalfa[iw]
             )
-        sign_a, log_ovlp_a = xp.linagl.slogdet(ovlp)
+        sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0 and not walker_batch.rhf:
             ovlp = xp.dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
@@ -129,7 +129,7 @@ def greens_function_single_det(walker_batch, trial):
     return det
 
 
-def greens_function_single_det_batch(walker_batch, trial):
+def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     """Compute walker's green's function using only batched operations.
 
     Parameters
@@ -153,7 +153,7 @@ def greens_function_single_det_batch(walker_batch, trial):
     walker_batch.Ghalfa = xp.einsum(
         "wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True
     )
-    if not trial.half_rotated:
+    if not trial.half_rotated or build_full:
         walker_batch.Ga = xp.einsum(
             "mi,win->wmn", trial.psia.conj(), walker_batch.Ghalfa, optimize=True
         )
@@ -168,7 +168,7 @@ def greens_function_single_det_batch(walker_batch, trial):
         walker_batch.Ghalfb = xp.einsum(
             "wij,wmj->wim", ovlp_inv_b, walker_batch.phib, optimize=True
         )
-        if not trial.half_rotated:
+        if not trial.half_rotated or build_full:
             walker_batch.Gb = xp.einsum(
                 "mi,win->wmn", trial.psib.conj(), walker_batch.Ghalfb, optimize=True
             )
@@ -183,7 +183,7 @@ def greens_function_single_det_batch(walker_batch, trial):
     return ot
 
 
-def greens_function_multi_det(walker_batch, trial):
+def greens_function_multi_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 
     Parameters
@@ -250,7 +250,7 @@ def greens_function_multi_det(walker_batch, trial):
     return tot_ovlps
 
 
-def greens_function_multi_det_wicks(walker_batch, trial):
+def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
     Parameters
@@ -1285,7 +1285,7 @@ def contract_CI(Q0_act, CI, Ghalf, G):
         G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))
 
 
-def greens_function_multi_det_wicks_opt(walker_batch, trial):
+def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
     Parameters

@@ -17,7 +17,7 @@ from ipie.legacy.propagation.utils import get_propagator_driver
 from ipie.legacy.systems.utils import get_system
 from ipie.legacy.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.legacy.walkers.handler import Walkers
-from ipie.qmc.options import QMCOpts
+from ipie.legacy.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
 from ipie.utils.io import get_input_value, serialise, to_json
 from ipie.utils.misc import get_git_info, get_node_mem, print_env_info

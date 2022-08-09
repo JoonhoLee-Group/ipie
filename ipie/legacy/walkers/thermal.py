@@ -614,7 +614,7 @@ def unit_test():
     from ipie.legacy.systems.ueg import UEG
     from ipie.legacy.thermal_propagation.planewave import PlaneWave
     from ipie.legacy.trial_density_matrices.onebody import OneBody
-    from ipie.qmc.options import QMCOpts
+    from ipie.legacy.qmc.options import QMCOpts
 
     inputs = {
         "nup": 1,

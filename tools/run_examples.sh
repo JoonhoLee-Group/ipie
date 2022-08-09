@@ -1,22 +1,27 @@
 #!/bin/bash
 tool_dir=$(pwd)/tools
-if [[ ! -d examples/generic ]]; then
+if [[ ! -d examples ]]; then
     echo "Error: Run from pie base directory."
     exit 1
 fi
-cd examples/generic
+cd examples
 root_dir=$(pwd)
 cd 01-simple
 python scf.py
 python $tool_dir/pyscf/pyscf_to_ipie.py -i scf.chk
 echo "Finished running example 1."
-err_status=$?
+err_1=$?
 cd $root_dir
 cd 02-multi_determinant
 python scf.py
 python $tool_dir/pyscf/pyscf_to_ipie.py -i scf.chk --mcscf
-total_error=$(($? + $err_status))
+err_2=$?
+cd $root_dir
 echo "Finished running example 2."
+cd 03-custom_observable
+python run_afqmc.py
+total_error=$(($? + $err_1 + $err_2))
+echo "Finished running example 3."
 
 if [[ $total_error > 0 ]]; then
     echo "Error running examples."

@@ -19,9 +19,7 @@ try:
 except ImportError:
     parallel = False
 
-from ipie.estimators.handler import Estimators
-from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
-from ipie.legacy.walkers.handler import Walkers
+from ipie.estimators.handler import EstimatorHandler
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.comm import FakeComm
 from ipie.utils.io import get_input_value, to_json
@@ -55,12 +53,37 @@ def get_driver(options, comm):
     batched = get_input_value(qmc_opts, "batched", default=True, verbose=verbosity)
 
     if beta is not None or batched == False:
+        from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
+
         return legacy_get_driver(options, comm)
     else:
         afqmc = AFQMCBatch(
             comm, options=options, parallel=comm.size > 1, verbose=verbosity
         )
 
+    return afqmc
+
+
+def build_afqmc_driver(
+    comm,
+    nelec,
+    wavefunction_file="wavefunction.h5",
+    hamiltonian_file="hamiltonian.h5",
+    verbosity=0,
+):
+    if comm.rank != 0:
+        verbosity = 0
+    options = {
+        "system": {
+            "nup": nelec[0],
+            "ndown": nelec[1],
+        },
+        "qmc": {"nwalkers_per_task": 10},
+        "hamiltonian": {"integrals": hamiltonian_file},
+        "trial": {"filename": wavefunction_file},
+        "estimates": {"overwrite": True},
+    }
+    afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
     return afqmc
 
 
@@ -150,14 +173,12 @@ def setup_parallel(options, comm=None, verbose=False):
 
     estimator_opts = options.get("estimates", {})
     walker_opts = options.get("walkers", {"weight": 1})
-    estimator_opts["stack_size"] = walker_opts.get("stack_size", 1)
-    afqmc.estimators = Estimators(
-        estimator_opts,
-        afqmc.root,
-        afqmc.qmc,
+    afqmc.estimators = EstimatorHandler(
+        comm,
         afqmc.system,
+        afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.propagators.BT_BP,
+        options=estimator_opts,
         verbose=(comm.rank == 0 and verbose),
     )
     afqmc.psi = Walkers(
@@ -175,7 +196,5 @@ def setup_parallel(options, comm=None, verbose=False):
         json_string = to_json(afqmc)
         afqmc.estimators.json_string = json_string
         afqmc.estimators.dump_metadata()
-        afqmc.estimators.estimators["mixed"].print_key()
-        afqmc.estimators.estimators["mixed"].print_header()
 
     return afqmc
