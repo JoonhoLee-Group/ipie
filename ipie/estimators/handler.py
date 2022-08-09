@@ -148,8 +148,10 @@ class EstimatorHandler(object):
         for k, e in self.items():
             if e.print_to_stdout:
                 header += e.header_to_text
-        with h5py.File(self.filename, "w") as fh5:
-            pass
+        if comm.rank == 0:
+            with h5py.File(self.filename, "w") as fh5:
+                pass
+            self.dump_metadata()
         self.output = H5EstimatorHelper(self.filename,
                 base="block_size_1",
                 chunk_size=self.buffer_size,
