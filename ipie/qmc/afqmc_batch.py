@@ -19,10 +19,11 @@ from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
-from ipie.utils.misc import (get_git_info, get_node_mem, print_env_info,
+from ipie.utils.misc import (get_git_info, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import get_host_mem
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
@@ -228,7 +229,7 @@ class AFQMCBatch(object):
                 scomm=self.shared_comm,
                 verbose=verbose,
             )
-        mem = get_node_mem()
+        mem = get_host_memory()
         if comm.rank == 0:
             if self.trial.compute_trial_energy:
                 self.trial.calculate_energy(self.system, self.hamiltonian)
@@ -311,21 +312,9 @@ class AFQMCBatch(object):
             if comm.rank == 0:
                 print("# Casting arrays in walkers_batch")
             self.psi.walkers_batch.cast_to_cupy(verbose)
-        else:
-            if comm.rank == 0:
-                try:
-                    import cupy
-
-                    _have_cupy = True
-                except:
-                    _have_cupy = False
-                print("# NOTE: cupy available but qmc.gpu == False.")
-                print(
-                    "#       If this is unintended set gpu option in qmc" "  section."
-                )
 
         if comm.rank == 0:
-            mem_avail = get_node_mem()
+            mem_avail = get_host_memory()
             print("# Available memory on the node is {:4.3f} GB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
             json_string = to_json(self)

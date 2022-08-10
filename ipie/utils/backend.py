@@ -16,11 +16,22 @@ def to_host_cpu(array):
 def to_host_gpu(array):
     return _cp.asnumpy(array)
 
+def get_cpu_free_memory():
+    try:
+        return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") / 1024**3.0
+    except:
+        return 0.0
+
+def get_gpu_free_memory():
+    free_bytes, total_bytes = _cp.cuda.Device().mem_info
+    used_bytes = total_bytes - free_bytes
+    return used_bytes, total_bytes
+
 def synchronize_cpu():
     pass
 
 def synchronize_gpu():
-    cupy.cuda.stream.get_current_stream().synchronize()
+    _cp.cuda.stream.get_current_stream().synchronize()
 
 if _use_gpu and _have_cupy:
     arraylib = _cp
@@ -28,6 +39,8 @@ if _use_gpu and _have_cupy:
     synchronize = synchronize_gpu
     qr_mode = 'reduced'
     qr = cupy.linalg.qr
+    get_device_memory = get_gpu_free_memory
+    get_host_memory = get_cpu_free_memory
 else:
     arraylib = _np
     to_host = to_host_cpu
@@ -35,6 +48,8 @@ else:
     qr_mode = 'economic'
     import scipy.linalg
     qr = scipy.linalg.qr
+    get_device_memory = get_cpu_free_memory
+    get_host_memory = get_cpu_free_memory
 
 def cast_to_device(self):
     for k, v in self.__dict__.items():
