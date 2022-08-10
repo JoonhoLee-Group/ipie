@@ -28,3 +28,6 @@ config = Config()
 
 # Default to not using for the moment.
 config.add_option('use_gpu', False)
+# Memory limits should be in GB
+config.add_option('max_memory_for_wicks', 2.0)
+config.add_option('max_memory_sd_energy_gpu', 2.0)
