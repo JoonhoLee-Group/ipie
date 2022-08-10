@@ -4,7 +4,7 @@ import numpy
 import scipy
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host, synchronize, qr
+from ipie.utils.backend import to_host, synchronize, qr, qr_mode
 
 
 class WalkerBatch(object):

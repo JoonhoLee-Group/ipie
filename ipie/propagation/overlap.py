@@ -77,11 +77,11 @@ def calc_overlap_single_det(walker_batch, trial):
 
     for iw in range(walker_batch.nwalkers):
         Oalpha = xp.dot(trial.psia.conj().T, walker_batch.phia[iw])
-        sign_a, logdet_a = xp.slogdet(Oalpha)
+        sign_a, logdet_a = xp.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
             Obeta = xp.dot(trial.psib.conj().T, walker_batch.phib[iw])
-            sign_b, logdet_b = xp.slogdet(Obeta)
+            sign_b, logdet_b = xp.linalg.slogdet(Obeta)
 
         ot[iw] = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
 
@@ -108,13 +108,13 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     nup = walker_batch.nup
     ndown = walker_batch.ndown
     ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
-    sign_a, log_ovlp_a = xp.slogdet(ovlp_a)
+    sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum(
             "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
         )
-        sign_b, log_ovlp_b = xp.slogdet(ovlp_b)
+        sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
         ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)

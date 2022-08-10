@@ -5,7 +5,7 @@ from ipie.estimators.greens_function_batch import greens_function
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
     HarmonicOscillator
 from ipie.propagation.overlap import calc_overlap_single_det, get_calc_overlap
-from ipie.utils.backed import arraylib as xp
+from ipie.utils.backend import arraylib as xp
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
 from ipie.walkers.walker_batch import WalkerBatch

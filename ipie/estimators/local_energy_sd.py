@@ -489,7 +489,7 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
             trial._rchola, trial._rcholb, Ghalfa, Ghalfb
         )
 
-    if isrealobj(trial._rchola):
+    if xp.isrealobj(trial._rchola):
         exx = exx_kernel_batch_real_rchol(
             trial._rchola, walker_batch.Ghalfa
         ) + exx_kernel_batch_real_rchol(trial._rcholb, walker_batch.Ghalfb)
@@ -500,7 +500,7 @@ def local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial):
 
     e2b = ecoul - exx
 
-    energy = zeros((nwalkers, 3), dtype=numpy.complex128)
+    energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = e1b + e2b
     energy[:, 1] = e1b
     energy[:, 2] = e2b

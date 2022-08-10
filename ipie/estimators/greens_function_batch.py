@@ -7,7 +7,7 @@ from ipie.propagation.overlap import (compute_determinants_batched,
 from ipie.utils.linalg import minor_mask
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize()
+from ipie.utils.backend import synchronize
 
 try:
     from ipie.propagation.wicks_kernels import (get_cofactor_matrix_batched,
@@ -178,7 +178,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     elif ndown == 0:
         ot = sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)
 
-    syncrhonize()
+    synchronize()
 
     return ot
 

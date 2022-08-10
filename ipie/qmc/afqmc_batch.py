@@ -22,6 +22,7 @@ from ipie.utils.io import get_input_value, serialise, to_json
 from ipie.utils.misc import (get_git_info, get_node_mem, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
+from ipie.utils.backend import arraylib as xp
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
@@ -205,7 +206,7 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
 
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm, gpu=self.qmc.gpu)
+        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
 
         self.cplx = self.determine_dtype(options.get("propagator", {}), self.system)
 

@@ -11,7 +11,7 @@ from ipie.config import config
 _use_gpu = config.get_option('use_gpu')
 
 def to_host_cpu(array):
-    return array
+    return _np.array(array)
 
 def to_host_gpu(array):
     return _cp.asnumpy(array)
@@ -32,7 +32,7 @@ else:
     arraylib = _np
     to_host = to_host_cpu
     synchronize = synchronize_cpu
-    qr_mode = 'reduced'
+    qr_mode = 'economic'
     import scipy.linalg
     qr = scipy.linalg.qr
 

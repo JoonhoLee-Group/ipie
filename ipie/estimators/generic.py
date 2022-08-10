@@ -212,7 +212,7 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
     rH1b = trial._rH1b
 
     # Element wise multiplication.
-    e1b = xp.sum(rH1a * Ghalfa) + sum(rH1b * Ghalfb)
+    e1b = xp.sum(rH1a * Ghalfa) + xp.sum(rH1b * Ghalfb)
     return e1b
 
 

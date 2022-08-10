@@ -12,6 +12,10 @@ from ipie.propagation.generic import GenericContinuous
 from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from ipie.propagation.overlap import get_calc_overlap
 
+from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
+
 
 class Continuous(object):
     """Propagation with continuous HS transformation."""
@@ -249,13 +253,13 @@ class Continuous(object):
         self.nfb_trig += xp.sum(idx_to_rescale)
 
         # Normally distrubted auxiliary fields.
-        xi = xp.normal(0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers).reshape(
+        xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers).reshape(
             walker_batch.nwalkers, hamiltonian.nfields
         )
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
-        cmf = -self.sqrt_dt * einsum("wx,x->w", xshifted, self.propagator.mf_shift)
+        cmf = -self.sqrt_dt * xp.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
         cfb = xp.einsum("wx,wx->w", xi, xbar) - 0.5 * xp.einsum("wx,wx->w", xbar, xbar)
 
