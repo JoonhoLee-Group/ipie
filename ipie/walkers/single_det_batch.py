@@ -63,8 +63,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         self.name = "SingleDetWalkerBatch"
 
         calc_overlap = get_calc_overlap(trial)
-        self.ot = calc_overlap(self, trial)
-        self.ovlp = self.ot
+        # self.ot = calc_overlap(self, trial)
         self.le_oratio = 1.0
 
         self.Ga = numpy.zeros(
@@ -90,7 +89,7 @@ class SingleDetWalkerBatch(WalkerBatch):
                 dtype=numpy.complex128,
             )
 
-        greens_function(self, trial)
+        # greens_function(self, trial)
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
@@ -107,12 +106,14 @@ class SingleDetWalkerBatch(WalkerBatch):
                 )
             )
 
-        self.ot = xp.asarray(self.ot)
-        self.ovlp = xp.asarray(self.ovlp)
-        self.Ga = xp.asarray(self.Ga)
-        self.Gb = xp.asarray(self.Gb)
-        self.Ghalfa = xp.asarray(self.Ghalfa)
-        self.Ghalfb = xp.asarray(self.Ghalfb)
+        self.ot = xp.array(self.ot)
+        self.ovlp = xp.array(self.ovlp)
+        self.Ga = xp.array(self.Ga)
+        self.Gb = xp.array(self.Gb)
+        self.Ghalfa = xp.array(self.Ghalfa)
+        self.Ghalfb = xp.array(self.Ghalfb)
+        self.ot = greens_function(self, trial)
+        self.ovlp = self.ot
 
         # TODO should be some sort of host/device abstraction
         free_bytes, total_bytes = xp.cuda.Device().mem_info

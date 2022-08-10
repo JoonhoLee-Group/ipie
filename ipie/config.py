@@ -1,3 +1,11 @@
+import importlib
+import sys
+
+def purge_ipie_modules():
+    modules = [m for m in sys.modules.keys() if 'ipie' in m]
+    for m in modules:
+        del m
+
 class Config:
 
     def __init__(self):
@@ -6,7 +14,7 @@ class Config:
     def add_option(self, key, val):
         self.options[key] = val
 
-    def update(self, key, val):
+    def update_option(self, key, val):
         _val = self.options.get(key)
         if _val is None:
             raise KeyError("config option not found: {}".format(_val))

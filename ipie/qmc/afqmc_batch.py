@@ -23,7 +23,7 @@ from ipie.utils.misc import (get_git_info, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import get_host_mem
+from ipie.utils.backend import get_host_memory
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 

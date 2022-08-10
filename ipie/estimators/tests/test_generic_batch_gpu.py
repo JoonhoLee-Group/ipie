@@ -1,30 +1,38 @@
 import numpy
 import pytest
+import sys
 
+
+try:
+    import cupy
+    no_gpu = not cupy.is_available()
+    from ipie.config import config, purge_ipie_modules
+    config.update_option('use_gpu', True)
+    purge_ipie_modules()
+except:
+    no_gpu = True
+
+
+print("HERE")
 from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
                                              local_energy_single_det_batch_gpu)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.local_energy import \
-    local_energy_generic_cholesky_opt
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
+print("HERE")
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
+print("HERE")
 from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
                                 get_random_phmsd)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+print("HERE")
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
-try:
-    import cupy
-
-    no_gpu = not cupy.is_available()
-except:
-    no_gpu = True
 
 
 @pytest.mark.unit
@@ -71,9 +79,13 @@ def test_local_energy_single_det_batch():
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
     if not no_gpu:
+        print("here")
         prop.cast_to_cupy()
+        print("here")
         ham.cast_to_cupy()
+        print("here")
         trial.cast_to_cupy()
+        print("here")
         walker_batch.cast_to_cupy()
 
     for i in range(nsteps):

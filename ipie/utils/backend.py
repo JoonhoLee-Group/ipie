@@ -1,3 +1,11 @@
+import importlib
+import sys
+
+from ipie.config import config
+
+_use_gpu = config.get_option('use_gpu')
+print("config : ", config)
+
 try:
     import cupy as _cp
     _have_cupy = True
@@ -5,10 +13,9 @@ except ImportError:
     _have_cupy = False
 
 import numpy as _np
+print(_have_cupy, _use_gpu)
 
-from ipie.config import config
 
-_use_gpu = config.get_option('use_gpu')
 
 def to_host_cpu(array):
     return _np.array(array)
@@ -34,11 +41,12 @@ def synchronize_gpu():
     _cp.cuda.stream.get_current_stream().synchronize()
 
 if _use_gpu and _have_cupy:
+    print("this:")
     arraylib = _cp
     to_host = to_host_gpu
     synchronize = synchronize_gpu
     qr_mode = 'reduced'
-    qr = cupy.linalg.qr
+    qr = _cp.linalg.qr
     get_device_memory = get_gpu_free_memory
     get_host_memory = get_cpu_free_memory
 else:
