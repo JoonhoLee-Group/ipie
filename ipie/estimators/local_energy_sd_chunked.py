@@ -240,7 +240,7 @@ def exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff):
         cupy.dot(rchol, _Ghalfa.T, out=Txij)
         Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
         kernels.exchange_reduction(Txij, exx)
-    return exx
+    return 0.5 * exx
 
 
 def local_energy_single_det_uhf_batch_chunked_gpu(
