@@ -1,3 +1,4 @@
+from math import ceil
 import numpy
 import pytest
 
@@ -15,9 +16,10 @@ from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
+                                get_random_phmsd, shaped_normal)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.estimators.kernels.gpu import exchange as kernels
 
 try:
     import cupy
@@ -25,6 +27,33 @@ try:
     no_gpu = not cupy.is_available()
 except:
     no_gpu = True
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_gpu, reason="gpu not found.")
+def test_exchange_kernel_reduction():
+    nchol = 101
+    nocc = 31
+    nwalk = 7
+    chunk_size = 10
+    T = cupy.array(shaped_normal((nchol, nocc, nwalk, nocc), cmplx=True))
+    buff = T.copy().reshape((nchol, -1))
+    exx = cupy.einsum("xjwi,xiwj->w", T, T)
+    exx_test = cupy.zeros_like(exx)
+    kernels.exchange_reduction(T, exx_test)
+    assert numpy.allclose(exx_test, exx)
+    nchol_left = nchol
+    exx_test = cupy.zeros_like(exx)
+    exx_test_2 = cupy.zeros_like(exx)
+    for i in range(ceil(nchol / 10)):
+        nchol_chunk = min(chunk_size, nchol_left)
+        chol_sls = slice(i * chunk_size, i * chunk_size + nchol_chunk)
+        size = nwalk * nchol_chunk * nocc * nocc
+        # alpha-alpha
+        Txij = buff[chol_sls].reshape((nchol_chunk, nocc, nwalk, nocc))
+        kernels.exchange_reduction(Txij, exx_test)
+        nchol_left -= chunk_size
+    assert numpy.allclose(exx_test, exx)
 
 
 @pytest.mark.unit
@@ -83,8 +112,11 @@ def test_local_energy_single_det_batch():
     energies_einsum = local_energy_single_det_batch_gpu(
         system, ham, walker_batch, trial
     )
-    from ipie.estimators.local_energy_sd import \
-        local_energy_single_det_batch_gpu_old
+
+    energies_einsum_chunks = local_energy_single_det_batch_gpu(
+        system, ham, walker_batch, trial, max_mem=1e-6,
+    )
+    from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
 
     energies_einsum_old = local_energy_single_det_batch_gpu_old(
         system, ham, walker_batch, trial
@@ -99,6 +131,7 @@ def test_local_energy_single_det_batch():
 
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
+    assert numpy.allclose(energies, energies_einsum_chunks)
 
 
 if __name__ == "__main__":

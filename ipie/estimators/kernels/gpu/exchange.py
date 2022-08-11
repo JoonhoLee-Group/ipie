@@ -105,8 +105,8 @@ def exchange_reduction(Txiwj, exx_walker):
     exx_walker : np.ndarray
         Exchange contribution for all walkers in batch.
     """
-    nwalkers = Txiwj.shape[0]
-    nocc = Txiwj.shape[2]
+    nwalkers = Txiwj.shape[2]
+    nocc = Txiwj.shape[1]
     blocks_per_grid = nwalkers * nocc * nocc
     # todo add constants to config
     # do blocks_per_grid dot products + reductions
