@@ -215,57 +215,7 @@ class Generic(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        import cupy
-
-        size = self.H1.size + self.h1e_mod.size
-        if self.chunked:
-            if self.symmetry:
-                size += self.chol_packed_chunk.size
-            else:
-                size += self.chol_vecs_chunk.size
-        else:
-            if self.symmetry:
-                size += self.chol_packed.size
-            else:
-                size += self.chol_vecs.size
-
-        if self.symmetry:
-            size += self.sym_idx_i.size
-            size += self.sym_idx_j.size
-
-        if verbose:
-            expected_bytes = size * 8.0  # float64
-            print(
-                "# hamiltonians.generic: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
-
-        self.H1 = cupy.asarray(self.H1)
-        self.h1e_mod = cupy.asarray(self.h1e_mod)
-        if self.symmetry:
-            self.sym_idx_i = cupy.asarray(self.sym_idx_i)
-            self.sym_idx_j = cupy.asarray(self.sym_idx_j)
-
-        if self.chunked:
-            if self.symmetry:
-                self.chol_packed_chunk = cupy.asarray(self.chol_packed_chunk)
-            else:
-                self.chol_vecs_chunk = cupy.asarray(self.chol_vecs_chunk)
-        else:
-            if self.symmetry:
-                self.chol_packed = cupy.asarray(self.chol_packed)
-            else:
-                self.chol_vecs = cupy.asarray(self.chol_vecs)
-
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-        if verbose:
-            print(
-                "# hamiltonians.Generic: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        cast_to_device(self, verbose)
 
 
 def read_integrals(integral_file):

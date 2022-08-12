@@ -2,10 +2,9 @@ import numpy
 import scipy.linalg
 
 from ipie.estimators.greens_function_batch import greens_function
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
-    HarmonicOscillator
 from ipie.propagation.overlap import calc_overlap_single_det, get_calc_overlap
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import cast_to_device
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
 from ipie.walkers.walker_batch import WalkerBatch
@@ -93,34 +92,5 @@ class SingleDetWalkerBatch(WalkerBatch):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        WalkerBatch.cast_to_cupy(self, verbose)
-
-        size = self.Ga.size + self.Gb.size + self.Ghalfa.size + self.Ghalfb.size
-        size += self.ot.size
-        size += self.ovlp.size
-        if verbose:
-            expected_bytes = size * 16.0
-            print(
-                "# SingleDetWalkerBatch: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
-
-        self.ot = xp.array(self.ot)
-        self.ovlp = xp.array(self.ovlp)
-        self.Ga = xp.array(self.Ga)
-        self.Gb = xp.array(self.Gb)
-        self.Ghalfa = xp.array(self.Ghalfa)
-        self.Ghalfb = xp.array(self.Ghalfb)
-        self.ot = greens_function(self, trial)
-        self.ovlp = self.ot
-
-        # TODO should be some sort of host/device abstraction
-        free_bytes, total_bytes = xp.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-        if verbose:
-            print(
-                "# SingleDetWalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        # WalkerBatch.cast_to_cupy(self, verbose)
+        cast_to_device(self, verbose)

@@ -59,7 +59,25 @@ else:
     get_device_memory = get_cpu_free_memory
     get_host_memory = get_cpu_free_memory
 
-def cast_to_device(self):
+def cast_to_device(self, verbose=False):
+    size = 0
     for k, v in self.__dict__.items():
-        if isinstance(v, np.ndarray):
-            self.__dict__[k] = arraylib.toarray(v)
+        if isinstance(v, _np.ndarray):
+            size += v.size
+    if verbose:
+        expected_bytes = size * 16.0
+        expected_gb = expected_bytes / 1024.0**3.0
+        print(
+            f"# {self.__class__.__name_}: expected to allocate {expected_gb} GB"
+            )
+
+    for k, v in self.__dict__.items():
+        if isinstance(v, _np.ndarray):
+            self.__dict__[k] = arraylib.array(v)
+
+    used_bytes, total_bytes = get_device_memory()
+    used_gb, total_gb = used_bytes / 1024**3.0, total_bytes / 1024**3.0
+    if verbose:
+        print(
+            f"# WalkerBatch: using {used_gb} GB out of {total_gb} GB memory on GPU"
+            )

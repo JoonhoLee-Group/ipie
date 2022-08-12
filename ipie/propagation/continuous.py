@@ -14,7 +14,7 @@ from ipie.propagation.overlap import get_calc_overlap
 
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
+from ipie.utils.backend import synchronize, cast_to_device
 
 
 class Continuous(object):
@@ -88,33 +88,7 @@ class Continuous(object):
         self.tgemm = 0.0
 
     def cast_to_cupy(self, verbose=False):
-        import cupy
-
-        size = (
-            self.propagator.mf_shift.size
-            + self.propagator.vbias_batch.size
-            + self.propagator.BH1.size
-        )
-        size += 1  # for ebound
-        if verbose:
-            expected_bytes = size * 16.0  # assuming complex128
-            print(
-                "# propagators.Continuous: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
-        self.propagator.mf_shift = cupy.asarray(self.propagator.mf_shift)
-        self.propagator.vbias_batch = cupy.asarray(self.propagator.vbias_batch)
-        self.propagator.BH1 = cupy.asarray(self.propagator.BH1)
-        self.ebound = cupy.asarray(self.ebound)
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-        if verbose:
-            print(
-                "# propagators.Continuous: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        cast_to_device(self, verbose)
 
     @property
     def mf_const_fac(self):

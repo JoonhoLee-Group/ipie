@@ -4,7 +4,7 @@ import numpy
 import scipy
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host, synchronize, qr, qr_mode
+from ipie.utils.backend import to_host, synchronize, qr, qr_mode, cast_to_device
 
 
 class WalkerBatch(object):
@@ -106,49 +106,51 @@ class WalkerBatch(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        import cupy
+        cast_to_device(self, verbose)
+    # def cast_to_cupy(self, verbose=False):
+        # import cupy
 
-        size = (
-            self.weight.size
-            + self.unscaled_weight.size
-            + self.phase.size
-            + self.log_shift.size
-        )
-        size += self.phia.size
-        if self.ndown > 0 and not self.rhf:
-            size += self.phib.size
-        size += self.hybrid_energy.size
-        size += self.ovlp.size
-        size += self.sgn_ovlp.size
-        size += self.log_ovlp.size
-        if verbose:
-            expected_bytes = size * 16.0
-            print(
-                "# WalkerBatch: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
+        # size = (
+            # self.weight.size
+            # + self.unscaled_weight.size
+            # + self.phase.size
+            # + self.log_shift.size
+        # )
+        # size += self.phia.size
+        # if self.ndown > 0 and not self.rhf:
+            # size += self.phib.size
+        # size += self.hybrid_energy.size
+        # size += self.ovlp.size
+        # size += self.sgn_ovlp.size
+        # size += self.log_ovlp.size
+        # if verbose:
+            # expected_bytes = size * 16.0
+            # print(
+                # "# WalkerBatch: expected to allocate {:4.3f} GB".format(
+                    # expected_bytes / 1024**3
+                # )
+            # )
 
-        self.weight = cupy.asarray(self.weight)
-        self.unscaled_weight = cupy.asarray(self.unscaled_weight)
-        self.phase = cupy.asarray(self.phase)
-        self.log_shift = cupy.asarray(self.log_shift)
-        self.phia = cupy.asarray(self.phia)
-        if self.ndown > 0 and not self.rhf:
-            self.phib = cupy.asarray(self.phib)
-        self.hybrid_energy = cupy.asarray(self.hybrid_energy)
-        self.ovlp = cupy.asarray(self.ovlp)
-        self.sgn_ovlp = cupy.asarray(self.sgn_ovlp)
-        self.log_ovlp = cupy.asarray(self.log_ovlp)
-        self.log_shift = cupy.asarray(self.log_shift)
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-        if verbose:
-            print(
-                "# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        # self.weight = cupy.asarray(self.weight)
+        # self.unscaled_weight = cupy.asarray(self.unscaled_weight)
+        # self.phase = cupy.asarray(self.phase)
+        # self.log_shift = cupy.asarray(self.log_shift)
+        # self.phia = cupy.asarray(self.phia)
+        # if self.ndown > 0 and not self.rhf:
+            # self.phib = cupy.asarray(self.phib)
+        # self.hybrid_energy = cupy.asarray(self.hybrid_energy)
+        # self.ovlp = cupy.asarray(self.ovlp)
+        # self.sgn_ovlp = cupy.asarray(self.sgn_ovlp)
+        # self.log_ovlp = cupy.asarray(self.log_ovlp)
+        # self.log_shift = cupy.asarray(self.log_shift)
+        # free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        # used_bytes = total_bytes - free_bytes
+        # if verbose:
+            # print(
+                # "# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
+                    # used_bytes / 1024**3, total_bytes / 1024**3
+                # )
+            # )
 
     def set_buff_size_single_walker(self):
         names = []

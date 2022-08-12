@@ -14,6 +14,7 @@ from ipie.legacy.estimators.greens_function import (gab, gab_mod, gab_mod_ovlp,
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.utils.io import get_input_value, write_qmcpack_wfn
 from ipie.utils.mpi import get_shared_array
+from ipie.utils.backend import cast_to_device
 
 try:
     from ipie.lib.wicks import wicks_helper
@@ -635,74 +636,7 @@ class MultiSlater(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        import cupy
-
-        size = self.coeffs.size
-        if numpy.isrealobj(self.psi):
-            size += self.psi.size / 2.0
-        else:
-            size += self.psi.size
-        if numpy.isrealobj(self._rchola):
-            if self.chunked:
-                size += self._rchola_chunk.size / 2.0 + self._rcholb_chunk.size / 2.0
-            else:
-                size += self._rchola.size / 2.0 + self._rcholb.size / 2.0
-        else:
-            if self.chunked:
-                size += self._rchola_chunk.size + self._rcholb_chunk.size
-            else:
-                size += self._rchola.size + self._rcholb.size
-
-        if numpy.isrealobj(self._rH1a):
-            size += self._rH1a.size / 2.0 + self._rH1b.size / 2.0
-        else:
-            size += self._rH1a.size + self._rH1b.size
-
-        if type(self.G) == numpy.ndarray:
-            size += self.G.size
-        if self.Ghalf != None:
-            size += self.Ghalf[0].size + self.Ghalf[1].size
-        if self.ortho_expansion:
-            size += (
-                self.occa.size + self.occb.size
-            ) / 2.0  # to account for the fact that these are float64, not complex128
-        if verbose:
-            expected_bytes = size * 16.0
-            print(
-                "# trial_wavefunction.MultiSlater: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
-
-        self.psi = cupy.asarray(self.psi)
-        self.coeffs = cupy.asarray(self.coeffs)
-
-        if self.chunked:
-            self._rchola_chunk = cupy.asarray(self._rchola_chunk)
-            self._rcholb_chunk = cupy.asarray(self._rcholb_chunk)
-        else:
-            self._rchola = cupy.asarray(self._rchola)
-            self._rcholb = cupy.asarray(self._rcholb)
-
-        self._rH1a = cupy.asarray(self._rH1a)
-        self._rH1b = cupy.asarray(self._rH1b)
-        if type(self.G) == numpy.ndarray:
-            self.G = cupy.asarray(self.G)
-        if self.Ghalf != None:
-            self.Ghalf[0] = cupy.asarray(self.Ghalf[0])
-            self.Ghalf[1] = cupy.asarray(self.Ghalf[1])
-        if self.ortho_expansion:
-            self.occa = cupy.asarray(self.occa)
-            self.occb = cupy.asarray(self.occb)
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-
-        if verbose:
-            print(
-                "# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        cast_to_device(self, verbose)
 
     def contract_one_body(self, ints):
         numer = 0.0
