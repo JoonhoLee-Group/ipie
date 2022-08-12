@@ -5,6 +5,7 @@ import numpy
 from numba import jit
 
 from ipie.estimators.local_energy import local_energy_G
+from ipie.estimators.kernels.gpu.exchange import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
@@ -652,10 +653,11 @@ def local_energy_single_det_batch_gpu(
     chunk_size = ceil(nchol / num_chunks)
 
     # Buffer for large intermediate tensor
-    buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=complex128)
+    buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc),
+            dtype=xp.complex128)
     nchol_chunk = chunk_size
     nchol_left = nchol
-    exx = xp.zeros(nwalkers, dtype=complex128)
+    exx = xp.zeros(nwalkers, dtype=xp.complex128)
     Ghalfa = walker_batch.Ghalfa.reshape((nwalkers * nalpha, nbasis))
     Ghalfb = walker_batch.Ghalfb.reshape((nwalkers * nbeta, nbasis))
     for i in range(num_chunks):
@@ -665,16 +667,16 @@ def local_energy_single_det_batch_gpu(
         # alpha-alpha
         Txij = buff[:size].reshape((nchol_chunk * nalpha, nwalkers * nalpha))
         rchol = trial._rchola[chol_sls].reshape((nchol_chunk * nalpha, nbasis))
-        dot(rchol, Ghalfa.T, out=Txij)
+        xp.dot(rchol, Ghalfa.T, out=Txij)
         Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
-        kernels.exchange_reduction(Txij, exx)
+        exchange_reduction(Txij, exx)
         # beta-beta
         size = nwalkers * nchol_chunk * nbeta * nbeta
         Txij = buff[:size].reshape((nchol_chunk * nbeta, nwalkers * nbeta))
         rchol = trial._rcholb[chol_sls].reshape((nchol_chunk * nbeta, nbasis))
         xp.dot(rchol, Ghalfb.T, out=Txij)
         Txij = Txij.reshape((nchol_chunk, nbeta, nwalkers, nbeta))
-        kernels.exchange_reduction(Txij, exx)
+        exchange_reduction(Txij, exx)
         nchol_left -= chunk_size
 
     e2b = 0.5 * (ecoul - exx)
@@ -684,5 +686,5 @@ def local_energy_single_det_batch_gpu(
     energy[:, 1] = e1b
     energy[:, 2] = e2b
 
-    syncrhonize()
+    synchronize()
     return energy
