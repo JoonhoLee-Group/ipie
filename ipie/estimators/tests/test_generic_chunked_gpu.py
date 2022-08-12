@@ -114,8 +114,12 @@ def test_generic_chunked_gpu():
     energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(
         system, ham, walker_batch, trial
     )
+    energies_chunked_low_mem = local_energy_single_det_uhf_batch_chunked_gpu(
+        system, ham, walker_batch, trial, max_mem=1e-6
+    )
 
     assert numpy.allclose(energies_einsum, energies_chunked)
+    assert numpy.allclose(energies_einsum, energies_chunked_low_mem)
 
 
 if __name__ == "__main__":
