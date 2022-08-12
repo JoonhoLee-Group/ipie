@@ -13,25 +13,21 @@ except:
     no_gpu = True
 
 
-print("HERE")
 from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
                                              local_energy_single_det_batch_gpu)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
-print("HERE")
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-print("HERE")
 from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
                                 get_random_phmsd)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-print("HERE")
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
@@ -112,6 +108,10 @@ def test_local_energy_single_det_batch():
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
 
+
+if not no_gpu:
+    config.update_option('use_gpu', False)
+    purge_ipie_modules()
 
 if __name__ == "__main__":
     test_local_energy_single_det_batch()
