@@ -589,7 +589,7 @@ def local_energy_single_det_batch_gpu_old(system, hamiltonian, walker_batch, tri
 
 
 def local_energy_single_det_batch_gpu(
-    system, hamiltonian, walker_batch, trial, max_mem=2
+    system, hamiltonian, walker_batch, trial, max_mem=2.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -651,6 +651,7 @@ def local_energy_single_det_batch_gpu(
     mem_needed = 16 * nwalkers * max_nocc * max_nocc * nchol / (1024.0**3.0)
     num_chunks = max(1, ceil(mem_needed / max_mem))
     chunk_size = ceil(nchol / num_chunks)
+    nchol_chunks = ceil(nchol / chunk_size)
 
     # Buffer for large intermediate tensor
     buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc),
@@ -660,8 +661,8 @@ def local_energy_single_det_batch_gpu(
     exx = xp.zeros(nwalkers, dtype=xp.complex128)
     Ghalfa = walker_batch.Ghalfa.reshape((nwalkers * nalpha, nbasis))
     Ghalfb = walker_batch.Ghalfb.reshape((nwalkers * nbeta, nbasis))
-    for i in range(num_chunks):
-        nchol_chunk = min(nchol_chunk, nchol_left)
+    for i in range(nchol_chunks):
+        nchol_chunk = min(nchol_chunk_size, nchol_left)
         chol_sls = slice(i * chunk_size, i * chunk_size + nchol_chunk)
         size = nwalkers * nchol_chunk * nalpha * nalpha
         # alpha-alpha

@@ -1,12 +1,14 @@
 import time
 
 import numpy
+from math import ceil
 
 from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
                                              exx_kernel_batch_real_rchol)
+from ipie.estimators.kernels.gpu import exchange as kernels
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host
+from ipie.utils.backend import to_host, synchronize
 
 # Local energy routies for chunked (distributed) integrals. Distributed here
 # means over MPI processes with information typically residing on different
@@ -186,9 +188,33 @@ def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
     exx *= 0.5
     return exx
 
+def exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff):
+    nwalkers = Ghalfa.shape[0]
+    nalpha = Ghalfa.shape[1]
+    nbasis = Ghalfa.shape[2]
+    nchol = rchola_chunk.shape[0]
+    rchola_chunk = rchola_chunk.reshape(nchol, nalpha, nbasis)
+    exx = xp.zeros(nwalkers, dtype=numpy.complex128)
+    _Ghalfa = Ghalfa.reshape((nwalkers * nalpha, nbasis))
+    nchol_chunk_size = buff.shape[0]
+    nchol_chunks = ceil(nchol / nchol_chunk_size)
+    nchol_left = nchol
+    _buff = buff.ravel()
+    for i in range(nchol_chunks):
+        nchol_chunk = min(nchol_chunk_size, nchol_left)
+        chol_sls = slice(i * nchol_chunk_size, i * nchol_chunk_size + nchol_chunk)
+        size = nwalkers * nchol_chunk * nalpha * nalpha
+        # alpha-alpha
+        Txij = _buff[:size].reshape((nchol_chunk * nalpha, nwalkers * nalpha))
+        rchol = rchola_chunk[chol_sls].reshape((nchol_chunk * nalpha, nbasis))
+        xp.dot(rchol, _Ghalfa.T, out=Txij)
+        Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
+        kernels.exchange_reduction(Txij, exx)
+    return 0.5 * exx
+
 
 def local_energy_single_det_uhf_batch_chunked_gpu(
-    system, hamiltonian, walker_batch, trial
+    system, hamiltonian, walker_batch, trial, max_mem=2.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -238,6 +264,16 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     rchola_chunk = trial._rchola_chunk
     rcholb_chunk = trial._rcholb_chunk
 
+    # buffer for low on GPU memory usage
+    max_nchol = max(trial._rchola_chunk.shape[0], trial._rcholb_chunk.shape[0])
+    max_nocc = max(nalpha, nbeta)
+    mem_needed = 16 * nwalkers * max_nocc * max_nocc * max_nchol / (1024.0**3.0)
+    num_chunks = max(1, ceil(mem_needed / max_mem))
+    chunk_size = ceil(max_nchol / num_chunks)
+    nchol_chunks = ceil(max_nchol / chunk_size)
+    buff = zeros(shape=(chunk_size, nwalkers * max_nocc * max_nocc),
+            dtype=numpy.complex128)
+
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta * nbasis)
     ecoul_send = ecoul_kernel_batch_rchol_uhf_gpu(
@@ -245,14 +281,12 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     )
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha, nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta, nbasis)
-    exx_send = exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa)
-    exx_send += exx_kernel_batch_rchol_gpu(rcholb_chunk, Ghalfb)
+    exx_send = exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff)
+    exx_send += exx_kernel_batch_rchol_gpu_low_mem(rcholb_chunk, Ghalfb, buff)
 
     exx_recv = exx_send.copy()
     ecoul_recv = ecoul_send.copy()
 
-    # print("ecoul (initial) = {} at {}".format(ecoul_recv, handler.rank))
-    # print("exx (initial) = {} at {}".format(exx_recv, handler.rank))
 
     for icycle in range(handler.ssize - 1):
         for isend, sender in enumerate(senders):
@@ -295,8 +329,10 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
         Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha, nbasis)
         Ghalfb_recv = Ghalfb_recv.reshape(nwalkers, nbeta, nbasis)
         exx_send = exx_recv.copy()
-        exx_send += exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa_recv)
-        exx_send += exx_kernel_batch_rchol_gpu(rcholb_chunk, Ghalfb_recv)
+        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk,
+                Ghalfa_recv, buff)
+        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rcholb_chunk,
+                Ghalfb_recv, buff)
         # print("exx_recv = {} at {} in cylcle {}".format(exx_recv, handler.rank, icycle))
         # print("exx_send = {} at {} in cylcle {}".format(exx_send, handler.rank, icycle))
         Ghalfa_send = Ghalfa_recv.copy()
@@ -321,7 +357,7 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
                 exx_recv = xp.array(exx_recv)
 
     handler.scomm.barrier()
-    cupy.cuda.stream.get_current_stream().synchronize()
+    synchronize()
 
     e2b = ecoul_recv - exx_recv
 
@@ -330,7 +366,7 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     energy[:, 1] = e1b
     energy[:, 2] = e2b
 
-    cupy.cuda.stream.get_current_stream().synchronize()
+    synchronize()
 
     # print("ecoul = {} at {}".format(ecoul_recv, handler.rank))
     # print("exx = {} at {}".format(exx_recv, handler.rank))
