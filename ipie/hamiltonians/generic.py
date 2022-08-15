@@ -12,6 +12,7 @@ import time
 from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
                            write_hamiltonian,
                            read_hamiltonian)
+from ipie.utils.backend import cast_to_device
 
 
 class Generic(object):

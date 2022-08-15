@@ -711,9 +711,9 @@ class WalkerAccumulator(object):
 
     def update(self, walker_batch):
         self.buffer += numpy.array([
-                    numpy.sum(walker_batch.weight),
-                    numpy.sum(walker_batch.unscaled_weight),
-                    numpy.sum(walker_batch.weight*walker_batch.hybrid_energy)
+                    numpy.sum(to_host(walker_batch.weight)),
+                    numpy.sum(to_host(walker_batch.unscaled_weight)),
+                    numpy.sum(to_host(walker_batch.weight*walker_batch.hybrid_energy))
                     ])
 
     def zero(self):

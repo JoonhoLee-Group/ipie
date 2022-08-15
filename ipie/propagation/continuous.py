@@ -89,6 +89,7 @@ class Continuous(object):
 
     def cast_to_cupy(self, verbose=False):
         cast_to_device(self, verbose)
+        cast_to_device(self.propagator)
 
     @property
     def mf_const_fac(self):
