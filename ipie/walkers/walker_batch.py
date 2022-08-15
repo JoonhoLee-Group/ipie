@@ -194,9 +194,15 @@ class WalkerBatch(object):
                 data.size % self.nwalkers == 0
             )  # Only walker-specific data is being communicated
             if isinstance(data[iw], xp.ndarray):
-                self.__dict__[d][iw] = to_host(
-                    buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                )
+                # weights are purely real
+                if not xp.iscomplexobj(self.__dict__[d][iw]):
+                    self.__dict__[d][iw] = to_host(
+                        buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                    ).real
+                else:
+                    self.__dict__[d][iw] = to_host(
+                        buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                    )
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
