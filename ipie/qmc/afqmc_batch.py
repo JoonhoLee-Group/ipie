@@ -10,6 +10,8 @@ from math import exp
 import h5py
 import numpy
 
+from ipie.config import config
+
 from ipie.estimators.handler import EstimatorHandler
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.hamiltonians.utils import get_hamiltonian
@@ -161,18 +163,10 @@ class AFQMCBatch(object):
             )
 
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
-        if self.qmc.gpu:
-            try:
-                import cupy
-
-                assert cupy.is_available()
-            except:
-                if comm.rank == 0:
-                    print("# cupy is unavailble but GPU calculation is requested")
-                exit()
-            ngpus = cupy.cuda.runtime.getDeviceCount()
-            props = cupy.cuda.runtime.getDeviceProperties(0)
-            cupy.cuda.runtime.setDevice(self.shared_comm.rank)
+        if config.get_option('use_gpu'):
+            ngpus = xp.cuda.runtime.getDeviceCount()
+            props = xp.cuda.runtime.getDeviceProperties(0)
+            xp.cuda.runtime.setDevice(self.shared_comm.rank)
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
@@ -181,6 +175,7 @@ class AFQMCBatch(object):
                             comm.size, ngpus
                         )
                     )
+
 
         if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
@@ -297,21 +292,11 @@ class AFQMCBatch(object):
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
 
-        if self.qmc.gpu:
-            if comm.rank == 0:
-                print("# Casting numpy arrays to cupy arrays")
-            if comm.rank == 0:
-                print("# Casting arrays in propagators")
-            self.propagators.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in hamiltonian")
-            self.hamiltonian.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in trial")
-            self.trial.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in walkers_batch")
-            self.psi.walkers_batch.cast_to_cupy(verbose)
+        if config.get_option('use_gpu'):
+            self.propagators.cast_to_cupy(verbose and comm.rank == 0)
+            self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
+            self.trial.cast_to_cupy(verbose and comm.rank == 0)
+            self.psi.walkers_batch.cast_to_cupy(verbose and comm.rank == 0)
 
         if comm.rank == 0:
             mem_avail = get_host_memory()
