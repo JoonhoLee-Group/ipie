@@ -103,7 +103,6 @@ class WalkerBatch(object):
         self.buff_size = round(
             self.set_buff_size_single_walker() / float(self.nwalkers)
         )
-        print(self.buff_size, self.nwalkers)
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
