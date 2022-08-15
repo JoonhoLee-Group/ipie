@@ -1,8 +1,10 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function_batch import \
-    greens_function_single_det_batch
+from ipie.estimators.greens_function_batch import (
+        greens_function_single_det_batch,
+        greens_function_single_det
+        )
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.multi_det import MultiDetWalker
@@ -183,6 +185,7 @@ def test_two_body_rhf_batch():
     walker_batch = SingleDetWalkerBatch(
         system, ham, trial, nwalkers, walker_opts=walker_opts
     )
+    greens_function_single_det(walker_batch, trial)
     for i in range(nsteps):
         prop.two_body_propagator_batch(walker_batch, system, ham, trial)
         detR = walker_batch.reortho()  # reorthogonalizing to stablize
@@ -237,6 +240,7 @@ def test_two_body_batch():
     prop = Continuous(system, ham, trial, qmc, options=options)
 
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    greens_function_single_det(walker_batch, trial)
     for i in range(nsteps):
         prop.two_body_propagator_batch(walker_batch, system, ham, trial)
         detR = walker_batch.reortho()  # reorthogonalizing to stablize
