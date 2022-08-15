@@ -216,7 +216,10 @@ class Generic(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
+        tmp = self.chol_vecs.copy()
+        self.chol_vecs = None
         cast_to_device(self, verbose)
+        self.chol_vecs = tmp
 
 
 def read_integrals(integral_file):
