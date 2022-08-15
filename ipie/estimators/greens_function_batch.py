@@ -94,7 +94,7 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
         ovlp = xp.dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
         ovlp_inv = xp.linalg.inv(ovlp)
         walker_batch.Ghalfa[iw] = xp.dot(ovlp_inv, walker_batch.phia[iw].T)
-        if not trial.half_rotated:
+        if not trial.half_rotated or build_full:
             walker_batch.Ga[iw] = xp.dot(
                 trial.psi[:, nup:].conj(), walker_batch.Ghalfa[iw]
             )
@@ -104,7 +104,7 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
             ovlp = xp.dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
             sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp)
             walker_batch.Ghalfb[iw] = xp.dot(xp.linalg.inv(ovlp), walker_batch.phib[iw].T)
-            if not trial.half_rotated:
+            if not trial.half_rotated or build_full:
                 walker_batch.Gb[iw] = xp.dot(
                     trial.psi[:, nup:].conj(), walker_batch.Ghalfb[iw]
                 )
