@@ -271,7 +271,7 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     num_chunks = max(1, ceil(mem_needed / max_mem))
     chunk_size = ceil(max_nchol / num_chunks)
     nchol_chunks = ceil(max_nchol / chunk_size)
-    buff = zeros(shape=(chunk_size, nwalkers * max_nocc * max_nocc),
+    buff = xp.zeros(shape=(chunk_size, nwalkers * max_nocc * max_nocc),
             dtype=numpy.complex128)
 
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha * nbasis)
@@ -361,7 +361,7 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
     e2b = ecoul_recv - exx_recv
 
-    energy = zeros((nwalkers, 3), dtype=numpy.complex128)
+    energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = e1b + e2b
     energy[:, 1] = e1b
     energy[:, 2] = e2b
