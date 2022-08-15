@@ -4,7 +4,7 @@ from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.greens_function_batch import greens_function
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.utils.io import get_input_value
-from ipie.utils.misc import dotdict, is_cupy
+from ipie.utils.backend import arraylib as xp
 
 class EnergyEstimator(EstimatorBase):
 
@@ -39,26 +39,12 @@ class EnergyEstimator(EstimatorBase):
 
     def compute_estimator(self, system, walker_batch, hamiltonian,
             trial_wavefunction, istep=1):
-        if is_cupy(
-            walker_batch.weight
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-            assert cupy.is_available()
-            array = cupy.array
-            zeros = cupy.zeros
-            sum = cupy.sum
-            abs = cupy.abs
-        else:
-            array = np.array
-            zeros = np.zeros
-            sum = np.sum
-            abs = np.abs
         greens_function(walker_batch, trial_wavefunction)
         energy = local_energy_batch(system, hamiltonian, walker_batch, trial_wavefunction)
-        self._data['ENumer'] = sum(walker_batch.weight * energy[:,0].real)
-        self._data['EDenom'] = sum(walker_batch.weight)
-        self._data['E1Body'] = sum(walker_batch.weight * energy[:,1].real)
-        self._data['E2Body'] = sum(walker_batch.weight * energy[:,2].real)
+        self._data['ENumer'] = xp.sum(walker_batch.weight * energy[:,0].real)
+        self._data['EDenom'] = xp.sum(walker_batch.weight)
+        self._data['E1Body'] = xp.sum(walker_batch.weight * energy[:,1].real)
+        self._data['E2Body'] = xp.sum(walker_batch.weight * energy[:,2].real)
 
         return self.data
 
