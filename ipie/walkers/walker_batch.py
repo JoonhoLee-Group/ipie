@@ -4,7 +4,7 @@ import numpy
 import scipy
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host, synchronize, qr, qr_mode, cast_to_device
+from ipie.utils.backend import synchronize, qr, qr_mode, cast_to_device, to_host
 
 
 class WalkerBatch(object):
@@ -196,18 +196,28 @@ class WalkerBatch(object):
             if isinstance(data[iw], xp.ndarray):
                 # weights are purely real
                 if not xp.iscomplexobj(self.__dict__[d][iw]):
-                    self.__dict__[d][iw] = to_host(
-                        buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                    ).real
+                    if data[iw].size == 1:
+                        self.__dict__[d][iw] = (
+                                buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        ).real
+                    else:
+                        self.__dict__[d][iw] = xp.asarray(
+                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        ).real
                 else:
-                    self.__dict__[d][iw] = to_host(
-                        buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                    )
+                    if data[iw].size == 1:
+                        self.__dict__[d][iw] = (
+                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        )
+                    else:
+                        self.__dict__[d][iw] = xp.asarray(
+                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        )
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
                     if isinstance(l, (xp.ndarray)):
-                        self.__dict__[d][iw][ix] = to_host(
+                        self.__dict__[d][iw][ix] = xp.asarray(
                             buff[s : s + l.size].reshape(l.shape).copy()
                         )
                         s += l.size
