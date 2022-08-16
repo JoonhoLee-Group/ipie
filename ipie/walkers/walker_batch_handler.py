@@ -9,9 +9,8 @@ import numpy
 import scipy.linalg
 from mpi4py import MPI
 
-from ipie.utils.backend import to_host
-from ipie.utils.backend import arraylib as xp
 from ipie.utils.io import get_input_value, format_fixed_width_floats
+from ipie.utils.misc import is_cupy, update_stack
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
@@ -223,11 +222,17 @@ class WalkerBatchHandler(object):
         self.send_time += time.time() - self.start_time_const
 
     def pop_control(self, comm):
+        if is_cupy(self.walkers_batch.weight):
+            import cupy
+
+            array = cupy.asnumpy
+        else:
+            array = numpy.array
 
         self.start_time()
         if self.ntot_walkers == 1:
             return
-        weights = numpy.abs(to_host(self.walkers_batch.weight))
+        weights = numpy.abs(array(self.walkers_batch.weight))
         global_weights = numpy.empty(len(weights) * comm.size)
         self.add_non_communication()
         self.start_time()
@@ -284,6 +289,13 @@ class WalkerBatchHandler(object):
         # walker objects in memory. We don't want future changes in a given
         # element of psi having unintended consequences.
         # todo : add phase to walker for free projection
+        if is_cupy(self.walkers_batch.weight):
+            import cupy
+
+            array = cupy.asnumpy
+        else:
+            array = numpy.array
+
         self.start_time()
         if comm.rank == 0:
             parent_ix = numpy.zeros(len(weights), dtype="i")
@@ -382,8 +394,17 @@ class WalkerBatchHandler(object):
         self.add_non_communication()
 
     def pair_branch_fast(self, comm):
+        if is_cupy(self.walkers_batch.weight):
+            import cupy
+
+            abs = cupy.abs
+            array = cupy.asnumpy
+        else:
+            abs = numpy.abs
+            array = numpy.array
+
         self.start_time()
-        walker_info_0 = to_host(xp.abs(self.walkers_batch.weight))
+        walker_info_0 = array(abs(self.walkers_batch.weight))
         self.add_non_communication()
 
         self.start_time()
@@ -517,7 +538,7 @@ class WalkerBatchHandler(object):
     def pair_branch(self, comm):
         self.start_time()
         walker_info = [
-            [xp.abs(self.walkers_batch.weight[w]), 1, comm.rank, comm.rank]
+            [abs(self.walkers_batch.weight[w]), 1, comm.rank, comm.rank]
             for w in range(self.walkers_batch.nwalkers)
         ]
         self.add_non_communication()
@@ -609,10 +630,19 @@ class WalkerBatchHandler(object):
         self.add_communication()
 
     def stochastic_reconfiguration(self, comm):
+        if is_cupy(self.walkers_batch.weight):
+            import cupy
+
+            abs = cupy.abs
+            array = cupy.asnumpy
+        else:
+            abs = numpy.abs
+            array = numpy.array
+
         # gather all walker information on the root
         self.start_time()
         nwalkers = self.walkers_batch.nwalkers
-        local_buffer = to_host(
+        local_buffer = array(
             [self.walkers_batch.get_buffer(i) for i in range(nwalkers)]
         )
         walker_len = local_buffer[0].shape[0]
@@ -634,7 +664,7 @@ class WalkerBatchHandler(object):
             new_global_buffer = numpy.zeros(
                 (comm.size, nwalkers, walker_len), dtype=numpy.complex128
             )
-            cumulative_weights = numpy.cumsum(xp.abs(global_buffer[:, :, 0]))
+            cumulative_weights = numpy.cumsum(abs(global_buffer[:, :, 0]))
             total_weight = cumulative_weights[-1]
             new_average_weight = total_weight / nwalkers / comm.size
             zeta = numpy.random.rand()
@@ -711,9 +741,9 @@ class WalkerAccumulator(object):
 
     def update(self, walker_batch):
         self.buffer += numpy.array([
-                    numpy.sum(to_host(walker_batch.weight)),
-                    numpy.sum(to_host(walker_batch.unscaled_weight)),
-                    numpy.sum(to_host(walker_batch.weight*walker_batch.hybrid_energy))
+                    numpy.sum(walker_batch.weight.get()),
+                    numpy.sum(walker_batch.unscaled_weight.get()),
+                    numpy.sum(walker_batch.weight.get()*walker_batch.hybrid_energy.get())
                     ])
 
     def zero(self):

@@ -5,6 +5,8 @@ import scipy
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, qr, qr_mode, cast_to_device, to_host
+from ipie.utils.misc import is_cupy
+
 
 
 class WalkerBatch(object):
@@ -106,7 +108,49 @@ class WalkerBatch(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        cast_to_device(self, verbose)
+        import cupy
+
+        size = (
+            self.weight.size
+            + self.unscaled_weight.size
+            + self.phase.size
+            + self.log_shift.size
+        )
+        size += self.phia.size
+        if self.ndown > 0 and not self.rhf:
+            size += self.phib.size
+        size += self.hybrid_energy.size
+        size += self.ovlp.size
+        size += self.sgn_ovlp.size
+        size += self.log_ovlp.size
+        if verbose:
+            expected_bytes = size * 16.0
+            print(
+                "# WalkerBatch: expected to allocate {:4.3f} GB".format(
+                    expected_bytes / 1024**3
+                )
+            )
+
+        self.weight = cupy.asarray(self.weight)
+        self.unscaled_weight = cupy.asarray(self.unscaled_weight)
+        self.phase = cupy.asarray(self.phase)
+        self.log_shift = cupy.asarray(self.log_shift)
+        self.phia = cupy.asarray(self.phia)
+        if self.ndown > 0 and not self.rhf:
+            self.phib = cupy.asarray(self.phib)
+        self.hybrid_energy = cupy.asarray(self.hybrid_energy)
+        self.ovlp = cupy.asarray(self.ovlp)
+        self.sgn_ovlp = cupy.asarray(self.sgn_ovlp)
+        self.log_ovlp = cupy.asarray(self.log_ovlp)
+        self.log_shift = cupy.asarray(self.log_shift)
+        free_bytes, total_bytes = cupy.cuda.Device().mem_info
+        used_bytes = total_bytes - free_bytes
+        if verbose:
+            print(
+                "# WalkerBatch: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
+                    used_bytes / 1024**3, total_bytes / 1024**3
+                )
+            )
 
     def set_buff_size_single_walker(self):
         names = []
@@ -133,9 +177,112 @@ class WalkerBatch(object):
                         size += 1
         return size
 
+    # def get_buffer(self, iw):
+        # """Get iw-th walker buffer for MPI communication
+
+        # iw : int
+            # the walker index of interest
+        # Returns
+        # -------
+        # buff : dict
+            # Relevant walker information for population control.
+        # """
+        # s = 0
+        # buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+        # for d in self.buff_names:
+            # data = self.__dict__[d]
+            # if data is None:
+                # continue
+            # assert (
+                # data.size % self.nwalkers == 0
+            # )  # Only walker-specific data is being communicated
+            # if isinstance(data[iw], (xp.ndarray)):
+                # buff[s : s + data[iw].size] = to_host(data[iw].ravel())
+                # s += data[iw].size
+            # elif isinstance(data[iw], list):  # when data is list
+                # for l in data[iw]:
+                    # if isinstance(l, (xp.ndarray)):
+                        # buff[s : s + l.size] = to_host(l.ravel())
+                        # s += l.size
+                    # elif isinstance(
+                        # l, (int, float, complex, numpy.float64, numpy.complex128)
+                    # ):
+                        # buff[s : s + 1] = l
+                        # s += 1
+            # else:
+                # buff[s : s + 1] = to_host(data[iw])
+                # s += 1
+        # if self.field_configs is not None:
+            # stack_buff = self.field_configs.get_buffer()
+            # return numpy.concatenate((buff, stack_buff))
+        # elif self.stack is not None:
+            # stack_buff = self.stack.get_buffer()
+            # return numpy.concatenate((buff, stack_buff))
+        # else:
+            # return buff
+
+    # def set_buffer(self, iw, buff):
+        # """Set walker buffer following MPI communication
+
+        # Parameters
+        # -------
+        # buff : dict
+            # Relevant walker information for population control.
+        # """
+        # s = 0
+        # for d in self.buff_names:
+            # data = self.__dict__[d]
+            # if data is None:
+                # continue
+            # assert (
+                # data.size % self.nwalkers == 0
+            # )  # Only walker-specific data is being communicated
+            # if isinstance(data[iw], xp.ndarray):
+                # # weights are purely real
+                # if not xp.iscomplexobj(self.__dict__[d][iw]):
+                    # if data[iw].size == 1:
+                        # self.__dict__[d][iw] = (
+                                # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # ).real
+                    # else:
+                        # self.__dict__[d][iw] = xp.asarray(
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # ).real
+                # else:
+                    # if data[iw].size == 1:
+                        # self.__dict__[d][iw] = (
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # )
+                    # else:
+                        # self.__dict__[d][iw] = xp.asarray(
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # )
+                # s += data[iw].size
+            # elif isinstance(data[iw], list):
+                # for ix, l in enumerate(data[iw]):
+                    # if isinstance(l, (xp.ndarray)):
+                        # self.__dict__[d][iw][ix] = xp.asarray(
+                            # buff[s : s + l.size].reshape(l.shape).copy()
+                        # )
+                        # s += l.size
+                    # elif isinstance(l, (int, float, complex)):
+                        # self.__dict__[d][iw][ix] = buff[s]
+                        # s += 1
+            # else:
+                # if isinstance(self.__dict__[d][iw], (int, numpy.int64)):
+                    # self.__dict__[d][iw] = int(buff[s].real)
+                # elif isinstance(self.__dict__[d][iw], (float, numpy.float64)):
+                    # self.__dict__[d][iw] = buff[s].real
+                # else:
+                    # self.__dict__[d][iw] = buff[s]
+                # s += 1
+        # if self.field_configs is not None:
+            # self.field_configs.set_buffer(buff[self.buff_size :])
+        # if self.stack is not None:
+            # self.stack.set_buffer(buff[self.buff_size :])
+
     def get_buffer(self, iw):
         """Get iw-th walker buffer for MPI communication
-
         iw : int
             the walker index of interest
         Returns
@@ -143,6 +290,17 @@ class WalkerBatch(object):
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+
+            ndarray = cupy.ndarray
+            array = cupy.asnumpy
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.array
+            isrealobj = numpy.isrealobj
+
         s = 0
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
@@ -152,13 +310,13 @@ class WalkerBatch(object):
             assert (
                 data.size % self.nwalkers == 0
             )  # Only walker-specific data is being communicated
-            if isinstance(data[iw], (xp.ndarray)):
-                buff[s : s + data[iw].size] = to_host(data[iw].ravel())
+            if isinstance(data[iw], (ndarray)):
+                buff[s : s + data[iw].size] = array(data[iw].ravel())
                 s += data[iw].size
             elif isinstance(data[iw], list):  # when data is list
                 for l in data[iw]:
-                    if isinstance(l, (xp.ndarray)):
-                        buff[s : s + l.size] = to_host(l.ravel())
+                    if isinstance(l, (ndarray)):
+                        buff[s : s + l.size] = array(l.ravel())
                         s += l.size
                     elif isinstance(
                         l, (int, float, complex, numpy.float64, numpy.complex128)
@@ -166,7 +324,7 @@ class WalkerBatch(object):
                         buff[s : s + 1] = l
                         s += 1
             else:
-                buff[s : s + 1] = to_host(data[iw])
+                buff[s : s + 1] = array(data[iw])
                 s += 1
         if self.field_configs is not None:
             stack_buff = self.field_configs.get_buffer()
@@ -179,12 +337,22 @@ class WalkerBatch(object):
 
     def set_buffer(self, iw, buff):
         """Set walker buffer following MPI communication
-
         Parameters
         -------
         buff : dict
             Relevant walker information for population control.
         """
+        if is_cupy(self.weight):
+            import cupy
+
+            ndarray = cupy.ndarray
+            array = cupy.asarray
+            isrealobj = cupy.isrealobj
+        else:
+            ndarray = numpy.ndarray
+            array = numpy.asarray
+            isrealobj = numpy.isrealobj
+
         s = 0
         for d in self.buff_names:
             data = self.__dict__[d]
@@ -193,31 +361,15 @@ class WalkerBatch(object):
             assert (
                 data.size % self.nwalkers == 0
             )  # Only walker-specific data is being communicated
-            if isinstance(data[iw], xp.ndarray):
-                # weights are purely real
-                if not xp.iscomplexobj(self.__dict__[d][iw]):
-                    if data[iw].size == 1:
-                        self.__dict__[d][iw] = (
-                                buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                        ).real
-                    else:
-                        self.__dict__[d][iw] = xp.asarray(
-                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                        ).real
-                else:
-                    if data[iw].size == 1:
-                        self.__dict__[d][iw] = (
-                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                        )
-                    else:
-                        self.__dict__[d][iw] = xp.asarray(
-                            buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-                        )
+            if isinstance(data[iw], ndarray):
+                self.__dict__[d][iw] = array(
+                    buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                )
                 s += data[iw].size
             elif isinstance(data[iw], list):
                 for ix, l in enumerate(data[iw]):
-                    if isinstance(l, (xp.ndarray)):
-                        self.__dict__[d][iw][ix] = xp.asarray(
+                    if isinstance(l, (ndarray)):
+                        self.__dict__[d][iw][ix] = array(
                             buff[s : s + l.size].reshape(l.shape).copy()
                         )
                         s += l.size
@@ -236,6 +388,7 @@ class WalkerBatch(object):
             self.field_configs.set_buffer(buff[self.buff_size :])
         if self.stack is not None:
             self.stack.set_buffer(buff[self.buff_size :])
+
 
     def reortho(self):
         """reorthogonalise walkers.
