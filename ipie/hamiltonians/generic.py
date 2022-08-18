@@ -177,16 +177,16 @@ class Generic(object):
         self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
 
         if self.symmetry:
-            if handler.srank == 0:  # creating copies for every rank = 0!!!!
-                self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
+            # if handler.srank == 0:  # creating copies for every rank = 0!!!!
+            self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
             handler.comm.barrier()
 
             self.chol_packed_chunk = handler.scatter_group(
                 self.chol_packed
             )  # distribute over chol
 
-            if handler.srank == 0:
-                self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
+            # if handler.srank == 0:
+            self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
             handler.comm.barrier()
 
             self.chol_packed_chunk = (
@@ -194,18 +194,19 @@ class Generic(object):
             )  # [M^2, chol_chunk]
 
             tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
+
             assert self.chol_packed.size == tot_size
         else:
-            if handler.comm.rank == 0:
-                self.chol_vecs = self.chol_vecs.T.copy()  # [chol, M^2]
+            # if handler.comm.rank == 0:
+            self.chol_vecs = self.chol_vecs.T.copy()  # [chol, M^2]
             handler.comm.barrier()
 
             self.chol_vecs_chunk = handler.scatter_group(
                 self.chol_vecs
             )  # distribute over chol
 
-            if handler.comm.rank == 0:
-                self.chol_vecs = self.chol_vecs.T.copy()  # [M^2, chol]
+            # if handler.comm.rank == 0:
+            self.chol_vecs = self.chol_vecs.T.copy()  # [M^2, chol]
             handler.comm.barrier()
 
             self.chol_vecs_chunk = self.chol_vecs_chunk.T.copy()  # [M^2, chol_chunk]
