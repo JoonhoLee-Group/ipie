@@ -1,6 +1,9 @@
-import cupy as cp
-import numba
-from numba import cuda
+try:
+    import cupy as cp
+    import numba
+    from numba import cuda
+except ModuleNotFoundError:
+    pass
 
 _block_size = 512  #
 
