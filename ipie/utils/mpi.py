@@ -1,8 +1,16 @@
 """MPI Helper functions."""
-import bigmpi4py as BM
 import numpy
 from mpi4py import MPI
 
+def make_splits_displacements (ntotal, nsplit):
+    nt = int(ntotal // nsplit)
+    split_sizes_t = numpy.array([nt for i in range(nsplit)])
+    residual = ntotal - nt * nsplit
+    for i in range(residual):
+        split_sizes_t[nsplit-1-i] += 1
+    displacements_t = numpy.insert(numpy.cumsum(split_sizes_t),0,0)[0:-1]
+    assert(numpy.sum(split_sizes_t) == ntotal)
+    return split_sizes_t, displacements_t
 
 class MPIHandler(object):
     def __init__(self, comm, options={}, verbose=False):
@@ -46,13 +54,26 @@ class MPIHandler(object):
         assert self.srank == self.scomm.Get_rank()
 
     def scatter_group(self, array, root=0):  # scatter within a group
-        return BM.scatter(array, self.scomm, root=0)
+        ntotal = len(array)
+        nsplit = self.ssize
+        split_sizes, displacements = make_splits_displacements (ntotal, nsplit)
+        if isinstance(array,list):
+            if isinstance(array[0], int):
+                my_array = numpy.zeros(split_sizes[self.srank],dtype=numpy.int64)
+                tmp = numpy.array(array)
+                self.scomm.Scatterv([tmp, split_sizes, displacements, MPI.INT64_T], my_array, root)
+        elif isinstance(array, numpy.ndarray):
+            if len(array.shape) == 2:
+                ncols = array.shape[1]
+                my_array = numpy.zeros((split_sizes[self.srank],ncols),dtype=array.dtype)
+                self.scomm.Scatterv([array, split_sizes*ncols, displacements*ncols, MPI.DOUBLE], my_array, root)
+        else:
+            print("scatter_group not yet implemented for this array type")
+            exit()
+        return my_array
 
-    def allreduce_group(self, array, root=0):  # scatter within a group
+    def allreduce_group(self, array, root=0):  # allreduce within a group
         return self.scomm.allreduce(array, op=MPI.SUM)
-
-    def scatter(self, array, root=0):  # scatter globally
-        return BM.scatter(array, self.comm, root=0)
 
 
 def get_shared_comm(comm, verbose=False):

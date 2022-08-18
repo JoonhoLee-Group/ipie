@@ -77,7 +77,7 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
             print("nsamples, tac = {}, {}".format(n, tac))
 
     # block_size = int(numpy.round(numpy.max(tacs)))
-    block_size = int(numpy.round(tacs[0])) # should take the one with the largest sample size
+    block_size = int(numpy.ceil(tacs[0])) # should take the one with the largest sample size
     nblocks = len(y) // block_size
     yblocked = []
 

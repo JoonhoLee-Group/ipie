@@ -10,7 +10,7 @@ import scipy.linalg
 from mpi4py import MPI
 
 from ipie.utils.io import get_input_value, format_fixed_width_floats
-from ipie.utils.misc import is_cupy, update_stack
+from ipie.utils.misc import is_cupy, update_stack, to_numpy
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
