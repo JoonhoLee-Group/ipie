@@ -5,8 +5,11 @@ from math import ceil
 
 from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
                                              exx_kernel_batch_real_rchol)
-from ipie.estimators.kernels.gpu import exchange as kernels
 from ipie.utils.misc import is_cupy
+try:
+    from ipie.estimators.kernels.gpu import exchange as kernels
+except ModuleNoteFoundError:
+    kernels = None
 
 
 # Local energy routies for chunked (distributed) integrals. Distributed here
