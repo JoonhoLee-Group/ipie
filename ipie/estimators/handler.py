@@ -18,6 +18,9 @@ from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.utils.io import get_input_value, format_fixed_width_strings
 
+from ipie.utils.misc import is_cupy
+
+
 # Some supported (non-custom) estimators
 _predefined_estimators = {
         'energy': EnergyEstimator,
@@ -195,7 +198,7 @@ class EstimatorHandler(object):
         for k, e in self.items():
             e.compute_estimator(system, walker_batch, hamiltonian, trial)
             start = offset + self.get_offset(k)
-            end = start + self[k].size
+            end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data
 
     def print_block(self, comm, block, walker_factors, div_factor=None):
@@ -211,7 +214,7 @@ class EstimatorHandler(object):
         for k, e in self.items():
             if comm.rank == 0:
                 start = offset + self.get_offset(k)
-                end = start + self[k].size
+                end = start + int(self[k].size)
                 est_data = self.global_estimates[start:end]
                 e.post_reduce_hook(est_data)
                 est_string = e.data_to_text(est_data)

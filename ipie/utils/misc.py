@@ -17,6 +17,15 @@ def is_cupy(obj):
     cond = "cupy" in t
     return cond
 
+def to_numpy(obj):
+    t = str(type(obj))
+    cond = "cupy" in t
+    if cond:
+        import cupy
+        return cupy.asnumpy(obj)
+    else:
+        return obj
+
 
 def get_git_info():
     """Return git info.

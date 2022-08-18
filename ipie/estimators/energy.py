@@ -4,7 +4,7 @@ from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.greens_function_batch import greens_function
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.utils.io import get_input_value
-from ipie.utils.misc import dotdict, is_cupy
+from ipie.utils.misc import dotdict, is_cupy, to_numpy
 
 class EnergyEstimator(EstimatorBase):
 
@@ -55,11 +55,10 @@ class EnergyEstimator(EstimatorBase):
             abs = np.abs
         greens_function(walker_batch, trial_wavefunction)
         energy = local_energy_batch(system, hamiltonian, walker_batch, trial_wavefunction)
-        self._data['ENumer'] = sum(walker_batch.weight * energy[:,0].real)
-        self._data['EDenom'] = sum(walker_batch.weight)
-        self._data['E1Body'] = sum(walker_batch.weight * energy[:,1].real)
-        self._data['E2Body'] = sum(walker_batch.weight * energy[:,2].real)
-
+        self._data['ENumer'] = to_numpy(sum(walker_batch.weight * energy[:,0].real))
+        self._data['EDenom'] = to_numpy(sum(walker_batch.weight))
+        self._data['E1Body'] = to_numpy(sum(walker_batch.weight * energy[:,1].real))
+        self._data['E2Body'] = to_numpy(sum(walker_batch.weight * energy[:,2].real))
         return self.data
 
     def get_index(self, name):
