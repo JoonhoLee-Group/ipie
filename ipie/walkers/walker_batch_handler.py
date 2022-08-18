@@ -740,11 +740,18 @@ class WalkerAccumulator(object):
         self._eshift = 0.0
 
     def update(self, walker_batch):
-        self.buffer += numpy.array([
-                    numpy.sum(to_numpy(walker_batch.weight)),
-                    numpy.sum(to_numpy(walker_batch.unscaled_weight)),
-                    numpy.sum(to_numpy(walker_batch.weight*walker_batch.hybrid_energy))
-                    ])
+        if is_cupy(walker_batch.weight):
+            import cupy
+            sum = cupy.sum
+            array = cupy.array
+        else:
+            sum = numpy.sum
+            array = numpy.array
+
+        self.buffer += to_numpy(array([
+                        sum(walker_batch.weight),
+                        sum(walker_batch.unscaled_weight),
+                        sum(walker_batch.weight*walker_batch.hybrid_energy)]))
 
     def zero(self):
         self.buffer.fill(0.0j)
