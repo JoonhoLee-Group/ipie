@@ -500,9 +500,14 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
             s1e = mol.intor("int1e_ovlp_sph")
             X = get_ortho_ao(s1e)
         if base == "mcscf":
-            ci_coeffs =  fh5['mcscf/ci_coeffs'][:]
-            occa =  fh5['mcscf/occs_alpha'][:]
-            occb =  fh5['mcscf/occs_beta'][:]
+            try:
+               ci_coeffs =  fh5['mcscf/ci_coeffs'][:]
+               occa =  fh5['mcscf/occs_alpha'][:]
+               occb =  fh5['mcscf/occs_beta'][:]
+            except KeyError:
+               ci_coeffs = None
+               occa = None
+               occb = None
     mo_occ = lib.chkfile.load(chkfile, base + "/mo_occ")
     mo_coeff = lib.chkfile.load(chkfile, base + "/mo_coeff")
     scf_data = {
