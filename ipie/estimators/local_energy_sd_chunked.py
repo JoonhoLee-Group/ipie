@@ -8,7 +8,7 @@ from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
 from ipie.utils.misc import is_cupy
 try:
     from ipie.estimators.kernels.gpu import exchange as kernels
-except ModuleNoteFoundError:
+except ModuleNotFoundError:
     kernels = None
 
 
