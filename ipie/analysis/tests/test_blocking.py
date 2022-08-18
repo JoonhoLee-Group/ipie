@@ -65,7 +65,8 @@ def test_analyse_estimates():
             )
     assert np.allclose(
             data['ETotal_ac'].values,
-            [4.832190780587988e-01]
+            #[4.832190780587988e-01] # old reblock results
+            [4.830773191766473E-01]
             )
     assert np.allclose(
             data['ETotal_error'].values[0],
@@ -73,7 +74,8 @@ def test_analyse_estimates():
             )
     assert np.allclose(
             data['ETotal_error_ac'].values,
-            [1.301950758507343e-02]
+            #[1.301950758507343e-02] # old reblock results
+            [1.257340745340220E-02]
             )
 
 @pytest.mark.unit
@@ -106,11 +108,13 @@ def test_analyse_estimates_textfile():
 
     assert np.allclose(
             data['ETotal_ac'].values,
-            [4.832190780587988e-01]
+            #[4.832190780587988e-01]
+            [4.830773191766062E-01]
             )
     assert np.allclose(
             data['ETotal_error_ac'].values,
-            [1.301950758507343e-02]
+            #[1.301950758507343e-02]
+            [1.257340745340048E-02]
             )
 
 def teardown_module():

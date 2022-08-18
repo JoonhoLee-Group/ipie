@@ -73,7 +73,7 @@ def parse_args(args):
 
     options = parser.parse_args(args)
 
-    if options.nalpha == 0 and options.nbeta == 0
+    if options.nalpha == 0 and options.nbeta == 0:
         parser.print_help()
         sys.exit(1)
 
