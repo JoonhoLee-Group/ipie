@@ -380,7 +380,7 @@ class Continuous(object):
         -------
         """
         if is_cupy(
-            self.psi.walkers_batch.phia
+            walker_batch.phia
         ):
             gpu = True
         else:
