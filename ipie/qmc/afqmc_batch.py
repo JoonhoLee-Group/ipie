@@ -15,7 +15,7 @@ from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.utils import get_propagator_driver
 from ipie.qmc.options import QMCOpts
-from ipie.qmc.utils import set_rng_seed
+from ipie.qmc.utils import set_rng_seed, gpu_synchronize
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
@@ -353,6 +353,7 @@ class AFQMCBatch(object):
             sum = cupy.sum
             min = cupy.min
             clip = cupy.clip
+            gpu = True
         else:
             zeros = numpy.zeros
             ndarray = numpy.ndarray
@@ -361,6 +362,7 @@ class AFQMCBatch(object):
             sum = numpy.sum
             min = numpy.min
             clip = numpy.clip
+            gpu = False
 
         # import warnings
         # warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
@@ -422,6 +424,8 @@ class AFQMCBatch(object):
                     a_max=wbound,
                     out=self.psi.walkers_batch.weight,
                 )  # in-place clipping
+    
+            gpu_synchronize(gpu)
             self.tprop_clip += time.time() - start_clip
 
             start_barrier = time.time()
@@ -433,6 +437,8 @@ class AFQMCBatch(object):
             if step % self.qmc.npop_control == 0:
                 start = time.time()
                 self.psi.pop_control(comm)
+                if gpu:
+                    cupy.cuda.stream.get_current_stream().synchronize()
                 self.tpopc += time.time() - start
                 self.tpopc_send = self.psi.send_time
                 self.tpopc_recv = self.psi.recv_time
@@ -440,7 +446,10 @@ class AFQMCBatch(object):
                 self.tpopc_non_comm = self.psi.non_communication_time
 
             # accumulate weight, hybrid energy etc. across block
+            start = time.time()
             self.psi.update_accumulators()
+            gpu_synchronize(gpu)
+            self.testim += time.time() - start # we dump this time into estimator
             # calculate estimators
             start = time.time()
             if step % self.qmc.nsteps == 0:
@@ -456,6 +465,7 @@ class AFQMCBatch(object):
                         self.psi.accumulator_factors
                         )
                 self.psi.zero_accumulators()
+            gpu_synchronize(gpu)
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
@@ -463,6 +473,7 @@ class AFQMCBatch(object):
                 eshift = self.psi.accumulator_factors.eshift
             else:
                 eshift += self.psi.accumulator_factors.eshift - eshift
+            gpu_synchronize(gpu)
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):
