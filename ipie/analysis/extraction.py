@@ -65,7 +65,7 @@ def extract_data_from_textfile(filename):
             if start_collecting and 'End Time' not in line:
                 data = [float(s) for s in line.split()]
                 output.append(data)
-            if 'Iteration' in line and ':' not in line:
+            if ('Iteration' in line or 'Block' in line) and ':' not in line:
                 header = line.split()
                 start_collecting = True
     data = numpy.array(output)
