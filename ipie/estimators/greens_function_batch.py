@@ -17,6 +17,9 @@ from numba import jit
 
 from ipie.estimators.kernels.cpu import wicks as wk
 
+def compute_greens_function(walker_batch, trial):
+    compute_gf = get_greens_function(trial)
+    return compute_gf(walker_batch,trial)
 
 # Later we will add walker kinds as an input too
 def get_greens_function(trial):
