@@ -5,7 +5,7 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.estimators.greens_function_batch import compute_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.propagation.generic import GenericContinuous
@@ -49,7 +49,7 @@ class Continuous(object):
         )
 
         self.calc_overlap = get_calc_overlap(trial)
-        self.compute_greens_function = get_greens_function(trial)
+        # self.compute_greens_function = get_greens_function(trial)
 
         assert self.hybrid
         if verbose:
@@ -388,7 +388,7 @@ class Continuous(object):
 
         gpu_synchronize(gpu)
         start_time = time.time()
-        ovlp = self.compute_greens_function(walker_batch, trial)
+        ovlp = compute_greens_function(walker_batch, trial)
         gpu_synchronize(gpu)
         self.tgf += time.time() - start_time
 
