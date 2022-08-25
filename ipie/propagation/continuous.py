@@ -5,13 +5,14 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.estimators.greens_function_batch import compute_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.propagation.generic import GenericContinuous
 from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import is_cupy
+from ipie.qmc.utils import gpu_synchronize
 
 
 class Continuous(object):
@@ -48,7 +49,7 @@ class Continuous(object):
         )
 
         self.calc_overlap = get_calc_overlap(trial)
-        self.compute_greens_function = get_greens_function(trial)
+        # self.compute_greens_function = get_greens_function(trial)
 
         assert self.hybrid
         if verbose:
@@ -150,11 +151,13 @@ class Continuous(object):
             copyto = cupy.copyto
             zeros = cupy.zeros
             einsum = cupy.einsum
+            gpu = True
         else:
             copy = numpy.copy
             copyto = numpy.copyto
             zeros = numpy.zeros
             einsum = numpy.einsum
+            gpu = False
 
         if debug:
             copy = numpy.copy(phi)
@@ -173,11 +176,8 @@ class Continuous(object):
                 for n in range(1, self.exp_nmax + 1):
                     Temp[iw] = VHS[iw].dot(Temp[iw]) / n
                     phi[iw] += Temp[iw]
-
-        if is_cupy(VHS):
-            import cupy
-
-            cupy.cuda.stream.get_current_stream().synchronize()
+        
+        gpu_synchronize(gpu)
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
@@ -207,10 +207,12 @@ class Continuous(object):
             copy = cupy.copy
             copyto = cupy.copyto
             zeros = cupy.zeros
+            gpu = True
         else:
             copy = numpy.copy
             copyto = numpy.copyto
             zeros = numpy.zeros
+            gpu = False
 
         if debug:
             copy = numpy.copy(phi)
@@ -224,12 +226,7 @@ class Continuous(object):
             Temp = VHS.dot(Temp) / n
             phi += Temp
 
-        if is_cupy(
-            VHS
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            cupy.cuda.stream.get_current_stream().synchronize()
+        gpu_synchronize(gpu)
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
@@ -245,8 +242,10 @@ class Continuous(object):
 
             assert cupy.is_available()
             clip = cupy.clip
+            gpu = True
         else:
             clip = numpy.clip
+            gpu = False
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
         # first block until reasonable estimate of eshift can be computed.
@@ -255,6 +254,7 @@ class Continuous(object):
         emax = eshift.real + self.ebound
         emin = eshift.real - self.ebound
         clip(ehyb.real, a_min=emin, a_max=emax, out=ehyb.real)  # in-place clipping
+        gpu_synchronize(gpu)
         return ehyb
 
     def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
@@ -288,6 +288,7 @@ class Continuous(object):
             normal = cupy.random.normal
             where = cupy.where
             sum = cupy.sum
+            gpu = True
         else:
             einsum = numpy.einsum
             abs = numpy.abs
@@ -295,6 +296,7 @@ class Continuous(object):
             normal = numpy.random.normal
             where = numpy.where
             sum = numpy.sum
+            gpu = False
 
         # Optimal force bias.
         xbar = zeros((walker_batch.nwalkers, hamiltonian.nfields))
@@ -306,6 +308,7 @@ class Continuous(object):
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
             )
+            gpu_synchronize(gpu)
             self.tfbias += time.time() - start_time
 
         absxbar = abs(xbar)
@@ -336,6 +339,7 @@ class Continuous(object):
             )
         else:
             VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
+        gpu_synchronize(gpu)
         self.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
         start_time = time.time()
@@ -353,6 +357,7 @@ class Continuous(object):
                     walker_batch.phib[iw] = self.apply_exponential(
                         walker_batch.phib[iw], VHS[iw]
                     )
+        gpu_synchronize(gpu)
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -374,8 +379,17 @@ class Continuous(object):
         Returns
         -------
         """
+        if is_cupy(
+            walker_batch.phia
+        ):
+            gpu = True
+        else:
+            gpu = False
+
+        gpu_synchronize(gpu)
         start_time = time.time()
-        ovlp = self.compute_greens_function(walker_batch, trial)
+        ovlp = compute_greens_function(walker_batch, trial)
+        gpu_synchronize(gpu)
         self.tgf += time.time() - start_time
 
         # 2. Update Slater matrix
@@ -388,12 +402,14 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
+        gpu_synchronize(gpu)
         self.tgemm += time.time() - start_time
 
         # 2.b Apply two-body
         (cmf, cfb, xmxbar) = self.two_body_propagator_batch(
             walker_batch, system, hamiltonian, trial
         )
+        gpu_synchronize(gpu)
 
         # 2.c Apply one-body
         start_time = time.time()
@@ -404,12 +420,15 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
+        gpu_synchronize(gpu)
         self.tgemm += time.time() - start_time
 
         # Now apply phaseless approximation
         start_time = time.time()
         ovlp_new = self.calc_overlap(walker_batch, trial)
+        gpu_synchronize(gpu)
         self.tovlp += time.time() - start_time
+
         start_time = time.time()
         self.update_weight_batch(
             system,
@@ -423,6 +442,7 @@ class Continuous(object):
             xmxbar,
             eshift,
         )
+        gpu_synchronize(gpu)
         self.tupdate += time.time() - start_time
 
     def update_weight_hybrid_batch(
