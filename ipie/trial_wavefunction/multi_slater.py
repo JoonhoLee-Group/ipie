@@ -642,6 +642,8 @@ class MultiSlater(object):
             size += self.psi.size / 2.0
         else:
             size += self.psi.size
+            size += self.psia.size
+            size += self.psib.size
         if numpy.isrealobj(self._rchola):
             if self.chunked:
                 size += self._rchola_chunk.size / 2.0 + self._rcholb_chunk.size / 2.0
@@ -675,6 +677,8 @@ class MultiSlater(object):
             )
 
         self.psi = cupy.asarray(self.psi)
+        self.psia = cupy.asarray(self.psia)
+        self.psib = cupy.asarray(self.psib)
         self.coeffs = cupy.asarray(self.coeffs)
 
         if self.chunked:

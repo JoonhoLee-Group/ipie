@@ -386,6 +386,7 @@ class Continuous(object):
         else:
             gpu = False
 
+        gpu_synchronize(gpu)
         start_time = time.time()
         ovlp = self.compute_greens_function(walker_batch, trial)
         gpu_synchronize(gpu)
