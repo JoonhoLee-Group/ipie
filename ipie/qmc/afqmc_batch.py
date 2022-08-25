@@ -397,6 +397,7 @@ class AFQMCBatch(object):
             if step % self.qmc.nstblz == 0:
                 start = time.time()
                 self.psi.orthogonalise(self.trial, self.propagators.free_projection)
+                gpu_synchronize(gpu)
                 self.tortho += time.time() - start
             start = time.time()
 
