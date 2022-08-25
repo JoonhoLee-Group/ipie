@@ -1,6 +1,15 @@
 import numpy
 import pytest
 
+try:
+    import cupy
+    no_gpu = not cupy.is_available()
+    from ipie.config import config, purge_ipie_modules
+    config.update_option('use_gpu', True)
+    purge_ipie_modules()
+except:
+    no_gpu = True
+
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
@@ -19,14 +28,6 @@ from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
                                 get_random_phmsd)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
-try:
-    import cupy
-
-    no_gpu = not cupy.is_available()
-except:
-    no_gpu = True
-
 
 @pytest.mark.unit
 @pytest.mark.skipif(no_gpu, reason="gpu not found.")
@@ -135,7 +136,6 @@ def test_hybrid_batch():
     phi_batch = cupy.asnumpy(phi_batch)
     for iw in range(nwalkers):
         assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:, system.nup :])
-
 
 if __name__ == "__main__":
     test_hybrid_batch()
