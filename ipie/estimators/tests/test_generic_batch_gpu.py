@@ -3,13 +3,8 @@ import numpy
 import pytest
 import sys
 
-
 try:
     import cupy
-    no_gpu = not cupy.is_available()
-    from ipie.config import config, purge_ipie_modules
-    config.update_option('use_gpu', True)
-    purge_ipie_modules()
 except:
     no_gpu = True
 
@@ -33,9 +28,12 @@ from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.estimators.kernels.gpu import exchange as kernels
 
 
-@pytest.mark.unit
-@pytest.mark.skipif(no_gpu, reason="gpu not found.")
-def test_exchange_kernel_reduction():
+@pytest.mark.gpu
+def test_exchange_kernel_reduction(gpu_env):
+    import cupy
+    # from ipie.config import config, purge_ipie_modules
+    # config.update_option('use_gpu', True)
+    from ipie.utils.backend import arraylib as xp
     nchol = 101
     nocc = 31
     nwalk = 7
@@ -60,9 +58,8 @@ def test_exchange_kernel_reduction():
     assert numpy.allclose(exx_test, exx)
 
 
-@pytest.mark.unit
-@pytest.mark.skipif(no_gpu, reason="gpu not found.")
-def test_local_energy_single_det_batch():
+@pytest.mark.gpu
+def test_local_energy_single_det_batch(gpu_env):
     numpy.random.seed(7)
     nmo = 10
     nelec = (5, 5)
@@ -103,11 +100,10 @@ def test_local_energy_single_det_batch():
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
-    if not no_gpu:
-        prop.cast_to_cupy()
-        ham.cast_to_cupy()
-        trial.cast_to_cupy()
-        walker_batch.cast_to_cupy()
+    prop.cast_to_cupy()
+    ham.cast_to_cupy()
+    trial.cast_to_cupy()
+    walker_batch.cast_to_cupy()
 
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
