@@ -296,7 +296,7 @@ class AFQMCBatch(object):
             self.trial.chunk(self.mpi_handler)
 
         if self.qmc.gpu:
-             print("# Casting numpy arrays to cupy arrays")
+            print("# Casting numpy arrays to cupy arrays")
             if comm.rank == 0:
                 print("# Casting arrays in hamiltonian")
             self.hamiltonian.cast_to_cupy(verbose)
