@@ -14,6 +14,8 @@ from ipie.utils.misc import is_cupy, update_stack, to_numpy
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
+from ipie.utils.backend import arraylib as xp
+
 
 class WalkerBatchHandler(object):
     """Container for groups of walkers which make up a wavefunction.
@@ -741,9 +743,9 @@ class WalkerAccumulator(object):
 
     def update(self, walker_batch):
         self.buffer += numpy.array([
-                    numpy.sum(walker_batch.weight.get()),
-                    numpy.sum(walker_batch.unscaled_weight.get()),
-                    numpy.sum(walker_batch.weight.get()*walker_batch.hybrid_energy.get())
+                    xp.sum(walker_batch.weight),
+                    xp.sum(walker_batch.unscaled_weight),
+                    xp.sum(walker_batch.weight*walker_batch.hybrid_energy)
                     ])
 
     def zero(self):
