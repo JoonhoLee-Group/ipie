@@ -180,11 +180,6 @@ class AFQMCBatch(object):
                         )
                     )
 
-        if self.qmc.gpu:
-            if comm.rank == 0:
-                print("# Casting arrays in hamiltonian")
-            self.hamiltonian.cast_to_cupy(verbose)
-
         if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
             self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
@@ -244,11 +239,6 @@ class AFQMCBatch(object):
             self.trial.e1b = comm.bcast(self.trial.e1b, root=0)
             self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
 
-        if self.qmc.gpu:
-            if comm.rank == 0:
-                print("# Casting arrays in trial")
-            self.trial.cast_to_cupy(verbose)
-
         comm.barrier()
         prop_opt = options.get("propagator", {})
         if comm.rank == 0:
@@ -261,10 +251,6 @@ class AFQMCBatch(object):
             options=prop_opt,
             verbose=verbose,
         )
-        if self.qmc.gpu:
-            if comm.rank == 0:
-                print("# Casting arrays in propagators")
-            self.propagators.cast_to_cupy(verbose)
         self.tsetup = time.time() - self._init_time
         wlk_opts = get_input_value(
             options,
@@ -284,10 +270,6 @@ class AFQMCBatch(object):
             mpi_handler=self.mpi_handler,
             verbose=verbose,
         )
-        if self.qmc.gpu:
-            if comm.rank == 0:
-                print("# Casting arrays in walkers_batch")
-            self.psi.walkers_batch.cast_to_cupy(verbose)
         est_opts = get_input_value(
             options,
             "estimators",
@@ -314,8 +296,19 @@ class AFQMCBatch(object):
             self.trial.chunk(self.mpi_handler)
 
         if self.qmc.gpu:
-            # if comm.rank == 0:
-            #     print("# Casting numpy arrays to cupy arrays")
+             print("# Casting numpy arrays to cupy arrays")
+            if comm.rank == 0:
+                print("# Casting arrays in hamiltonian")
+            self.hamiltonian.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in trial")
+            self.trial.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in propagators")
+            self.propagators.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in walkers_batch")
+            self.psi.walkers_batch.cast_to_cupy(verbose)
             print("# NOTE: cupy available and qmc.gpu == TRUE.")
 
         else:
