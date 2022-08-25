@@ -104,13 +104,9 @@ def test_local_energy_single_det_batch():
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
     if not no_gpu:
-        print("here")
         prop.cast_to_cupy()
-        print("here")
         ham.cast_to_cupy()
-        print("here")
         trial.cast_to_cupy()
-        print("here")
         walker_batch.cast_to_cupy()
 
     for i in range(nsteps):
@@ -140,11 +136,6 @@ def test_local_energy_single_det_batch():
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
     assert numpy.allclose(energies, energies_einsum_chunks)
-
-
-if not no_gpu:
-    config.update_option('use_gpu', False)
-    purge_ipie_modules()
 
 if __name__ == "__main__":
     test_local_energy_single_det_batch()
