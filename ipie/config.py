@@ -4,7 +4,7 @@ import sys
 def purge_ipie_modules():
     modules = [m for m in sys.modules.keys() if 'ipie' in m]
     for m in modules:
-        del m
+        del sys.modules[m]
 
 class Config:
 
@@ -34,8 +34,15 @@ class Config:
 
 config = Config()
 
+# FDM: Hack to cope with pytest preemtively importing the whole module in search
+# for tests thus breaking assumption config is only set once per session.
+# Otherwise I couldnt figure out a way to successfully reload ipie.utils.backend
+# in order for arraylib etc to be correctly set.
+import os
+IPIE_USE_GPU = os.environ.get('IPIE_USE_GPU', False)
+print(IPIE_USE_GPU)
 # Default to not using for the moment.
-config.add_option('use_gpu', False)
+config.add_option('use_gpu', bool(IPIE_USE_GPU))
 # Memory limits should be in GB
 config.add_option('max_memory_for_wicks', 2.0)
 config.add_option('max_memory_sd_energy_gpu', 2.0)

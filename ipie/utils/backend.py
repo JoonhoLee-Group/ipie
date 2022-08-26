@@ -1,4 +1,3 @@
-import importlib
 import sys
 
 from ipie.config import config

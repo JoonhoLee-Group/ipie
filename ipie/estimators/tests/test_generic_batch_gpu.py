@@ -5,6 +5,8 @@ import sys
 
 try:
     import cupy
+    # from ipie.config import config, purge_ipie_modules
+    # config.update_option('use_gpu', True)
 except:
     no_gpu = True
 
@@ -65,6 +67,8 @@ def test_local_energy_single_det_batch(gpu_env):
     nelec = (5, 5)
     nwalkers = 10
     nsteps = 25
+    from ipie.utils.backend import arraylib as xp
+    print(xp)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     chol = chol.reshape((-1, nmo * nmo)).T.copy()
