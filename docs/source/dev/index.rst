@@ -17,8 +17,14 @@ GPU
 
     @pytest.mark.gpu
     def test_my_special_test():
-        from ipie.config import config
-        config.update_option('usef_gpu', True)
 
 * Currently it is advised to place gpu specific unit tests in filenames with _gpu.py in
   the name.
+* To run the tests use:
+
+.. codeblock:: bash
+
+     export IPIE_USE_GPU=1; mpirun -np 1 pytest -m gpu -sv
+
+* Note if running CPU test afterwards it may be necessary to clear the environment
+  variable!
