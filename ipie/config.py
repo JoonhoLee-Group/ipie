@@ -41,7 +41,7 @@ config = Config()
 import os
 IPIE_USE_GPU = os.environ.get('IPIE_USE_GPU', False)
 # Default to not using for the moment.
-config.add_option('use_gpu', bool(IPIE_USE_GPU))
+config.add_option('use_gpu', bool(int(IPIE_USE_GPU)))
 # Memory limits should be in GB
 config.add_option('max_memory_for_wicks', 2.0)
 config.add_option('max_memory_sd_energy_gpu', 2.0)
