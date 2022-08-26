@@ -200,6 +200,7 @@ def exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff):
     nchol_chunks = ceil(nchol / nchol_chunk_size)
     nchol_left = nchol
     _buff = buff.ravel()
+    from ipie.estimators.kernels.gpu import exchange as kernels
     for i in range(nchol_chunks):
         nchol_chunk = min(nchol_chunk_size, nchol_left)
         chol_sls = slice(i * nchol_chunk_size, i * nchol_chunk_size + nchol_chunk)

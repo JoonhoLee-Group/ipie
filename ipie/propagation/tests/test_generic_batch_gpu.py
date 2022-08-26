@@ -1,17 +1,7 @@
 import numpy
 import pytest
 
-pytestmark = pytest.mark.gpu
-
-# try:
-    # import cupy
-    # no_gpu = not cupy.is_available()
-    # from ipie.config import config, purge_ipie_modules
-    # config.update_option('use_gpu', True)
-    # purge_ipie_modules()
-# except:
-    # no_gpu = True
-
+from ipie.estimators.greens_function_batch import compute_greens_function
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
@@ -115,7 +105,7 @@ def test_hybrid_batch():
     cupy.random.seed(7)
     ovlps_batch = []
     for i in range(nsteps):
-        ovlps_batch += [prop.compute_greens_function(walker_batch, trial)]
+        ovlps_batch += [compute_greens_function(walker_batch, trial)]
         walker_batch.phia = kinetic_spin_real_batch(
             walker_batch.phia, prop.propagator.BH1[0]
         )

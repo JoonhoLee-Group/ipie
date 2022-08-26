@@ -5,7 +5,7 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.estimators.greens_function_batch import compute_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.propagation.generic import GenericContinuous
@@ -51,7 +51,7 @@ class Continuous(object):
         )
 
         self.calc_overlap = get_calc_overlap(trial)
-        self.compute_greens_function = get_greens_function(trial)
+        # self.compute_greens_function = get_greens_function(trial)
 
         assert self.hybrid
         if verbose:
@@ -164,6 +164,7 @@ class Continuous(object):
                     phi[iw] += Temp[iw]
 
         synchronize()
+
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
@@ -212,6 +213,7 @@ class Continuous(object):
         emax = eshift.real + self.ebound
         emin = eshift.real - self.ebound
         xp.clip(ehyb.real, a_min=emin, a_max=emax, out=ehyb.real)  # in-place clipping
+        synchronize()
         return ehyb
 
     def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
@@ -243,6 +245,7 @@ class Continuous(object):
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
             )
+            synchronize()
             self.tfbias += time.time() - start_time
 
         absxbar = xp.abs(xbar)
@@ -273,6 +276,7 @@ class Continuous(object):
             )
         else:
             VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
+        synchronize()
         self.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
         start_time = time.time()
@@ -290,6 +294,7 @@ class Continuous(object):
                     walker_batch.phib[iw] = self.apply_exponential(
                         walker_batch.phib[iw], VHS[iw]
                     )
+        synchronize()
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -311,8 +316,17 @@ class Continuous(object):
         Returns
         -------
         """
+        if is_cupy(
+            walker_batch.phia
+        ):
+            gpu = True
+        else:
+            gpu = False
+
+        synchronize()
         start_time = time.time()
-        ovlp = self.compute_greens_function(walker_batch, trial)
+        ovlp = compute_greens_function(walker_batch, trial)
+        synchronize()
         self.tgf += time.time() - start_time
 
         # 2. Update Slater matrix
@@ -325,12 +339,14 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
+        synchronize()
         self.tgemm += time.time() - start_time
 
         # 2.b Apply two-body
         (cmf, cfb, xmxbar) = self.two_body_propagator_batch(
             walker_batch, system, hamiltonian, trial
         )
+        synchronize()
 
         # 2.c Apply one-body
         start_time = time.time()
@@ -341,12 +357,15 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
+        synchronize()
         self.tgemm += time.time() - start_time
 
         # Now apply phaseless approximation
         start_time = time.time()
         ovlp_new = self.calc_overlap(walker_batch, trial)
+        synchronize()
         self.tovlp += time.time() - start_time
+
         start_time = time.time()
         self.update_weight_batch(
             system,
@@ -360,6 +379,7 @@ class Continuous(object):
             xmxbar,
             eshift,
         )
+        synchronize()
         self.tupdate += time.time() - start_time
 
     def update_weight_hybrid_batch(

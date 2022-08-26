@@ -27,7 +27,6 @@ from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
                                 get_random_phmsd, shaped_normal)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.estimators.kernels.gpu import exchange as kernels
 
 
 @pytest.mark.gpu
@@ -44,6 +43,7 @@ def test_exchange_kernel_reduction(gpu_env):
     buff = T.copy().reshape((nchol, -1))
     exx = cupy.einsum("xjwi,xiwj->w", T, T)
     exx_test = cupy.zeros_like(exx)
+    from ipie.estimators.kernels.gpu import exchange as kernels
     kernels.exchange_reduction(T, exx_test)
     assert numpy.allclose(exx_test, exx)
     nchol_left = nchol

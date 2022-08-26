@@ -233,16 +233,32 @@ def construct_force_bias_batch_single_det_chunked(
     for icycle in range(handler.ssize - 1):
         for isend, sender in enumerate(senders):
             if srank == isend:
+                Ghalfa_send = to_host(Ghalfa_send)
+                Ghalfb_send = to_host(Ghalfb_send)
+                vbias_batch_real_send = to_host(vbias_batch_real_send)
+                vbias_batch_imag_send = to_host(vbias_batch_imag_send)
                 handler.scomm.Send(Ghalfa_send, dest=receivers[isend], tag=1)
                 handler.scomm.Send(Ghalfb_send, dest=receivers[isend], tag=2)
                 handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=3)
                 handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=4)
+                Ghalfa_send = xp.asarray(Ghalfa_send)
+                Ghalfb_send = xp.asarray(Ghalfb_send)
+                vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
+                vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
             elif srank == receivers[isend]:
-                sender = numpy.where(receivers == srank)[0]
+                sender = where(receivers == srank)[0]
+                Ghalfa_recv = to_host(Ghalfa_recv)
+                Ghalfb_recv = to_host(Ghalfb_recv)
+                vbias_batch_real_recv = to_host(vbias_batch_real_recv)
+                vbias_batch_imag_recv = to_host(vbias_batch_imag_recv)
                 handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
                 handler.scomm.Recv(Ghalfb_recv, source=sender, tag=2)
                 handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=3)
                 handler.scomm.Recv(vbias_batch_imag_recv, source=sender, tag=4)
+                Ghalfa_recv = xp.asarray(Ghalfa_recv)
+                Ghalfb_recv = xp.asarray(Ghalfb_recv)
+                vbias_batch_real_recv = xp.asarray(vbias_batch_real_recv)
+                vbias_batch_imag_recv = xp.asarray(vbias_batch_imag_recv)
         handler.scomm.barrier()
 
         # prepare sending
@@ -259,12 +275,20 @@ def construct_force_bias_batch_single_det_chunked(
 
     for isend, sender in enumerate(senders):
         if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
+            vbias_batch_real_send = to_host(vbias_batch_real_send)
+            vbias_batch_imag_send = to_host(vbias_batch_imag_send)
             handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=1)
             handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=2)
+                vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
+                vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
         elif srank == receivers[isend]:
-            sender = numpy.where(receivers == srank)[0]
+            sender = where(receivers == srank)[0]
+            vbias_batch_real_recv = to_host(vbias_batch_real_recv)
+            vbias_batch_imag_recv = to_host(vbias_batch_imag_recv)
             handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=1)
             handler.scomm.Recv(vbias_batch_imag_recv, source=sender, tag=2)
+            vbias_batch_real_recv = xp.asarray(vbias_batch_real_recv)
+            vbias_batch_imag_recv = xp.asarray(vbias_batch_imag_recv)
 
     vbias_batch = xp.empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
     vbias_batch.real = vbias_batch_real_recv.T.copy()

@@ -19,3 +19,11 @@ def set_rng_seed(seed, comm):
     if comm.rank == 0:
         print("# random seed is {}".format(seed))
     return seed
+
+
+def gpu_synchronize(gpu):
+    if gpu:
+        import cupy
+        cupy.cuda.stream.get_current_stream().synchronize()
+
+    return

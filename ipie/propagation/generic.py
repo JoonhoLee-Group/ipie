@@ -227,13 +227,6 @@ class GenericContinuous(object):
         VHS : numpy array
             the HS potential
         """
-        if is_cupy(
-            xshifted
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            iscupy = True
-        else:
-            iscupy = False
-
         assert hamiltonian.chunked
         assert hamiltonian.symmetry
         assert xp.isrealobj(hamiltonian.chol_vecs)
@@ -259,14 +252,26 @@ class GenericContinuous(object):
         for icycle in range(handler.ssize - 1):
             for isend, sender in enumerate(handler.senders):
                 if srank == isend:
+                    xshifted_send = to_host(xshifted_send)
+                    VHS_send = to_host(VHS_send)
+
                     handler.scomm.Send(
                         xshifted_send, dest=handler.receivers[isend], tag=1
                     )
                     handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=2)
+
+                    xshifted_send = xp.asarray(xshifted_send)
+                    VHS_send = xp.asarray(VHS_send)
                 elif srank == handler.receivers[isend]:
-                    sender = numpy.where(handler.receivers == srank)[0]
+                    sender = where(handler.receivers == srank)[0]
+                    xshifted_recv = to_host(xshifted_recv)
+                    VHS_recv = to_host(VHS_recv)
+
                     handler.scomm.Recv(xshifted_recv, source=sender, tag=1)
                     handler.scomm.Recv(VHS_recv, source=sender, tag=2)
+
+                    xshifted_recv = xp.asarray(xshifted_recv)
+                    VHS_recv = xp.asarray(VHS_recv)
             handler.scomm.barrier()
             # prepare sending
             VHS_send = (
@@ -278,10 +283,18 @@ class GenericContinuous(object):
 
         for isend, sender in enumerate(handler.senders):
             if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
+                if iscupy:
+                    import cupy
+                    VHS_send = to_host(VHS_send)
                 handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=1)
+                if iscupy:
+                    import cupy
+                    VHS_send = xp.asarray(VHS_send)
             elif srank == handler.receivers[isend]:
-                sender = numpy.where(handler.receivers == srank)[0]
+                sender = where(handler.receivers == srank)[0]
+                VHS_recv = to_host(VHS_recv)
                 handler.scomm.Recv(VHS_recv, source=sender, tag=1)
+                VHS_recv = xp.asarray(VHS_recv)
 
         VHS_recv = (
             self.isqrt_dt
@@ -291,7 +304,8 @@ class GenericContinuous(object):
             (self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
             dtype=VHS_recv.dtype,
         )
-        if iscupy:
+        # This should be abstracted by kernel import
+        if config.get_option('use_gpu'):
             threadsperblock = 512
             nut = len(hamiltonian.sym_idx_i)
             blockspergrid = math.ceil(self.nwalkers * nut / threadsperblock)

@@ -13,7 +13,7 @@ except ImportError:
 import numpy as _np
 
 def to_host_cpu(array):
-    return _np.array(array)
+    return array
 
 def to_host_gpu(array):
     return _cp.asnumpy(array)

@@ -25,7 +25,7 @@ from ipie.utils.misc import (get_git_info, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import get_host_memory
+from ipie.utils.backend import get_host_memory, synchronize
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
@@ -293,11 +293,42 @@ class AFQMCBatch(object):
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
 
+<<<<<<< HEAD
         if config.get_option('use_gpu'):
             self.propagators.cast_to_cupy(verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
             self.trial.cast_to_cupy(verbose and comm.rank == 0)
             self.psi.walkers_batch.cast_to_cupy(verbose and comm.rank == 0)
+=======
+        if self.qmc.gpu:
+            print("# Casting numpy arrays to cupy arrays")
+            if comm.rank == 0:
+                print("# Casting arrays in hamiltonian")
+            self.hamiltonian.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in trial")
+            self.trial.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in propagators")
+            self.propagators.cast_to_cupy(verbose)
+            if comm.rank == 0:
+                print("# Casting arrays in walkers_batch")
+            self.psi.walkers_batch.cast_to_cupy(verbose)
+            print("# NOTE: cupy available and qmc.gpu == TRUE.")
+
+        else:
+            if comm.rank == 0:
+                try:
+                    import cupy
+
+                    _have_cupy = True
+                except:
+                    _have_cupy = False
+                print("# NOTE: cupy available but qmc.gpu == False.")
+                print(
+                    "#       If this is unintended set gpu option in qmc" "  section."
+                )
+>>>>>>> main
 
         if comm.rank == 0:
             mem_avail = get_host_memory()
@@ -344,6 +375,7 @@ class AFQMCBatch(object):
             if step % self.qmc.nstblz == 0:
                 start = time.time()
                 self.psi.orthogonalise(self.trial, self.propagators.free_projection)
+                synchronize()
                 self.tortho += time.time() - start
             start = time.time()
 
@@ -372,6 +404,8 @@ class AFQMCBatch(object):
                     a_max=wbound,
                     out=self.psi.walkers_batch.weight,
                 )  # in-place clipping
+    
+            synchronize()
             self.tprop_clip += time.time() - start_clip
 
             start_barrier = time.time()
@@ -383,6 +417,7 @@ class AFQMCBatch(object):
             if step % self.qmc.npop_control == 0:
                 start = time.time()
                 self.psi.pop_control(comm)
+                synchronize()
                 self.tpopc += time.time() - start
                 self.tpopc_send = self.psi.send_time
                 self.tpopc_recv = self.psi.recv_time
@@ -390,7 +425,10 @@ class AFQMCBatch(object):
                 self.tpopc_non_comm = self.psi.non_communication_time
 
             # accumulate weight, hybrid energy etc. across block
+            start = time.time()
             self.psi.update_accumulators()
+            synchronize()
+            self.testim += time.time() - start # we dump this time into estimator
             # calculate estimators
             start = time.time()
             if step % self.qmc.nsteps == 0:
@@ -406,6 +444,7 @@ class AFQMCBatch(object):
                         self.psi.accumulator_factors
                         )
                 self.psi.zero_accumulators()
+            synchronize()
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
@@ -413,6 +452,7 @@ class AFQMCBatch(object):
                 eshift = self.psi.accumulator_factors.eshift
             else:
                 eshift += self.psi.accumulator_factors.eshift - eshift
+            synchronize()
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):
