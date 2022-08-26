@@ -4,6 +4,8 @@ import time
 import numpy
 import scipy.linalg
 
+from ipie.config import config
+
 from ipie.utils.pack import unpack_VHS_batch
 
 try:
@@ -13,7 +15,7 @@ except:
 
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
+from ipie.utils.backend import synchronize, to_host
 
 
 class GenericContinuous(object):
@@ -263,7 +265,7 @@ class GenericContinuous(object):
                     xshifted_send = xp.asarray(xshifted_send)
                     VHS_send = xp.asarray(VHS_send)
                 elif srank == handler.receivers[isend]:
-                    sender = where(handler.receivers == srank)[0]
+                    sender = numpy.where(handler.receivers == srank)[0]
                     xshifted_recv = to_host(xshifted_recv)
                     VHS_recv = to_host(VHS_recv)
 
@@ -283,15 +285,11 @@ class GenericContinuous(object):
 
         for isend, sender in enumerate(handler.senders):
             if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
-                if iscupy:
-                    import cupy
-                    VHS_send = to_host(VHS_send)
+                VHS_send = to_host(VHS_send)
                 handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=1)
-                if iscupy:
-                    import cupy
-                    VHS_send = xp.asarray(VHS_send)
+                VHS_send = xp.asarray(VHS_send)
             elif srank == handler.receivers[isend]:
-                sender = where(handler.receivers == srank)[0]
+                sender = numpy.where(handler.receivers == srank)[0]
                 VHS_recv = to_host(VHS_recv)
                 handler.scomm.Recv(VHS_recv, source=sender, tag=1)
                 VHS_recv = xp.asarray(VHS_recv)

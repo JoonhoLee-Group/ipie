@@ -1,7 +1,7 @@
 import numpy
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
+from ipie.utils.backend import synchronize, to_host
 
 
 def construct_force_bias_batch(hamiltonian, walker_batch, trial, mpi_handler=None):
@@ -246,7 +246,7 @@ def construct_force_bias_batch_single_det_chunked(
                 vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
                 vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
             elif srank == receivers[isend]:
-                sender = where(receivers == srank)[0]
+                sender = numpy.where(receivers == srank)[0]
                 Ghalfa_recv = to_host(Ghalfa_recv)
                 Ghalfb_recv = to_host(Ghalfb_recv)
                 vbias_batch_real_recv = to_host(vbias_batch_real_recv)
@@ -282,7 +282,7 @@ def construct_force_bias_batch_single_det_chunked(
             vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
             vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
         elif srank == receivers[isend]:
-            sender = where(receivers == srank)[0]
+            sender = numpy.where(receivers == srank)[0]
             vbias_batch_real_recv = to_host(vbias_batch_real_recv)
             vbias_batch_imag_recv = to_host(vbias_batch_imag_recv)
             handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=1)
