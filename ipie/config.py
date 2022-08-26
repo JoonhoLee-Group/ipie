@@ -40,7 +40,6 @@ config = Config()
 # in order for arraylib etc to be correctly set.
 import os
 IPIE_USE_GPU = os.environ.get('IPIE_USE_GPU', False)
-print(IPIE_USE_GPU)
 # Default to not using for the moment.
 config.add_option('use_gpu', bool(IPIE_USE_GPU))
 # Memory limits should be in GB

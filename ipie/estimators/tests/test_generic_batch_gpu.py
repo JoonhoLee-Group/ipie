@@ -5,8 +5,6 @@ import sys
 
 try:
     import cupy
-    # from ipie.config import config, purge_ipie_modules
-    # config.update_option('use_gpu', True)
 except:
     no_gpu = True
 
@@ -30,11 +28,8 @@ from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
 @pytest.mark.gpu
-def test_exchange_kernel_reduction(gpu_env):
+def test_exchange_kernel_reduction():
     import cupy
-    # from ipie.config import config, purge_ipie_modules
-    # config.update_option('use_gpu', True)
-    from ipie.utils.backend import arraylib as xp
     nchol = 101
     nocc = 31
     nwalk = 7
@@ -61,14 +56,13 @@ def test_exchange_kernel_reduction(gpu_env):
 
 
 @pytest.mark.gpu
-def test_local_energy_single_det_batch(gpu_env):
+def test_local_energy_single_det_batch():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5, 5)
     nwalkers = 10
     nsteps = 25
     from ipie.utils.backend import arraylib as xp
-    print(xp)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     chol = chol.reshape((-1, nmo * nmo)).T.copy()

@@ -279,8 +279,8 @@ def construct_force_bias_batch_single_det_chunked(
             vbias_batch_imag_send = to_host(vbias_batch_imag_send)
             handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=1)
             handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=2)
-                vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
-                vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
+            vbias_batch_real_send = xp.asarray(vbias_batch_real_send)
+            vbias_batch_imag_send = xp.asarray(vbias_batch_imag_send)
         elif srank == receivers[isend]:
             sender = where(receivers == srank)[0]
             vbias_batch_real_recv = to_host(vbias_batch_real_recv)

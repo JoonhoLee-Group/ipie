@@ -54,7 +54,7 @@ else:
     get_host_memory = get_cpu_free_memory
 
 def cast_to_device(self, verbose=False):
-    if not config.get_option('use_gpu'):
+    if not (_use_gpu and _have_cupy):
         return
     size = 0
     for k, v in self.__dict__.items():

@@ -293,34 +293,15 @@ class AFQMCBatch(object):
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
 
-<<<<<<< HEAD
         if config.get_option('use_gpu'):
             self.propagators.cast_to_cupy(verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
             self.trial.cast_to_cupy(verbose and comm.rank == 0)
             self.psi.walkers_batch.cast_to_cupy(verbose and comm.rank == 0)
-=======
-        if self.qmc.gpu:
-            print("# Casting numpy arrays to cupy arrays")
-            if comm.rank == 0:
-                print("# Casting arrays in hamiltonian")
-            self.hamiltonian.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in trial")
-            self.trial.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in propagators")
-            self.propagators.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in walkers_batch")
-            self.psi.walkers_batch.cast_to_cupy(verbose)
-            print("# NOTE: cupy available and qmc.gpu == TRUE.")
-
         else:
             if comm.rank == 0:
                 try:
                     import cupy
-
                     _have_cupy = True
                 except:
                     _have_cupy = False
@@ -328,7 +309,6 @@ class AFQMCBatch(object):
                 print(
                     "#       If this is unintended set gpu option in qmc" "  section."
                 )
->>>>>>> main
 
         if comm.rank == 0:
             mem_avail = get_host_memory()

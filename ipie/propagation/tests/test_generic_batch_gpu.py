@@ -21,6 +21,7 @@ from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
+@pytest.mark.gpu
 def test_hybrid_batch():
     numpy.random.seed(7)
     nmo = 10
@@ -46,6 +47,7 @@ def test_hybrid_batch():
     trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
+    import cupy
     cupy.random.seed(7)
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
@@ -95,11 +97,10 @@ def test_hybrid_batch():
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
-    if not no_gpu:
-        prop.cast_to_cupy()
-        ham.cast_to_cupy()
-        trial.cast_to_cupy()
-        walker_batch.cast_to_cupy()
+    prop.cast_to_cupy()
+    ham.cast_to_cupy()
+    trial.cast_to_cupy()
+    walker_batch.cast_to_cupy()
 
     numpy.random.seed(7)
     cupy.random.seed(7)
