@@ -15,6 +15,7 @@ from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import to_host
 
 
 class WalkerBatchHandler(object):
@@ -743,9 +744,9 @@ class WalkerAccumulator(object):
 
     def update(self, walker_batch):
         self.buffer += numpy.array([
-                    xp.sum(walker_batch.weight),
-                    xp.sum(walker_batch.unscaled_weight),
-                    xp.sum(walker_batch.weight*walker_batch.hybrid_energy)
+                    to_host(xp.sum(walker_batch.weight)),
+                    to_host(xp.sum(walker_batch.unscaled_weight)),
+                    to_host(xp.sum(walker_batch.weight*walker_batch.hybrid_energy))
                     ])
 
     def zero(self):
