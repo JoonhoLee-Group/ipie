@@ -1,9 +1,12 @@
 import sys
 
+import time
+
 import numpy
 import scipy
 
 from ipie.utils.misc import is_cupy
+
 
 
 class WalkerBatch(object):
@@ -75,7 +78,7 @@ class WalkerBatch(object):
         self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
         self.weights.fill(1.0)
         self.detR = [1.0 for iw in range(self.nwalkers)]
-        self.detR_shift = [0.0 for iw in range(self.nwalkers)]
+        self.detR_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
         self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
@@ -120,6 +123,7 @@ class WalkerBatch(object):
         size += self.ovlp.size
         size += self.sgn_ovlp.size
         size += self.log_ovlp.size
+        size += self.detR_shift.size
         if verbose:
             expected_bytes = size * 16.0
             print(
@@ -128,6 +132,7 @@ class WalkerBatch(object):
                 )
             )
 
+        self.detR_shift = cupy.asarray(self.detR_shift)
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
@@ -316,6 +321,8 @@ class WalkerBatch(object):
             exp = cupy.exp
             qr = cupy.linalg.qr
             qr_mode = "reduced"
+
+            return self.reortho_batched()
         else:
             array = numpy.array
             diag = numpy.diag
@@ -337,7 +344,6 @@ class WalkerBatch(object):
         detR = []
         for iw in range(self.nwalkers):
             (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
-            Rdown = zeros(Rup.shape)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
@@ -373,3 +379,64 @@ class WalkerBatch(object):
 
             cupy.cuda.stream.get_current_stream().synchronize()
         return detR
+    def reortho_batched(self):
+        """reorthogonalise walkers.
+
+        parameters
+        ----------
+        """
+        if is_cupy(self.phia):
+            import cupy
+
+            assert cupy.is_available()
+            array = cupy.array
+            diag = cupy.diag
+            zeros = cupy.zeros
+            sum = cupy.sum
+            einsum = cupy.einsum
+            dot = cupy.dot
+            log = cupy.log
+            sign = numpy.sign
+            abs = cupy.abs
+            exp = cupy.exp
+            qr = cupy.linalg.qr
+            qr_mode = "reduced"
+        else:
+            array = numpy.array
+            diag = numpy.diag
+            zeros = numpy.zeros
+            sum = numpy.sum
+            dot = numpy.dot
+            log = numpy.log
+            sign = numpy.sign
+            abs = numpy.abs
+            einsum = numpy.einsum
+            exp = numpy.exp
+            qr = numpy.linalg.qr
+            qr_mode = "reduced"
+
+        complex128 = numpy.complex128
+
+        nup = self.nup
+        ndown = self.ndown
+
+        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
+        Rup_diag = einsum("wii->wi",Rup)
+        log_det = einsum("wi->w",log(abs(Rup_diag)))
+        if ndown > 0 and not self.rhf:
+            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
+            Rdn_diag = einsum("wii->wi",Rdn)
+            log_det += einsum("wi->w",log(abs(Rdn_diag)))
+        elif ndown > 0 and self.rhf:
+            log_det *= 2.0
+
+        self.detR = exp(log_det - self.detR_shift)
+        self.ovlp = self.ovlp / self.detR
+
+        if is_cupy(
+            self.phia
+        ):  # if even one array is a cupy array we should assume the rest is done with cupy
+            import cupy
+
+            cupy.cuda.stream.get_current_stream().synchronize()
+        return self.detR
