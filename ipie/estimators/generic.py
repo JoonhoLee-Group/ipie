@@ -251,7 +251,6 @@ def exx_kernel_rchol_real(rchol, Ghalf):
         exchange contribution for given green's function.
     """
     naux = rchol.shape[0]
-    nwalkers = Ghalf.shape[0]
     nocc = Ghalf.shape[0]
     nbasis = Ghalf.shape[1]
 
@@ -284,8 +283,8 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
     """
     naux = rchol.shape[0]
     nwalkers = Ghalf.shape[0]
-    nocc = Ghalf.shape[0]
-    nbasis = Ghalf.shape[1]
+    nocc = Ghalf.shape[1]
+    nbasis = Ghalf.shape[2]
 
     exx = 0 + 0j
     GhalfT = Ghalf.T.copy()
