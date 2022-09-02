@@ -43,23 +43,17 @@ class MultiSlater(object):
         self.name = "MultiSlater"
         self.mixed_precision = hamiltonian.mixed_precision
         self.chunked = False
-        self.wicks = get_input_value(options, "wicks", default=False, verbose=verbose)
-        self.use_wicks_helper = get_input_value(
-            options, "use_wicks_helper", default=False, verbose=verbose
-        )
-        self.optimized = get_input_value(
-            options,
-            "optimized",
-            default=False,
-            alias=["optimize", "optimise", "optimised"],
-            verbose=verbose,
-        )
         # TODO : Fix for MSD.
         # This is for the overlap trial
+        self.ortho_expansion = len(wfn) == 3
+        self.wicks = get_input_value(
+                options,
+                "wicks",
+                default=self.ortho_expansion,
+                verbose=verbose)
         if len(wfn) == 3:
             # CI type expansion.
             self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
-            self.ortho_expansion = True
         else:
             psit = wfn[1]
             self.psi = psit
@@ -76,6 +70,17 @@ class MultiSlater(object):
         self._nbeta = system.ndown
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
+
+        self.use_wicks_helper = get_input_value(
+            options, "use_wicks_helper", default=False, verbose=verbose
+        )
+        self.optimized = get_input_value(
+            options,
+            "optimized",
+            default=True,
+            alias=["optimize", "optimise", "optimised"],
+            verbose=verbose,
+        )
 
         self.ndets = get_input_value(
             options, "ndets", default=len(self.coeffs), verbose=verbose
@@ -124,7 +129,7 @@ class MultiSlater(object):
         self.ndets_props = get_input_value(
             options,
             "ndets_for_trial_props",
-            default=self.ndets,
+            default=min(self.ndets, 100),
             alias=["ndets_prop"],
             verbose=verbose,
         )

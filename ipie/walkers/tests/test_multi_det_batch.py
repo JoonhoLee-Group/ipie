@@ -77,7 +77,7 @@ def test_walker_overlap_phmsd():
     a = numpy.random.rand(ham.nbasis * (system.nup + system.ndown))
     b = numpy.random.rand(ham.nbasis * (system.nup + system.ndown))
     init = (a + 1j * b).reshape((ham.nbasis, system.nup + system.ndown))
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = MultiSlater(system, ham, wfn, init=init, options={"wicks": False})
     walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
     I = numpy.eye(ham.nbasis)
     ovlp_sum = numpy.zeros(nwalkers, dtype=numpy.complex128)
@@ -98,7 +98,7 @@ def test_walker_overlap_phmsd():
             assert numpy.linalg.norm(ga - walker.Gia[iw, idet]) == pytest.approx(0)
             assert numpy.linalg.norm(gb - walker.Gib[iw, idet]) == pytest.approx(0)
 
-    trial = MultiSlater(system, ham, wfn, init=init, options={"wicks": True})
+    trial = MultiSlater(system, ham, wfn, init=init)
     ovlp_wicks = calc_overlap_multi_det_wicks(walker, trial)
 
     assert ovlp_sum == pytest.approx(walker.ovlp)

@@ -6,8 +6,9 @@ import pytest
 from ipie.estimators.greens_function_batch import (
     greens_function_multi_det, greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt)
-from ipie.estimators.local_energy_batch import \
-    local_energy_multi_det_trial_batch
+from ipie.estimators.local_energy_batch import (
+        local_energy_multi_det_trial_batch
+        )
 from ipie.estimators.local_energy_wicks import (
     fill_opp_spin_factors_batched, fill_same_spin_contribution_batched,
     local_energy_multi_det_trial_wicks_batch,
@@ -57,7 +58,7 @@ def test_greens_function_wicks_opt():
         ham,
         wfn_2,
         init=init,
-        options={"wicks": True, "use_wicks_helper": False},
+        options={"optimized": False},
     )
     trial.calculate_energy(system, ham)
     trial_slow = MultiSlater(
@@ -640,7 +641,7 @@ def test_kernels_gf():
         ham,
         wfn_2,
         init=init,
-        options={"wicks": True, "use_wicks_helper": False},
+        options={'optimized': False},
     )
 
     numpy.random.seed(7)
