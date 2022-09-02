@@ -5,9 +5,6 @@ from mpi4py import MPI
 try:
     import cupy
     no_gpu = not cupy.is_available()
-    from ipie.config import config, purge_ipie_modules
-    config.update_option('use_gpu', True)
-    purge_ipie_modules()
 except:
     no_gpu = True
 
@@ -121,10 +118,6 @@ def test_generic_chunked_gpu():
 
     assert numpy.allclose(energies_einsum, energies_chunked)
     assert numpy.allclose(energies_einsum, energies_chunked_low_mem)
-
-if not no_gpu:
-    config.update_option('use_gpu', False)
-    purge_ipie_modules()
 
 if __name__ == "__main__":
     test_generic_chunked_gpu()
