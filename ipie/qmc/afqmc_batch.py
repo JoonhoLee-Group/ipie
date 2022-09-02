@@ -332,6 +332,8 @@ class AFQMCBatch(object):
         self.setup_timers()
         eshift = 0.0
 
+        self.psi.orthogonalise(self.trial, self.propagators.free_projection)
+
         total_steps = self.qmc.nsteps * self.qmc.nblocks
         # Delay initialization incase user defined estimators added after
         # construction.
@@ -348,9 +350,11 @@ class AFQMCBatch(object):
         self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
         self.psi.zero_accumulators()
 
+        gpu_synchronize(gpu)
         self.tsetup += time.time() - tzero_setup
 
         for step in range(1, total_steps + 1):
+            gpu_synchronize(gpu)
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()

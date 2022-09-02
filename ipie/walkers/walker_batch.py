@@ -1,5 +1,7 @@
 import sys
 
+import time
+
 import numpy
 import scipy
 
@@ -78,7 +80,7 @@ class WalkerBatch(object):
         self.weights = numpy.zeros((self.nwalkers, 1), dtype=numpy.complex128)
         self.weights.fill(1.0)
         self.detR = [1.0 for iw in range(self.nwalkers)]
-        self.detR_shift = [0.0 for iw in range(self.nwalkers)]
+        self.detR_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
         self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
@@ -123,6 +125,7 @@ class WalkerBatch(object):
         size += self.ovlp.size
         size += self.sgn_ovlp.size
         size += self.log_ovlp.size
+        size += self.detR_shift.size
         if verbose:
             expected_bytes = size * 16.0
             print(
@@ -131,6 +134,7 @@ class WalkerBatch(object):
                 )
             )
 
+        self.detR_shift = cupy.asarray(self.detR_shift)
         self.weight = cupy.asarray(self.weight)
         self.unscaled_weight = cupy.asarray(self.unscaled_weight)
         self.phase = cupy.asarray(self.phase)
@@ -396,13 +400,14 @@ class WalkerBatch(object):
         parameters
         ----------
         """
+        if config.get_option('use_gpu'):
+            return self.reortho_batched()
         complex128 = numpy.complex128
         nup = self.nup
         ndown = self.ndown
         detR = []
         for iw in range(self.nwalkers):
             (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
-            Rdown = xp.zeros(Rup.shape)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
@@ -433,3 +438,27 @@ class WalkerBatch(object):
 
         synchronize()
         return detR
+
+    def reortho_batched(self):
+        """reorthogonalise walkers.
+
+        parameters
+        ----------
+        """
+        assert config.get_option('use_gpu')
+        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
+        Rup_diag = xp.einsum("wii->wi",Rup)
+        log_det = xp.einsum("wi->w",log(abs(Rup_diag)))
+        if ndown > 0 and not self.rhf:
+            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
+            Rdn_diag = xp.einsum("wii->wi",Rdn)
+            log_det += xp.einsum("wi->w",log(abs(Rdn_diag)))
+        elif ndown > 0 and self.rhf:
+            log_det *= 2.0
+
+        self.detR = xp.exp(log_det - self.detR_shift)
+        self.ovlp = self.ovlp / self.detR
+
+        synchronize()
+
+        return self.detR

@@ -92,14 +92,13 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
     ndown = walker_batch.ndown
 
     det = []
-
     for iw in range(walker_batch.nwalkers):
         ovlp = xp.dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
         ovlp_inv = xp.linalg.inv(ovlp)
         walker_batch.Ghalfa[iw] = xp.dot(ovlp_inv, walker_batch.phia[iw].T)
         if not trial.half_rotated or build_full:
             walker_batch.Ga[iw] = xp.dot(
-                trial.psi[:, nup:].conj(), walker_batch.Ghalfa[iw]
+                trial.psi[:, :nup].conj(), walker_batch.Ghalfa[iw]
             )
         sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0

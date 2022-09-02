@@ -69,6 +69,7 @@ def build_afqmc_driver(
     nelec,
     wavefunction_file="wavefunction.h5",
     hamiltonian_file="hamiltonian.h5",
+    nwalkers_per_task=10,
     verbosity=0,
 ):
     if comm.rank != 0:
@@ -78,7 +79,7 @@ def build_afqmc_driver(
             "nup": nelec[0],
             "ndown": nelec[1],
         },
-        "qmc": {"nwalkers_per_task": 10},
+        "qmc": {"nwalkers_per_task": nwalkers_per_task},
         "hamiltonian": {"integrals": hamiltonian_file},
         "trial": {"filename": wavefunction_file},
         "estimates": {"overwrite": True},
