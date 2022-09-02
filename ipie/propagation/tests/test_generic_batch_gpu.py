@@ -120,13 +120,21 @@ def test_hybrid_batch():
 
     # assert numpy.allclose(ovlps, cupy.asnumpy(ovlps_batch))
 
+    # Using abs following batched qr implementation on gpu which does not
+    # preserve previous gauge fixing of sequential algorithm.
     for iw in range(nwalkers):
-        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:, : system.nup])
+        assert numpy.allclose(
+                abs(phi_batch[iw]),
+                abs(walkers[iw].phi[:, : system.nup])
+                )
 
     phi_batch = cupy.array(walker_batch.phib)
     phi_batch = cupy.asnumpy(phi_batch)
     for iw in range(nwalkers):
-        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:, system.nup :])
+        assert numpy.allclose(
+                abs(phi_batch[iw]),
+                abs(walkers[iw].phi[:, system.nup :])
+                )
 
 if __name__ == "__main__":
     test_hybrid_batch()
