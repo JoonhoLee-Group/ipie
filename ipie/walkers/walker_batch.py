@@ -5,6 +5,7 @@ import time
 import numpy
 import scipy
 
+from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, qr, qr_mode, cast_to_device, to_host
 from ipie.utils.misc import is_cupy
