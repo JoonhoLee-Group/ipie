@@ -43,14 +43,14 @@ class MultiSlater(object):
         self.name = "MultiSlater"
         self.mixed_precision = hamiltonian.mixed_precision
         self.chunked = False
-        self.wicks = get_input_value(options, "wicks", default=False, verbose=verbose)
+        self.wicks = get_input_value(options, "wicks", default=True, verbose=verbose)
         self.use_wicks_helper = get_input_value(
             options, "use_wicks_helper", default=False, verbose=verbose
         )
         self.optimized = get_input_value(
             options,
             "optimized",
-            default=False,
+            default=True,
             alias=["optimize", "optimise", "optimised"],
             verbose=verbose,
         )
@@ -124,7 +124,7 @@ class MultiSlater(object):
         self.ndets_props = get_input_value(
             options,
             "ndets_for_trial_props",
-            default=self.ndets,
+            default=min(self.ndets, 100),
             alias=["ndets_prop"],
             verbose=verbose,
         )
