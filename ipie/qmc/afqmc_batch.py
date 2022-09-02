@@ -350,11 +350,11 @@ class AFQMCBatch(object):
         self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
         self.psi.zero_accumulators()
 
-        gpu_synchronize(gpu)
+        synchronize()
         self.tsetup += time.time() - tzero_setup
 
         for step in range(1, total_steps + 1):
-            gpu_synchronize(gpu)
+            synchronize()
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
