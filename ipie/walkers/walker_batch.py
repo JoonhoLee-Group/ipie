@@ -449,12 +449,12 @@ class WalkerBatch(object):
         assert config.get_option('use_gpu')
         (self.phia, Rup) = qr(self.phia, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi",Rup)
-        log_det = xp.einsum("wi->w",log(abs(Rup_diag)))
-        if ndown > 0 and not self.rhf:
+        log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
+        if self.ndown > 0 and not self.rhf:
             (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
             Rdn_diag = xp.einsum("wii->wi",Rdn)
-            log_det += xp.einsum("wi->w",log(abs(Rdn_diag)))
-        elif ndown > 0 and self.rhf:
+            log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
+        elif self.ndown > 0 and self.rhf:
             log_det *= 2.0
 
         self.detR = xp.exp(log_det - self.detR_shift)
