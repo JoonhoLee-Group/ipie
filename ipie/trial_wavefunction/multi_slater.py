@@ -14,6 +14,7 @@ from ipie.legacy.estimators.greens_function import (gab, gab_mod, gab_mod_ovlp,
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.utils.io import get_input_value, write_qmcpack_wfn
 from ipie.utils.mpi import get_shared_array
+from ipie.utils.backend import cast_to_device
 
 try:
     from ipie.lib.wicks import wicks_helper
@@ -43,23 +44,17 @@ class MultiSlater(object):
         self.name = "MultiSlater"
         self.mixed_precision = hamiltonian.mixed_precision
         self.chunked = False
-        self.wicks = get_input_value(options, "wicks", default=False, verbose=verbose)
-        self.use_wicks_helper = get_input_value(
-            options, "use_wicks_helper", default=False, verbose=verbose
-        )
-        self.optimized = get_input_value(
-            options,
-            "optimized",
-            default=False,
-            alias=["optimize", "optimise", "optimised"],
-            verbose=verbose,
-        )
         # TODO : Fix for MSD.
         # This is for the overlap trial
+        self.ortho_expansion = len(wfn) == 3
+        self.wicks = get_input_value(
+                options,
+                "wicks",
+                default=self.ortho_expansion,
+                verbose=verbose)
         if len(wfn) == 3:
             # CI type expansion.
             self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
-            self.ortho_expansion = True
         else:
             psit = wfn[1]
             self.psi = psit
@@ -76,6 +71,17 @@ class MultiSlater(object):
         self._nbeta = system.ndown
         self._nelec = system.nelec
         self._nbasis = hamiltonian.nbasis
+
+        self.use_wicks_helper = get_input_value(
+            options, "use_wicks_helper", default=False, verbose=verbose
+        )
+        self.optimized = get_input_value(
+            options,
+            "optimized",
+            default=True,
+            alias=["optimize", "optimise", "optimised"],
+            verbose=verbose,
+        )
 
         self.ndets = get_input_value(
             options, "ndets", default=len(self.coeffs), verbose=verbose
@@ -124,7 +130,7 @@ class MultiSlater(object):
         self.ndets_props = get_input_value(
             options,
             "ndets_for_trial_props",
-            default=self.ndets,
+            default=min(self.ndets, 100),
             alias=["ndets_prop"],
             verbose=verbose,
         )
@@ -635,78 +641,7 @@ class MultiSlater(object):
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
-        import cupy
-
-        size = self.coeffs.size
-        if numpy.isrealobj(self.psi):
-            size += self.psi.size / 2.0
-        else:
-            size += self.psi.size
-            size += self.psia.size
-            size += self.psib.size
-        if numpy.isrealobj(self._rchola):
-            if self.chunked:
-                size += self._rchola_chunk.size / 2.0 + self._rcholb_chunk.size / 2.0
-            else:
-                size += self._rchola.size / 2.0 + self._rcholb.size / 2.0
-        else:
-            if self.chunked:
-                size += self._rchola_chunk.size + self._rcholb_chunk.size
-            else:
-                size += self._rchola.size + self._rcholb.size
-
-        if numpy.isrealobj(self._rH1a):
-            size += self._rH1a.size / 2.0 + self._rH1b.size / 2.0
-        else:
-            size += self._rH1a.size + self._rH1b.size
-
-        if type(self.G) == numpy.ndarray:
-            size += self.G.size
-        if self.Ghalf != None:
-            size += self.Ghalf[0].size + self.Ghalf[1].size
-        if self.ortho_expansion:
-            size += (
-                self.occa.size + self.occb.size
-            ) / 2.0  # to account for the fact that these are float64, not complex128
-        if verbose:
-            expected_bytes = size * 16.0
-            print(
-                "# trial_wavefunction.MultiSlater: expected to allocate {:4.3f} GB".format(
-                    expected_bytes / 1024**3
-                )
-            )
-
-        self.psi = cupy.asarray(self.psi)
-        self.psia = cupy.asarray(self.psia)
-        self.psib = cupy.asarray(self.psib)
-        self.coeffs = cupy.asarray(self.coeffs)
-
-        if self.chunked:
-            self._rchola_chunk = cupy.asarray(self._rchola_chunk)
-            self._rcholb_chunk = cupy.asarray(self._rcholb_chunk)
-        else:
-            self._rchola = cupy.asarray(self._rchola)
-            self._rcholb = cupy.asarray(self._rcholb)
-
-        self._rH1a = cupy.asarray(self._rH1a)
-        self._rH1b = cupy.asarray(self._rH1b)
-        if type(self.G) == numpy.ndarray:
-            self.G = cupy.asarray(self.G)
-        if self.Ghalf != None:
-            self.Ghalf[0] = cupy.asarray(self.Ghalf[0])
-            self.Ghalf[1] = cupy.asarray(self.Ghalf[1])
-        if self.ortho_expansion:
-            self.occa = cupy.asarray(self.occa)
-            self.occb = cupy.asarray(self.occb)
-        free_bytes, total_bytes = cupy.cuda.Device().mem_info
-        used_bytes = total_bytes - free_bytes
-
-        if verbose:
-            print(
-                "# trial_wavefunction.MultiSlater: using {:4.3f} GB out of {:4.3f} GB memory on GPU".format(
-                    used_bytes / 1024**3, total_bytes / 1024**3
-                )
-            )
+        cast_to_device(self, verbose)
 
     def contract_one_body(self, ints):
         numer = 0.0

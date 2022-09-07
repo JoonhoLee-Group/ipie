@@ -11,8 +11,10 @@ from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.propagation.generic import GenericContinuous
 from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from ipie.propagation.overlap import get_calc_overlap
+
 from ipie.utils.misc import is_cupy
-from ipie.qmc.utils import gpu_synchronize
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize, cast_to_device
 
 
 class Continuous(object):
@@ -86,6 +88,8 @@ class Continuous(object):
         self.tgemm = 0.0
 
     def cast_to_cupy(self, verbose=False):
+        # cast_to_device(self, verbose)
+        # cast_to_device(self.propagator)
         import cupy
 
         size = (
@@ -141,43 +145,25 @@ class Continuous(object):
         phi : numpy array
             Exp(VHS) * phi
         """
-        if is_cupy(
-            VHS
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            copy = cupy.copy
-            copyto = cupy.copyto
-            zeros = cupy.zeros
-            einsum = cupy.einsum
-            gpu = True
-        else:
-            copy = numpy.copy
-            copyto = numpy.copyto
-            zeros = numpy.zeros
-            einsum = numpy.einsum
-            gpu = False
-
         if debug:
             copy = numpy.copy(phi)
             c2 = scipy.linalg.expm(VHS).dot(copy)
 
         # Temporary array for matrix exponentiation.
-        Temp = zeros(phi.shape, dtype=phi.dtype)
+        Temp = xp.zeros(phi.shape, dtype=phi.dtype)
 
-        copyto(Temp, phi)
+        xp.copyto(Temp, phi)
         if is_cupy(VHS):
             for n in range(1, self.exp_nmax + 1):
-                Temp = einsum("wik,wkj->wij", VHS, Temp, optimize=True) / n
+                Temp = xp.einsum("wik,wkj->wij", VHS, Temp, optimize=True) / n
                 phi += Temp
         else:
             for iw in range(phi.shape[0]):
                 for n in range(1, self.exp_nmax + 1):
                     Temp[iw] = VHS[iw].dot(Temp[iw]) / n
                     phi[iw] += Temp[iw]
-        
-        gpu_synchronize(gpu)
+
+        synchronize()
 
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
@@ -198,36 +184,20 @@ class Continuous(object):
         phi : numpy array
             Exp(VHS) * phi
         """
-        if is_cupy(
-            VHS
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            copy = cupy.copy
-            copyto = cupy.copyto
-            zeros = cupy.zeros
-            gpu = True
-        else:
-            copy = numpy.copy
-            copyto = numpy.copyto
-            zeros = numpy.zeros
-            gpu = False
 
         if debug:
             copy = numpy.copy(phi)
             c2 = scipy.linalg.expm(VHS).dot(copy)
 
         # Temporary array for matrix exponentiation.
-        Temp = zeros(phi.shape, dtype=phi.dtype)
+        Temp = xp.zeros(phi.shape, dtype=phi.dtype)
 
-        copyto(Temp, phi)
+        xp.copyto(Temp, phi)
         for n in range(1, self.exp_nmax + 1):
             Temp = VHS.dot(Temp) / n
             phi += Temp
 
-        gpu_synchronize(gpu)
-
+        synchronize()
         if debug:
             print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
         return phi
@@ -235,17 +205,6 @@ class Continuous(object):
     def apply_bound_hybrid_batch(
         self, ehyb, eshift
     ):  # shift is a number but ehyb is not
-        if is_cupy(
-            ehyb
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            clip = cupy.clip
-            gpu = True
-        else:
-            clip = numpy.clip
-            gpu = False
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
         # first block until reasonable estimate of eshift can be computed.
@@ -253,8 +212,8 @@ class Continuous(object):
             return ehyb
         emax = eshift.real + self.ebound
         emin = eshift.real - self.ebound
-        clip(ehyb.real, a_min=emin, a_max=emax, out=ehyb.real)  # in-place clipping
-        gpu_synchronize(gpu)
+        xp.clip(ehyb.real, a_min=emin, a_max=emax, out=ehyb.real)  # in-place clipping
+        synchronize()
         return ehyb
 
     def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
@@ -276,30 +235,8 @@ class Continuous(object):
         xshifted : numpy array
             shifited auxiliary field
         """
-        if is_cupy(
-            trial.psi
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            einsum = cupy.einsum
-            abs = cupy.abs
-            zeros = cupy.zeros
-            normal = cupy.random.normal
-            where = cupy.where
-            sum = cupy.sum
-            gpu = True
-        else:
-            einsum = numpy.einsum
-            abs = numpy.abs
-            zeros = numpy.zeros
-            normal = numpy.random.normal
-            where = numpy.where
-            sum = numpy.sum
-            gpu = False
-
         # Optimal force bias.
-        xbar = zeros((walker_batch.nwalkers, hamiltonian.nfields))
+        xbar = xp.zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
             self.propagator.vbias_batch = construct_force_bias_batch(
@@ -308,28 +245,28 @@ class Continuous(object):
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
             )
-            gpu_synchronize(gpu)
+            synchronize()
             self.tfbias += time.time() - start_time
 
-        absxbar = abs(xbar)
+        absxbar = xp.abs(xbar)
         idx_to_rescale = absxbar > 1.0
         nonzeros = absxbar > 1e-13
         xbar_rescaled = xbar.copy()
         xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
-        xbar = where(idx_to_rescale, xbar_rescaled, xbar)
+        xbar = xp.where(idx_to_rescale, xbar_rescaled, xbar)
 
-        self.nfb_trig += sum(idx_to_rescale)
+        self.nfb_trig += xp.sum(idx_to_rescale)
 
         # Normally distrubted auxiliary fields.
-        xi = normal(0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers).reshape(
+        xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers).reshape(
             walker_batch.nwalkers, hamiltonian.nfields
         )
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
-        cmf = -self.sqrt_dt * einsum("wx,x->w", xshifted, self.propagator.mf_shift)
+        cmf = -self.sqrt_dt * xp.einsum("wx,x->w", xshifted, self.propagator.mf_shift)
         # Constant factor arising from shifting the propability distribution.
-        cfb = einsum("wx,wx->w", xi, xbar) - 0.5 * einsum("wx,wx->w", xbar, xbar)
+        cfb = xp.einsum("wx,wx->w", xi, xbar) - 0.5 * xp.einsum("wx,wx->w", xbar, xbar)
 
         # Operator terms contributing to propagator.
         start_time = time.time()
@@ -339,7 +276,7 @@ class Continuous(object):
             )
         else:
             VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
-        gpu_synchronize(gpu)
+        synchronize()
         self.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
         start_time = time.time()
@@ -357,7 +294,7 @@ class Continuous(object):
                     walker_batch.phib[iw] = self.apply_exponential(
                         walker_batch.phib[iw], VHS[iw]
                     )
-        gpu_synchronize(gpu)
+        synchronize()
         self.tgemm += time.time() - start_time
 
         return (cmf, cfb, xshifted)
@@ -386,10 +323,10 @@ class Continuous(object):
         else:
             gpu = False
 
-        gpu_synchronize(gpu)
+        synchronize()
         start_time = time.time()
         ovlp = compute_greens_function(walker_batch, trial)
-        gpu_synchronize(gpu)
+        synchronize()
         self.tgf += time.time() - start_time
 
         # 2. Update Slater matrix
@@ -402,14 +339,14 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
-        gpu_synchronize(gpu)
+        synchronize()
         self.tgemm += time.time() - start_time
 
         # 2.b Apply two-body
         (cmf, cfb, xmxbar) = self.two_body_propagator_batch(
             walker_batch, system, hamiltonian, trial
         )
-        gpu_synchronize(gpu)
+        synchronize()
 
         # 2.c Apply one-body
         start_time = time.time()
@@ -420,13 +357,13 @@ class Continuous(object):
             walker_batch.phib = kinetic_spin_real_batch(
                 walker_batch.phib, self.propagator.BH1[1]
             )
-        gpu_synchronize(gpu)
+        synchronize()
         self.tgemm += time.time() - start_time
 
         # Now apply phaseless approximation
         start_time = time.time()
         ovlp_new = self.calc_overlap(walker_batch, trial)
-        gpu_synchronize(gpu)
+        synchronize()
         self.tovlp += time.time() - start_time
 
         start_time = time.time()
@@ -442,7 +379,7 @@ class Continuous(object):
             xmxbar,
             eshift,
         )
-        gpu_synchronize(gpu)
+        synchronize()
         self.tupdate += time.time() - start_time
 
     def update_weight_hybrid_batch(
@@ -458,54 +395,28 @@ class Continuous(object):
         xmxbar,
         eshift,
     ):
-        if is_cupy(
-            trial.psi
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            log = cupy.log
-            exp = cupy.exp
-            isinf = cupy.isinf
-            isfinite = cupy.isfinite
-            cos = cupy.cos
-            array = cupy.array
-            abs = cupy.abs
-            angle = cupy.angle
-            clip = cupy.clip
-        else:
-            log = numpy.log
-            exp = numpy.exp
-            isinf = numpy.isinf
-            isfinite = numpy.isfinite
-            cos = numpy.cos
-            array = numpy.array
-            abs = numpy.abs
-            angle = numpy.angle
-            clip = numpy.clip
-
         ovlp_ratio = ovlp_new / ovlp
-        hybrid_energy = -(log(ovlp_ratio) + cfb + cmf) / self.dt
+        hybrid_energy = -(xp.log(ovlp_ratio) + cfb + cmf) / self.dt
         hybrid_energy = self.apply_bound_hybrid_batch(hybrid_energy, eshift)
-        importance_function = exp(
+        importance_function = xp.exp(
             -self.dt * (0.5 * (hybrid_energy + walker_batch.hybrid_energy) - eshift)
         )
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
-        magn = abs(importance_function)
-        phase = angle(importance_function)
+        magn = xp.abs(importance_function)
+        phase = xp.angle(importance_function)
         # (magn, phase) = cmath.polar(importance_function)
         walker_batch.hybrid_energy = hybrid_energy
 
-        tosurvive = isfinite(magn)
+        tosurvive = xp.isfinite(magn)
 
         # disabling this because it seems unnecessary
         # tobeinstantlykilled = isinf(magn)
         # magn[tobeinstantlykilled] = 0.0
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
-        cosine_fac = cos(dtheta)
+        cosine_fac = xp.cos(dtheta)
 
-        clip(cosine_fac, a_min=0.0, a_max=None, out=cosine_fac)  # in-place clipping
+        xp.clip(cosine_fac, a_min=0.0, a_max=None, out=cosine_fac)  # in-place clipping
         walker_batch.weight = walker_batch.weight * magn * cosine_fac
         walker_batch.ovlp = ovlp_new
 
@@ -514,9 +425,9 @@ class Continuous(object):
             for iw in range(walker_batch.nwalkers):
                 if tosurvive[iw]:
                     if magn > 1e-16:
-                        wfac = array(
+                        wfac = xp.array(
                             [importance_function[iw] / magn[iw], cosine_fac[iw]]
                         )
                     else:
-                        wfac = array([0, 0])
+                        wfac = xp.array([0, 0])
                     walker_batch.field_configs[iw].update(xmxbar, wfac)

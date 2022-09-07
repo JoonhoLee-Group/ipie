@@ -72,10 +72,11 @@ def test_generic_multi_det_batch():
     )
 
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(sys, ham, wfn, init=init)
+    trial = MultiSlater(sys, ham, wfn, init=init, options={'wicks': False,
+        'optimized': False})
     if ndets == 1:
-        trial.half_rotate(sys, ham)
         trial.psi = trial.psi[0]
+        trial.half_rotate(sys, ham)
 
     numpy.random.seed(seed)
 

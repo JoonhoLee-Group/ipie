@@ -12,6 +12,7 @@ import time
 from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
                            write_hamiltonian,
                            read_hamiltonian)
+from ipie.utils.backend import cast_to_device
 
 
 class Generic(object):
@@ -215,6 +216,8 @@ class Generic(object):
             assert self.chol_vecs.size == tot_size
 
     # This function casts relevant member variables into cupy arrays
+    # Keeping this specific for the moment as too much logic.
+    # A sign it should be split up..
     def cast_to_cupy(self, verbose=False):
         import cupy
 

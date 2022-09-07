@@ -1,12 +1,18 @@
 from math import ceil
 import numpy
 import pytest
+import sys
+
+try:
+    import cupy
+except:
+    no_gpu = True
+
 
 from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
                                              local_energy_single_det_batch_gpu)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.local_energy import \
-    local_energy_generic_cholesky_opt
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
@@ -20,17 +26,10 @@ from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
-try:
-    import cupy
 
-    no_gpu = not cupy.is_available()
-except:
-    no_gpu = True
-
-
-@pytest.mark.unit
-@pytest.mark.skipif(no_gpu, reason="gpu not found.")
+@pytest.mark.gpu
 def test_exchange_kernel_reduction():
+    import cupy
     nchol = 101
     nocc = 31
     nwalk = 7
@@ -56,14 +55,14 @@ def test_exchange_kernel_reduction():
     assert numpy.allclose(exx_test, exx)
 
 
-@pytest.mark.unit
-@pytest.mark.skipif(no_gpu, reason="gpu not found.")
+@pytest.mark.gpu
 def test_local_energy_single_det_batch():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5, 5)
     nwalkers = 10
     nsteps = 25
+    from ipie.utils.backend import arraylib as xp
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     chol = chol.reshape((-1, nmo * nmo)).T.copy()
@@ -99,11 +98,10 @@ def test_local_energy_single_det_batch():
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
-    if not no_gpu:
-        prop.cast_to_cupy()
-        ham.cast_to_cupy()
-        trial.cast_to_cupy()
-        walker_batch.cast_to_cupy()
+    prop.cast_to_cupy()
+    ham.cast_to_cupy()
+    trial.cast_to_cupy()
+    walker_batch.cast_to_cupy()
 
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
@@ -132,7 +130,6 @@ def test_local_energy_single_det_batch():
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
     assert numpy.allclose(energies, energies_einsum_chunks)
-
 
 if __name__ == "__main__":
     test_local_energy_single_det_batch()

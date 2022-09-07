@@ -1,3 +1,4 @@
+# from .config import config
 from ._version import get_versions
 
 v = get_versions()

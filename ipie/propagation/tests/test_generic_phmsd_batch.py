@@ -6,8 +6,9 @@ from ipie.estimators.greens_function_batch import (
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.trial_wavefunction.multi_slater import \
+from ipie.legacy.trial_wavefunction.multi_slater import (
     MultiSlater as LegacyMultiSlater
+    )
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
@@ -52,11 +53,11 @@ def test_phmsd_force_bias_batch():
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True
     )
-    trial = MultiSlater(system, ham, wfn, init=init, options={"wicks": True})
+    trial = MultiSlater(system, ham, wfn, init=init)
     trial.half_rotate(system, ham)
 
     legacytrial = LegacyMultiSlater(
-        system, legacyham, wfn, init=init, options={"wicks": True}
+        system, legacyham, wfn, init=init,
     )
     legacytrial.half_rotate(system, legacyham)
 
@@ -123,12 +124,14 @@ def test_phmsd_greens_function_batch():
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True
     )
-    trial = MultiSlater(system, ham, wfn, init=init, options={"wicks": True})
+    trial = MultiSlater(system, ham, wfn, init=init,
+            options={"wicks": True, 'optimized': False})
 
     numpy.random.seed(7)
 
     trial.calculate_energy(system, ham)
-    trial_slow = MultiSlater(system, ham, wfn, init=init)
+    trial_slow = MultiSlater(system, ham, wfn, init=init, options={"wicks":
+        False, 'optimized': False})
     trial_slow.calculate_energy(system, ham)
 
     options = {"hybrid": True}
@@ -141,7 +144,8 @@ def test_phmsd_greens_function_batch():
         ecore=0,
     )
     legacytrial = LegacyMultiSlater(
-        system, legacyham, wfn, init=init, options={"wicks": True}
+            system, legacyham, wfn, init=init, options={"wicks": True,
+                'optimized': False}
     )
 
     walkers = [MultiDetWalker(system, legacyham, legacytrial) for iw in range(nwalkers)]
@@ -183,8 +187,10 @@ def test_phmsd_overlap_batch():
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=ndets, init=True
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial_wicks = MultiSlater(system, ham, wfn, init=init, options={"wicks": True})
+    trial = MultiSlater(system, ham, wfn, init=init,
+            options={'wicks': False, 'optimized': False}
+            )
+    trial_wicks = MultiSlater(system, ham, wfn, init=init)
 
     numpy.random.seed(70)
 

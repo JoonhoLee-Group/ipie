@@ -21,16 +21,7 @@ from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
-try:
-    import cupy
-
-    no_gpu = not cupy.is_available()
-except:
-    no_gpu = True
-
-
-@pytest.mark.unit
-@pytest.mark.skipif(no_gpu, reason="gpu not found.")
+@pytest.mark.gpu
 def test_hybrid_batch():
     numpy.random.seed(7)
     nmo = 10
@@ -56,6 +47,7 @@ def test_hybrid_batch():
     trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
+    import cupy
     cupy.random.seed(7)
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
@@ -105,11 +97,10 @@ def test_hybrid_batch():
     prop = Continuous(system, ham, trial, qmc, options=options)
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
 
-    if not no_gpu:
-        prop.cast_to_cupy()
-        ham.cast_to_cupy()
-        trial.cast_to_cupy()
-        walker_batch.cast_to_cupy()
+    prop.cast_to_cupy()
+    ham.cast_to_cupy()
+    trial.cast_to_cupy()
+    walker_batch.cast_to_cupy()
 
     numpy.random.seed(7)
     cupy.random.seed(7)
@@ -129,14 +120,21 @@ def test_hybrid_batch():
 
     # assert numpy.allclose(ovlps, cupy.asnumpy(ovlps_batch))
 
+    # Using abs following batched qr implementation on gpu which does not
+    # preserve previous gauge fixing of sequential algorithm.
     for iw in range(nwalkers):
-        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:, : system.nup])
+        assert numpy.allclose(
+                abs(phi_batch[iw]),
+                abs(walkers[iw].phi[:, : system.nup])
+                )
 
     phi_batch = cupy.array(walker_batch.phib)
     phi_batch = cupy.asnumpy(phi_batch)
     for iw in range(nwalkers):
-        assert numpy.allclose(phi_batch[iw], walkers[iw].phi[:, system.nup :])
-
+        assert numpy.allclose(
+                abs(phi_batch[iw]),
+                abs(walkers[iw].phi[:, system.nup :])
+                )
 
 if __name__ == "__main__":
     test_hybrid_batch()

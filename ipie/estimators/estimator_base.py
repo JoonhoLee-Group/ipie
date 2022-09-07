@@ -3,6 +3,8 @@ from abc import abstractmethod
 import numpy as np
 
 from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import to_host
 
 class EstimatorBase(object):
 
@@ -80,10 +82,10 @@ class EstimatorBase(object):
     @property
     def data(self):
         if self.scalar_estimator:
-            return np.array(list(self._data.values()))
+            vals = [to_host(i) for i in self._data.values()]
+            return np.array(vals)
         else:
-            # return np.concatenate(list(self._data.values()))
-            return np.concatenate(list(self._data.values()))
+            return xp.concatenate(list(self._data.values()))
 
     @property
     def header_to_text(self) -> str:

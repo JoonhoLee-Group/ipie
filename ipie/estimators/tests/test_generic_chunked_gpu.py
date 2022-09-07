@@ -2,6 +2,12 @@ import numpy
 import pytest
 from mpi4py import MPI
 
+try:
+    import cupy
+    no_gpu = not cupy.is_available()
+except:
+    no_gpu = True
+
 from ipie.estimators.generic import local_energy_cholesky_opt
 from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
                                              local_energy_single_det_batch_gpu,
@@ -19,14 +25,6 @@ from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
-try:
-    import cupy
-
-    no_gpu = not cupy.is_available()
-except:
-    no_gpu = True
-
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -120,7 +118,6 @@ def test_generic_chunked_gpu():
 
     assert numpy.allclose(energies_einsum, energies_chunked)
     assert numpy.allclose(energies_einsum, energies_chunked_low_mem)
-
 
 if __name__ == "__main__":
     test_generic_chunked_gpu()
