@@ -1,6 +1,6 @@
 .. raw:: html
 
-    <img src="https://github.com/linusjoonho/ipie/blob/main/logo.svg" width="200px">
+    <img src="https://github.com/linusjoonho/ipie/blob/main/logo.png" width="200px">
 ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
 ipie inherits a lot of QMC features from pauxy.
