@@ -250,31 +250,22 @@ class GenericContinuous(object):
 
         ssize = handler.scomm.size
         srank = handler.scomm.rank
+        sender = numpy.where(handler.receivers == srank)[0]
 
         for icycle in range(handler.ssize - 1):
-            for isend, sender in enumerate(handler.senders):
-                if srank == isend:
-                    xshifted_send = to_host(xshifted_send)
-                    VHS_send = to_host(VHS_send)
+            synchronize()
+            handler.scomm.Isend(
+                xshifted_send, dest=handler.receivers[srank], tag=1
+            )
+            handler.scomm.Isend(VHS_send, dest=handler.receivers[srank], tag=2)
 
-                    handler.scomm.Send(
-                        xshifted_send, dest=handler.receivers[isend], tag=1
-                    )
-                    handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=2)
+            req1=handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
+            req2=handler.scomm.Irecv(VHS_recv, source=sender, tag=2)
+            req1.wait()
+            req2.wait()
 
-                    xshifted_send = xp.asarray(xshifted_send)
-                    VHS_send = xp.asarray(VHS_send)
-                elif srank == handler.receivers[isend]:
-                    sender = numpy.where(handler.receivers == srank)[0]
-                    xshifted_recv = to_host(xshifted_recv)
-                    VHS_recv = to_host(VHS_recv)
-
-                    handler.scomm.Recv(xshifted_recv, source=sender, tag=1)
-                    handler.scomm.Recv(VHS_recv, source=sender, tag=2)
-
-                    xshifted_recv = xp.asarray(xshifted_recv)
-                    VHS_recv = xp.asarray(VHS_recv)
             handler.scomm.barrier()
+
             # prepare sending
             VHS_send = (
                 VHS_recv
@@ -283,16 +274,11 @@ class GenericContinuous(object):
             )
             xshifted_send = xshifted_recv.copy()
 
-        for isend, sender in enumerate(handler.senders):
-            if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
-                VHS_send = to_host(VHS_send)
-                handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=1)
-                VHS_send = xp.asarray(VHS_send)
-            elif srank == handler.receivers[isend]:
-                sender = numpy.where(handler.receivers == srank)[0]
-                VHS_recv = to_host(VHS_recv)
-                handler.scomm.Recv(VHS_recv, source=sender, tag=1)
-                VHS_recv = xp.asarray(VHS_recv)
+        synchronize()
+        handler.scomm.Isend(VHS_send, dest=handler.receivers[srank], tag=1)
+        req = handler.scomm.Irecv(VHS_recv, source=sender, tag=1)
+        req.wait()
+        handler.scomm.barrier()
 
         VHS_recv = (
             self.isqrt_dt
