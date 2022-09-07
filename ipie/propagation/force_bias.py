@@ -240,7 +240,7 @@ def construct_force_bias_batch_single_det_chunked(
         handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=3)
         handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=4)
 
-        sender = where(receivers == srank)[0]
+        sender = numpy.where(receivers == srank)[0]
         req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
         req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
         req3 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=3)
