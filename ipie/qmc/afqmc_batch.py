@@ -10,18 +10,22 @@ from math import exp
 import h5py
 import numpy
 
+from ipie.config import config
+
 from ipie.estimators.handler import EstimatorHandler
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.utils import get_propagator_driver
 from ipie.qmc.options import QMCOpts
-from ipie.qmc.utils import set_rng_seed, gpu_synchronize
+from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
-from ipie.utils.misc import (get_git_info, get_node_mem, print_env_info,
+from ipie.utils.misc import (get_git_info, print_env_info,
                              is_cupy)
 from ipie.utils.mpi import MPIHandler
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import get_host_memory, synchronize
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
@@ -159,18 +163,11 @@ class AFQMCBatch(object):
             )
 
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
-        if self.qmc.gpu:
-            try:
-                import cupy
-
-                assert cupy.is_available()
-            except:
-                if comm.rank == 0:
-                    print("# cupy is unavailble but GPU calculation is requested")
-                exit()
-            ngpus = cupy.cuda.runtime.getDeviceCount()
-            props = cupy.cuda.runtime.getDeviceProperties(0)
-            cupy.cuda.runtime.setDevice(self.shared_comm.rank)
+        print(config)
+        if config.get_option('use_gpu'):
+            ngpus = xp.cuda.runtime.getDeviceCount()
+            props = xp.cuda.runtime.getDeviceProperties(0)
+            xp.cuda.runtime.setDevice(self.shared_comm.rank)
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
@@ -179,6 +176,7 @@ class AFQMCBatch(object):
                             comm.size, ngpus
                         )
                     )
+
 
         if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
@@ -205,7 +203,7 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
 
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm, gpu=self.qmc.gpu)
+        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
 
         self.cplx = self.determine_dtype(options.get("propagator", {}), self.system)
 
@@ -227,7 +225,7 @@ class AFQMCBatch(object):
                 scomm=self.shared_comm,
                 verbose=verbose,
             )
-        mem = get_node_mem()
+        mem = get_host_memory()
         if comm.rank == 0:
             if self.trial.compute_trial_energy:
                 self.trial.calculate_energy(self.system, self.hamiltonian)
@@ -295,27 +293,15 @@ class AFQMCBatch(object):
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
 
-        if self.qmc.gpu:
-            print("# Casting numpy arrays to cupy arrays")
-            if comm.rank == 0:
-                print("# Casting arrays in hamiltonian")
-            self.hamiltonian.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in trial")
-            self.trial.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in propagators")
-            self.propagators.cast_to_cupy(verbose)
-            if comm.rank == 0:
-                print("# Casting arrays in walkers_batch")
-            self.psi.walkers_batch.cast_to_cupy(verbose)
-            print("# NOTE: cupy available and qmc.gpu == TRUE.")
-
+        if config.get_option('use_gpu'):
+            self.propagators.cast_to_cupy(verbose and comm.rank == 0)
+            self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
+            self.trial.cast_to_cupy(verbose and comm.rank == 0)
+            self.psi.walkers_batch.cast_to_cupy(verbose and comm.rank == 0)
         else:
             if comm.rank == 0:
                 try:
                     import cupy
-
                     _have_cupy = True
                 except:
                     _have_cupy = False
@@ -325,7 +311,7 @@ class AFQMCBatch(object):
                 )
 
         if comm.rank == 0:
-            mem_avail = get_node_mem()
+            mem_avail = get_host_memory()
             print("# Available memory on the node is {:4.3f} GB".format(mem_avail))
             json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
             json_string = to_json(self)
@@ -340,34 +326,6 @@ class AFQMCBatch(object):
             Initial wavefunction / distribution of walkers.
         comm : MPI communicator
         """
-
-        if is_cupy(
-            self.psi.walkers_batch.phia
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            zeros = cupy.zeros
-            ndarray = cupy.ndarray
-            array = cupy.asnumpy
-            abs = cupy.abs
-            sum = cupy.sum
-            min = cupy.min
-            clip = cupy.clip
-            gpu = True
-        else:
-            zeros = numpy.zeros
-            ndarray = numpy.ndarray
-            array = numpy.array
-            abs = numpy.abs
-            sum = numpy.sum
-            min = numpy.min
-            clip = numpy.clip
-            gpu = False
-
-        # import warnings
-        # warnings.filterwarnings(action="error", category=numpy.ComplexWarning)
-
         tzero_setup = time.time()
         if psi is not None:
             self.psi = psi
@@ -392,16 +350,16 @@ class AFQMCBatch(object):
         self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
         self.psi.zero_accumulators()
 
-        gpu_synchronize(gpu)
+        synchronize()
         self.tsetup += time.time() - tzero_setup
 
         for step in range(1, total_steps + 1):
-            gpu_synchronize(gpu)
+            synchronize()
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
                 self.psi.orthogonalise(self.trial, self.propagators.free_projection)
-                gpu_synchronize(gpu)
+                synchronize()
                 self.tortho += time.time() - start
             start = time.time()
 
@@ -424,14 +382,14 @@ class AFQMCBatch(object):
             if step > 1:
                 # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
                 wbound = self.psi.walkers_batch.total_weight * 0.10
-                clip(
+                xp.clip(
                     self.psi.walkers_batch.weight,
                     a_min=-wbound,
                     a_max=wbound,
                     out=self.psi.walkers_batch.weight,
                 )  # in-place clipping
     
-            gpu_synchronize(gpu)
+            synchronize()
             self.tprop_clip += time.time() - start_clip
 
             start_barrier = time.time()
@@ -443,8 +401,7 @@ class AFQMCBatch(object):
             if step % self.qmc.npop_control == 0:
                 start = time.time()
                 self.psi.pop_control(comm)
-                if gpu:
-                    cupy.cuda.stream.get_current_stream().synchronize()
+                synchronize()
                 self.tpopc += time.time() - start
                 self.tpopc_send = self.psi.send_time
                 self.tpopc_recv = self.psi.recv_time
@@ -454,7 +411,7 @@ class AFQMCBatch(object):
             # accumulate weight, hybrid energy etc. across block
             start = time.time()
             self.psi.update_accumulators()
-            gpu_synchronize(gpu)
+            synchronize()
             self.testim += time.time() - start # we dump this time into estimator
             # calculate estimators
             start = time.time()
@@ -471,7 +428,7 @@ class AFQMCBatch(object):
                         self.psi.accumulator_factors
                         )
                 self.psi.zero_accumulators()
-            gpu_synchronize(gpu)
+            synchronize()
             self.testim += time.time() - start
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers_batch(comm)
@@ -479,7 +436,7 @@ class AFQMCBatch(object):
                 eshift = self.psi.accumulator_factors.eshift
             else:
                 eshift += self.psi.accumulator_factors.eshift - eshift
-            gpu_synchronize(gpu)
+            synchronize()
             self.tstep += time.time() - start_step
 
     def finalise(self, verbose=False):

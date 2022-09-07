@@ -62,6 +62,7 @@ def test_overlap_batch():
 
     nwalkers = 10
     walkers_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    greens_function_single_det(walkers_batch, trial, build_full=True)
     for iw in range(nwalkers):
         # ovlp = numpy.dot(trial.psi[:,:nup].conj().T, walkers_batch.phi[iw][:,:nup])
         # id_exp = numpy.dot(walkers_batch.inv_ovlpa[iw], ovlp)
@@ -99,6 +100,7 @@ def test_greens_function_batch():
 
     nwalkers = 1
     walkers_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    greens_function_single_det(walkers_batch, trial)
 
     # Test Green's function
     Gref = gab(trial.psi[:, :nup], walker.phi[:, :nup])
@@ -126,6 +128,7 @@ def test_reortho_batch():
 
     nwalkers = 1
     walkers_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    walkers_batch.ovlp = greens_function_single_det(walkers_batch, trial)
 
     # Test Green's function
     ovlp = walker.calc_overlap(trial)
@@ -133,7 +136,10 @@ def test_reortho_batch():
 
     assert walker.ot == pytest.approx(ovlp)
     assert walker.ot == pytest.approx(ovlp_batch[0])
-    assert walker.ot == pytest.approx(walkers_batch.ovlp[0])
+    # FDM: redundant following gpu config work. Walkers batch casting to cupy is
+    # inconsistent with building green's function / overlap on cpu first as
+    # arraylib is determined during configuration.
+    # assert walker.ot == pytest.approx(walkers_batch.ovlp[0])
 
     # eloc = local_energy(system, ham, walker, trial)
     detR = walker.reortho(trial)

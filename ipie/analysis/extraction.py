@@ -68,6 +68,9 @@ def extract_data_from_textfile(filename):
             if ('Iteration' in line or 'Block' in line) and ':' not in line:
                 header = line.split()
                 start_collecting = True
+            elif 'Block' in line and ':' not in line:
+                header = line.split()
+                start_collecting = True
     data = numpy.array(output)
     results = pd.DataFrame({k: v for k, v in zip(header, data.T)})
     return results

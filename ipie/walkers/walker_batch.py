@@ -5,6 +5,9 @@ import time
 import numpy
 import scipy
 
+from ipie.config import config
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize, qr, qr_mode, cast_to_device, to_host
 from ipie.utils.misc import is_cupy
 
 
@@ -155,17 +158,6 @@ class WalkerBatch(object):
             )
 
     def set_buff_size_single_walker(self):
-        if is_cupy(self.weight):
-            import cupy
-
-            ndarray = cupy.ndarray
-            array = cupy.asnumpy
-            isrealobj = cupy.isrealobj
-        else:
-            ndarray = numpy.ndarray
-            array = numpy.array
-            isrealobj = numpy.isrealobj
-
         names = []
         size = 0
         for k, v in self.__dict__.items():
@@ -175,7 +167,7 @@ class WalkerBatch(object):
             #     print("failed", k, v)
             if not (k in self.buff_names):
                 continue
-            if isinstance(v, (ndarray)):
+            if isinstance(v, (xp.ndarray, numpy.ndarray)):
                 names.append(k)
                 size += v.size
             elif isinstance(v, (int, float, complex)):
@@ -184,15 +176,118 @@ class WalkerBatch(object):
             elif isinstance(v, list):
                 names.append(k)
                 for l in v:
-                    if isinstance(l, (ndarray)):
+                    if isinstance(l, (xp.ndarray)):
                         size += l.size
                     elif isinstance(l, (int, float, complex)):
                         size += 1
         return size
 
+    # def get_buffer(self, iw):
+        # """Get iw-th walker buffer for MPI communication
+
+        # iw : int
+            # the walker index of interest
+        # Returns
+        # -------
+        # buff : dict
+            # Relevant walker information for population control.
+        # """
+        # s = 0
+        # buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+        # for d in self.buff_names:
+            # data = self.__dict__[d]
+            # if data is None:
+                # continue
+            # assert (
+                # data.size % self.nwalkers == 0
+            # )  # Only walker-specific data is being communicated
+            # if isinstance(data[iw], (xp.ndarray)):
+                # buff[s : s + data[iw].size] = to_host(data[iw].ravel())
+                # s += data[iw].size
+            # elif isinstance(data[iw], list):  # when data is list
+                # for l in data[iw]:
+                    # if isinstance(l, (xp.ndarray)):
+                        # buff[s : s + l.size] = to_host(l.ravel())
+                        # s += l.size
+                    # elif isinstance(
+                        # l, (int, float, complex, numpy.float64, numpy.complex128)
+                    # ):
+                        # buff[s : s + 1] = l
+                        # s += 1
+            # else:
+                # buff[s : s + 1] = to_host(data[iw])
+                # s += 1
+        # if self.field_configs is not None:
+            # stack_buff = self.field_configs.get_buffer()
+            # return numpy.concatenate((buff, stack_buff))
+        # elif self.stack is not None:
+            # stack_buff = self.stack.get_buffer()
+            # return numpy.concatenate((buff, stack_buff))
+        # else:
+            # return buff
+
+    # def set_buffer(self, iw, buff):
+        # """Set walker buffer following MPI communication
+
+        # Parameters
+        # -------
+        # buff : dict
+            # Relevant walker information for population control.
+        # """
+        # s = 0
+        # for d in self.buff_names:
+            # data = self.__dict__[d]
+            # if data is None:
+                # continue
+            # assert (
+                # data.size % self.nwalkers == 0
+            # )  # Only walker-specific data is being communicated
+            # if isinstance(data[iw], xp.ndarray):
+                # # weights are purely real
+                # if not xp.iscomplexobj(self.__dict__[d][iw]):
+                    # if data[iw].size == 1:
+                        # self.__dict__[d][iw] = (
+                                # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # ).real
+                    # else:
+                        # self.__dict__[d][iw] = xp.asarray(
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # ).real
+                # else:
+                    # if data[iw].size == 1:
+                        # self.__dict__[d][iw] = (
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # )
+                    # else:
+                        # self.__dict__[d][iw] = xp.asarray(
+                            # buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
+                        # )
+                # s += data[iw].size
+            # elif isinstance(data[iw], list):
+                # for ix, l in enumerate(data[iw]):
+                    # if isinstance(l, (xp.ndarray)):
+                        # self.__dict__[d][iw][ix] = xp.asarray(
+                            # buff[s : s + l.size].reshape(l.shape).copy()
+                        # )
+                        # s += l.size
+                    # elif isinstance(l, (int, float, complex)):
+                        # self.__dict__[d][iw][ix] = buff[s]
+                        # s += 1
+            # else:
+                # if isinstance(self.__dict__[d][iw], (int, numpy.int64)):
+                    # self.__dict__[d][iw] = int(buff[s].real)
+                # elif isinstance(self.__dict__[d][iw], (float, numpy.float64)):
+                    # self.__dict__[d][iw] = buff[s].real
+                # else:
+                    # self.__dict__[d][iw] = buff[s]
+                # s += 1
+        # if self.field_configs is not None:
+            # self.field_configs.set_buffer(buff[self.buff_size :])
+        # if self.stack is not None:
+            # self.stack.set_buffer(buff[self.buff_size :])
+
     def get_buffer(self, iw):
         """Get iw-th walker buffer for MPI communication
-
         iw : int
             the walker index of interest
         Returns
@@ -247,7 +342,6 @@ class WalkerBatch(object):
 
     def set_buffer(self, iw, buff):
         """Set walker buffer following MPI communication
-
         Parameters
         -------
         buff : dict
@@ -300,47 +394,18 @@ class WalkerBatch(object):
         if self.stack is not None:
             self.stack.set_buffer(buff[self.buff_size :])
 
+
     def reortho(self):
         """reorthogonalise walkers.
 
         parameters
         ----------
         """
-        if is_cupy(self.phia):
-            import cupy
-
-            assert cupy.is_available()
-            array = cupy.array
-            diag = cupy.diag
-            zeros = cupy.zeros
-            sum = cupy.sum
-            dot = cupy.dot
-            log = cupy.log
-            sign = numpy.sign
-            abs = cupy.abs
-            exp = cupy.exp
-            qr = cupy.linalg.qr
-            qr_mode = "reduced"
-
+        if config.get_option('use_gpu'):
             return self.reortho_batched()
-        else:
-            array = numpy.array
-            diag = numpy.diag
-            zeros = numpy.zeros
-            sum = numpy.sum
-            dot = numpy.dot
-            log = numpy.log
-            sign = numpy.sign
-            abs = numpy.abs
-            exp = numpy.exp
-            qr = scipy.linalg.qr
-            qr_mode = "economic"
-
         complex128 = numpy.complex128
-
         nup = self.nup
         ndown = self.ndown
-
         detR = []
         for iw in range(self.nwalkers):
             (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
@@ -348,95 +413,53 @@ class WalkerBatch(object):
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
             # Wanted detR factors to remain positive, dump the sign in orbitals.
-            Rup_diag = diag(Rup)
-            signs_up = sign(Rup_diag)
-            self.phia[iw] = dot(self.phia[iw], diag(signs_up))
+            Rup_diag = xp.diag(Rup)
+            signs_up = xp.sign(Rup_diag)
+            self.phia[iw] = xp.dot(self.phia[iw], xp.diag(signs_up))
 
             # include overlap factor
             # det(R) = \prod_ii R_ii
             # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
             # C factor included to avoid over/underflow
-            log_det = sum(log(abs(Rup_diag)))
+            log_det = xp.sum(xp.log(xp.abs(Rup_diag)))
 
             if ndown > 0 and not self.rhf:
                 (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
-                Rdn_diag = diag(Rdn)
-                signs_dn = sign(Rdn_diag)
-                self.phib[iw] = dot(self.phib[iw], diag(signs_dn))
-                log_det += sum(log(abs(Rdn_diag)))
+                Rdn_diag = xp.diag(Rdn)
+                signs_dn = xp.sign(Rdn_diag)
+                self.phib[iw] = xp.dot(self.phib[iw], xp.diag(signs_dn))
+                log_det += sum(xp.log(abs(Rdn_diag)))
             elif ndown > 0 and self.rhf:
                 log_det *= 2.0
 
-            detR += [exp(log_det - self.detR_shift[iw])]
-            self.log_detR[iw] += log(detR[iw])
+            detR += [xp.exp(log_det - self.detR_shift[iw])]
+            self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
-        if is_cupy(
-            self.phia
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            cupy.cuda.stream.get_current_stream().synchronize()
+        synchronize()
         return detR
+
     def reortho_batched(self):
         """reorthogonalise walkers.
 
         parameters
         ----------
         """
-        if is_cupy(self.phia):
-            import cupy
-
-            assert cupy.is_available()
-            array = cupy.array
-            diag = cupy.diag
-            zeros = cupy.zeros
-            sum = cupy.sum
-            einsum = cupy.einsum
-            dot = cupy.dot
-            log = cupy.log
-            sign = numpy.sign
-            abs = cupy.abs
-            exp = cupy.exp
-            qr = cupy.linalg.qr
-            qr_mode = "reduced"
-        else:
-            array = numpy.array
-            diag = numpy.diag
-            zeros = numpy.zeros
-            sum = numpy.sum
-            dot = numpy.dot
-            log = numpy.log
-            sign = numpy.sign
-            abs = numpy.abs
-            einsum = numpy.einsum
-            exp = numpy.exp
-            qr = numpy.linalg.qr
-            qr_mode = "reduced"
-
-        complex128 = numpy.complex128
-
-        nup = self.nup
-        ndown = self.ndown
-
+        assert config.get_option('use_gpu')
         (self.phia, Rup) = qr(self.phia, mode=qr_mode)
-        Rup_diag = einsum("wii->wi",Rup)
-        log_det = einsum("wi->w",log(abs(Rup_diag)))
-        if ndown > 0 and not self.rhf:
+        Rup_diag = xp.einsum("wii->wi",Rup)
+        log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
+        if self.ndown > 0 and not self.rhf:
             (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
-            Rdn_diag = einsum("wii->wi",Rdn)
-            log_det += einsum("wi->w",log(abs(Rdn_diag)))
-        elif ndown > 0 and self.rhf:
+            Rdn_diag = xp.einsum("wii->wi",Rdn)
+            log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
+        elif self.ndown > 0 and self.rhf:
             log_det *= 2.0
 
-        self.detR = exp(log_det - self.detR_shift)
+        self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR
 
-        if is_cupy(
-            self.phia
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
+        synchronize()
 
-            cupy.cuda.stream.get_current_stream().synchronize()
         return self.detR
