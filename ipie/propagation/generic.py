@@ -271,39 +271,22 @@ class GenericContinuous(object):
 
         ssize = handler.scomm.size
         srank = handler.scomm.rank
+        sender = where(handler.receivers == srank)[0]
 
         for icycle in range(handler.ssize - 1):
-            for isend, sender in enumerate(handler.senders):
-                if srank == isend:
-                    if iscupy:
-                        import cupy
-                        xshifted_send = cupy.asnumpy(xshifted_send)
-                        VHS_send = cupy.asnumpy(VHS_send)
 
-                    handler.scomm.Send(
-                        xshifted_send, dest=handler.receivers[isend], tag=1
-                    )
-                    handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=2)
+            cupy.cuda.stream.get_current_stream().synchronize()
+            handler.scomm.Isend(
+                xshifted_send, dest=handler.receivers[srank], tag=1
+            )
+            handler.scomm.Isend(VHS_send, dest=handler.receivers[srank], tag=2)
 
-                    if iscupy:
-                        import cupy
-                        xshifted_send = cupy.asarray(xshifted_send)
-                        VHS_send = cupy.asarray(VHS_send)
-                elif srank == handler.receivers[isend]:
-                    sender = where(handler.receivers == srank)[0]
-                    if iscupy:
-                        import cupy
-                        xshifted_recv = cupy.asnumpy(xshifted_recv)
-                        VHS_recv = cupy.asnumpy(VHS_recv)
-
-                    handler.scomm.Recv(xshifted_recv, source=sender, tag=1)
-                    handler.scomm.Recv(VHS_recv, source=sender, tag=2)
-                    
-                    if iscupy:
-                        import cupy
-                        xshifted_recv = cupy.asarray(xshifted_recv)
-                        VHS_recv = cupy.asarray(VHS_recv)
+            req1=handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
+            req2=handler.scomm.Irecv(VHS_recv, source=sender, tag=2)
+            req1.wait()
+            req2.wait()
             handler.scomm.barrier()
+
             # prepare sending
             VHS_send = (
                 VHS_recv
@@ -312,24 +295,11 @@ class GenericContinuous(object):
             )
             xshifted_send = xshifted_recv.copy()
 
-        for isend, sender in enumerate(handler.senders):
-            if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
-                if iscupy:
-                    import cupy
-                    VHS_send = cupy.asnumpy(VHS_send)
-                handler.scomm.Send(VHS_send, dest=handler.receivers[isend], tag=1)
-                if iscupy:
-                    import cupy
-                    VHS_send = cupy.asarray(VHS_send)
-            elif srank == handler.receivers[isend]:
-                sender = where(handler.receivers == srank)[0]
-                if iscupy:
-                    import cupy
-                    VHS_recv = cupy.asnumpy(VHS_recv)
-                handler.scomm.Recv(VHS_recv, source=sender, tag=1)
-                if iscupy:
-                    import cupy
-                    VHS_recv = cupy.asarray(VHS_recv)
+        cupy.cuda.stream.get_current_stream().synchronize()
+        handler.scomm.Isend(VHS_send, dest=handler.receivers[srank], tag=1)
+        req = handler.scomm.Irecv(VHS_recv, source=sender, tag=1)
+        req.wait()
+        handler.scomm.barrier()
 
         VHS_recv = (
             self.isqrt_dt

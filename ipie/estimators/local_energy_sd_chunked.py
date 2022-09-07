@@ -324,38 +324,26 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
     exx_recv = exx_send.copy()
     ecoul_recv = ecoul_send.copy()
+ 
+    srank = handler.srank
 
-
+    sender = numpy.where(receivers == handler.srank)[0]
+    scomm = handler.scomm
     for icycle in range(handler.ssize - 1):
-        for isend, sender in enumerate(senders):
-            if handler.srank == isend:
-                Ghalfa_send = cupy.asnumpy(Ghalfa_send)
-                Ghalfb_send = cupy.asnumpy(Ghalfb_send)
-                ecoul_send = cupy.asnumpy(ecoul_send)
-                exx_send = cupy.asnumpy(exx_send)
-                handler.scomm.Send(Ghalfa_send, dest=receivers[isend], tag=1)
-                handler.scomm.Send(Ghalfb_send, dest=receivers[isend], tag=2)
-                handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=3)
-                handler.scomm.Send(exx_send, dest=receivers[isend], tag=4)
-                Ghalfa_send = cupy.asarray(Ghalfa_send)
-                Ghalfb_send = cupy.asarray(Ghalfb_send)
-                ecoul_send = cupy.asarray(ecoul_send)
-                exx_send = cupy.asarray(exx_send)
-            elif handler.srank == receivers[isend]:
-                sender = numpy.where(receivers == handler.srank)[0]
-                Ghalfa_recv = cupy.asnumpy(Ghalfa_recv)
-                Ghalfb_recv = cupy.asnumpy(Ghalfb_recv)
-                ecoul_recv = cupy.asnumpy(ecoul_recv)
-                exx_recv = cupy.asnumpy(exx_recv)
-                handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
-                handler.scomm.Recv(Ghalfb_recv, source=sender, tag=2)
-                handler.scomm.Recv(ecoul_recv, source=sender, tag=3)
-                handler.scomm.Recv(exx_recv, source=sender, tag=4)
-                Ghalfa_recv = cupy.asarray(Ghalfa_recv)
-                Ghalfb_recv = cupy.asarray(Ghalfb_recv)
-                ecoul_recv = cupy.asarray(ecoul_recv)
-                exx_recv = cupy.asarray(exx_recv)
-        handler.scomm.barrier()
+        cupy.cuda.stream.get_current_stream().synchronize()
+        scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
+        scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
+        scomm.Isend(ecoul_send, dest=receivers[srank], tag=3)
+        scomm.Isend(exx_send, dest=receivers[srank], tag=4)
+        req1 = scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
+        req2 = scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
+        req3 = scomm.Irecv(ecoul_recv, source=sender, tag=3)
+        req4 = scomm.Irecv(exx_recv, source=sender, tag=4)
+        req1.wait()
+        req2.wait()
+        req3.wait()
+        req4.wait()
+        scomm.barrier()
 
         # prepare sending
         ecoul_send = ecoul_recv.copy()
@@ -371,31 +359,17 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
                 Ghalfa_recv, buff)
         exx_send += exx_kernel_batch_rchol_gpu_low_mem(rcholb_chunk,
                 Ghalfb_recv, buff)
-        # print("exx_recv = {} at {} in cylcle {}".format(exx_recv, handler.rank, icycle))
-        # print("exx_send = {} at {} in cylcle {}".format(exx_send, handler.rank, icycle))
         Ghalfa_send = Ghalfa_recv.copy()
         Ghalfb_send = Ghalfb_recv.copy()
 
-    if len(senders) > 1:
-        for isend, sender in enumerate(senders):
-            if handler.srank == sender:  # sending 1 xshifted to 0 xshifted_buf
-                ecoul_send = cupy.asnumpy(ecoul_send)
-                exx_send = cupy.asnumpy(exx_send)
-                handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=1)
-                handler.scomm.Send(exx_send, dest=receivers[isend], tag=2)
-                ecoul_send = cupy.asarray(ecoul_send)
-                exx_send = cupy.asarray(exx_send)
-            elif handler.srank == receivers[isend]:
-                sender = numpy.where(receivers == handler.srank)[0]
-                ecoul_recv = cupy.asnumpy(ecoul_recv)
-                exx_recv = cupy.asnumpy(exx_recv)
-                handler.scomm.Recv(ecoul_recv, source=sender, tag=1)
-                handler.scomm.Recv(exx_recv, source=sender, tag=2)
-                ecoul_recv = cupy.asarray(ecoul_recv)
-                exx_recv = cupy.asarray(exx_recv)
-
-    handler.scomm.barrier()
     cupy.cuda.stream.get_current_stream().synchronize()
+    scomm.Isend(ecoul_send, dest=receivers[srank], tag=1)
+    scomm.Isend(exx_send, dest=receivers[srank], tag=2)
+    req1 = scomm.Irecv(ecoul_recv, source=sender, tag=1)
+    req2 = scomm.Irecv(exx_recv, source=sender, tag=2)
+    req1.wait()
+    req2.wait()
+    handler.scomm.barrier()
 
     e2b = ecoul_recv - exx_recv
 
@@ -405,10 +379,5 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     energy[:, 2] = e2b
 
     cupy.cuda.stream.get_current_stream().synchronize()
-
-    # print("ecoul = {} at {}".format(ecoul_recv, handler.rank))
-    # print("exx = {} at {}".format(exx_recv, handler.rank))
-    # print("energy = {} at {}".format(energy, handler.rank))
-    # print("e1b = {} at {}".format(e1b, handler.rank))
 
     return energy

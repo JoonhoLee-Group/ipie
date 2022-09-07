@@ -228,7 +228,6 @@ def construct_force_bias_batch_single_det_chunked(
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
-
     do_gpu = is_cupy(trial.psi) # if even one array is a cupy array we should assume the rest is done with cupy
 
     if do_gpu:
@@ -279,41 +278,28 @@ def construct_force_bias_batch_single_det_chunked(
         Ghalfa.T.imag
     ) + trial._rcholb_chunk.dot(Ghalfb.T.imag)
 
+
+    tcomm = 0.0
     senders = handler.senders
     receivers = handler.receivers
     for icycle in range(handler.ssize - 1):
-        for isend, sender in enumerate(senders):
-            if srank == isend:
-                if do_gpu:
-                    Ghalfa_send = cupy.asnumpy(Ghalfa_send)
-                    Ghalfb_send = cupy.asnumpy(Ghalfb_send)
-                    vbias_batch_real_send = cupy.asnumpy(vbias_batch_real_send)
-                    vbias_batch_imag_send = cupy.asnumpy(vbias_batch_imag_send)
-                handler.scomm.Send(Ghalfa_send, dest=receivers[isend], tag=1)
-                handler.scomm.Send(Ghalfb_send, dest=receivers[isend], tag=2)
-                handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=3)
-                handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=4)
-                if do_gpu:
-                    Ghalfa_send = cupy.asarray(Ghalfa_send)
-                    Ghalfb_send = cupy.asarray(Ghalfb_send)
-                    vbias_batch_real_send = cupy.asarray(vbias_batch_real_send)
-                    vbias_batch_imag_send = cupy.asarray(vbias_batch_imag_send)
-            elif srank == receivers[isend]:
-                sender = where(receivers == srank)[0]
-                if do_gpu:
-                    Ghalfa_recv = cupy.asnumpy(Ghalfa_recv)
-                    Ghalfb_recv = cupy.asnumpy(Ghalfb_recv)
-                    vbias_batch_real_recv = cupy.asnumpy(vbias_batch_real_recv)
-                    vbias_batch_imag_recv = cupy.asnumpy(vbias_batch_imag_recv)
-                handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
-                handler.scomm.Recv(Ghalfb_recv, source=sender, tag=2)
-                handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=3)
-                handler.scomm.Recv(vbias_batch_imag_recv, source=sender, tag=4)
-                if do_gpu:
-                    Ghalfa_recv = cupy.asarray(Ghalfa_recv)
-                    Ghalfb_recv = cupy.asarray(Ghalfb_recv)
-                    vbias_batch_real_recv = cupy.asarray(vbias_batch_real_recv)
-                    vbias_batch_imag_recv = cupy.asarray(vbias_batch_imag_recv)
+        cupy.cuda.stream.get_current_stream().synchronize()
+
+        handler.scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
+        handler.scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
+        handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=3)
+        handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=4)
+
+        sender = where(receivers == srank)[0]
+        req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
+        req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
+        req3 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=3)
+        req4 = handler.scomm.Irecv(vbias_batch_imag_recv, source=sender, tag=4)
+        req1.wait()
+        req2.wait()
+        req3.wait()
+        req4.wait()
+
         handler.scomm.barrier()
 
         # prepare sending
@@ -328,26 +314,16 @@ def construct_force_bias_batch_single_det_chunked(
         Ghalfa_send = Ghalfa_recv.copy()
         Ghalfb_send = Ghalfb_recv.copy()
 
-    for isend, sender in enumerate(senders):
-        if handler.scomm.rank == sender:  # sending 1 xshifted to 0 xshifted_buf
-            if do_gpu:
-                vbias_batch_real_send = cupy.asnumpy(vbias_batch_real_send)
-                vbias_batch_imag_send = cupy.asnumpy(vbias_batch_imag_send)
-            handler.scomm.Send(vbias_batch_real_send, dest=receivers[isend], tag=1)
-            handler.scomm.Send(vbias_batch_imag_send, dest=receivers[isend], tag=2)
-            if do_gpu:
-                vbias_batch_real_send = cupy.asarray(vbias_batch_real_send)
-                vbias_batch_imag_send = cupy.asarray(vbias_batch_imag_send)
-        elif srank == receivers[isend]:
-            sender = where(receivers == srank)[0]
-            if do_gpu:
-                vbias_batch_real_recv = cupy.asnumpy(vbias_batch_real_recv)
-                vbias_batch_imag_recv = cupy.asnumpy(vbias_batch_imag_recv)
-            handler.scomm.Recv(vbias_batch_real_recv, source=sender, tag=1)
-            handler.scomm.Recv(vbias_batch_imag_recv, source=sender, tag=2)
-            if do_gpu:
-                vbias_batch_real_recv = cupy.asarray(vbias_batch_real_recv)
-                vbias_batch_imag_recv = cupy.asarray(vbias_batch_imag_recv)
+    cupy.cuda.stream.get_current_stream().synchronize()
+    handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=1)
+    handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=2)
+
+    sender = where(receivers == srank)[0]
+    req1 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=1)
+    req2 = handler.scomm.Irecv(vbias_batch_imag_recv, source=sender, tag=2)
+    req1.wait()
+    req2.wait()
+    handler.scomm.barrier()
 
     vbias_batch = empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
     vbias_batch.real = vbias_batch_real_recv.T.copy()
