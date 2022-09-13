@@ -14,6 +14,8 @@ ipie inherits a lot of QMC features from pauxy.
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
     :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
 
+Our first release paper is out at https://arxiv.org/abs/2209.04015
+
 Features
 --------
 ipie currently supports:
