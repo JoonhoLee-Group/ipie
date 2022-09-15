@@ -1291,6 +1291,85 @@ def test_phmsd_local_energy_active_space():
 
     assert numpy.allclose(e_wicks_opt, e_wicks_opt_act)
 
+@pytest.mark.unit
+def test_phmsd_local_energy_active_space_polarised():
+    numpy.random.seed(7)
+    nelec = (9, 7)
+    nwalkers = 1
+    nsteps = 10
+    nact = 12
+    nmo = 20
+    ncore = 2
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
+
+    wfn, init = get_random_phmsd_opt(7, 5, nact, ndet=100, init=True)
+    init = shaped_normal((nmo, system.ne))
+    ci, occa, occb = wfn
+    core = [0, 1]
+    with_core_a = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    )
+    with_core_b = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
+    )
+    trial = MultiSlater(
+        system,
+        ham,
+        wfn,
+        init=init,
+        options={
+            "wicks": False,
+            "optimized": False,
+            "use_wicks_helper": False,
+        },
+    )
+    trial.half_rotate(system, ham)
+    trial_test = MultiSlater(
+        system,
+        ham,
+        wfn,
+        init=init,
+        options={
+            "wicks": True,
+            "optimized": True,
+            "use_wicks_helper": False,
+        },
+    )
+    trial_test.half_rotate(system, ham)
+    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
+    options = {"hybrid": True}
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        walker_batch.reortho()
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_test, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
+        walker_batch_test.reortho()
+
+    from ipie.propagation.overlap import compute_determinants_batched
+    greens_function_multi_det(walker_batch, trial)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
+    assert numpy.allclose(walker_batch.Ga, walker_batch_test.Ga)
+    assert numpy.allclose(walker_batch.Gb, walker_batch_test.Gb)
+    e_ref = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
+    e_wicks = local_energy_multi_det_trial_wicks_batch_opt(
+        system, ham, walker_batch_test, trial_test
+    )
+    assert numpy.allclose(e_ref, e_wicks)
+
 
 @pytest.mark.unit
 def test_phmsd_local_energy_active_space_non_aufbau():
