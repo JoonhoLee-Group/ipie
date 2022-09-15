@@ -455,7 +455,8 @@ def build_contributions12(
     theta_b,
     CI_a,
     CI_b,
-    Lvo,
+    Lvo_a,
+    Lvo_b,
 ):
     """Build contributions one and two for wicks local energy.
 
@@ -535,10 +536,10 @@ def build_contributions12(
             # # (nvir_act x nocc) x (nocc x nocc_act)
             # O(X A_v N A_v)
             A = numpy.dot(Lut, T[nfrozen_a : nfrozen_a + nocc_act_a, :].T.copy())
-            Lvo[0][iw, x] = Lut[:, nfrozen_a : nfrozen_a + nocc_act_a]
+            Lvo_a[iw, x] = Lut[:, nfrozen_a : nfrozen_a + nocc_act_a]
             # # nvir_act x nocc_act
             cont2_K[iw] -= numpy.sum(A * CI_a[iw])
-            F[x] += numpy.sum(Lvo[0][iw, x] * CI_a[iw])
+            F[x] += numpy.sum(Lvo_a[iw, x] * CI_a[iw])
             # # beta contributions
             T = numpy.dot(
                 theta_occ_real_b, rchol_b[x].reshape((nocc_b, nbasis)).T
@@ -561,10 +562,10 @@ def build_contributions12(
             Lut = (Lut_1 - Lut_2).T.copy()
             # (nvir_act x nocc) x (nocc x nocc_act)
             A = numpy.dot(Lut, T[nfrozen_b : nfrozen_b + nocc_act_b, :].copy().T)
-            Lvo[1][iw, x] = Lut[:, nfrozen_b : nfrozen_b + nocc_act_b]
+            Lvo_b[iw, x] = Lut[:, nfrozen_b : nfrozen_b + nocc_act_b]
             # nvir_act x nocc_act
             cont2_K[iw] -= numpy.sum(A * CI_b[iw])
-            F[x] += numpy.sum(Lvo[1][iw, x] * CI_b[iw])
+            F[x] += numpy.sum(Lvo_b[iw, x] * CI_b[iw])
         cont1_J[iw] += 0.5 * numpy.dot(X, X)
         cont2_J[iw] += numpy.dot(F, X)
 
@@ -625,14 +626,12 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    Lvo = [
-            numpy.zeros(
-            (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-            ),
-            numpy.zeros(
-            (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
-            )
-        ]
+    Lvo_a = numpy.zeros(
+        (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
+    )
+    Lvo_b = numpy.zeros(
+        (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
+    )
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
@@ -642,12 +641,13 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         walker_batch.Ghalfb,
         walker_batch.CIa,
         walker_batch.CIb,
-        Lvo,
+        Lvo_a,
+        Lvo_b,
     )
     cont2 = (ovlp0 / ovlp) * cont2
 
-    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
-    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
+    Laa = Lvo_a.transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
     dets_a_full, dets_b_full = compute_determinants_batched(
         walker_batch.Ghalfa, walker_batch.Ghalfb, trial
@@ -963,14 +963,12 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    Lvo = [
-            numpy.zeros(
-            (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-            ),
-            numpy.zeros(
-            (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
-            )
-        ]
+    Lvo_a = numpy.zeros(
+        (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
+    )
+    Lvo_b = numpy.zeros(
+        (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
+    )
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
@@ -980,12 +978,13 @@ def local_energy_multi_det_trial_wicks_batch_opt(
         walker_batch.Ghalfb,
         walker_batch.CIa,
         walker_batch.CIb,
-        Lvo,
+        Lvo_a,
+        Lvo_b,
     )
     cont2 = (ovlp0 / ovlp) * cont2
 
-    Laa = Lvo[0].transpose((0, 2, 3, 1)).copy()
-    Lbb = Lvo[1].transpose((0, 2, 3, 1)).copy()
+    Laa = Lvo_a.transpose((0, 2, 3, 1)).copy()
+    Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
     dets_a_full, dets_b_full = compute_determinants_batched(
         walker_batch.Ghalfa, walker_batch.Ghalfb, trial
