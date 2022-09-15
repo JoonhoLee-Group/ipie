@@ -535,10 +535,10 @@ def build_contributions12(
             # # (nvir_act x nocc) x (nocc x nocc_act)
             # O(X A_v N A_v)
             A = numpy.dot(Lut, T[nfrozen_a : nfrozen_a + nocc_act_a, :].T.copy())
-            Lvo[0, iw, x] = Lut[:, nfrozen_a : nfrozen_a + nocc_act_a]
+            Lvo[0][iw, x] = Lut[:, nfrozen_a : nfrozen_a + nocc_act_a]
             # # nvir_act x nocc_act
             cont2_K[iw] -= numpy.sum(A * CI_a[iw])
-            F[x] += numpy.sum(Lvo[0, iw, x] * CI_a[iw])
+            F[x] += numpy.sum(Lvo[0][iw, x] * CI_a[iw])
             # # beta contributions
             T = numpy.dot(
                 theta_occ_real_b, rchol_b[x].reshape((nocc_b, nbasis)).T
@@ -561,10 +561,10 @@ def build_contributions12(
             Lut = (Lut_1 - Lut_2).T.copy()
             # (nvir_act x nocc) x (nocc x nocc_act)
             A = numpy.dot(Lut, T[nfrozen_b : nfrozen_b + nocc_act_b, :].copy().T)
-            Lvo[1, iw, x] = Lut[:, nfrozen_b : nfrozen_b + nocc_act_b]
+            Lvo[1][iw, x] = Lut[:, nfrozen_b : nfrozen_b + nocc_act_b]
             # nvir_act x nocc_act
             cont2_K[iw] -= numpy.sum(A * CI_b[iw])
-            F[x] += numpy.sum(Lvo[1, iw, x] * CI_b[iw])
+            F[x] += numpy.sum(Lvo[1][iw, x] * CI_b[iw])
         cont1_J[iw] += 0.5 * numpy.dot(X, X)
         cont2_J[iw] += numpy.dot(F, X)
 
@@ -625,9 +625,14 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    Lvo = numpy.zeros(
-        (2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-    )
+    Lvo = [
+            numpy.zeros(
+            (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
+            ),
+            numpy.zeros(
+            (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
+            )
+        ]
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
@@ -958,9 +963,14 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     CIa = walker_batch.CIa
     CIb = walker_batch.CIb
 
-    Lvo = numpy.zeros(
-        (2, nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-    )
+    Lvo = [
+            numpy.zeros(
+            (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
+            ),
+            numpy.zeros(
+            (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
+            )
+        ]
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
