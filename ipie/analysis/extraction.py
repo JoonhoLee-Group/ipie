@@ -11,7 +11,7 @@ def extract_hdf5_data(filename, block_idx=1):
     with h5py.File(filename, 'r') as fh5:
         keys = fh5[f'block_size_{block_idx}/data/'].keys()
         shape_keys = fh5[f'block_size_{block_idx}/shape/'].keys()
-        data = numpy.concatenate([fh5[f'block_size_{block_idx}/data/{d}'] for d in keys])
+        data = numpy.concatenate([fh5[f'block_size_{block_idx}/data/{d}'][:].real for d in keys])
         for k in shape_keys:
             shapes[k] = {
                     'names': fh5[f'block_size_{block_idx}/names/{k}'][()],
