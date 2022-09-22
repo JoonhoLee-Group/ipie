@@ -83,8 +83,9 @@ def write_wavefunction_from_mo_coeff(
     """
     uhf = isinstance(mo_coeff, list) or len(mo_coeff.shape) == 3
     if not uhf and nelec[0] != nelec[1]:
-        print("# nalpha != nbeta but not using uhf trial. Assuming ROHF.")
         rohf = True
+    else:
+        rohf = False
     nalpha, nbeta = nelec
     nmo = X.shape[1] - num_frozen_core
     if ortho_ao:
