@@ -93,6 +93,28 @@ def test_pyscf_to_ipie():
 
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_pyscf_to_ipie_rohf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+
+    mf = scf.ROHF(mol)
+    mf.chkfile = 'scf.chk'
+    mf.kernel()
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False)
+    wfn = read_wavefunction("wavefunction.h5")
+    h1e, chol, ecore = read_hamiltonian("afqmc.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0]
+    assert wfn[0][1].shape[-1] == mol.nelec[1]
+    assert wfn[1][0].shape[-1] == mol.nelec[0]
+    assert wfn[1][1].shape[-1] == mol.nelec[1]
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_frozen_core():
     atom = gto.M(atom='Ne 0 0 0', basis='sto-3g', verbose=0)
     mf = scf.RHF(atom)

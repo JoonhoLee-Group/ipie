@@ -82,6 +82,10 @@ def write_wavefunction_from_mo_coeff(
     """Generate QMCPACK trial wavefunction.
     """
     uhf = isinstance(mo_coeff, list) or len(mo_coeff.shape) == 3
+    if not uhf and nelec[0] != nelec[1]:
+        rohf = True
+    else:
+        rohf = False
     nalpha, nbeta = nelec
     nmo = X.shape[1] - num_frozen_core
     if ortho_ao:
@@ -91,6 +95,10 @@ def write_wavefunction_from_mo_coeff(
             # We are assuming C matrix is energy ordered.
             wfna = numpy.dot(Xinv, mo_coeff[0])[:, :nalpha]
             wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
+            write_wavefunction([wfna, wfnb], filename=filename)
+        elif rohf:
+            wfna = numpy.dot(Xinv, mo_coeff)[:, :nalpha]
+            wfnb = numpy.dot(Xinv, mo_coeff)[:, :nbeta]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             wfna = numpy.dot(Xinv, mo_coeff)[:, :nalpha]
@@ -102,6 +110,12 @@ def write_wavefunction_from_mo_coeff(
             wfna = I[:, :nalpha]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
             wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
+            write_wavefunction([wfna, wfnb], filename=filename)
+        elif rohf:
+            I = numpy.identity(nmo, dtype=numpy.float64)
+            wfna = I[:, :nalpha]
+            Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
+            wfnb = numpy.dot(Xinv, mo_coeff)[:, :nbeta]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
