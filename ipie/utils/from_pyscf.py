@@ -113,7 +113,7 @@ def write_wavefunction_from_mo_coeff(
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
             # Frozen core is broken
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, mo_occ[0]]
+            wfna = I[:, mo_occ[0][num_frozen_core:]]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
             wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1]]
             write_wavefunction([wfna, wfnb], filename=filename)
@@ -121,14 +121,13 @@ def write_wavefunction_from_mo_coeff(
             I = numpy.identity(nmo, dtype=numpy.float64)
             _occ_a = mo_occ > 0
             _occ_b = mo_occ > 1
-            wfna = I[:, _occ_a].copy()
-            wfnb = I[:, _occ_b].copy()
+            wfna = I[:, _occ_a[num_frozen_core:]].copy()
+            wfnb = I[:, _occ_b[num_frozen_core:]].copy()
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
-            norb = mo_coeff.shape[1]
-            I = numpy.identity(norb, dtype=numpy.float64)
-            wfna = I[:, mo_occ]
+            I = numpy.identity(nmo, dtype=numpy.float64)
+            wfna = I[:, mo_occ[num_frozen_core:]]
             write_wavefunction(wfna, filename=filename)
 
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
