@@ -151,6 +151,13 @@ def test_frozen_uhf():
     mc = mcscf.CASSCF(mf, 13, (3,1))
     h1_eff_ref, ecore = mc.get_h1eff()
     assert efzc == pytest.approx(ecore, 1e-3)
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False, num_frozen_core=ncore)
+    wfn = read_wavefunction("wavefunction.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[0][1].shape[-1] == mol.nelec[1] - 1
+    assert wfn[1][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[1][1].shape[-1] == mol.nelec[1] - 1
 
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
@@ -178,6 +185,13 @@ def test_frozen_rohf():
     h1e, chol, efzc = freeze_core(h1e, chol, enuc, np.array([mf.mo_coeff, mf.mo_coeff]), ncore)
     assert efzc == pytest.approx(ecore)
     assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False, num_frozen_core=ncore)
+    wfn = read_wavefunction("wavefunction.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[0][1].shape[-1] == mol.nelec[1] - 1
+    assert wfn[1][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[1][1].shape[-1] == mol.nelec[1] - 1
 
 
 def teardown_module(self):
