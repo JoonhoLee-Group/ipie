@@ -111,11 +111,11 @@ def write_wavefunction_from_mo_coeff(
     else:
         if uhf:
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
-            # Frozen core is broken
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, mo_occ[0][num_frozen_core:]]
+            wfna = I[:, mo_occ[0][num_frozen_core:]>0]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1]]
+            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, num_frozen_core:]
+            wfnb = wfnb[:, mo_occ[1][num_frozen_core:]>0]
             write_wavefunction([wfna, wfnb], filename=filename)
         elif rohf:
             I = numpy.identity(nmo, dtype=numpy.float64)
