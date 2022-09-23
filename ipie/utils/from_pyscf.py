@@ -127,7 +127,7 @@ def write_wavefunction_from_mo_coeff(
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, mo_occ[num_frozen_core:]]
+            wfna = I[:, mo_occ[num_frozen_core:]>0]
             write_wavefunction(wfna, filename=filename)
 
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
