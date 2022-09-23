@@ -129,6 +129,51 @@ def test_frozen_core():
     h1_eff_ref, ecore = mc.get_h1eff()
     assert efzc == pytest.approx(ecore)
     assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_frozen_uhf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+    mf = scf.UHF(mol)
+    energy = mf.kernel()
+    ncore = 1
+    h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,
+                                                           chol_cut=1e-8)
+    h1e_eff, chol_eff, efzc = freeze_core(h1e, chol, enuc, mf.mo_coeff, ncore)
+    assert h1e_eff.shape ==  (2, 13, 13)
+    assert chol_eff.shape, (15, 13, 13)
+    # Check from CASSCF object with same core.
+    mc = mcscf.CASSCF(mf, 13, (3,1))
+    h1_eff_ref, ecore = mc.get_h1eff()
+    assert efzc == pytest.approx(ecore, 1e-3)
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_frozen_rohf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+    mf = scf.ROHF(mol)
+    energy = mf.kernel()
+    ncore = 1
+    h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,
+                                                           chol_cut=1e-8)
+    h1e_eff, chol_eff, efzc = freeze_core(h1e, chol, enuc, mf.mo_coeff, ncore)
+    assert h1e_eff.shape ==  (2, 13, 13)
+    assert chol_eff.shape, (15, 13, 13)
+    # Check from CASSCF object with same core.
+    mc = mcscf.CASSCF(mf, 13, (3,1))
+    h1_eff_ref, ecore = mc.get_h1eff()
+    assert efzc == pytest.approx(ecore)
+    assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
     # Test UHF codepath if not necessarily UHF
     h1e, chol, efzc = freeze_core(h1e, chol, enuc, np.array([mf.mo_coeff, mf.mo_coeff]), ncore)
     assert efzc == pytest.approx(ecore)
