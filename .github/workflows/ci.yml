@@ -39,6 +39,7 @@ jobs:
     - name: Test Integration
       timeout-minutes: 10
       run: |
+        pip install pytest-mpi
         mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
         ./tools/run_examples.sh
     - name: Codecov
