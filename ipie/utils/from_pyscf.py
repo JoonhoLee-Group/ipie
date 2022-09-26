@@ -36,6 +36,7 @@ def gen_ipie_input_from_pyscf_chk(
     hcore = scf_data["hcore"]
     ortho_ao_mat = scf_data['X']
     mo_coeffs = scf_data['mo_coeff']
+    mo_occ = scf_data['mo_occ']
     if ortho_ao:
         basis_change_matrix = ortho_ao_mat
     else:
@@ -67,12 +68,14 @@ def gen_ipie_input_from_pyscf_chk(
         occb = scf_data['occb']
         write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
     else:
-        write_wavefunction_from_mo_coeff(mo_coeffs, basis_change_matrix,
+        write_wavefunction_from_mo_coeff(mo_coeffs, mo_occ, basis_change_matrix,
                 wfn_file, nelec, num_frozen_core=num_frozen_core)
+
 
 
 def write_wavefunction_from_mo_coeff(
         mo_coeff: Union[list, numpy.ndarray],
+        mo_occ: Union[list, numpy.ndarray],
         X: numpy.ndarray,
         filename: str,
         nelec: tuple,
@@ -93,43 +96,43 @@ def write_wavefunction_from_mo_coeff(
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
-            wfna = numpy.dot(Xinv, mo_coeff[0])[:, :nalpha]
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
+            wfna = numpy.dot(Xinv, mo_coeff[0])[:, mo_occ[0]>0]
+            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1]>0]
             write_wavefunction([wfna, wfnb], filename=filename)
         elif rohf:
-            wfna = numpy.dot(Xinv, mo_coeff)[:, :nalpha]
-            wfnb = numpy.dot(Xinv, mo_coeff)[:, :nbeta]
+            _occ_a = mo_occ > 0
+            _occ_b = mo_occ > 1
+            wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
+            wfnb = numpy.dot(Xinv, mo_coeff)[:, _occ_b]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
-            wfna = numpy.dot(Xinv, mo_coeff)[:, :nalpha]
+            wfna = numpy.dot(Xinv, mo_coeff)[:, mo_occ]
             write_wavefunction(wfna, filename=filename)
     else:
         if uhf:
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, :nalpha]
+            wfna = I[:, mo_occ[0][num_frozen_core:]>0]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, :nbeta]
+            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, num_frozen_core:]
+            wfnb = wfnb[:, mo_occ[1][num_frozen_core:]>0]
             write_wavefunction([wfna, wfnb], filename=filename)
         elif rohf:
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, :nalpha]
-            Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
-            wfnb = numpy.dot(Xinv, mo_coeff)[:, :nbeta]
+            _occ_a = mo_occ > 0
+            _occ_b = mo_occ > 1
+            wfna = I[:, _occ_a[num_frozen_core:]].copy()
+            wfnb = I[:, _occ_b[num_frozen_core:]].copy()
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
-            norb = mo_coeff.shape[1]
-            I = numpy.identity(norb, dtype=numpy.float64)
-            wfna = I[:, :nalpha]
+            I = numpy.identity(nmo, dtype=numpy.float64)
+            wfna = I[:, mo_occ[num_frozen_core:]>0]
             write_wavefunction(wfna, filename=filename)
-
 
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     # Unpack SCF data.
     # Step 1. Rotate core Hamiltonian to orthogonal basis.
-    if verbose:
-        print(" # Transforming hcore and eri to ortho AO basis.")
     if len(X.shape) == 2:
         h1e = numpy.dot(X.T, numpy.dot(hcore, X))
     elif len(X.shape) == 3:
