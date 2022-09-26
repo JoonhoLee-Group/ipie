@@ -93,6 +93,28 @@ def test_pyscf_to_ipie():
 
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_pyscf_to_ipie_rohf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+
+    mf = scf.ROHF(mol)
+    mf.chkfile = 'scf.chk'
+    mf.kernel()
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False)
+    wfn = read_wavefunction("wavefunction.h5")
+    h1e, chol, ecore = read_hamiltonian("afqmc.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0]
+    assert wfn[0][1].shape[-1] == mol.nelec[1]
+    assert wfn[1][0].shape[-1] == mol.nelec[0]
+    assert wfn[1][1].shape[-1] == mol.nelec[1]
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_frozen_core():
     atom = gto.M(atom='Ne 0 0 0', basis='sto-3g', verbose=0)
     mf = scf.RHF(atom)
@@ -107,10 +129,69 @@ def test_frozen_core():
     h1_eff_ref, ecore = mc.get_h1eff()
     assert efzc == pytest.approx(ecore)
     assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_frozen_uhf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+    mf = scf.UHF(mol)
+    energy = mf.kernel()
+    ncore = 1
+    h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,
+                                                           chol_cut=1e-8)
+    h1e_eff, chol_eff, efzc = freeze_core(h1e, chol, enuc, mf.mo_coeff, ncore)
+    assert h1e_eff.shape ==  (2, 13, 13)
+    assert chol_eff.shape, (15, 13, 13)
+    # Check from CASSCF object with same core.
+    mc = mcscf.CASSCF(mf, 13, (3,1))
+    h1_eff_ref, ecore = mc.get_h1eff()
+    assert efzc == pytest.approx(ecore, 1e-3)
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False, num_frozen_core=ncore)
+    wfn = read_wavefunction("wavefunction.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[0][1].shape[-1] == mol.nelec[1] - 1
+    assert wfn[1][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[1][1].shape[-1] == mol.nelec[1] - 1
+
+@pytest.mark.unit
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_frozen_rohf():
+    mol = gto.Mole()
+    mol.basis = 'cc-pvdz'
+    mol.atom = (('C', 0,0,0),)
+    mol.spin = 2
+    mol.verbose = 0
+    mol.build()
+    mf = scf.ROHF(mol)
+    energy = mf.kernel()
+    ncore = 1
+    h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,
+                                                           chol_cut=1e-8)
+    h1e_eff, chol_eff, efzc = freeze_core(h1e, chol, enuc, mf.mo_coeff, ncore)
+    assert h1e_eff.shape ==  (2, 13, 13)
+    assert chol_eff.shape, (15, 13, 13)
+    # Check from CASSCF object with same core.
+    mc = mcscf.CASSCF(mf, 13, (3,1))
+    h1_eff_ref, ecore = mc.get_h1eff()
+    assert efzc == pytest.approx(ecore)
+    assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
     # Test UHF codepath if not necessarily UHF
     h1e, chol, efzc = freeze_core(h1e, chol, enuc, np.array([mf.mo_coeff, mf.mo_coeff]), ncore)
     assert efzc == pytest.approx(ecore)
     assert np.allclose(h1_eff_ref, h1e_eff, atol=1e-12, rtol=1e-8)
+    gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
+            verbose=False, num_frozen_core=ncore)
+    wfn = read_wavefunction("wavefunction.h5")
+    assert wfn[0][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[0][1].shape[-1] == mol.nelec[1] - 1
+    assert wfn[1][0].shape[-1] == mol.nelec[0] - 1
+    assert wfn[1][1].shape[-1] == mol.nelec[1] - 1
 
 
 def teardown_module(self):
