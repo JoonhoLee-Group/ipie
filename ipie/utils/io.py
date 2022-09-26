@@ -183,28 +183,38 @@ def format_fixed_width_floats(floats):
 def format_fixed_width_cmplx(floats):
     return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)
 
-def write_json_input_file(filename, hamil, wfn, est, nelec, options={}):
+def write_json_input_file(
+        input_filename: str,
+        hamil_filename: str,
+        wfn_filename: str,
+        nelec: tuple,
+        num_walkers: int=640,
+        timestep: float=0.005,
+        num_blocks: float=10,
+        estimates_filename: str='estimates.0.h5',
+        options: dict={},
+        ):
     na, nb = nelec
     basic = {
         "system": {
             "nup": na,
             "ndown": nb,
         },
-        "hamiltonian": {"name": "Generic", "integrals": hamil},
+        "hamiltonian": {"name": "Generic", "integrals": hamil_filename},
         "qmc": {
-            "dt": 0.005,
-            "nwalkers": 640,
+            "dt": timestep,
+            "nwalkers": num_walkers,
             "nsteps": 25,
-            "blocks": 50000,
+            "blocks": num_blocks,
             "batched": True,
             "pop_control_freq": 5,
             "stabilise_freq": 5,
         },
-        "trial": {"filename": wfn},
-        "estimators": {"filename": est},
+        "trial": {"filename": wfn_filename},
+        "estimators": {"filename": estimates_filename},
     }
     full = merge_dicts(basic, options)
-    with open(filename, "w") as f:
+    with open(input_filename, "w") as f:
         f.write(json.dumps(full, indent=4, separators=(",", ": ")))
 
 
