@@ -135,7 +135,8 @@ def main(args):
     nfzn = options.num_frozen_core
     nelec_sim = (nelec_mol[0]-nfzn, nelec_mol[1]-nfzn)
     write_json_input_file(
-        options.json_input, options.output, options.wfn, options.est, nelec_sim
+        options.json_input, options.output, options.wfn, nelec_sim,
+        estimates_filename=options.est,
     )
 
 

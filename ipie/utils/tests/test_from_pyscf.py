@@ -70,8 +70,8 @@ def test_pyscf_to_ipie():
             verbose=False)
     wfn = read_wavefunction("wavefunction.h5")
     h1e, chol, ecore = read_hamiltonian("afqmc.h5")
-    write_json_input_file("input.json", "afqmc.h5", "afqmc.h5",
-            "estimates.test_from_pyscf.h5", mol.nelec)
+    write_json_input_file("input.json", "afqmc.h5", "afqmc.h5", mol.nelec,
+            estimates_filename="estimates.test_from_pyscf.h5")
     gen_ipie_input_from_pyscf_chk("scf.chk", hamil_file="afqmc.h5",
             num_frozen_core=2, verbose=False)
     wfn = read_wavefunction("wavefunction.h5")
