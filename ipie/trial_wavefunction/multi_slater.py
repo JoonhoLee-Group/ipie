@@ -52,6 +52,13 @@ class MultiSlater(object):
                 "wicks",
                 default=self.ortho_expansion,
                 verbose=verbose)
+        self.optimized = get_input_value(
+            options,
+            "optimized",
+            default=True,
+            alias=["optimize", "optimise", "optimised"],
+            verbose=verbose,
+        )
         if len(wfn) == 3:
             # CI type expansion.
             self.from_phmsd(system.nup, system.ndown, hamiltonian.nbasis, wfn, orbs)
@@ -64,6 +71,8 @@ class MultiSlater(object):
                 self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
             self.coeffs = numpy.array(wfn[0], dtype=numpy.complex128)
             self.ortho_expansion = False
+            self.nelec_cas = system.nup + system.ndown
+            self.nact = hamiltonian.nbasis
 
         self.psia = self.psi[:, :, : system.nup]
         self.psib = self.psi[:, :, system.nup :]
@@ -74,13 +83,6 @@ class MultiSlater(object):
 
         self.use_wicks_helper = get_input_value(
             options, "use_wicks_helper", default=False, verbose=verbose
-        )
-        self.optimized = get_input_value(
-            options,
-            "optimized",
-            default=True,
-            alias=["optimize", "optimise", "optimised"],
-            verbose=verbose,
         )
 
         self.ndets = get_input_value(
@@ -142,20 +144,6 @@ class MultiSlater(object):
             verbose=verbose,
         )
         assert self.ndet_chunks <= self.ndets, "ndet_chunks > ndets"
-        self.nact = get_input_value(
-            options,
-            "nact_orbitals",
-            default=self._nbasis,
-            alias=["nact"],
-            verbose=verbose,
-        )
-        self.nelec_cas = get_input_value(
-            options,
-            "nelec_cas",
-            default=system.ne,
-            alias=["ncore", "ncas"],
-            verbose=verbose,
-        )
         self.nfrozen = (system.nup + system.ndown - self.nelec_cas) // 2
         self.nocc_alpha = system.nup - self.nfrozen
         self.nocc_beta = system.ndown - self.nfrozen
@@ -511,6 +499,16 @@ class MultiSlater(object):
             I = numpy.eye(nbasis, dtype=numpy.float64)
         nocca_in_wfn = len(wfn[1][0])
         noccb_in_wfn = len(wfn[2][0])
+        max_orbital = max(numpy.max(wfn[1]), numpy.max(wfn[2])) + 1
+        if self.optimized:
+            self.nelec_cas = nocca_in_wfn + noccb_in_wfn
+            self.nact = max_orbital
+        else:
+            self.nelec_cas = ne
+            self.nact = nbasis
+        if self.verbose:
+            print(f"# Trial wavefunction correlates {self.nelec_cas} electrons "
+                  f"in {self.nact} orbitals.")
         if nup != nocca_in_wfn and ndown != noccb_in_wfn:
             occa0 = wfn[1]
             occb0 = wfn[2]

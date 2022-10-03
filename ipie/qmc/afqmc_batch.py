@@ -163,7 +163,6 @@ class AFQMCBatch(object):
             )
 
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
-        print(config)
         if config.get_option('use_gpu'):
             ngpus = xp.cuda.runtime.getDeviceCount()
             props = xp.cuda.runtime.getDeviceProperties(0)

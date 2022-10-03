@@ -18,6 +18,7 @@ import scipy.stats
 from ipie.analysis.autocorr import reblock_by_autocorr
 from ipie.analysis.extraction import (extract_data, extract_mixed_estimates,
                                       extract_rdm, get_metadata, set_info,
+                                      extract_observable,
                                       extract_data_from_textfile)
 from ipie.utils.linalg import get_ortho_ao_mod
 from ipie.utils.misc import get_from_dict
@@ -331,8 +332,15 @@ def reblock_minimal(files, start_block=0, verbose=False):
     Parses from textfile.
     """
     reblocked = []
-    for f in files:
-        data = extract_data_from_textfile(f)[start_block:]
+    if isinstance(files, str):
+        _files = [files]
+    else:
+        _files = files
+    for f in _files:
+        if '.h5' in f:
+            data = extract_observable(f)[start_block:]
+        else:
+            data = extract_data_from_textfile(f)[start_block:]
         y = data["ETotal"].values
         rb = reblock_by_autocorr(y, verbose=verbose)
         rb['filename'] = f

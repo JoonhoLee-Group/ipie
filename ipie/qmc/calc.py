@@ -65,12 +65,13 @@ def get_driver(options, comm):
 
 
 def build_afqmc_driver(
-    comm,
-    nelec,
-    wavefunction_file="wavefunction.h5",
-    hamiltonian_file="hamiltonian.h5",
-    nwalkers_per_task=10,
-    verbosity=0,
+    comm: mpi4py.MPI.Intracomm,
+    nelec: tuple,
+    wavefunction_file: str="wavefunction.h5",
+    hamiltonian_file: str="hamiltonian.h5",
+    num_walkers_per_task: int=10,
+    estimator_filename: str='estimates.0.h5',
+    verbosity: int=0,
 ):
     if comm.rank != 0:
         verbosity = 0
@@ -79,10 +80,10 @@ def build_afqmc_driver(
             "nup": nelec[0],
             "ndown": nelec[1],
         },
-        "qmc": {"nwalkers_per_task": nwalkers_per_task},
+        "qmc": {"nwalkers_per_task": num_walkers_per_task},
         "hamiltonian": {"integrals": hamiltonian_file},
         "trial": {"filename": wavefunction_file},
-        "estimates": {"overwrite": True},
+        "estimators": {"overwrite": True, "filename": estimator_filename},
     }
     afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
     return afqmc
