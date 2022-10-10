@@ -157,7 +157,7 @@ def get_dets_triples(
 
 
 @jit(nopython=True, fastmath=True)
-def get_dets_nfold(cre, anh, mapping, offset, G0, dets):
+def _get_dets_nfold(cre, anh, mapping, offset, G0, dets):
     """Get overlap from n-fold excited Slater-Determinants.
 
     Parameters
@@ -195,6 +195,32 @@ def get_dets_nfold(cre, anh, mapping, offset, G0, dets):
                     det[iex, jex] = G0[iw, p, s]
                     det[jex, iex] = G0[iw, r, q]
             dets[iw, idet] = numpy.linalg.det(det)
+
+# @jit(nopython=True, fastmath=True)
+def get_dets_nfold(cre, anh, mapping, offset, G0, buffer, dets):
+    """Get overlap from n-fold excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
+    build_det_matrix(cre, anh, mapping, offset, G0, buffer)
+    dets[:] = numpy.linalg.det(buffer)
 
 
 @jit(nopython=True, fastmath=True)
