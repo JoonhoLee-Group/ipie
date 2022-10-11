@@ -9,6 +9,8 @@ from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import get_numeric_names
 from ipie.walkers.walker_batch import WalkerBatch
 
+from ipie.utils.backend import arraylib as xp
+
 
 class MultiDetTrialWalkerBatch(WalkerBatch):
     """Single-det walker for multi-det trials.
@@ -83,7 +85,8 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         # PHMSD.
         calc_overlap = get_calc_overlap(trial)
 
-        self.ot = calc_overlap(self, trial)
+        # self.ot = calc_overlap(self, trial)
+        self.ot = xp.ones(self.nwalkers, dtype=xp.complex128)
         # TODO: fix name.
         self.ovlp = self.ot
         self.le_oratio = 1.0
@@ -177,7 +180,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         )
 
         # Contains overlaps of the current walker with the trial wavefunction.
-        get_greens_function(trial)(self, trial)
+        # get_greens_function(trial)(self, trial)
 
     def contract_one_body(self, ints, trial):
         numer = 0.0
