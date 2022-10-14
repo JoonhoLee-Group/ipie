@@ -65,7 +65,7 @@ Run the AFQMC calculation by:
 
 .. code-block:: bash
 
-    mpirun -np N python /path/to/ipie/bin/ipie.py input.json > output.dat
+    mpirun -np N python /path/to/ipie/bin/ipie input.json > output.dat
 
 See the documentation for more input options and the converter:
 
