@@ -151,6 +151,8 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
         a = numpy.random.rand(nbasis * (nup + ndown))
         b = numpy.random.rand(nbasis * (nup + ndown))
         init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+    else:
+        init_wfn = None
     return wfn, init_wfn
 
 
