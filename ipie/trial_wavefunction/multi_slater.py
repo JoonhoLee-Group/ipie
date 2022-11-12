@@ -3,19 +3,17 @@ import time
 import numpy
 import scipy.linalg
 
-from ipie.estimators.generic import (half_rotated_cholesky_hcore,
-                                     half_rotated_cholesky_jk)
-from ipie.estimators.local_energy import (variational_energy,
-                                          variational_energy_ortho_det)
+from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import (get_hmatel, get_one_body_matel,
                                        get_perm, map_orb)
-from ipie.legacy.estimators.greens_function import (gab, gab_mod, gab_mod_ovlp,
-                                                    gab_spin)
+from ipie.legacy.estimators.greens_function import gab_mod_ovlp, gab_spin
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.utils.io import get_input_value, write_qmcpack_wfn
 from ipie.utils.mpi import get_shared_array
 from ipie.utils.backend import cast_to_device
 
+# FDM Clean this up!
 try:
     from ipie.lib.wicks import wicks_helper
 except ImportError:
@@ -199,7 +197,6 @@ class MultiSlater(object):
             # can't do following
             # self.occ_map_a = dict(zip(d0a, list(range(self.nocc_alpha))))
             # self.occ_map_b = dict(zip(d0b, list(range(self.nocc_beta))))
-
             # Create mapping from reference determinant to occupied orbital
             # index for eg.
             # TODO: Use safer value than zero that fails in debug mode.
