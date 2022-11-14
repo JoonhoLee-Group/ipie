@@ -151,6 +151,8 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
         a = numpy.random.rand(nbasis * (nup + ndown))
         b = numpy.random.rand(nbasis * (nup + ndown))
         init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+    else:
+        init_wfn = None
     return wfn, init_wfn
 
 
@@ -183,14 +185,17 @@ def shaped_normal(shape, cmplx=False):
     return arr.reshape(shape)
 
 
-def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
-    assert ndets == 1
+def gen_random_test_instances(nmo, nelec, naux, nwalkers, wfn_type="noci", ndets=1, seed=7):
     numpy.random.seed(seed)
-    wfn = get_random_nomsd(nocc, nocc, nmo, ndet=1)
+    nocca, noccb = nelec
+    if wfn_type == "noci":
+        wfn = get_random_nomsd(nocca, noccb, nmo, ndet=ndets)
+    else:
+        wfn, _ = get_random_phmsd_opt(nocca, noccb, nmo, ndet=ndets)
     h1e = shaped_normal((nmo, nmo))
     from ipie.systems import Generic
 
-    system = Generic(nelec=(nocc, nocc))
+    system = Generic(nelec=(nocca, noccb))
     chol = shaped_normal((naux, nmo, nmo))
     from ipie.hamiltonians import Generic as HamGeneric
 
@@ -206,21 +211,21 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     trial = MultiSlater(system, ham, wfn, options={"build_greens_function": False})
     if ndets == 1:
         trial.psi = trial.psi[0]
-        trial.psia = trial.psi[:, :nocc].copy()
-        trial.psib = trial.psi[:, nocc:].copy()
+        trial.psia = trial.psi[:, :nocca].copy()
+        trial.psib = trial.psi[:, nocca:].copy()
     else:
-        trial.psia = trial.psi[0, :, :nocc].copy()
-        trial.psib = trial.psi[0, :, nocc:].copy()
+        trial.psia = trial.psi[0, :, :nocca].copy()
+        trial.psib = trial.psi[0, :, nocca:].copy()
     from ipie.walkers import SingleDetWalkerBatch
 
     walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
-    Ghalfb = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
+    Ghalfa = shaped_normal((nwalkers, nocca, nmo), cmplx=True)
+    Ghalfb = shaped_normal((nwalkers, noccb, nmo), cmplx=True)
     walker_batch.Ghalfa = Ghalfa
     walker_batch.Ghalfb = Ghalfa
-    trial._rchola = shaped_normal((naux, nocc * nmo))
-    trial._rcholb = shaped_normal((naux, nocc * nmo))
-    trial._rH1a = shaped_normal((nocc, nmo))
-    trial._rH1b = shaped_normal((nocc, nmo))
+    trial._rchola = shaped_normal((naux, nocca * nmo))
+    trial._rcholb = shaped_normal((naux, noccb * nmo))
+    trial._rH1a = shaped_normal((nocca, nmo))
+    trial._rH1b = shaped_normal((noccb, nmo))
     # trial.psi = trial.psi[0]
     return system, ham, walker_batch, trial
