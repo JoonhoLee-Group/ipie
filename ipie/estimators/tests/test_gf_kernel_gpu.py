@@ -1,38 +1,36 @@
+import numpy as np
 import pytest
 
-import numpy as np
-
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
-
 from ipie.estimators.kernels import wicks as wk
+from ipie.utils.testing import (
+        gen_random_test_instances,
+        shaped_normal)
+
+np.random.seed(7)
+nmo = 10
+nelec = (3, 3)
+naux = 100
+nwalker = 10
+ndets = 1000
+sys, ham, walkers, trial = gen_random_test_instances(
+    nmo, nelec, naux, nwalker, wfn_type="phmsd", ndets=ndets
+)
+# trial.cast_to_cupy()
+
 
 @pytest.mark.gpu
 def test_get_dets_single_excitation_batched():
-    nwalker = 10
-    ndets = 10
-    nmo = 10
-    G0 = xp.random.random((nwalker, nmo, nmo)).astype(xp.complex128)
-    G0 += 1j * xp.random.random((nwalker, nmo, nmo))
-    cre_a = [3]
-    anh_a = [0]
-    p = cre_a[0]
-    q = anh_a[0]
-    ref = xp.zeros((nwalker, ndets), dtype=xp.complex128)
-    for iw in range(nwalker):
-        for idet in range(ndets):
-            ref[iw, idet] = G0[iw, p, q]
+    CI = np.zeros((nwalker, nmo, nmo))
+    ndet_single_a = len(trial.cre_ex_a[1])
+    phases = shaped_normal((ndet_single_a,), cmplx=True)
+    pqs = [str(p[0])+str(q[0]) for p, q in zip(trial.cre_ex_a[1], trial.anh_ex_a[1])]
+    print(len(pqs), len(set(pqs)))
+    # for iw in range(nwalker):
+        # for idet in range(ndet_single_a):
+            # p = trial.cre_ex_a[1][idet]
+            # q = trial.anh_ex_a[1][idet]
 
-    from ipie.utils.misc import dotdict
-    # [idet, cre] = p
-    # [iexcit, cre] = [p1, p2, p3]...
-    cre_ex_a = [[0], xp.array([[p]] * ndets, dtype=int)]
-    anh_ex_a =  [[0], xp.array([[q]] * ndets, dtype=int)]
-    occ_map_a = xp.arange(10, dtype=xp.int32)
 
-    dets = xp.zeros_like(ref)
-    wk.get_dets_singles(cre_ex_a[1], anh_ex_a[1], occ_map_a, 0, G0, dets)
-    assert xp.allclose(ref, dets)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_get_dets_single_excitation_batched()
