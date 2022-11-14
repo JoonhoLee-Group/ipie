@@ -6,8 +6,7 @@ import numpy
 import scipy.linalg
 from typing import Union, Tuple
 
-from pyscf import ao2mo, fci, lib, scf, mcscf
-from pyscf.tools import fcidump
+from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
 from ipie.legacy.estimators.greens_function import gab
@@ -507,10 +506,7 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         try:
             hcore = fh5["/scf/hcore"][:]
         except KeyError:
-            hcore = mol.intor_symmetric("int1e_nuc")
-            hcore += mol.intor_symmetric("int1e_kin")
-            if len(mol._ecpbas) > 0:
-                hcore += mol.intor_symmetric("ECPScalar")
+            hcore = scf.hf.get_hcore(mol)
         try:
             X = fh5["/scf/orthoAORot"][:]
         except KeyError:
