@@ -1223,6 +1223,9 @@ def build_CI_nfold_excitation_opt(
         cof_mat = numpy.zeros(
             (nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128
         )
+        dets_mat = numpy.zeros(
+            (nwalkers, ndets_a), dtype=numpy.complex128
+        )
         wk.reduce_CI_nfold(
             trial.cre_ex_a[nexcit],
             trial.anh_ex_a[nexcit],
@@ -1231,6 +1234,7 @@ def build_CI_nfold_excitation_opt(
             phases,
             det_mat,
             cof_mat,
+            dets_mat,
             walker_batch.CIa,
         )
     ndets_b = len(trial.cre_ex_b[nexcit])
@@ -1252,6 +1256,9 @@ def build_CI_nfold_excitation_opt(
         cof_mat = numpy.zeros(
             (nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128
         )
+        dets_mat = numpy.zeros(
+            (nwalkers, ndets_b), dtype=numpy.complex128
+        )
         wk.reduce_CI_nfold(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
@@ -1260,6 +1267,7 @@ def build_CI_nfold_excitation_opt(
             phases,
             det_mat,
             cof_mat,
+            dets_mat,
             walker_batch.CIb,
         )
 

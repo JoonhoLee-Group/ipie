@@ -157,6 +157,54 @@ def get_dets_triples(
 
 
 @jit(nopython=True, fastmath=True)
+def get_dets_rank_3(
+    matrix,
+    dets,
+):
+    """Get overlap from triply excited Slater-Determinants.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    G0 : np.ndarray
+        (Half rotated) batched Green's function.
+    dets : np.ndarray
+        Output array of determinants <D_I|phi>.
+
+    Returns
+    -------
+    None
+    """
+    ndets = dets.shape[1]
+    nwalkers = dets.shape[0]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            ps, qs = 0, 0
+            rs, ss = 1, 1
+            ts, us = 2, 2
+            dets[iw, idet] = matrix[iw, idet, ps, qs] * (
+                matrix[iw, idet, rs, ss] * matrix[iw, idet, ts, us] - matrix[iw, idet, rs, us] *
+                matrix[iw, idet, ts, ss]
+            )
+            dets[iw, idet] -= matrix[iw, idet, ps, ss] * (
+                matrix[iw, idet, rs, qs] * matrix[iw, idet, ts, us] - matrix[iw, idet, rs, us] *
+                matrix[iw, idet, ts, qs]
+            )
+            dets[iw, idet] += matrix[iw, idet, ps, us] * (
+                matrix[iw, idet, rs, qs] * matrix[iw, idet, ts, ss] - matrix[iw, idet, rs, ss] *
+                matrix[iw, idet, ts, qs]
+            )
+
+
+
+@jit(nopython=True, fastmath=True)
 def _get_dets_nfold(cre, anh, mapping, offset, G0, dets):
     """Get overlap from n-fold excited Slater-Determinants.
 
@@ -421,7 +469,7 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 
 @jit(nopython=True, fastmath=True)
 def _reduce_nfold_cofactor_contribution(
-    ps, qs, mapping, sign, phases, cofactor_matrix, CI
+    ps, qs, mapping, sign, phases, det_cof_mat, CI
 ):
     """Reduction to CI intermediate from cofactor contributions.
 
@@ -435,8 +483,8 @@ def _reduce_nfold_cofactor_contribution(
         Map original (occupied) orbital to index in compressed form.
     signs : int
         Phase factor arrising from excitation level.
-    cofactor_matrix : np.ndarray
-        Cofactor matrix previously constructed.
+    det_cofactor_matrix : np.ndarray
+        Det Cofactor matrix previously constructed.
     CI : np.ndarray
         Output array for CI intermediate.
 
@@ -444,19 +492,19 @@ def _reduce_nfold_cofactor_contribution(
     -------
     None
     """
-    nwalkers = cofactor_matrix.shape[0]
-    ndets = cofactor_matrix.shape[1]
+    nwalkers = det_cof_mat.shape[0]
+    ndets = det_cof_mat.shape[1]
     for iw in range(nwalkers):
         for idet in range(ndets):
             p = mapping[ps[idet]]
             q = qs[idet]
-            det = numpy.linalg.det(cofactor_matrix[iw, idet])
-            rhs = sign * det * phases[iw, idet]
+            rhs = sign * det_cof_mat[iw, idet] * phases[iw, idet]
             CI[iw, q, p] += rhs
 
 
 @jit(nopython=True, fastmath=True)
-def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
+def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat,
+                    dets_mat, CI):
     """Reduction to CI intermediate for n-fold excitations.
 
     Parameters
@@ -489,12 +537,11 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
         p = cre[:, iex]
         for jex in range(nexcit):
             q = anh[:, jex]
-            # TODO FDM: effectively looping over wavefunction twice here, for
-            # CPU may be better to squash building and reduction.
             build_cofactor_matrix(iex, jex, det_mat, cof_mat)
+            get_dets_rank_3(cof_mat, dets_mat)
             sign = (-1 + 0.0j) ** (iex + jex)
             _reduce_nfold_cofactor_contribution(
-                p, q, mapping, sign, phases, cof_mat, CI
+                p, q, mapping, sign, phases, dets_mat, CI
             )
 
 
