@@ -11,7 +11,10 @@ from ipie.utils.backend import arraylib as xp
 
 _block_size = 512  #
 
-@cuda.jit("void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])")
+
+@cuda.jit(
+    "void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])"
+)
 def kernel_get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from singly excited Slater-Determinants.
 
@@ -44,7 +47,10 @@ def kernel_get_dets_singles(cre, anh, mapping, offset, G0, dets):
         q = anh[idet, 0] + offset
         dets[iwalker, idet] = G0[iwalker, p, q]
 
-@cuda.jit("void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])")
+
+@cuda.jit(
+    "void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])"
+)
 def kernel_get_dets_doubles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from double excited Slater-Determinants.
 
@@ -78,12 +84,14 @@ def kernel_get_dets_doubles(cre, anh, mapping, offset, G0, dets):
         q = anh[idet, 0] + offset
         s = anh[idet, 1] + offset
         dets[iwalker, idet] = (
-                G0[iwalker, p, q] * G0[iwalker, r, s]
-                -
-                G0[iwalker, p, s] * G0[iwalker, r, q]
-                )
+            G0[iwalker, p, q] * G0[iwalker, r, s]
+            - G0[iwalker, p, s] * G0[iwalker, r, q]
+        )
 
-@cuda.jit("void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])")
+
+@cuda.jit(
+    "void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:])"
+)
 def kernel_get_dets_triples(
     cre,
     anh,
@@ -123,23 +131,27 @@ def kernel_get_dets_triples(
         rs, ss = mapping[cre[idet, 1]] + offset, anh[idet, 1] + offset
         ts, us = mapping[cre[idet, 2]] + offset, anh[idet, 2] + offset
         dets[iwalker, idet] = (
-            G0[iwalker, ps, qs] * (
-                G0[iwalker, rs, ss] * G0[iwalker, ts, us] - G0[iwalker, rs, us] *
-                G0[iwalker, ts, ss]
+            G0[iwalker, ps, qs]
+            * (
+                G0[iwalker, rs, ss] * G0[iwalker, ts, us]
+                - G0[iwalker, rs, us] * G0[iwalker, ts, ss]
             )
-            -
-            G0[iwalker, ps, ss] * (
-                G0[iwalker, rs, qs] * G0[iwalker, ts, us] - G0[iwalker, rs, us] *
-                G0[iwalker, ts, qs]
+            - G0[iwalker, ps, ss]
+            * (
+                G0[iwalker, rs, qs] * G0[iwalker, ts, us]
+                - G0[iwalker, rs, us] * G0[iwalker, ts, qs]
             )
-            +
-            G0[iwalker, ps, us] * (
-                G0[iwalker, rs, qs] * G0[iwalker, ts, ss] - G0[iwalker, rs, ss] *
-                G0[iwalker, ts, qs]
+            + G0[iwalker, ps, us]
+            * (
+                G0[iwalker, rs, qs] * G0[iwalker, ts, ss]
+                - G0[iwalker, rs, ss] * G0[iwalker, ts, qs]
             )
         )
 
-@cuda.jit("void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:,:,:])")
+
+@cuda.jit(
+    "void(int32[:,:],  int32[:,:], int32[:], int32, complex128[:,:,:], complex128[:,:,:,:])"
+)
 def kernel_get_dets_nfold(cre, anh, mapping, offset, G0, det_mat):
     """Get overlap from n-fold excited Slater-Determinants.
 
@@ -169,8 +181,11 @@ def kernel_get_dets_nfold(cre, anh, mapping, offset, G0, det_mat):
     # pos = nwalkers * ndets * nex * nex
     iwalker = pos % nwalkers
     idet = ((pos - iwalker) // nwalkers) % ndets
-    iex = ((pos - idet * nwalkers - iwalker) // (nwalkers * ndets)) % nex;
-    jex = ((pos - iex * nex * nwalkers - idet * nwalkers - iwalker) // (nwalkers * ndets * nex)) % nex
+    iex = ((pos - idet * nwalkers - iwalker) // (nwalkers * ndets)) % nex
+    jex = (
+        (pos - iex * nex * nwalkers - idet * nwalkers - iwalker)
+        // (nwalkers * ndets * nex)
+    ) % nex
     if idet < ndets and iwalker < nwalkers and iex < nex:
         p = mapping[cre[idet, iex]] + offset
         q = anh[idet, iex] + offset
@@ -182,35 +197,44 @@ def kernel_get_dets_nfold(cre, anh, mapping, offset, G0, det_mat):
             det_mat[iwalker, idet, jex, iex] = G0[iwalker, r, q]
 
 
-
 def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     ndets = anh.shape[0]
     nwalkers = G0.shape[0]
-    blocks_per_grid = math.ceil(ndets*nwalkers/_block_size)
-    kernel_get_dets_singles[blocks_per_grid, _block_size](cre, anh, mapping, offset, G0, dets)
+    blocks_per_grid = math.ceil(ndets * nwalkers / _block_size)
+    kernel_get_dets_singles[blocks_per_grid, _block_size](
+        cre, anh, mapping, offset, G0, dets
+    )
     synchronize()
+
 
 def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
     ndets = anh.shape[0]
     nwalkers = G0.shape[0]
-    blocks_per_grid = math.ceil(ndets*nwalkers/_block_size)
-    kernel_get_dets_doubles[blocks_per_grid, _block_size](cre, anh, mapping, offset, G0, dets)
+    blocks_per_grid = math.ceil(ndets * nwalkers / _block_size)
+    kernel_get_dets_doubles[blocks_per_grid, _block_size](
+        cre, anh, mapping, offset, G0, dets
+    )
     synchronize()
+
 
 def get_dets_triples(cre, anh, mapping, offset, G0, dets):
     ndets = anh.shape[0]
     nwalkers = G0.shape[0]
-    blocks_per_grid = math.ceil(ndets*nwalkers/_block_size)
-    kernel_get_dets_triples[blocks_per_grid, _block_size](cre, anh, mapping, offset, G0, dets)
+    blocks_per_grid = math.ceil(ndets * nwalkers / _block_size)
+    kernel_get_dets_triples[blocks_per_grid, _block_size](
+        cre, anh, mapping, offset, G0, dets
+    )
     synchronize()
+
 
 def get_dets_nfold(cre, anh, mapping, offset, G0, det_mat_buffer, dets):
     ndets = anh.shape[0]
     nwalkers = G0.shape[0]
     nex = cre.shape[-1]
-    blocks_per_grid = math.ceil(ndets*nwalkers*nex*nex/_block_size)
-    kernel_get_dets_nfold[blocks_per_grid, _block_size](cre, anh, mapping,
-            offset, G0, det_mat_buffer)
+    blocks_per_grid = math.ceil(ndets * nwalkers * nex * nex / _block_size)
+    kernel_get_dets_nfold[blocks_per_grid, _block_size](
+        cre, anh, mapping, offset, G0, det_mat_buffer
+    )
     synchronize()
     dets[:] = xp.linalg.det(det_mat_buffer)
     synchronize()
