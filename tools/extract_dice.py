@@ -23,20 +23,6 @@ def parse_args(args):
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--nalpha",
-        type=int,
-        dest="nalpha",
-        default=0,
-        help="Number of alpha electrons in dice calculation"
-    )
-    parser.add_argument(
-        "--nbeta",
-        type=int,
-        dest="nbeta",
-        default=0,
-        help="Number of beta electrons in dice calculation"
-    )
-    parser.add_argument(
         "--dice-wfn",
         type=str,
         dest="dice_file",
@@ -72,10 +58,6 @@ def parse_args(args):
     )
 
     options = parser.parse_args(args)
-
-    if options.nalpha == 0 and options.nbeta == 0:
-        parser.print_help()
-        sys.exit(1)
 
     return options
 
