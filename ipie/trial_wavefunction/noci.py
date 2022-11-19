@@ -34,18 +34,18 @@ class NOCI(TrialWavefunctionBase):
     def calculate_energy(self, system, hamiltonian):
         pass
         # if self.verbose:
-            # print("# Computing trial wavefunction energy.")
+        # print("# Computing trial wavefunction energy.")
         # start = time.time()
         # if self.verbose:
-            # print(
-                # "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
-                # % (self.energy.real, self.e1b.real, self.e2b.real)
-            # )
-            # print("# Time to evaluate local energy: {} s".format(time.time() - start))
+        # print(
+        # "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
+        # % (self.energy.real, self.e1b.real, self.e2b.real)
+        # )
+        # print("# Time to evaluate local energy: {} s".format(time.time() - start))
 
     def half_rotate(self, system, hamiltonian, comm=None):
-        orbsa = self.psi[:self.num_dets, :, : self.nalpha]
-        orbsb = self.psi[:self.num_dets, :, self.nalpha :]
+        orbsa = self.psi[: self.num_dets, :, : self.nalpha]
+        orbsb = self.psi[: self.num_dets, :, self.nalpha :]
         rot_1body, rot_chol = half_rotate_generic(
             self,
             system,

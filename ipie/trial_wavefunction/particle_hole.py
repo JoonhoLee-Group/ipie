@@ -133,7 +133,6 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 "there are in wavefunction"
             )
 
-
     def build(
         self,
     ):
@@ -342,105 +341,6 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self._rcholb_act = rot_chol_act[0][0]
 
 
-class ParticleHoleWicksSlow(ParticleHoleWicks):
-    def __init__(
-        self,
-        wavefunction: tuple,
-        num_elec: Tuple[int, int],
-        num_basis: int,
-        verbose: bool = False,
-        num_dets_for_props: int = 100,
-        num_dets_for_trial: int = -1,
-    ) -> None:
-        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
-
-    def build(
-        self,
-    ):
-        if self.verbose:
-            print("# Setting additional member variables for Wick's theorem")
-        d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
-        d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
-        if self.verbose:
-            print(f"# Reference alpha determinant: {d0a}")
-            print(f"# Reference beta determinant: {d0b}")
-        self.cre_a = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.anh_a = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.cre_b = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.anh_b = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
-        self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
-        nexcit_a = nalpha
-        nexcit_b = nbeta
-        for j in range(1, self.num_dets):
-            dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
-            djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
-
-            anh_a = list(set(dja) - set(d0a))  # annihilation to right, creation to left
-            cre_a = list(set(d0a) - set(dja))  # creation to right, annhilation to left
-
-            anh_b = list(set(djb) - set(d0b))
-            cre_b = list(set(d0b) - set(djb))
-
-            cre_a.sort()
-            cre_b.sort()
-            anh_a.sort()
-            anh_b.sort()
-
-            self.anh_a += [anh_a]
-            self.anh_b += [anh_b]
-            self.cre_a += [cre_a]
-            self.cre_b += [cre_b]
-            perm_a = get_perm(anh_a, cre_a, d0a, dja)
-            perm_b = get_perm(anh_b, cre_b, d0b, djb)
-            if perm_a:
-                self.phase_a[j] = -1
-            else:
-                self.phase_a[j] = +1
-            if perm_b:
-                self.phase_b[j] = -1
-            else:
-                self.phase_b[j] = +1
-
-    def calculate_energy(self, system, hamiltonian):
-        if self.verbose:
-            print("# Computing trial wavefunction energy.")
-        # Cannot use usual energy evaluation routines if trial is orthogonal.
-        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
-            system, hamiltonian, self.spin_occs, self.coeffs
-        )
-
-    def compute_1rdm(self, nbasis):
-        if self.verbose:
-            print("# Computing 1-RDM of the trial wfn for mean-field shift.")
-            print(
-                f"# Using first {self.num_dets_for_props} determinants for evaluation."
-            )
-        start = time.time()
-        assert wicks_helper is not None
-        dets = wicks_helper.encode_dets(self.occa, self.occb)
-        phases = wicks_helper.convert_phase(self.occa, self.occb)
-        _keep = self.num_dets_for_props
-        self.G = wicks_helper.compute_opdm(
-            phases[:_keep] * self.coeffs[:_keep].copy(),
-            dets[:_keep],
-            self.nbasis,
-            self.nelec,
-        )
-        end = time.time()
-        if self.verbose:
-            print("# Time to compute 1-RDM: {} s".format(end - start))
-
-
 # No chunking no excitation data structure
 class ParticleHoleWicksNonChunked(ParticleHoleWicks):
     def __init__(
@@ -573,3 +473,102 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
             start_beta += nd
 
         return slices_alpha, slices_beta
+
+
+class ParticleHoleWicksSlow(ParticleHoleWicks):
+    def __init__(
+        self,
+        wavefunction: tuple,
+        num_elec: Tuple[int, int],
+        num_basis: int,
+        verbose: bool = False,
+        num_dets_for_props: int = 100,
+        num_dets_for_trial: int = -1,
+    ) -> None:
+        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
+
+    def build(
+        self,
+    ):
+        if self.verbose:
+            print("# Setting additional member variables for Wick's theorem")
+        d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
+        d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
+        if self.verbose:
+            print(f"# Reference alpha determinant: {d0a}")
+            print(f"# Reference beta determinant: {d0b}")
+        self.cre_a = [
+            []
+        ]  # one empty list as a member to account for the reference state
+        self.anh_a = [
+            []
+        ]  # one empty list as a member to account for the reference state
+        self.cre_b = [
+            []
+        ]  # one empty list as a member to account for the reference state
+        self.anh_b = [
+            []
+        ]  # one empty list as a member to account for the reference state
+        self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
+        self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
+        nalpha, nbeta = self.nelec
+        nexcit_a = nalpha
+        nexcit_b = nbeta
+        for j in range(1, self.num_dets):
+            dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
+            djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
+
+            anh_a = list(set(dja) - set(d0a))  # annihilation to right, creation to left
+            cre_a = list(set(d0a) - set(dja))  # creation to right, annhilation to left
+
+            anh_b = list(set(djb) - set(d0b))
+            cre_b = list(set(d0b) - set(djb))
+
+            cre_a.sort()
+            cre_b.sort()
+            anh_a.sort()
+            anh_b.sort()
+
+            self.anh_a += [anh_a]
+            self.anh_b += [anh_b]
+            self.cre_a += [cre_a]
+            self.cre_b += [cre_b]
+            perm_a = get_perm(anh_a, cre_a, d0a, dja)
+            perm_b = get_perm(anh_b, cre_b, d0b, djb)
+            if perm_a:
+                self.phase_a[j] = -1
+            else:
+                self.phase_a[j] = +1
+            if perm_b:
+                self.phase_b[j] = -1
+            else:
+                self.phase_b[j] = +1
+
+    def calculate_energy(self, system, hamiltonian):
+        if self.verbose:
+            print("# Computing trial wavefunction energy.")
+        # Cannot use usual energy evaluation routines if trial is orthogonal.
+        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
+            system, hamiltonian, self.spin_occs, self.coeffs
+        )
+
+    def compute_1rdm(self, nbasis):
+        if self.verbose:
+            print("# Computing 1-RDM of the trial wfn for mean-field shift.")
+            print(
+                f"# Using first {self.num_dets_for_props} determinants for evaluation."
+            )
+        start = time.time()
+        assert wicks_helper is not None
+        dets = wicks_helper.encode_dets(self.occa, self.occb)
+        phases = wicks_helper.convert_phase(self.occa, self.occb)
+        _keep = self.num_dets_for_props
+        self.G = wicks_helper.compute_opdm(
+            phases[:_keep] * self.coeffs[:_keep].copy(),
+            dets[:_keep],
+            self.nbasis,
+            self.nelec,
+        )
+        end = time.time()
+        if self.verbose:
+            print("# Time to compute 1-RDM: {} s".format(end - start))

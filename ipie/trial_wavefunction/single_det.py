@@ -62,7 +62,6 @@ class SingleDet(TrialWavefunctionBase):
 
     def half_rotate(self, system, hamiltonian, comm=None):
         num_dets = 1
-        print(self.psi0a.shape, self.psi0b.shape)
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
         rot_1body, rot_chol = half_rotate_generic(
