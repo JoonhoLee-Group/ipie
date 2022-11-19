@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Tuple
 import time
 
 from ipie.estimators.local_energy import variational_energy_ortho_det
@@ -31,16 +32,19 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             wfn,
             nelec,
             nbasis,
-            num_dets_for_props=num_dets_for_props,
-            num_dets_for_trial=num_dets_for_trial,
             verbose=verbose,
         )
+        self.setup_basic_wavefunction(wfn, num_dets=num_dets_for_trial)
+        self._num_dets_for_props = num_dets_for_props
+        self._num_dets = len(self.coeffs)
+        self._num_dets_for_props = num_dets_for_props
+        self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
 
     def setup_basic_wavefunction(self, wfn, num_dets=None):
         """Unpack wavefunction and insert melting core orbitals."""
-        nalpha, nbeta = self.num_elec
-        ne = sum(self.num_elec)
+        nalpha, nbeta = self.nelec
+        ne = sum(self.nelec)
         assert len(wfn) == 3
         self._max_num_dets = len(wfn[0])
         if num_dets == -1:
@@ -69,17 +73,17 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             occb = wfn[2][:num_dets]
         # Store alpha electrons first followed by beta electrons.
         # FDM Remove this with wicks helper proper integration
-        dets = [list(a) + [i + self.num_basis for i in c] for (a, c) in zip(occa, occb)]
+        dets = [list(a) + [i + self.nbasis for i in c] for (a, c) in zip(occa, occb)]
         self.spin_occs = [np.sort(d) for d in dets]
         self.occa = np.array(occa, dtype=np.int32)
         self.occb = np.array(occb, dtype=np.int32)
         self.coeffs = np.array(wfn[0][:num_dets], dtype=np.complex128)
-        identity = np.eye(self.num_basis, dtype=np.complex128)
+        identity = np.eye(self.nbasis, dtype=np.complex128)
         self.nelec_cas = nocca_in_wfn + noccb_in_wfn
         max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
         self.nact = max_orbital
         self.nfrozen = (nalpha + nbeta - self.nelec_cas) // 2
-        self.nact = self.num_basis
+        self.nact = self.nbasis
         self.nocc_alpha = nalpha - self.nfrozen
         self.nocc_beta = nbeta - self.nfrozen
         self.act_orb_alpha = slice(self.nfrozen, self.nfrozen + self.nact)
@@ -115,6 +119,20 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 f"Requested more determinant chunks than there are determinants"
                 "wavefunction. {self._num_det_chunks} vs {self.num_dets}"
             )
+
+    @property
+    def num_dets_for_props(self) -> int:
+        return self._num_dets_for_props
+
+    @num_dets_for_props.setter
+    def num_dets_for_props(self, ndets_props: int) -> None:
+        self._num_dets_for_props = ndets_props
+        if self._num_dets_for_props > self.num_dets:
+            raise RuntimeError(
+                "Requested more determinants for property evaluation than"
+                "there are in wavefunction"
+            )
+
 
     def build(
         self,
@@ -328,17 +346,13 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
     def __init__(
         self,
         wavefunction: tuple,
-        num_elec: int,
+        num_elec: Tuple[int, int],
         num_basis: int,
         verbose: bool = False,
         num_dets_for_props: int = 100,
         num_dets_for_trial: int = -1,
     ) -> None:
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
-        self.num_dets_for_props = num_dets_for_props
-        # 1. Unpack wavefunction and insert any melting core orbitals.
-        self.setup_basic_wavefunction(wavefunction, num_dets=num_dets_for_trial)
-        self._num_dets = len(self.coeffs)
 
     def build(
         self,
@@ -364,7 +378,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         ]  # one empty list as a member to account for the reference state
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.num_elec
+        nalpha, nbeta = self.nelec
         nexcit_a = nalpha
         nexcit_b = nbeta
         for j in range(1, self.num_dets):
@@ -472,7 +486,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         self.occ_map_b[d0b] = list(range(self.nocc_beta))
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.num_elec
+        nalpha, nbeta = self.nelec
         nexcit_a = nalpha
         nexcit_b = nbeta
         # This is an overestimate because we don't know number of active
