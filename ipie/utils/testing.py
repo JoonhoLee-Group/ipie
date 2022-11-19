@@ -4,6 +4,8 @@ import numpy
 
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.misc import dotdict
+from ipie.systems import Generic
+from ipie.hamiltonians import Generic as HamGeneric
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
@@ -184,13 +186,25 @@ def shaped_normal(shape, cmplx=False):
         arr = numpy.random.normal(size=size)
     return arr.reshape(shape)
 
+def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
+    sys = Generic(nelec=(nalpha, nbeta))
+    chol = shaped_normal((naux, nmo, nmo), cmplx=cmplx)
+    h1e = shaped_normal((nmo, nmo), cmplx=cmplx)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((naux, nmo * nmo)).T.copy(),
+        h1e_mod=h1e.copy(),
+        ecore=0,
+        verbose=False,
+    )
+    return sys, ham
+
 
 def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     assert ndets == 1
     numpy.random.seed(seed)
     wfn = get_random_nomsd(nocc, nocc, nmo, ndet=1)
     h1e = shaped_normal((nmo, nmo))
-    from ipie.systems import Generic
 
     system = Generic(nelec=(nocc, nocc))
     chol = shaped_normal((naux, nmo, nmo))
