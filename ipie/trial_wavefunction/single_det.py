@@ -80,3 +80,11 @@ class SingleDet(TrialWavefunctionBase):
         self._rH1b = rot_1body[1][0]
         self._rchola = rot_chol[0][0]
         self._rcholb = rot_chol[1][0]
+
+    # def cast_to_single_precision(self):
+        # assert self._rchola is not None
+        # self._vbias0 = self._rchola.dot(self.psi0a.T.ravel()) + self._rchola.dot(
+            # self.psi0b.T.ravel()
+        # )
+        # self._rchola = self._rchola.astype(np.float32)
+        # self._rcholb = self._rcholb.astype(np.float32)
