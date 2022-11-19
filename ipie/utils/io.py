@@ -74,6 +74,19 @@ def read_wavefunction(filename: str):
     except:
         raise RuntimeError("Unknown file format.")
 
+def determine_wavefunction_type(filename: str):
+    with h5py.File(wfn_file, "r") as fh5:
+        keys = list(fh5.keys())
+
+    if "occ_alpha" in keys:
+        return "particle_hole"
+    elif "ci_coeffs" in keys:
+        return "noci"
+    elif "psi_T_alpha" in keys:
+        return "single_determinant"
+    else:
+        raise RuntimeError("Unknown wavefunction.")
+
 
 def write_single_det_wavefunction(
         wfn: Union[numpy.ndarray, list],
@@ -226,7 +239,7 @@ def to_json(afqmc):
     return json_string
 
 
-def get_input_value(inputs, key, default=0, alias=None, verbose=False):
+def get_input_value(inputs, key, default, alias=None, verbose=False):
     """Helper routine to parse input options."""
     val = inputs.get(key, None)
     if val is not None and verbose:
