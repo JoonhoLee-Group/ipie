@@ -5,9 +5,10 @@ import numpy
 from ipie.legacy.estimators.greens_function import gab_spin
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.io import (
-        get_input_value,
-        read_qmcpack_wfn_hdf,
-        read_wavefunction)
+    get_input_value,
+    read_qmcpack_wfn_hdf,
+    read_wavefunction,
+)
 
 
 def get_trial_wavefunction(
@@ -54,7 +55,7 @@ def get_trial_wavefunction(
                     psi0 = numpy.hstack(psi0)
                 if len(psit) < 3:
                     psit = numpy.hstack(psit)
-                    read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
+                    read = (numpy.array([1.0 + 0j]), psit.reshape((1,) + psit.shape))
                 else:
                     read = psit
             except RuntimeError:
