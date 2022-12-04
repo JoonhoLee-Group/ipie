@@ -11,13 +11,14 @@ class TrialWavefunctionBase(object):
 
     Abstract methods build and half_rotate have to be defined for each method.
     """
-    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, init=None, verbose=False):
         self.nelec = num_elec
         self.nbasis = num_basis
         self.nalpha, self.nbeta = self.nelec
         self.verbose = verbose
         self._num_dets = 0
         self._max_num_dets = self._num_dets
+        self.init = init 
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)

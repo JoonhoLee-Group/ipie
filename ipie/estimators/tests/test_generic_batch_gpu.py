@@ -12,19 +12,14 @@ except:
 from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
                                              local_energy_single_det_batch_gpu)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
-from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
 from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
+from ipie.utils.testing import (generate_hamiltonian,
                                 get_random_phmsd, shaped_normal)
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.trial_wavefunction.single_det import SingleDet
 
 
 @pytest.mark.gpu
@@ -84,12 +79,11 @@ def test_local_energy_single_det_batch():
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=1, init=True
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
+    Id = numpy.eye(ham.nbasis)
+    wfn = numpy.hstack([Id[:,:system.nup], Id[:,:system.ndown]])
+    trial = SingleDet(wfn, system.nelec, ham.nbasis, init=init)
     trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(system, ham)
+    # trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
 

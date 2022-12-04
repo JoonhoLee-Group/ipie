@@ -7,13 +7,11 @@ from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
 
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, init=None, verbose=False):
         assert isinstance(wavefunction, np.ndarray)
         assert len(wavefunction.shape) == 2
-        self.verbose = verbose
-        self.num_elec = num_elec
-        self.nbasis = num_basis
-        self.nalpha, self.nbeta = self.num_elec
+        super().__init__(wavefunction, num_elec, num_basis, init=init,
+                         verbose=verbose)
         if verbose:
             print("# Parsing input options for trial_wavefunction.MultiSlater.")
         self.psi = wavefunction
