@@ -52,6 +52,12 @@ setup(
     license="Apache 2.0",
     description="Python implementations of Imaginary-time Evolution algorithms",
     python_requires=">=3.6.0",
+    scripts=[
+        "bin/ipie",
+        "tools/extract_dice.py",
+        "tools/reblock.py",
+        "tools/pyscf/pyscf_to_ipie.py",
+    ],
     install_requires=load_requirements("requirements.txt"),
     long_description=open("README.rst").read(),
     ext_modules=cythonize(
