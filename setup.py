@@ -56,6 +56,7 @@ setup(
         "bin/ipie",
         "tools/extract_dice.py",
         "tools/reblock.py",
+        "tools/fcidump_to_afqmc.py",
         "tools/pyscf/pyscf_to_ipie.py",
     ],
     install_requires=load_requirements("requirements.txt"),
