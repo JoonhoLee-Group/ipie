@@ -4,8 +4,6 @@ import numpy
 from setuptools import find_packages, setup
 from setuptools.extension import Extension
 
-import versioneer
-
 try:
     from pip._internal.req import parse_requirements
 except ImportError:
@@ -43,9 +41,15 @@ def load_requirements(fname):
         return [str(ir.requirement) for ir in reqs]
 
 
+__version__ = ""
+with open("ipie/__init__.py") as f:
+    for line in f:
+        if "__version__" in line:
+            __version__ = line.split("=")[1].strip().strip('"')
+
 setup(
     name="ipie",
-    version=versioneer.get_version(),
+    version=__version__,
     author="ipie developers",
     url="http://github.com/linusjoonho/ipie",
     packages=find_packages(exclude=["examples", "docs", "tests", "tools", "setup.py"]),

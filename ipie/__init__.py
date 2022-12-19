@@ -16,3 +16,5 @@
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee
 #
+
+__version__ = "0.6.1"
