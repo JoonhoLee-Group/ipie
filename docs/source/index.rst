@@ -6,9 +6,9 @@
 ipie
 =====
 
-ipie is a collection of **P**\ ython implementations of **AUX**\ illiar\ **Y** field
-quantum Monte Carlo algorithms. Here we will outline how to run the code as well
-as the basics of the theory as well as derivations of the algorithms (I hope).
+ipie is an **I**\ntelligent **P**\ ython implementations of **I**\maginary-time **E**\volution algorithms. 
+We try to present a transparent implementation of different quantum Monte Carlo (QMC) methods while trying to hit the optimal performance.
+Currently, no detailed documentation is available.
 
 .. toctree::
    :maxdepth: 2

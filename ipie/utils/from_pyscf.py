@@ -1,3 +1,22 @@
+
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Fionn Malone <fmalone@google.com>
+#          Joonho Lee
+#
+
 """Generate AFQMC data from PYSCF (molecular) simulation."""
 import time
 
@@ -6,8 +25,7 @@ import numpy
 import scipy.linalg
 from typing import Union, Tuple
 
-from pyscf import ao2mo, fci, lib, scf, mcscf
-from pyscf.tools import fcidump
+from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
 from ipie.legacy.estimators.greens_function import gab
@@ -507,10 +525,7 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         try:
             hcore = fh5["/scf/hcore"][:]
         except KeyError:
-            hcore = mol.intor_symmetric("int1e_nuc")
-            hcore += mol.intor_symmetric("int1e_kin")
-            if len(mol._ecpbas) > 0:
-                hcore += mol.intor_symmetric("ECPScalar")
+            hcore = scf.hf.get_hcore(mol)
         try:
             X = fh5["/scf/orthoAORot"][:]
         except KeyError:
