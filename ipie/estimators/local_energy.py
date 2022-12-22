@@ -121,7 +121,7 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
             two_body += e2b
             if j < i:
                 # Use Hermiticity
-                evar += etot
-                one_body += e1b
-                two_body += e2b
+                evar += etot.conj()
+                one_body += e1b.conj()
+                two_body += e2b.conj()
     return evar / denom, one_body / denom, two_body / denom
