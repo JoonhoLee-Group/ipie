@@ -1,5 +1,5 @@
 
-.. image:: https://github.com/linusjoonho/ipie/blob/main/logo.png"
+.. image:: https://github.com/linusjoonho/ipie/blob/main/logo.png
     :width: 200
 
 ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
