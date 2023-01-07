@@ -69,7 +69,7 @@ def gen_ipie_input_from_pyscf_chk(
         write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
     else:
         write_wavefunction_from_mo_coeff(mo_coeffs, mo_occ, basis_change_matrix,
-                wfn_file, nelec, num_frozen_core=num_frozen_core)
+                wfn_file, nelec, ortho_ao, num_frozen_core=num_frozen_core)
 
 
 
@@ -106,7 +106,9 @@ def write_wavefunction_from_mo_coeff(
             wfnb = numpy.dot(Xinv, mo_coeff)[:, _occ_b]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
-            wfna = numpy.dot(Xinv, mo_coeff)[:, mo_occ]
+            mo_occ = numpy.array(mo_occ, dtype=numpy.int64)
+            _occ_a = mo_occ > 0
+            wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
             write_wavefunction(wfna, filename=filename)
     else:
         if uhf:
