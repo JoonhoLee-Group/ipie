@@ -529,6 +529,9 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
                occb = None
     mo_occ = lib.chkfile.load(chkfile, base + "/mo_occ")
     mo_coeff = lib.chkfile.load(chkfile, base + "/mo_coeff")
+    if mo_coeff is None:
+        mo_occ = lib.chkfile.load(chkfile, "/scf" + "/mo_occ")
+        mo_coeff = lib.chkfile.load(chkfile,"/scf" + "/mo_coeff")
     scf_data = {
         "mol": mol,
         "mo_occ": mo_occ,
