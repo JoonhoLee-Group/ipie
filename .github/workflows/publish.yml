@@ -2,7 +2,8 @@ name: Publish ipie
 on:
   release:
     types:
-      - [publised]
+      - [published]
+
 
 jobs:
   release-ubuntu:
