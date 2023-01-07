@@ -1,3 +1,22 @@
+
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Fionn Malone <fionn.malone@gmail.com>
+#          Joonho Lee
+#
+
 """Various useful routines maybe not appropriate elsewhere"""
 
 import os
@@ -43,9 +62,11 @@ def get_git_info():
         List of locally modified files tracked and untracked.
     """
 
+    under_git = True
     try:
         src = os.path.dirname(__file__) + "/../../"
-        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src).strip()
+        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src,
+                                       stderr=subprocess.DEVNULL).strip()
         suffix = subprocess.check_output(
             ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
@@ -55,18 +76,23 @@ def get_git_info():
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
+    except subprocess.CalledProcessError as e:
+        under_git = False
     except Exception as error:
         suffix = False
         print(f"couldn't determine git hash : {error}")
         sha1 = "none".encode()
         local_mods = []
-    if suffix:
-        return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8"), local_mods
+    if under_git:
+        if suffix:
+            return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8"), local_mods
+        else:
+            branch = subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
+            ).strip()
+            return sha1.decode("utf-8"), branch.decode("utf_8"), local_mods
     else:
-        branch = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
-        ).strip()
-        return sha1.decode("utf-8"), branch.decode("utf_8"), local_mods
+        return None, None, []
 
 
 def is_h5file(obj):
@@ -266,8 +292,12 @@ def get_node_mem():
 
 
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
-    print("# Git hash: {:s}.".format(sha1))
-    print("# Git branch: {:s}.".format(branch))
+
+    import ipie
+    print("# ipie version: {:s}".format(ipie.__version__))
+    if sha1 is not None:
+        print("# Git hash: {:s}.".format(sha1))
+        print("# Git branch: {:s}.".format(branch))
     if len(local_mods)  > 0:
         print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
