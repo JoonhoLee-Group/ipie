@@ -140,7 +140,7 @@ def convert_phase(coeff0, occa_ref, occb_ref, verbose=False):
             count += len(passing_alpha)
 
         phase = (-1) ** count
-        coeffs[i] = coeffs0[i]
+        coeffs[i] = coeffs0[i] * phase
     ixs = np.argsort(np.abs(coeffs))[::-1]
     coeffs = coeffs[ixs]
     occa = np.array(occa_ref)[ixs]
