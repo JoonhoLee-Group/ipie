@@ -21,30 +21,23 @@ jobs:
       # Used to host cibuildwheel
       - uses: actions/setup-python@v3
 
-      #- name: Install cibuildwheel
-        #run: python -m pip install cibuildwheel==2.11.4
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.11.4
 
-      #- name: Build wheels
-        #run: python -m cibuildwheel --output-dir wheelhouse
-        #env:
-          #CIBW_BUILD: cp38-* cp39-* cp310-*
-          #CIBW_ARCHS_MACOS: "x86_64 arm64"
-          #CIBW_ARCHS_LINUX: "x86_64"
-          #CIBW_BUILD_VERBOSITY: 1
-          #CIBW_SKIP: "*-musllinux*"
-          #CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: cp38-* cp39-* cp310-*
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
 
-      #- uses: actions/upload-artifact@v3
-        #with:
-          #path: ./wheelhouse/*.whl
-      - name: Download built artifact
-        uses: actions/download-artifact@v3
-        with:
-          path: wheelhouse
-      #- name: Publish to PyPI
-        ## pypi-publish has issues with macos
-        #run: |
-            #pip install twine
-            #export TWINE_USERNAME=__token__
-            #export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
-            #twine upload --verbose ${{ github.workspace }}/wheelhouse/*.whl
+      - name: Publish to PyPI
+        # pypi-publish has issues with macos
+        run: |
+            pip install twine
+            export TWINE_USERNAME=__token__
+            export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
+            twine upload --verbose ${{ github.workspace }}/wheelhouse/*.whl
