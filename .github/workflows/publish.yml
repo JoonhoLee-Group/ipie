@@ -28,6 +28,7 @@ jobs:
         env:
           CIBW_BUILD: cp38-* cp39-* cp310-*
           CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_LINUX: "x86_64"
           CIBW_BUILD_VERBOSITY: 1
           CIBW_SKIP: "*-musllinux*"
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
