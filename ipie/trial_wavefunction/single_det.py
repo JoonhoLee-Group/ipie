@@ -1,8 +1,21 @@
 import numpy as np
 import time
 
+from ipie.config import config
 from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.estimators.greens_function_batch import (
+    greens_function_single_det,
+    greens_function_single_det_batch,
+)
 from ipie.estimators.utils import gab_spin
+from ipie.propagation.overlap import (
+    calc_overlap_single_det_batch,
+    calc_overlap_single_det,
+)
+from ipie.propagation.force_bias import (
+    construct_force_bias_batch_single_det_chunked,
+    construct_force_bias_batch_single_det,
+)
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
@@ -81,10 +94,27 @@ class SingleDet(TrialWavefunctionBase):
         self._rcholb = rot_chol[1][0]
         self.half_rotated = True
 
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_single_det_batch(walkers, self)
+
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        if config.get_option("use_gpu"):
+            return greens_function_single_det_batch(walkers, self)
+        else:
+            return greens_function_single_det(walkers, self)
+
+    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
+        if hamiltonian.chunked:
+            return construct_force_bias_batch_single_det_chunked(
+                hamiltonian, walkers, self, mpi_handler
+            )
+        else:
+            return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+
     # def cast_to_single_precision(self):
-    # assert self._rchola is not None
-    # self._vbias0 = self._rchola.dot(self.psi0a.T.ravel()) + self._rchola.dot(
-    # self.psi0b.T.ravel()
+    # assert self._rchola is not none
+    # self._vbias0 = self._rchola.dot(self.psi0a.t.ravel()) + self._rchola.dot(
+    # self.psi0b.t.ravel()
     # )
     # self._rchola = self._rchola.astype(np.float32)
     # self._rcholb = self._rcholb.astype(np.float32)

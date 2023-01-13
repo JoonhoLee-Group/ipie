@@ -1,4 +1,7 @@
 from abc import abstractmethod
+
+import numpy as np
+
 from ipie.propagation.overlap import calc_overlap_single_det_batch
 
 from ipie.utils.backend import cast_to_device
@@ -12,6 +15,7 @@ class TrialWavefunctionBase(object):
 
     Abstract methods build and half_rotate have to be defined for each method.
     """
+
     def __init__(self, wavefunction, num_elec, num_basis, init=None, verbose=False):
         self.nelec = num_elec
         self.nbasis = num_basis
@@ -20,7 +24,7 @@ class TrialWavefunctionBase(object):
         self._num_dets = 0
         self._max_num_dets = self._num_dets
         self.init = init
-        self._half_rotated = False 
+        self._half_rotated = False
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)
@@ -55,5 +59,13 @@ class TrialWavefunctionBase(object):
         pass
 
     @abstractmethod
-    def calc_overlap() -> None:
+    def calc_overlap(self, walkers) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
         pass

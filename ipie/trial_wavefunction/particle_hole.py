@@ -4,6 +4,16 @@ import time
 
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
+from ipie.propagation.overlap import (
+    calc_overlap_multi_det,
+    calc_overlap_multi_det_wicks,
+    calc_overlap_multi_det_wicks_opt,
+)
+from ipie.estimators.greens_function_batch import (
+    greens_function_multi_det,
+    greens_function_multi_det_wicks,
+    greens_function_multi_det_wicks_opt,
+)
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
@@ -276,7 +286,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
             print(f"# Number of beta determinants at each level: {self.ndet_b}")
 
-        self.compute_1rdm()
+        self.build_one_rdm()
 
     def build_slices_chunked(self):
         slices_beta_chunk = []
@@ -351,7 +361,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             system, hamiltonian, self.spin_occs, self.coeffs
         )
 
-    def compute_1rdm(self):
+    def build_one_rdm(self):
         if self.verbose:
             print("# Computing 1-RDM of the trial wfn for mean-field shift.")
             print(
@@ -366,11 +376,17 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             phases[:_keep] * self.coeffs[:_keep].copy(),
             dets[:_keep],
             self.nbasis,
-            self.nelec,
+            sum(self.nelec),
         )
         end = time.time()
         if self.verbose:
             print("# Time to compute 1-RDM: {} s".format(end - start))
+
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        return greens_function_multi_det_wicks_opt(walkers, self)
+
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_multi_det_wicks_opt(walkers, self)
 
 
 # No chunking no excitation data structure
@@ -490,7 +506,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         if self.verbose:
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
             print(f"# Number of beta determinants at each level: {self.ndet_b}")
-        self.compute_1rdm()
+        self.build_one_rdm()
 
     def build_slices(self):
         slices_beta = []
@@ -577,4 +593,10 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
             else:
                 self.phase_b[j] = +1
 
-        self.compute_1rdm()
+        self.build_one_rdm()
+
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        return greens_function_multi_det_wicks(walkers, self)
+
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_multi_det_wicks(walkers, self)
