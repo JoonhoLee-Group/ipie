@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -673,8 +672,9 @@ def local_energy_single_det_batch_gpu(
     nchol_chunks = ceil(nchol / chunk_size)
 
     # Buffer for large intermediate tensor
-    buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc),
-            dtype=xp.complex128)
+    buff = xp.zeros(
+        shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128
+    )
     nchol_chunk_size = chunk_size
     nchol_left = nchol
     exx = xp.zeros(nwalkers, dtype=xp.complex128)
