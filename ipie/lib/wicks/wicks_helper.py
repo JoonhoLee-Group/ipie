@@ -52,9 +52,8 @@ def encode_dets(occsa, occsb):
     dets = np.zeros((ndets, DET_LEN), dtype=np.uint64)
     fun = _wicks_helper.encode_dets
     fun.restype = ctypes.c_ulonglong
-    # print(occsa.shape)
     nocca = occsa.shape[1]
-    noccb = occsa.shape[1]
+    noccb = occsb.shape[1]
     fun.argtypes = [
         ndpointer(shape=(ndets, nocca), dtype=ctypes.c_int, flags="C_CONTIGUOUS"),
         ndpointer(shape=(ndets, noccb), dtype=ctypes.c_int, flags="C_CONTIGUOUS"),
@@ -65,6 +64,7 @@ def encode_dets(occsa, occsb):
         ctypes.c_size_t,
         ctypes.c_size_t,
     ]
+    print(occsa.shape)
     _wicks_helper.encode_dets(
         occsa,
         occsb,
