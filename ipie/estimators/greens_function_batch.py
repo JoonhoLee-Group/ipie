@@ -168,7 +168,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     nup = walker_batch.nup
     ndown = walker_batch.ndown
 
-    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
+    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True)
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
@@ -177,12 +177,12 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     )
     if not trial.half_rotated or build_full:
         walker_batch.Ga = xp.einsum(
-            "mi,win->wmn", trial.psia.conj(), walker_batch.Ghalfa, optimize=True
+            "mi,win->wmn", trial.psi0a.conj(), walker_batch.Ghalfa, optimize=True
         )
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum(
-            "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
+            "wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True
         )
         ovlp_inv_b = xp.linalg.inv(ovlp_b)
 
@@ -192,7 +192,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
         )
         if not trial.half_rotated or build_full:
             walker_batch.Gb = xp.einsum(
-                "mi,win->wmn", trial.psib.conj(), walker_batch.Ghalfb, optimize=True
+                "mi,win->wmn", trial.psi0b.conj(), walker_batch.Ghalfb, optimize=True
             )
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:

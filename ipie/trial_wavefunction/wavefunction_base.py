@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from ipie.propagation.overlap import calc_overlap_single_det_batch
 
 from ipie.utils.backend import cast_to_device
 from ipie.utils.io import write_wavefunction
@@ -19,6 +20,7 @@ class TrialWavefunctionBase(object):
         self._num_dets = 0
         self._max_num_dets = self._num_dets
         self.init = init
+        self._half_rotated = False 
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)
@@ -40,7 +42,18 @@ class TrialWavefunctionBase(object):
                 "wavefunction. {self._num_dets} vs {self._max_num_dets}"
             )
 
+    @property
+    def half_rotated(self) -> bool:
+        return self._half_rotated
+
+    @half_rotated.setter
+    def half_rotated(self, is_half_rotated) -> None:
+        self._half_rotated = is_half_rotated
 
     @abstractmethod
     def half_rotate() -> None:
+        pass
+
+    @abstractmethod
+    def calc_overlap() -> None:
         pass

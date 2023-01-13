@@ -57,6 +57,7 @@ class WalkerBatch(object):
         hamiltonian,
         trial,
         nwalkers,
+        initial_walker,
         walker_opts={},
         index=0,
         nprop_tot=None,
@@ -78,12 +79,12 @@ class WalkerBatch(object):
         self.phase = numpy.array([1.0 + 0.0j for iw in range(self.nwalkers)])
         self.alive = numpy.array([1 for iw in range(self.nwalkers)])
         self.phia = numpy.array(
-            [trial.init[:, : self.nup].copy() for iw in range(self.nwalkers)],
+            [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
             dtype=numpy.complex128,
         )
         if not self.rhf:
             self.phib = numpy.array(
-                [trial.init[:, self.nup :].copy() for iw in range(self.nwalkers)],
+                [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
                 dtype=numpy.complex128,
             )
         else:

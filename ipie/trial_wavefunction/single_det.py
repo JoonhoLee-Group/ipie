@@ -79,6 +79,7 @@ class SingleDet(TrialWavefunctionBase):
         self._rH1b = rot_1body[1][0]
         self._rchola = rot_chol[0][0]
         self._rcholb = rot_chol[1][0]
+        self.half_rotated = True
 
     # def cast_to_single_precision(self):
     # assert self._rchola is not None

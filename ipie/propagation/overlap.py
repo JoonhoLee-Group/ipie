@@ -49,6 +49,7 @@ def get_calc_overlap(trial):
         Propagator object.
     """
 
+    print(type(trial))
     if trial.name == "MultiSlater" and trial.ndets == 1:
         # calc_overlap = calc_overlap_single_det
         calc_overlap = calc_overlap_single_det_batch

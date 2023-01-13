@@ -276,6 +276,8 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
             print(f"# Number of beta determinants at each level: {self.ndet_b}")
 
+        self.compute_1rdm()
+
     def build_slices_chunked(self):
         slices_beta_chunk = []
         slices_alpha_chunk = []
@@ -339,6 +341,36 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self._rchola_act = rot_chol_act[0][0]
         # Discared beta since not needed.
         self._rcholb_act = rot_chol_act[0][0]
+        self.half_rotated = True
+
+    def calculate_energy(self, system, hamiltonian):
+        if self.verbose:
+            print("# Computing trial wavefunction energy.")
+        # Cannot use usual energy evaluation routines if trial is orthogonal.
+        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
+            system, hamiltonian, self.spin_occs, self.coeffs
+        )
+
+    def compute_1rdm(self):
+        if self.verbose:
+            print("# Computing 1-RDM of the trial wfn for mean-field shift.")
+            print(
+                f"# Using first {self.num_dets_for_props} determinants for evaluation."
+            )
+        start = time.time()
+        assert wicks_helper is not None
+        dets = wicks_helper.encode_dets(self.occa, self.occb)
+        phases = wicks_helper.convert_phase(self.occa, self.occb)
+        _keep = self.num_dets_for_props
+        self.G = wicks_helper.compute_opdm(
+            phases[:_keep] * self.coeffs[:_keep].copy(),
+            dets[:_keep],
+            self.nbasis,
+            self.nelec,
+        )
+        end = time.time()
+        if self.verbose:
+            print("# Time to compute 1-RDM: {} s".format(end - start))
 
 
 # No chunking no excitation data structure
@@ -458,6 +490,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         if self.verbose:
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
             print(f"# Number of beta determinants at each level: {self.ndet_b}")
+        self.compute_1rdm()
 
     def build_slices(self):
         slices_beta = []
@@ -544,31 +577,4 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
             else:
                 self.phase_b[j] = +1
 
-    def calculate_energy(self, system, hamiltonian):
-        if self.verbose:
-            print("# Computing trial wavefunction energy.")
-        # Cannot use usual energy evaluation routines if trial is orthogonal.
-        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
-            system, hamiltonian, self.spin_occs, self.coeffs
-        )
-
-    def compute_1rdm(self, nbasis):
-        if self.verbose:
-            print("# Computing 1-RDM of the trial wfn for mean-field shift.")
-            print(
-                f"# Using first {self.num_dets_for_props} determinants for evaluation."
-            )
-        start = time.time()
-        assert wicks_helper is not None
-        dets = wicks_helper.encode_dets(self.occa, self.occb)
-        phases = wicks_helper.convert_phase(self.occa, self.occb)
-        _keep = self.num_dets_for_props
-        self.G = wicks_helper.compute_opdm(
-            phases[:_keep] * self.coeffs[:_keep].copy(),
-            dets[:_keep],
-            self.nbasis,
-            self.nelec,
-        )
-        end = time.time()
-        if self.verbose:
-            print("# Time to compute 1-RDM: {} s".format(end - start))
+        self.compute_1rdm()
