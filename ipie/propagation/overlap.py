@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,14 +95,16 @@ def calc_overlap_single_det(walker_batch, trial):
     ot = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
     for iw in range(walker_batch.nwalkers):
-        Oalpha = xp.dot(trial.psia.conj().T, walker_batch.phia[iw])
+        Oalpha = xp.dot(trial.psi0a.conj().T, walker_batch.phia[iw])
         sign_a, logdet_a = xp.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
-            Obeta = xp.dot(trial.psib.conj().T, walker_batch.phib[iw])
+            Obeta = xp.dot(trial.psi0b.conj().T, walker_batch.phib[iw])
             sign_b, logdet_b = xp.linalg.slogdet(Obeta)
 
-        ot[iw] = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
+        ot[iw] = (
+            sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
+        )
 
     synchronize()
 
@@ -127,12 +128,14 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     """
     nup = walker_batch.nup
     ndown = walker_batch.ndown
-    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True)
+    ovlp_a = xp.einsum(
+        "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
+    )
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum(
-            "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
+            "wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True
         )
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
