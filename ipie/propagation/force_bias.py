@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@
 
 import numpy
 
+from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, to_host
 
@@ -122,7 +122,8 @@ def construct_force_bias_batch_single_det(hamiltonian, walker_batch, trial):
             return vbias_batch_tmp.T
 
     else:
-        if trial.mixed_precision:
+        if config.get_option("mixed_precision"):
+            assert False, "Is mixed precision working?"
             dGhalfa = (
                 walker_batch.Ghalfa.reshape(
                     walker_batch.nwalkers, walker_batch.nup * hamiltonian.nbasis
@@ -247,7 +248,6 @@ def construct_force_bias_batch_single_det_chunked(
         Ghalfa.T.imag
     ) + trial._rcholb_chunk.dot(Ghalfb.T.imag)
 
-
     tcomm = 0.0
     senders = handler.senders
     receivers = handler.receivers
@@ -294,7 +294,9 @@ def construct_force_bias_batch_single_det_chunked(
     req2.wait()
     handler.scomm.barrier()
 
-    vbias_batch = xp.empty((walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
+    vbias_batch = xp.empty(
+        (walker_batch.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
+    )
     vbias_batch.real = vbias_batch_real_recv.T.copy()
     vbias_batch.imag = vbias_batch_imag_recv.T.copy()
     synchronize()
