@@ -1,3 +1,22 @@
+
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Fionn Malone <fmalone@google.com>
+#          Joonho Lee
+#
+
 """Generate AFQMC data from PYSCF (molecular) simulation."""
 import time
 
@@ -6,8 +25,7 @@ import numpy
 import scipy.linalg
 from typing import Union, Tuple
 
-from pyscf import ao2mo, fci, lib, scf, mcscf
-from pyscf.tools import fcidump
+from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
 from ipie.legacy.estimators.greens_function import gab
@@ -69,7 +87,7 @@ def gen_ipie_input_from_pyscf_chk(
         write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
     else:
         write_wavefunction_from_mo_coeff(mo_coeffs, mo_occ, basis_change_matrix,
-                wfn_file, nelec, num_frozen_core=num_frozen_core)
+                wfn_file, nelec, ortho_ao, num_frozen_core=num_frozen_core)
 
 
 
@@ -106,7 +124,9 @@ def write_wavefunction_from_mo_coeff(
             wfnb = numpy.dot(Xinv, mo_coeff)[:, _occ_b]
             write_wavefunction([wfna, wfnb], filename=filename)
         else:
-            wfna = numpy.dot(Xinv, mo_coeff)[:, mo_occ]
+            mo_occ = numpy.array(mo_occ, dtype=numpy.int64)
+            _occ_a = mo_occ > 0
+            wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
             write_wavefunction(wfna, filename=filename)
     else:
         if uhf:
@@ -507,10 +527,7 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         try:
             hcore = fh5["/scf/hcore"][:]
         except KeyError:
-            hcore = mol.intor_symmetric("int1e_nuc")
-            hcore += mol.intor_symmetric("int1e_kin")
-            if len(mol._ecpbas) > 0:
-                hcore += mol.intor_symmetric("ECPScalar")
+            hcore = scf.hf.get_hcore(mol)
         try:
             X = fh5["/scf/orthoAORot"][:]
         except KeyError:
@@ -527,6 +544,9 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
                occb = None
     mo_occ = lib.chkfile.load(chkfile, base + "/mo_occ")
     mo_coeff = lib.chkfile.load(chkfile, base + "/mo_coeff")
+    if mo_coeff is None:
+        mo_occ = lib.chkfile.load(chkfile, "/scf" + "/mo_occ")
+        mo_coeff = lib.chkfile.load(chkfile,"/scf" + "/mo_coeff")
     scf_data = {
         "mol": mol,
         "mo_occ": mo_occ,

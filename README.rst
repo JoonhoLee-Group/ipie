@@ -1,6 +1,7 @@
-.. raw:: html
 
-    <img src="https://github.com/linusjoonho/ipie/blob/main/logo.png" width="200px">
+.. image:: https://github.com/linusjoonho/ipie/blob/main/logo.png
+    :width: 200
+
 ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
 ipie inherits a lot of QMC features from pauxy.
@@ -19,6 +20,8 @@ ipie inherits a lot of QMC features from pauxy.
 
 .. image:: https://img.shields.io/badge/paper%20%28v0%29-arXiv%3A2209.04015-B31B1B
     :target: https://arxiv.org/abs/2209.04015
+
+Copyright by Joonho Lee (joonholee@g.harvard.edu)
 
 Features
 --------
