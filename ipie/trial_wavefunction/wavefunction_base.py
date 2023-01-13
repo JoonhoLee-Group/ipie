@@ -18,7 +18,7 @@ class TrialWavefunctionBase(object):
         self.verbose = verbose
         self._num_dets = 0
         self._max_num_dets = self._num_dets
-        self.init = init 
+        self.init = init
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)

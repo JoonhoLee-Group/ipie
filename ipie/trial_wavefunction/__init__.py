@@ -16,5 +16,3 @@
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
 #
-
-from .multi_slater import MultiSlater

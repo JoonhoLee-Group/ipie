@@ -2,6 +2,7 @@ import numpy as np
 import time
 
 from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.estimators.utils import gab_spin
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
@@ -10,8 +11,7 @@ class SingleDet(TrialWavefunctionBase):
     def __init__(self, wavefunction, num_elec, num_basis, init=None, verbose=False):
         assert isinstance(wavefunction, np.ndarray)
         assert len(wavefunction.shape) == 2
-        super().__init__(wavefunction, num_elec, num_basis, init=init,
-                         verbose=verbose)
+        super().__init__(wavefunction, num_elec, num_basis, init=init, verbose=verbose)
         if verbose:
             print("# Parsing input options for trial_wavefunction.MultiSlater.")
         self.psi = wavefunction
@@ -24,6 +24,7 @@ class SingleDet(TrialWavefunctionBase):
 
         self.psi0a = self.psi[:, : self.nalpha]
         self.psi0b = self.psi[:, self.nalpha :]
+        self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
 
     def build(self) -> None:
         pass
@@ -80,9 +81,9 @@ class SingleDet(TrialWavefunctionBase):
         self._rcholb = rot_chol[1][0]
 
     # def cast_to_single_precision(self):
-        # assert self._rchola is not None
-        # self._vbias0 = self._rchola.dot(self.psi0a.T.ravel()) + self._rchola.dot(
-            # self.psi0b.T.ravel()
-        # )
-        # self._rchola = self._rchola.astype(np.float32)
-        # self._rcholb = self._rcholb.astype(np.float32)
+    # assert self._rchola is not None
+    # self._vbias0 = self._rchola.dot(self.psi0a.T.ravel()) + self._rchola.dot(
+    # self.psi0b.T.ravel()
+    # )
+    # self._rchola = self._rchola.astype(np.float32)
+    # self._rcholb = self._rcholb.astype(np.float32)
