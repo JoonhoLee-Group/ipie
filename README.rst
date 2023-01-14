@@ -67,7 +67,7 @@ One of the easiest ways (if you are using pip to install ipie wheels) is via con
 
 which will just install the OpenMPI library. 
 We refer users to the mpi4py
-`documentation <https://mpi4py.readthedocs.io/en/stable/install.html>`_` for
+`documentation <https://mpi4py.readthedocs.io/en/stable/install.html>`_ for
 alternative ways of building mpi4py and the required MPI library.
 
 Further requirements are listed in requirements.txt.
@@ -75,7 +75,7 @@ Further requirements are listed in requirements.txt.
 GPU Support
 -----------
 Cupy is is required when running calculations on GPUs which
-can be install following the instructions `here <https://cupy.dev/>_` .
+can be install following the instructions `here <https://cupy.dev/>`_ .
 
 Cuda aware MPI may be installed via conda-forge.
 
