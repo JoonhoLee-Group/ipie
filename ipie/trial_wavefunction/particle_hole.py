@@ -600,3 +600,26 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
 
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det_wicks(walkers, self)
+
+class ParticleHoleNaive(ParticleHoleWicks):
+    def __init__(
+        self,
+        wavefunction: tuple,
+        num_elec: Tuple[int, int],
+        num_basis: int,
+        verbose: bool = False,
+        num_dets_for_props: int = 100,
+        num_dets_for_trial: int = -1,
+    ) -> None:
+        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
+
+    def build(
+        self,
+    ):
+        self.build_one_rdm()
+
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        return greens_function_multi_det(walkers, self)
+
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_multi_det(walkers, self)
