@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +21,14 @@ import pytest
 from mpi4py import MPI
 
 from ipie.estimators.generic import local_energy_cholesky_opt
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_rhf_batch,
-                                             local_energy_single_det_uhf_batch)
-from ipie.estimators.local_energy_sd_chunked import \
-    local_energy_single_det_uhf_batch_chunked
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch,
+    local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch,
+)
+from ipie.estimators.local_energy_sd_chunked import (
+    local_energy_single_det_uhf_batch_chunked,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
