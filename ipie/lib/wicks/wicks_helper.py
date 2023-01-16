@@ -64,7 +64,6 @@ def encode_dets(occsa, occsb):
         ctypes.c_size_t,
         ctypes.c_size_t,
     ]
-    print(occsa.shape)
     _wicks_helper.encode_dets(
         occsa,
         occsb,

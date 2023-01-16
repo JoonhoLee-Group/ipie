@@ -4,6 +4,7 @@ import time
 
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
+from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
 from ipie.propagation.overlap import (
     calc_overlap_multi_det,
     calc_overlap_multi_det_wicks,
@@ -36,6 +37,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         num_dets_for_props=100,
         num_dets_for_trial=-1,
         num_det_chunks=1,
+        use_active_space=True,
         verbose=False,
     ) -> None:
         super().__init__(
@@ -44,14 +46,17 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             nbasis,
             verbose=verbose,
         )
-        self.setup_basic_wavefunction(wfn, num_dets=num_dets_for_trial)
+        self.setup_basic_wavefunction(
+            wfn, num_dets=num_dets_for_trial, use_active_space=use_active_space
+        )
         self._num_dets_for_props = num_dets_for_props
         self._num_dets = len(self.coeffs)
         self._num_dets_for_props = num_dets_for_props
         self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
+        self.ortho_expansion = True
 
-    def setup_basic_wavefunction(self, wfn, num_dets=None):
+    def setup_basic_wavefunction(self, wfn, num_dets=None, use_active_space=True):
         """Unpack wavefunction and insert melting core orbitals."""
         nalpha, nbeta = self.nelec
         ne = sum(self.nelec)
@@ -88,12 +93,14 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.occa = np.array(occa, dtype=np.int32)
         self.occb = np.array(occb, dtype=np.int32)
         self.coeffs = np.array(wfn[0][:num_dets], dtype=np.complex128)
-        identity = np.eye(self.nbasis, dtype=np.complex128)
-        self.nelec_cas = nocca_in_wfn + noccb_in_wfn
         max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
-        self.nact = max_orbital
+        if use_active_space:
+            self.nact = max_orbital
+            self.nelec_cas = nocca_in_wfn + noccb_in_wfn
+        else:
+            self.nact = self.nbasis
+            self.nelec_cas = ne
         self.nfrozen = (nalpha + nbeta - self.nelec_cas) // 2
-        self.nact = self.nbasis
         self.nocc_alpha = nalpha - self.nfrozen
         self.nocc_beta = nbeta - self.nfrozen
         self.act_orb_alpha = slice(self.nfrozen, self.nfrozen + self.nact)
@@ -114,6 +121,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             print(f"# Number of orbitals in active space trial: {self.nact}")
             # approximate memory for os_buffers and det/cof matrices which are largest
             # contributors.
+        identity = np.eye(self.nbasis, dtype=np.float64)
         self.psi0a = identity[:, self.occa[0]].copy()
         self.psi0b = identity[:, self.occb[0]].copy()
 
@@ -388,6 +396,9 @@ class ParticleHoleWicks(TrialWavefunctionBase):
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+        return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
+
 
 # No chunking no excitation data structure
 class ParticleHoleWicksNonChunked(ParticleHoleWicks):
@@ -398,6 +409,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         nbasis,
         num_dets_for_props=100,
         num_dets_for_trial=-1,
+        use_active_space=True,
         verbose=False,
     ) -> None:
         super().__init__(
@@ -407,6 +419,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
             num_dets_for_props=num_dets_for_props,
             num_dets_for_trial=num_dets_for_trial,
             verbose=verbose,
+            use_active_space=use_active_space,
         )
 
     def build(
@@ -523,6 +536,12 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
 
         return slices_alpha, slices_beta
 
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        return greens_function_multi_det_wicks_opt(walkers, self)
+
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_multi_det_wicks_opt(walkers, self)
+
 
 class ParticleHoleWicksSlow(ParticleHoleWicks):
     def __init__(
@@ -534,7 +553,10 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         num_dets_for_props: int = 100,
         num_dets_for_trial: int = -1,
     ) -> None:
-        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
+        super().__init__(
+            wavefunction, num_elec, num_basis, verbose=verbose, use_active_space=False
+        )
+        self.optimized = False
 
     def build(
         self,
@@ -601,6 +623,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det_wicks(walkers, self)
 
+
 class ParticleHoleNaive(ParticleHoleWicks):
     def __init__(
         self,
@@ -616,6 +639,15 @@ class ParticleHoleNaive(ParticleHoleWicks):
     def build(
         self,
     ):
+        self.optimized = False
+        self.psi = np.zeros(
+            (self.num_dets, self.nbasis, sum(self.nelec)), dtype=np.complex128
+        )
+        I = np.eye(self.nbasis, dtype=np.complex128)
+        nup = self.nelec[0]
+        for idet, (occa, occb) in enumerate(zip(self.occa, self.occb)):
+            self.psi[idet, :, :nup] = I[:, occa]
+            self.psi[idet, :, nup:] = I[:, occb]
         self.build_one_rdm()
 
     def calc_greens_function(self, walkers) -> np.ndarray:

@@ -342,7 +342,7 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
         walker_batch.CIa[iw].fill(0.0 + 0.0j)
         walker_batch.CIb[iw].fill(0.0 + 0.0j)
 
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
 

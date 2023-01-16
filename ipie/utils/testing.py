@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,7 +87,9 @@ def truncated_combinations(iterable, r, count):
         yield tuple(pool[i] for i in indices)
 
 
-def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False):
+def get_random_phmsd(
+    nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True
+):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
     ob = [c for c in itertools.combinations(orbs, ndown)]
@@ -113,7 +114,10 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False):
     if init:
         a = numpy.random.rand(nbasis * (nup + ndown))
         b = numpy.random.rand(nbasis * (nup + ndown))
-        init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        if cmplx:
+            init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        else:
+            init_wfn = a.reshape((nbasis, nup + ndown))
     return wfn, init_wfn
 
 
@@ -204,6 +208,7 @@ def shaped_normal(shape, cmplx=False):
     else:
         arr = numpy.random.normal(size=size)
     return arr.reshape(shape)
+
 
 def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
     sys = Generic(nelec=(nalpha, nbeta))

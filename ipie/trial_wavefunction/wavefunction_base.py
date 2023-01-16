@@ -25,6 +25,8 @@ class TrialWavefunctionBase(object):
         self._max_num_dets = self._num_dets
         self.init = init
         self._half_rotated = False
+        self.ortho_expansion = False
+        self.optimized = True
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)

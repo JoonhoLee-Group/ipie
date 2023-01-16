@@ -44,7 +44,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicks,
     ParticleHoleWicksNonChunked,
     ParticleHoleWicksSlow,
-    ParticleHoleWicksNaive,
+    ParticleHoleNaive,
 )
 
 
@@ -70,27 +70,27 @@ def test_greens_function_wicks_opt():
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
-    trial = ParticleHoleWicksNaive(
-        wfn_2,
-        nelec,
-        nmo,
-    )
+    trial = ParticleHoleWicksSlow(wfn_2, nelec, nmo, verbose=True)
+    trial.build()
     trial_slow = ParticleHoleNaive(
         wfn_2,
         nelec,
         nmo,
     )
-    trial_slow.calculate_energy(system, ham)
-    trial_opt = ParticleHoleWicks(
+    trial_slow.build()
+    trial_opt = ParticleHoleWicksNonChunked(
         wfn_2,
         nelec,
         nmo,
     )
+    trial_opt.build()
     numpy.random.seed(7)
-    walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     # walker_batch_slow = multidettrialwalkerbatch(system, ham, trial_slow, nwalkers)
-    walker_batch_slow = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
-    walker_batch_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
+    walker_batch_slow = MultiDetTrialWalkerBatch(
+        system, ham, trial_slow, nwalkers, init
+    )
+    walker_batch_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     numpy.random.seed(7)
@@ -255,21 +255,19 @@ def test_det_matrix():
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleWicksNonChunked(
         wfn_2,
-        init=init,
-        options={"wicks": True, "use_wicks_helper": False},
+        nelec,
+        nmo,
     )
-    trial.calculate_energy(system, ham)
+    trial.build()
     trial.half_rotate(system, ham)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
@@ -321,43 +319,45 @@ def test_phmsd_local_energy():
     # Test PH type wavefunction.
     # wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5, init=True)
     wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=3000, init=True
+        system.nup, system.ndown, ham.nbasis, ndet=3000, init=True, cmplx=False
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial_slow = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleWicksSlow(
         wfn_2,
-        init=init,
-        options={"wicks": False, "use_wicks_helper": False, "optimized": False},
+        nelec,
+        nmo,
     )
-    trial_slow.calculate_energy(system, ham)
+    trial.build()
+    trial_slow = ParticleHoleNaive(
+        wfn_2,
+        nelec,
+        nmo,
+    )
+    trial_slow.build()
     trial_slow.half_rotate(system, ham)
-    trial = MultiSlater(
-        system,
-        ham,
+    trial_test = ParticleHoleWicksNonChunked(
         wfn_2,
-        init=init,
-        options={"wicks": True, "use_wicks_helper": False, "optimized": False},
+        nelec,
+        nmo,
     )
-    trial.calculate_energy(system, ham)
-    trial.half_rotate(system, ham)
-    trial_test = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        init=init,
-        options={"wicks": True, "use_wicks_helper": False, "optimized": True},
-    )
+    trial_test.build()
     trial_test.half_rotate(system, ham)
+    numpy.random.seed(7)
+    walker_batch_wick = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
+    # walker_batch_slow = multidettrialwalkerbatch(system, ham, trial_slow, nwalkers)
+    walker_batch_slow = MultiDetTrialWalkerBatch(
+        system, ham, trial_slow, nwalkers, init
+    )
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
-    walker_batch_test2 = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
+    walker_batch_test2 = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial_slow, qmc, options=options)
     for i in range(nsteps):
@@ -416,25 +416,22 @@ def test_kernels_energy():
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleWicksNonChunked(
         wfn_2,
-        init=init,
-        options={"wicks": True, "optimized": True, "use_wicks_helper": False},
+        nelec,
+        nmo,
     )
+    trial.build()
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
-
-    import copy
 
     greens_function_multi_det_wicks_opt(walker_batch, trial)
     from ipie.estimators.kernels.cpu import wicks as wk
@@ -446,7 +443,7 @@ def test_kernels_energy():
         get_same_spin_double_contribution_batched_contr,
     )
 
-    ndets = trial.ndets
+    ndets = trial.num_dets
     nchol = ham.nchol
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
@@ -647,36 +644,28 @@ def test_kernels_gf():
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleWicksNonChunked(
         wfn_2,
-        init=init,
-        options={"optimized": False},
+        nelec,
+        nmo,
     )
+    trial.build()
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
 
-    greens_function_multi_det_wicks(walker_batch, trial)
+    trial.calc_greens_function(walker_batch)
 
     from ipie.estimators.kernels.cpu import wicks as wk
-    from ipie.estimators.local_energy_wicks import (
-        fill_opp_spin_factors_batched_doubles_chol,
-        fill_opp_spin_factors_batched_singles,
-        fill_opp_spin_factors_batched_triples_chol,
-        fill_same_spin_contribution_batched_contr,
-        get_same_spin_double_contribution_batched_contr,
-    )
 
-    ndets = trial.ndets
+    ndets = trial.num_dets
     nchol = ham.nchol
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
@@ -770,7 +759,7 @@ def test_kernels_gf_active_space():
         ecore=0,
         options={"symmetry": False},
     )
-    wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
+    wfn, init_act = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
     core = [0, 1]
     with_core_a = [
@@ -779,41 +768,50 @@ def test_kernels_gf_active_space():
     with_core_b = [
         numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb
     ]
-    wfn_2 = (
+    wfn_no_act = (
         ci[::50],
         with_core_a[::50],
         with_core_b[::50],
     )  # Get high excitation determinants too
+    wfn_act = (
+        ci[::50],
+        occa[::50],
+        occb[::50],
+    )  # Get high excitation determinants too
 
-    trial_ref = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        options={
-            "wicks": True,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+    # Big hack due to new wavefunction separation, old unit test assumed
+    # MultiSlater wavefunction built all the data structures but now they are
+    # separate so need to copy cre_ex_a arrays over to old unoptimized wicks class.
+    trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
+    trial_ref.optimized = False
+    trial_ref.build()
+    trial_tmp = ParticleHoleWicksNonChunked(
+        wfn_no_act, nelec, nmo, use_active_space=False
     )
-    trial_test = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        options={
-            "wicks": True,
-            "optimized": True,
-            "use_wicks_helper": False,
-            "nact": 12,
-            "ncas": 14,
-        },
+    trial_tmp.build()
+    # need cre_ex_a arrays for non-active space variant
+    trial_ref.__dict__.update(trial_tmp.__dict__)
+    trial_ref.optimized = False
+
+    # Trial with active space optimization
+    trial_test = ParticleHoleWicksNonChunked(
+        wfn_act,
+        nelec,
+        nmo,
     )
+    trial_test.build()
+    # Copy some data over
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial_ref, qmc, options=options)
-    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    I = numpy.eye(nmo)
+    init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
@@ -821,7 +819,7 @@ def test_kernels_gf_active_space():
 
     walker_batch_test.phia = walker_batch_ref.phia.copy()
     walker_batch_test.phib = walker_batch_ref.phib.copy()
-    greens_function_multi_det_wicks(walker_batch_ref, trial_ref)
+    trial_ref.calc_greens_function(walker_batch_ref)
     walker_batch_test.G0a = walker_batch_ref.G0a.copy()
     walker_batch_test.G0b = walker_batch_ref.G0b.copy()
     walker_batch_test.Ga = walker_batch_ref.Ga.copy()
@@ -831,7 +829,7 @@ def test_kernels_gf_active_space():
 
     from ipie.estimators.kernels.cpu import wicks as wk
 
-    ndets = trial_ref.ndets
+    ndets = trial_ref.num_dets
     nchol = ham.nchol
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
@@ -957,41 +955,61 @@ def test_kernels_energy_active_space():
     wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
     core = [0, 1]
+    with_core_a = [
+        numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa
+    ]
+    with_core_b = [
+        numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb
+    ]
     wfn_2 = (
         ci[::50],
         occa[::50],
         occb[::50],
     )  # Get high excitation determinants too
+    wfn_no_act = (
+        ci[::50],
+        with_core_a[::50],
+        with_core_b[::50],
+    )  # Get high excitation determinants too
+    wfn_act = (
+        ci[::50],
+        occa[::50],
+        occb[::50],
+    )  # Get high excitation determinants too
 
-    trial_ref = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        options={
-            "wicks": True,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+    # Big hack due to new wavefunction separation, old unit test assumed
+    # MultiSlater wavefunction built all the data structures but now they are
+    # separate so need to copy cre_ex_a arrays over to old unoptimized wicks class.
+    trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
+    trial_ref.optimized = False
+    trial_ref.build()
+    trial_tmp = ParticleHoleWicksNonChunked(
+        wfn_no_act, nelec, nmo, use_active_space=False
     )
-    trial_test = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        options={
-            "wicks": True,
-            "optimized": True,
-            "use_wicks_helper": False,
-            "nact": 12,
-            "ncas": 14,
-        },
+    trial_tmp.build()
+    # need cre_ex_a arrays for non-active space variant
+    trial_ref.__dict__.update(trial_tmp.__dict__)
+    trial_ref.optimized = False
+
+    # Trial with active space optimization
+    trial_test = ParticleHoleWicksNonChunked(
+        wfn_act,
+        nelec,
+        nmo,
     )
+    trial_test.build()
+
+    I = numpy.eye(nmo)
+    init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial_ref, qmc, options=options)
-    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
@@ -1009,7 +1027,7 @@ def test_kernels_energy_active_space():
 
     from ipie.estimators.kernels.cpu import wicks as wk
 
-    ndets = trial_ref.ndets
+    ndets = trial_ref.num_dets
     nchol = ham.nchol
     ref = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
@@ -1239,37 +1257,32 @@ def test_phmsd_local_energy_active_space():
         occb[::50],
     )  # Get high excitation determinants too
 
-    trial_ref = MultiSlater(
-        system,
-        ham,
+    trial_ref = ParticleHoleWicksSlow(
         wfn_2,
-        options={
-            "wicks": True,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+        nelec,
+        nmo,
     )
+    trial_ref.build()
     trial_ref.half_rotate(system, ham)
-    trial_test = MultiSlater(
-        system,
-        ham,
+
+    trial_test = ParticleHoleWicksNonChunked(
         wfn_2,
-        options={
-            "wicks": True,
-            "optimized": True,
-            "use_wicks_helper": False,
-            "nact": 12,
-            "ncas": 14,
-        },
+        nelec,
+        nmo,
     )
+    trial_test.build()
     trial_test.half_rotate(system, ham)
+    I = numpy.eye(nmo)
+    init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     prop = Continuous(system, ham, trial_ref, qmc, options=options)
-    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
     numpy.random.seed(7)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
@@ -1331,34 +1344,26 @@ def test_phmsd_local_energy_active_space_polarised():
     with_core_b = numpy.array(
         [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
     )
-    trial = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleNaive(
         wfn,
-        init=init,
-        options={
-            "wicks": False,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+        nelec,
+        nmo,
     )
+    trial.build()
     trial.half_rotate(system, ham)
-    trial_test = MultiSlater(
-        system,
-        ham,
+    trial_test = ParticleHoleWicksNonChunked(
         wfn,
-        init=init,
-        options={
-            "wicks": True,
-            "optimized": True,
-            "use_wicks_helper": False,
-        },
+        nelec,
+        nmo,
     )
+    trial_test.build()
     trial_test.half_rotate(system, ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial, qmc, options=options)
     for i in range(nsteps):
@@ -1426,51 +1431,34 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         occb[::nskip],
     )  # Get high excitation determinants too
     ci, occa, occb = wfn_2
-    trial = MultiSlater(
-        system,
-        ham,
+    # Naive MSD with looping
+    trial = ParticleHoleNaive(
         wfn_2,
-        init=init,
-        options={
-            "wicks": False,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+        nelec,
+        nmo,
     )
+    trial.build()
     trial.half_rotate(system, ham)
-    trial_ref = MultiSlater(
-        system,
-        ham,
+    # Original implementation
+    trial_ref = ParticleHoleWicksSlow(
         wfn_2,
-        init=init,
-        options={
-            "wicks": True,
-            "optimized": False,
-            "use_wicks_helper": False,
-        },
+        nelec,
+        nmo,
     )
+    trial_ref.build()
     trial_ref.half_rotate(system, ham)
-    trial_test = MultiSlater(
-        system,
-        ham,
-        wfn_2,
-        init=init,
-        options={
-            "wicks": True,
-            "optimized": True,
-            "use_wicks_helper": False,
-            "nact": nact,
-            "ndet_chunks": 10,
-            "ncas": 14,
-        },
-    )
+    # Chunked wicks algorithm
+    trial_test = ParticleHoleWicks(wfn_2, nelec, nmo, num_det_chunks=10)
+    trial_test.build()
     trial_test.half_rotate(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
-    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers)
-    walker_batch_test = MultiDetTrialWalkerBatch(system, ham, trial_test, nwalkers)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
+    walker_batch_ref = MultiDetTrialWalkerBatch(system, ham, trial_ref, nwalkers, init)
+    walker_batch_test = MultiDetTrialWalkerBatch(
+        system, ham, trial_test, nwalkers, init
+    )
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial_ref, qmc, options=options)
     for i in range(nsteps):
@@ -1513,9 +1501,9 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch(
         system, ham, walker_batch_ref, trial_ref
     )
-    e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
-        system, ham, walker_batch_test, trial_test
-    )
+    # e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
+    #     system, ham, walker_batch_test, trial_test
+    # )
     e_wicks_opt_chunk = local_energy_multi_det_trial_wicks_batch_opt_chunked(
         system, ham, walker_batch_test, trial_test
     )

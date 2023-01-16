@@ -17,20 +17,19 @@
 #          linusjoonho <linusjoonho@gmail.com>
 #
 
-import cmath
 import math
-import sys
 import time
 
 import numpy
 
-from ipie.legacy.estimators.local_energy import local_energy
+from ipie.config import config
+
 from ipie.propagation.generic import GenericContinuous
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
+from ipie.propagation.operations import kinetic_spin_real_batch
 
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize, cast_to_device
+from ipie.utils.backend import synchronize
 
 
 class Continuous(object):
@@ -253,7 +252,7 @@ class Continuous(object):
         if self.force_bias:
             start_time = time.time()
             self.propagator.vbias_batch = trial.calc_force_bias(
-                walker_batch, hamiltonian, walker_batch.mpi_handler
+                hamiltonian, walker_batch, walker_batch.mpi_handler
             )
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
@@ -293,7 +292,7 @@ class Continuous(object):
         self.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
         start_time = time.time()
-        if is_cupy(trial.psi):
+        if config.get_option("use_gpu"):
             walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
             if walker_batch.ndown > 0 and not walker_batch.rhf:
                 walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)

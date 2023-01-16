@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,16 +23,21 @@ from numba import jit
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch, local_energy_single_det_batch_einsum,
-    local_energy_single_det_batch_gpu, local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf_batch)
+    local_energy_single_det_batch,
+    local_energy_single_det_batch_einsum,
+    local_energy_single_det_batch_gpu,
+    local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch,
+)
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
-    local_energy_single_det_uhf_batch_chunked_gpu)
+    local_energy_single_det_uhf_batch_chunked_gpu,
+)
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
-    local_energy_multi_det_trial_wicks_batch_opt_chunked)
+    local_energy_multi_det_trial_wicks_batch_opt_chunked,
+)
 from ipie.utils.misc import is_cupy
 
 
@@ -90,7 +94,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         )
     elif (
         trial.name == "MultiSlater"
-        and trial.ndets > 1
+        and trial.num_dets > 1
         and trial.wicks == True
         and not trial.optimized
     ):
@@ -100,7 +104,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         )
     elif (
         trial.name == "MultiSlater"
-        and trial.ndets > 1
+        and trial.num_dets > 1
         and trial.wicks == True
         and trial.optimized == True
         and trial.ndet_chunks > 1
@@ -111,7 +115,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         )
     elif (
         trial.name == "MultiSlater"
-        and trial.ndets > 1
+        and trial.num_dets > 1
         and trial.wicks == True
         and trial.optimized == True
     ):
@@ -143,7 +147,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
         Total, one-body and two-body energies.
     """
     energy = []
-    ndets = trial.ndets
+    ndets = trial.num_dets
     nwalkers = walker_batch.nwalkers
     # ndets x nwalkers
     for iwalker, (w, Ga, Gb, Ghalfa, Ghalfb) in enumerate(

@@ -263,7 +263,7 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
             nex_a = len(trial.anh_a[jdet])
             nex_b = len(trial.anh_b[jdet])
             ovlp_a, ovlp_b = get_overlap_one_det_wicks(
@@ -675,8 +675,8 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
 
 
 def compute_determinants_batched(G0a, G0b, trial):
-    na = trial._nalpha
-    nb = trial._nbeta
+    na = trial.nelec[0]
+    nb = trial.nelec[1]
     nwalker = G0a.shape[0]
     ndets = len(trial.coeffs)
     dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,16 +23,22 @@ from numba import jit
 
 from ipie.estimators.generic import local_energy_generic_cholesky
 from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch_einsum, local_energy_single_det_uhf_batch,
-    two_body_energy_uhf)
-from ipie.propagation.overlap import (compute_determinants_batched,
-                                      get_overlap_one_det_wicks)
+    local_energy_single_det_batch_einsum,
+    local_energy_single_det_uhf_batch,
+    two_body_energy_uhf,
+)
+from ipie.propagation.overlap import (
+    compute_determinants_batched,
+    get_overlap_one_det_wicks,
+)
 from ipie.utils.linalg import minor_mask, minor_mask4
 
 try:
-    from ipie.propagation.wicks_kernels import (get_cofactor_matrix_4_batched,
-                                                get_cofactor_matrix_batched,
-                                                get_det_matrix_batched)
+    from ipie.propagation.wicks_kernels import (
+        get_cofactor_matrix_4_batched,
+        get_cofactor_matrix_batched,
+        get_det_matrix_batched,
+    )
 except ImportError:
     pass
 
@@ -147,7 +152,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
 
         cont3 = 0.0 + 0.0j
 
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
 
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
@@ -1237,6 +1242,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
 # Depracted / unused?
 # kernels were jitte with numba for better performance.
 
+
 def get_same_spin_double_contribution_batched(
     cre, anh, buffer, excit_map, chol_fact, det_sls
 ):
@@ -1628,4 +1634,3 @@ def build_exchange_contributions_opt(
             Lvo[iw, x, :, :] = numpy.dot(Q, theta_occ.T)
 
     return cont2_Kaa
-
