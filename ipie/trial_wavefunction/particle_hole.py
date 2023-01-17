@@ -109,6 +109,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.occ_orb_beta = slice(self.nfrozen, self.nfrozen + self.nocc_beta)
         if self.verbose:
             print("# Using generalized Wick's theorem for the PHMSD trial")
+            print(f"# Number of determinants in trial: {num_dets}")
             print(
                 "# Setting the first determinant in"
                 " expansion as the reference wfn for Wick's theorem."
@@ -192,6 +193,15 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         anh_ex_b_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
         excit_map_a_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
         excit_map_b_chunk = [[[] for _ in range(max_excit)] for i in range(num_chunks)]
+        cre_ex_a = [[] for _ in range(max_excit)]
+        cre_ex_b = [[] for _ in range(max_excit)]
+        anh_ex_a = [[] for _ in range(max_excit)]
+        anh_ex_b = [[] for _ in range(max_excit)]
+        # Will store mapping from unordered list defined by order in which added to
+        # cre_/anh_a/b TO the full determinant index, i.e.,
+        # ordered_like_trial[excit_map_a] = buffer_from_cre_ex_a[:]
+        excit_map_a = [[] for _ in range(max_excit)]
+        excit_map_b = [[] for _ in range(max_excit)]
         for ichunk in range(num_chunks):
             for jdet in range(0, ndets_chunk):
                 j = 1 + ichunk * ndets_chunk + jdet
@@ -221,6 +231,12 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 cre_ex_b_chunk[ichunk][len(cre_b)].append(cre_b)
                 excit_map_a_chunk[ichunk][len(anh_a)].append(j)
                 excit_map_b_chunk[ichunk][len(anh_b)].append(j)
+                anh_ex_a[len(anh_a)].append(anh_a)
+                anh_ex_b[len(anh_b)].append(anh_b)
+                cre_ex_a[len(cre_a)].append(cre_a)
+                cre_ex_b[len(cre_b)].append(cre_b)
+                excit_map_a[len(anh_a)].append(j)
+                excit_map_b[len(anh_b)].append(j)
 
                 perm_a = get_perm(anh_a, cre_a, d0a, dja)
                 perm_b = get_perm(anh_b, cre_b, d0b, djb)
@@ -289,6 +305,14 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         ]
 
         self.slices_alpha_chunk, self.slices_beta_chunk = self.build_slices_chunked()
+        self.cre_ex_a = [np.array(ex, dtype=np.int32) for ex in cre_ex_a]
+        self.cre_ex_b = [np.array(ex, dtype=np.int32) for ex in cre_ex_b]
+        self.anh_ex_a = [np.array(ex, dtype=np.int32) for ex in anh_ex_a]
+        self.anh_ex_b = [np.array(ex, dtype=np.int32) for ex in anh_ex_b]
+        self.excit_map_a = [np.array(ex, dtype=np.int32) for ex in excit_map_a]
+        self.excit_map_b = [np.array(ex, dtype=np.int32) for ex in excit_map_b]
+
+        self.slices_alpha, self.slices_beta = self.build_slices()
 
         if self.verbose:
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
@@ -315,6 +339,21 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             slices_beta_chunk.append(slices_beta)
 
         return slices_alpha_chunk, slices_beta_chunk
+
+    def build_slices(self):
+        slices_beta = []
+        slices_alpha = []
+        start_alpha = 1
+        start_beta = 1
+        for i in range(0, self.max_excite + 1):
+            nd = len(self.cre_ex_a[i])
+            slices_alpha.append(slice(start_alpha, start_alpha + nd))
+            start_alpha += nd
+            nd = len(self.cre_ex_b[i])
+            slices_beta.append(slice(start_beta, start_beta + nd))
+            start_beta += nd
+
+        return slices_alpha, slices_beta
 
     def half_rotate(self, system, hamiltonian, comm=None):
         # First get half rotated integrals for reference determinant
@@ -520,21 +559,6 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
             print(f"# Number of alpha determinants at each level: {self.ndet_a}")
             print(f"# Number of beta determinants at each level: {self.ndet_b}")
         self.build_one_rdm()
-
-    def build_slices(self):
-        slices_beta = []
-        slices_alpha = []
-        start_alpha = 1
-        start_beta = 1
-        for i in range(0, self.max_excite + 1):
-            nd = len(self.cre_ex_a[i])
-            slices_alpha.append(slice(start_alpha, start_alpha + nd))
-            start_alpha += nd
-            nd = len(self.cre_ex_b[i])
-            slices_beta.append(slice(start_beta, start_beta + nd))
-            start_beta += nd
-
-        return slices_alpha, slices_beta
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det_wicks_opt(walkers, self)

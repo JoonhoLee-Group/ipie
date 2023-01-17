@@ -142,7 +142,9 @@ def _gen_det_selection(d0, vir, occ, dist, nel):
     return dets
 
 
-def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
+def get_random_phmsd_opt(
+    nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True
+):
     if dist is None:
         dist_a = [int(ndet**0.5) // (int(nup**0.5))] * nup
         dist_b = [int(ndet**0.5) // (int(ndown**0.5))] * ndown
@@ -170,7 +172,10 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
             dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = len(occ_a)
-    coeffs = numpy.random.rand(_ndet) + 1j * numpy.random.rand(_ndet)
+    if cmplx_coeffs:
+        coeffs = numpy.random.rand(_ndet) + 1j * numpy.random.rand(_ndet)
+    else:
+        coeffs = numpy.random.rand(_ndet) + 0j
     wfn = (coeffs, list(occ_a), list(occ_b))
     if init:
         a = numpy.random.rand(nbasis * (nup + ndown))

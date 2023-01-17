@@ -1241,6 +1241,7 @@ def test_phmsd_local_energy_active_space():
     nsteps = 100
     nact = 12
     ncore = 2
+    core = [0, 1]
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(
@@ -1256,9 +1257,16 @@ def test_phmsd_local_energy_active_space():
         occa[::50],
         occb[::50],
     )  # Get high excitation determinants too
+    ci, occa, occb = wfn_2
+    with_core_a = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    )
+    with_core_b = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
+    )
 
     trial_ref = ParticleHoleWicksSlow(
-        wfn_2,
+        (ci, with_core_a, with_core_b),
         nelec,
         nmo,
     )
@@ -1345,7 +1353,8 @@ def test_phmsd_local_energy_active_space_polarised():
         [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
     )
     trial = ParticleHoleNaive(
-        wfn,
+        (ci, with_core_a, with_core_b),
+        # wfn,
         nelec,
         nmo,
     )
@@ -1358,11 +1367,22 @@ def test_phmsd_local_energy_active_space_polarised():
     )
     trial_test.build()
     trial_test.half_rotate(system, ham)
+    trial_test_chunked = ParticleHoleWicks(
+        wfn,
+        nelec,
+        nmo,
+        num_det_chunks=4,
+    )
+    trial_test_chunked.build()
+    trial_test_chunked.half_rotate(system, ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     walker_batch_test = MultiDetTrialWalkerBatch(
         system, ham, trial_test, nwalkers, init
+    )
+    walker_batch_test_chunked = MultiDetTrialWalkerBatch(
+        system, ham, trial_test_chunked, nwalkers, init
     )
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial, qmc, options=options)
@@ -1374,25 +1394,38 @@ def test_phmsd_local_energy_active_space_polarised():
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
         walker_batch_test.reortho()
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_test_chunked, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(
+            walker_batch_test_chunked, system, ham, trial_test_chunked, 0
+        )
+        walker_batch_test_chunked.reortho()
 
-    from ipie.propagation.overlap import compute_determinants_batched
-
-    greens_function_multi_det(walker_batch, trial)
-    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
+    greens_function_multi_det(walker_batch, trial, build_full=True)
+    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test, build_full=True)
+    greens_function_multi_det_wicks_opt(
+        walker_batch_test_chunked, trial_test_chunked, build_full=True
+    )
     assert numpy.allclose(walker_batch.Ga, walker_batch_test.Ga)
     assert numpy.allclose(walker_batch.Gb, walker_batch_test.Gb)
+    assert numpy.allclose(walker_batch.Ga, walker_batch_test_chunked.Ga)
+    assert numpy.allclose(walker_batch.Gb, walker_batch_test_chunked.Gb)
     e_ref = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
     e_wicks = local_energy_multi_det_trial_wicks_batch_opt(
         system, ham, walker_batch_test, trial_test
     )
     assert numpy.allclose(e_ref, e_wicks)
+    e_wicks_chunked = local_energy_multi_det_trial_wicks_batch_opt_chunked(
+        system, ham, walker_batch_test_chunked, trial_test_chunked
+    )
 
 
 @pytest.mark.unit
 def test_phmsd_local_energy_active_space_non_aufbau():
     numpy.random.seed(7)
     nelec = (9, 9)
-    nwalkers = 1
+    nwalkers = 4
     nsteps = 10
     nact = 12
     nmo = 20
@@ -1407,7 +1440,9 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     )
     from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
-    wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True)
+    wfn, init = get_random_phmsd_opt(
+        7, 7, nact, ndet=100, init=True, cmplx_coeffs=False
+    )
     init = shaped_normal((nmo, system.ne))
     ci, occa, occb = wfn
     tmp = occa[0]
@@ -1418,13 +1453,18 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     occb[2] = tmp
     core = [0, 1]
     ci, occa, occb = wfn
-    # with_core_a = numpy.array(
-    # [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
-    # )
-    # with_core_b = numpy.array(
-    # [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
-    # )
-    nskip = 10
+    with_core_a = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    )
+    with_core_b = numpy.array(
+        [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
+    )
+    nskip = 5
+    wfn_2_no_act = (
+        ci[::nskip],
+        with_core_a[::nskip],
+        with_core_b[::nskip],
+    )  # Get high excitation determinants too
     wfn_2 = (
         ci[::nskip],
         occa[::nskip],
@@ -1433,21 +1473,30 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     ci, occa, occb = wfn_2
     # Naive MSD with looping
     trial = ParticleHoleNaive(
-        wfn_2,
+        wfn_2_no_act,
         nelec,
         nmo,
     )
     trial.build()
     trial.half_rotate(system, ham)
+    trial_tmp = ParticleHoleWicksNonChunked(
+        wfn_2_no_act, nelec, nmo, use_active_space=False
+    )
+    trial_tmp.build()
     # Original implementation
     trial_ref = ParticleHoleWicksSlow(
-        wfn_2,
+        wfn_2_no_act,
         nelec,
         nmo,
     )
     trial_ref.build()
     trial_ref.half_rotate(system, ham)
+    # Hack to ensure cre_ex_a structures are present for testing.
+    trial_ref.__dict__.update(trial_tmp.__dict__)
+    trial_ref.optimized = False
     # Chunked wicks algorithm
+    trial_tmp = ParticleHoleWicksNonChunked(wfn_2, nelec, nmo, verbose=True)
+    trial_tmp.build()
     trial_test = ParticleHoleWicks(wfn_2, nelec, nmo, num_det_chunks=10)
     trial_test.build()
     trial_test.half_rotate(system, ham)
@@ -1459,21 +1508,26 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     walker_batch_test = MultiDetTrialWalkerBatch(
         system, ham, trial_test, nwalkers, init
     )
+    # Naive
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial_ref, qmc, options=options)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
         walker_batch_ref.reortho()
-    numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_test, qmc, options=options)
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
-        walker_batch_test.reortho()
+
+    # No optimization
     numpy.random.seed(7)
     prop = Continuous(system, ham, trial, qmc, options=options)
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
         walker_batch.reortho()
+
+    # chunked
+    numpy.random.seed(7)
+    prop = Continuous(system, ham, trial_test, qmc, options=options)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
+        walker_batch_test.reortho()
 
     import copy
 
@@ -1501,9 +1555,9 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch(
         system, ham, walker_batch_ref, trial_ref
     )
-    # e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
-    #     system, ham, walker_batch_test, trial_test
-    # )
+    e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
+        system, ham, walker_batch_test, trial_test
+    )
     e_wicks_opt_chunk = local_energy_multi_det_trial_wicks_batch_opt_chunked(
         system, ham, walker_batch_test, trial_test
     )

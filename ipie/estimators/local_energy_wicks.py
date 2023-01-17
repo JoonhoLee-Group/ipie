@@ -694,7 +694,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                     for i in range(1, trial.max_excite + 1)
                 ]
             )
-            for ichunk in range(trial.ndet_chunks)
+            for ichunk in range(trial.num_det_chunks)
         ]
     )
     det_sizes_b = max(
@@ -704,13 +704,13 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                 for i in range(1, trial.max_excite + 1)
             ]
         )
-        for ichunk in range(trial.ndet_chunks)
+        for ichunk in range(trial.num_det_chunks)
     )
     max_size = max(det_sizes_a, det_sizes_b)
     det_mat_buffer = numpy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
     # energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    for ichunk in range(trial.ndet_chunks):
+    for ichunk in range(trial.num_det_chunks):
         ndets_chunk = trial.ndets_per_chunk[ichunk]
         alpha_os_buffer = numpy.zeros(
             (nwalkers, ndets_chunk, nchol), dtype=numpy.complex128
@@ -901,7 +901,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         # 1 for reference determinant
         start = 1 + ichunk * trial.ndets_chunk_max
         # inclusive of endpoint
-        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.ndets)
+        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.num_dets)
         energy_os = numpy.einsum(
             "wJx,wJx,J->w",
             alpha_os_buffer[:, ma],
