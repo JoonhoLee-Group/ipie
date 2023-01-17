@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,18 +23,26 @@ import numpy
 import pytest
 
 from ipie.estimators.greens_function_batch import (
-    greens_function_multi_det, greens_function_multi_det_wicks,
-    greens_function_multi_det_wicks_opt)
+    greens_function_multi_det,
+    greens_function_multi_det_wicks,
+    greens_function_multi_det_wicks_opt,
+)
 from ipie.estimators.local_energy_batch import (
-    local_energy_batch, local_energy_multi_det_trial_batch,
+    local_energy_multi_det_trial_batch,
     local_energy_multi_det_trial_wicks_batch,
-    local_energy_multi_det_trial_wicks_batch_opt)
+    local_energy_multi_det_trial_wicks_batch_opt,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.estimators.ci import simple_fci
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import (
+    ParticleHoleNaive,
+    ParticleHoleWicks,
+    ParticleHoleWicksSlow,
+)
 from ipie.utils.linalg import reortho
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
@@ -56,8 +63,9 @@ def test_walker_overlap_nomsd():
 
     nwalkers = 5
     # Test NOMSD type wavefunction.
-    trial = MultiSlater(system, ham, (coeffs, wfn))
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    nelec = (system.nup, system.ndown)
+    trial = NOCI((coeffs, wfn), nelec, ham.nbasis)
+    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, wfn[0])
 
     def calc_ovlp(a, b):
         return numpy.linalg.det(numpy.dot(a.conj().T, b))
@@ -96,8 +104,9 @@ def test_walker_overlap_phmsd():
     a = numpy.random.rand(ham.nbasis * (system.nup + system.ndown))
     b = numpy.random.rand(ham.nbasis * (system.nup + system.ndown))
     init = (a + 1j * b).reshape((ham.nbasis, system.nup + system.ndown))
-    trial = MultiSlater(system, ham, wfn, init=init, options={"wicks": False})
-    walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers)
+    nelec = (system.nup, system.ndown)
+    trial = ParticleHoleNaive(wfn, nelec, ham.nbasis)
+    walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
     I = numpy.eye(ham.nbasis)
     ovlp_sum = numpy.zeros(nwalkers, dtype=numpy.complex128)
     for iw in range(nwalkers):
@@ -117,7 +126,7 @@ def test_walker_overlap_phmsd():
             assert numpy.linalg.norm(ga - walker.Gia[iw, idet]) == pytest.approx(0)
             assert numpy.linalg.norm(gb - walker.Gib[iw, idet]) == pytest.approx(0)
 
-    trial = MultiSlater(system, ham, wfn, init=init)
+    trial = ParticleHoleWicksSlow(wfn, nelec, ham.nbasis)
     ovlp_wicks = calc_overlap_multi_det_wicks(walker, trial)
 
     assert ovlp_sum == pytest.approx(walker.ovlp)
@@ -141,43 +150,33 @@ def test_walker_energy():
     init = get_random_wavefunction(nelec, nmo)
     init[:, :na], R = reortho(init[:, :na])
     init[:, na:], R = reortho(init[:, na:])
-    trial = MultiSlater(
-        system,
-        ham,
+    trial = ParticleHoleWicksSlow(
         (ev[:, 0], oa, ob),
-        init=init,
-        options={"wicks": True, "optimized": False},
+        nelec,
+        nmo,
     )
     trial.calculate_energy(system, ham)
     trial.half_rotate(system, ham)
-    trial_slow = MultiSlater(
-        system,
-        ham,
-        (ev[:, 0], oa, ob),
-        init=init,
-        options={"wicks": False, "optimized": False},
-    )
+    trial_slow = ParticleHoleNaive((ev[:, 0], oa, ob), nelec, nmo)
     trial_slow.calculate_energy(system, ham)
     trial_slow.half_rotate(system, ham)
-    trial_opt = MultiSlater(
-        system,
-        ham,
+    trial_opt = ParticleHoleWicks(
         (ev[:, 0], oa, ob),
-        init=init,
-        options={"wicks": True, "optimized": True},
+        nelec,
+        nmo,
     )
     trial_opt.calculate_energy(system, ham)
     trial_opt.half_rotate(system, ham)
 
     nwalkers = 10
-    walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers)
-    walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers)
+    walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
+    walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
 
     nume = 0
     deno = 0
     energies = numpy.zeros(nwalkers, dtype=numpy.complex128)
     for iw in range(nwalkers):
-        for i in range(trial.ndets):
+        for i in range(trial.num_dets):
             psia = trial_slow.psi[i, :, :na]
             psib = trial_slow.psi[i, :, na:]
             oa = numpy.dot(psia.conj().T, init[:, :na])

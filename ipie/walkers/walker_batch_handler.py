@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,18 +18,16 @@
 #
 
 import cmath
-import copy
-import math
 import sys
 import time
 
 import h5py
 import numpy
-import scipy.linalg
 from mpi4py import MPI
 
 from ipie.utils.io import get_input_value, format_fixed_width_floats
-from ipie.utils.misc import is_cupy, update_stack, to_numpy
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.misc import is_cupy
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
@@ -75,9 +72,8 @@ class WalkerBatchHandler(object):
         # weight, unscaled weight and hybrid energy accumulated across a block.
         # Mostly here for legacy purposes.
         self.accumulator_factors = WalkerAccumulator(
-                ["Weight", "WeightFactor", "HybridEnergy"],
-                qmc.nsteps
-                )
+            ["Weight", "WeightFactor", "HybridEnergy"], qmc.nsteps
+        )
 
         if mpi_handler is None:
             rank = 0
@@ -89,21 +85,16 @@ class WalkerBatchHandler(object):
             print("# qmc.nwalkers = {}".format(self.nwalkers))
             print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
 
-        assert trial.name == "MultiSlater"
-
-        if trial.ndets == 1:
+        if isinstance(trial, SingleDet):
             if verbose:
                 print("# Using single det walker with a single det trial.")
             self.walker_type = "SD"
-            if len(trial.psi.shape) == 3:
-                trial.psi = trial.psi[0]
-                trial.psia = trial.psia[0]
-                trial.psib = trial.psib[0]
             self.walkers_batch = SingleDetWalkerBatch(
                 system,
                 hamiltonian,
                 trial,
-                nwalkers=self.nwalkers,
+                self.nwalkers,
+                trial.psi,
                 walker_opts=walker_opts,
                 index=0,
                 nprop_tot=nprop_tot,
@@ -118,7 +109,8 @@ class WalkerBatchHandler(object):
                 system,
                 hamiltonian,
                 trial,
-                nwalkers=self.nwalkers,
+                self.nwalkers,
+                np.hstack([trial.psi0a, trial.psi0b]),
                 walker_opts=walker_opts,
                 index=0,
                 nprop_tot=nprop_tot,
@@ -211,7 +203,6 @@ class WalkerBatchHandler(object):
             (magn, dtheta) = cmath.polar(self.walkers_batch.detR)
             self.walkers_batch.weight *= magn
             self.walkers_batch.phase *= cmath.exp(1j * dtheta)
-
 
     def copy_historic_wfn(self):
         """Copy current wavefunction to psi_n for next back propagation step."""
@@ -752,8 +743,10 @@ class WalkerBatchHandler(object):
             except KeyError:
                 print(" # Could not read walker data from:" " %s" % (self.read_file))
 
+
 class WalkerAccumulator(object):
     """Small class to handle passing around walker state."""
+
     def __init__(self, names, nsteps):
         self.names = names
         self.size = len(names)
@@ -763,11 +756,13 @@ class WalkerAccumulator(object):
         self._eshift = 0.0
 
     def update(self, walker_batch):
-        self.buffer += numpy.array([
-                    to_host(xp.sum(walker_batch.weight)),
-                    to_host(xp.sum(walker_batch.unscaled_weight)),
-                    to_host(xp.sum(walker_batch.weight*walker_batch.hybrid_energy))
-                    ])
+        self.buffer += numpy.array(
+            [
+                to_host(xp.sum(walker_batch.weight)),
+                to_host(xp.sum(walker_batch.unscaled_weight)),
+                to_host(xp.sum(walker_batch.weight * walker_batch.hybrid_energy)),
+            ]
+        )
 
     def zero(self):
         self.buffer.fill(0.0j)
@@ -792,11 +787,11 @@ class WalkerAccumulator(object):
             factor = 1
         else:
             factor = self.nsteps_per_block
-        nume = self.get_index('HybridEnergy')
-        deno = self.get_index('Weight')
+        nume = self.get_index("HybridEnergy")
+        deno = self.get_index("Weight")
         vals[nume] = vals[nume] / vals[deno]
         vals[deno] = vals[deno] / factor
-        ix = self.get_index('WeightFactor')
+        ix = self.get_index("WeightFactor")
         vals[ix] = vals[ix] / factor
 
     def to_text(self, vals):

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,24 +21,14 @@ import numpy
 import pytest
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.handler import Walkers
-from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
-from ipie.propagation.utils import get_propagator_driver
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.qmc.options import QMCOpts
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.utils.io import get_input_value
+from ipie.trial_wavefunction.particle_hole import ParticleHoleNaive
 from ipie.utils.misc import dotdict
-from ipie.utils.mpi import MPIHandler, get_shared_comm
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.utils.mpi import MPIHandler
+from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
@@ -70,12 +59,8 @@ def test_pair_branch_batch():
     )
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
-    trial = MultiSlater(sys, ham, wfn, init=init)
+    trial = ParticleHoleNaive(wfn, nelec, nmo)
     trial.half_rotate(sys, ham)
-
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
     trial.calculate_energy(sys, ham)
 
     numpy.random.seed(7)
@@ -229,12 +214,8 @@ def test_stochastic_reconfiguration_batch():
     )
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
-    trial = MultiSlater(sys, ham, wfn, init=init)
+    trial = ParticleHoleNaive(wfn, nelec, nmo)
     trial.half_rotate(sys, ham)
-
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
     trial.calculate_energy(sys, ham)
 
     numpy.random.seed(7)

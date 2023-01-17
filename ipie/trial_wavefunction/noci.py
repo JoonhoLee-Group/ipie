@@ -1,9 +1,8 @@
 import numpy as np
-import time
 
-from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.propagation.overlap import calc_overlap_multi_det
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.estimators.greens_function_batch import greens_function_multi_det
 
 
 class NOCI(TrialWavefunctionBase):
@@ -60,3 +59,9 @@ class NOCI(TrialWavefunctionBase):
         self._rH1b = rot_1body[1]
         self._rchola = rot_chol[0]
         self._rcholb = rot_chol[1]
+
+    def calc_overlap(self, walkers) -> np.ndarray:
+        return calc_overlap_multi_det(walkers, self)
+
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        return greens_function_multi_det(walkers, self)

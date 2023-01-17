@@ -55,6 +55,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
         self.ortho_expansion = True
+        self.build()
 
     def setup_basic_wavefunction(self, wfn, num_dets=None, use_active_space=True):
         """Unpack wavefunction and insert melting core orbitals."""
@@ -461,104 +462,8 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
             use_active_space=use_active_space,
         )
 
-    def build(
-        self,
-    ):
-        if self.verbose:
-            print("# Setting additional member variables for Wick's theorem")
-        d0a = self.occa[0][self.occ_orb_alpha] - self.nfrozen
-        d0b = self.occb[0][self.occ_orb_beta] - self.nfrozen
-        if self.verbose:
-            print(f"# Reference alpha determinant: {d0a}")
-            print(f"# Reference beta determinant: {d0b}")
-        # numba won't accept dictionary in jitted code so use an array so
-        # can't do following
-        # self.occ_map_a = dict(zip(d0a, list(range(self.nocc_alpha))))
-        # self.occ_map_b = dict(zip(d0b, list(range(self.nocc_beta))))
-        # Create mapping from reference determinant to occupied orbital
-        # index for eg.
-        # TODO: Use safer value than zero that fails in debug mode.
-        # d0a = [0,1,3,5]
-        # occ_map_a = [0,1,0,2,0,3]
-        self.occ_map_a = np.zeros(max(d0a) + 1, dtype=np.int32)
-        self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
-        self.occ_map_a[d0a] = list(range(self.nocc_alpha))
-        self.occ_map_b[d0b] = list(range(self.nocc_beta))
-        self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
-        self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
-        nexcit_a = nalpha
-        nexcit_b = nbeta
-        # This is an overestimate because we don't know number of active
-        # electrons in trial from read in.
-        # TODO work this out.
-        max_excit = max(nexcit_a, nexcit_b) + 1
-        cre_ex_a = [[] for _ in range(max_excit)]
-        cre_ex_b = [[] for _ in range(max_excit)]
-        anh_ex_a = [[] for _ in range(max_excit)]
-        anh_ex_b = [[] for _ in range(max_excit)]
-        # Will store mapping from unordered list defined by order in which added to
-        # cre_/anh_a/b TO the full determinant index, i.e.,
-        # ordered_like_trial[excit_map_a] = buffer_from_cre_ex_a[:]
-        excit_map_a = [[] for _ in range(max_excit)]
-        excit_map_b = [[] for _ in range(max_excit)]
-        for j in range(1, self.num_dets):
-            if j == self.num_dets:
-                break
-            dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
-            djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
-
-            anh_a = list(set(dja) - set(d0a))  # annihilation to right, creation to left
-            cre_a = list(set(d0a) - set(dja))  # creation to right, annhilation to left
-
-            anh_b = list(set(djb) - set(d0b))
-            cre_b = list(set(d0b) - set(djb))
-
-            cre_a.sort()
-            cre_b.sort()
-            anh_a.sort()
-            anh_b.sort()
-
-            anh_ex_a[len(anh_a)].append(anh_a)
-            anh_ex_b[len(anh_b)].append(anh_b)
-            cre_ex_a[len(cre_a)].append(cre_a)
-            cre_ex_b[len(cre_b)].append(cre_b)
-            excit_map_a[len(anh_a)].append(j)
-            excit_map_b[len(anh_b)].append(j)
-
-            perm_a = get_perm(anh_a, cre_a, d0a, dja)
-            perm_b = get_perm(anh_b, cre_b, d0b, djb)
-
-            if perm_a:
-                self.phase_a[j] = -1
-            else:
-                self.phase_a[j] = +1
-
-            if perm_b:
-                self.phase_b[j] = -1
-            else:
-                self.phase_b[j] = +1
-
-        self.ndet_a = [len(ex) for ex in cre_ex_a]
-        self.ndet_b = [len(ex) for ex in cre_ex_b]
-        self.max_excite_a = max(
-            -1 if nd == 0 else i for i, nd in enumerate(self.ndet_a)
-        )
-        self.max_excite_b = max(
-            -1 if nd == 0 else i for i, nd in enumerate(self.ndet_b)
-        )
-        self.max_excite = max(self.max_excite_a, self.max_excite_b)
-        self.cre_ex_a = [np.array(ex, dtype=np.int32) for ex in cre_ex_a]
-        self.cre_ex_b = [np.array(ex, dtype=np.int32) for ex in cre_ex_b]
-        self.anh_ex_a = [np.array(ex, dtype=np.int32) for ex in anh_ex_a]
-        self.anh_ex_b = [np.array(ex, dtype=np.int32) for ex in anh_ex_b]
-        self.excit_map_a = [np.array(ex, dtype=np.int32) for ex in excit_map_a]
-        self.excit_map_b = [np.array(ex, dtype=np.int32) for ex in excit_map_b]
-        self.slices_alpha, self.slices_beta = self.build_slices()
-        if self.verbose:
-            print(f"# Number of alpha determinants at each level: {self.ndet_a}")
-            print(f"# Number of beta determinants at each level: {self.ndet_b}")
-        self.build_one_rdm()
+    def build(self):
+        return super().build()
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det_wicks_opt(walkers, self)
@@ -581,6 +486,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
             wavefunction, num_elec, num_basis, verbose=verbose, use_active_space=False
         )
         self.optimized = False
+        self.build()
 
     def build(
         self,
@@ -659,6 +565,7 @@ class ParticleHoleNaive(ParticleHoleWicks):
         num_dets_for_trial: int = -1,
     ) -> None:
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
+        self.build()
 
     def build(
         self,

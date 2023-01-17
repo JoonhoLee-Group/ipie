@@ -19,6 +19,7 @@
 import numpy
 
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNaive
+from ipie.trial_wavefunction.noci import NOCI
 from ipie.walkers.walker_batch import WalkerBatch
 
 
@@ -144,7 +145,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                     dtype=numpy.complex128,
                 )
         # else:
-        if isinstance(trial, ParticleHoleNaive):
+        if isinstance(trial, ParticleHoleNaive) or isinstance(trial, NOCI):
             self.Gia = numpy.zeros(
                 shape=(
                     self.nwalkers,
