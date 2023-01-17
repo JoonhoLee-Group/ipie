@@ -24,6 +24,8 @@ from ipie.utils.linalg import modified_cholesky
 from ipie.utils.misc import dotdict
 from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.noci import NOCI
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
@@ -232,7 +234,7 @@ def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
 def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     assert ndets == 1
     numpy.random.seed(seed)
-    wfn = get_random_nomsd(nocc, nocc, nmo, ndet=1)
+    wfn = get_random_nomsd(nocc, nocc, nmo, ndet=ndets)
     h1e = shaped_normal((nmo, nmo))
 
     system = Generic(nelec=(nocc, nocc))
@@ -246,19 +248,14 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         ecore=0,
         verbose=False,
     )
-    from ipie.trial_wavefunction import MultiSlater
 
-    trial = MultiSlater(system, ham, wfn, options={"build_greens_function": False})
     if ndets == 1:
-        trial.psi = trial.psi[0]
-        trial.psia = trial.psi[:, :nocc].copy()
-        trial.psib = trial.psi[:, nocc:].copy()
+        trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
-        trial.psia = trial.psi[0, :, :nocc].copy()
-        trial.psib = trial.psi[0, :, nocc:].copy()
+        trial = NOCI(wfn, (nocc, nocc), nmo)
     from ipie.walkers import SingleDetWalkerBatch
 
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers, initial_walker=wfn[1][0])
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     Ghalfb = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     walker_batch.Ghalfa = Ghalfa

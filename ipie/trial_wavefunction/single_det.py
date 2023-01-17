@@ -10,7 +10,6 @@ from ipie.estimators.greens_function_batch import (
 from ipie.estimators.utils import gab_spin
 from ipie.propagation.overlap import (
     calc_overlap_single_det_batch,
-    calc_overlap_single_det,
 )
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det_chunked,
@@ -21,13 +20,14 @@ from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
 
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, init=None, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
         assert isinstance(wavefunction, np.ndarray)
         assert len(wavefunction.shape) == 2
-        super().__init__(wavefunction, num_elec, num_basis, init=init, verbose=verbose)
+        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         if verbose:
             print("# Parsing input options for trial_wavefunction.MultiSlater.")
         self.psi = wavefunction
+        self.num_elec = num_elec
         self._num_dets = 1
         self._max_num_dets = 1
         imag_norm = np.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
@@ -103,7 +103,7 @@ class SingleDet(TrialWavefunctionBase):
         else:
             return greens_function_single_det(walkers, self)
 
-    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler

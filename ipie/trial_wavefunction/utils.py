@@ -119,5 +119,23 @@ def get_trial_wavefunction(
         )
     trial.build()
     if verbose:
-        print("# Number of determinants in trial wavefunction: {}".format(trial.num_dets))
+        print(
+            "# Number of determinants in trial wavefunction: {}".format(trial.num_dets)
+        )
     trial.half_rotate(system, hamiltonian, scomm)
+
+
+def chunk_trial(trial):
+    self.chunked = True  # Boolean to indicate that chunked cholesky is available
+
+    if handler.scomm.rank == 0:  # Creating copy for every rank == 0
+        self._rchola = self._rchola.copy()
+        self._rcholb = self._rcholb.copy()
+
+    self._rchola_chunk = handler.scatter_group(self._rchola)  # distribute over chol
+    self._rcholb_chunk = handler.scatter_group(self._rcholb)  # distribute over chol
+
+    tot_size = handler.allreduce_group(self._rchola_chunk.size)
+    assert self._rchola.size == tot_size
+    tot_size = handler.allreduce_group(self._rcholb_chunk.size)
+    assert self._rcholb.size == tot_size

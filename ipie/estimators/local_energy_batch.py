@@ -23,8 +23,6 @@ from numba import jit
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch,
-    local_energy_single_det_batch_einsum,
     local_energy_single_det_batch_gpu,
     local_energy_single_det_rhf_batch,
     local_energy_single_det_uhf_batch,

@@ -30,9 +30,9 @@ from ipie.estimators.local_energy_sd_chunked import \
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.misc import dotdict, is_cupy
-from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
+from ipie.utils.misc import dotdict
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
@@ -80,12 +80,9 @@ def test_generic_chunked():
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = MultiSlater(system, ham, wfn)
+    trial = SingleDet(system, ham, wfn)
     trial.half_rotate(system, ham)
 
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
