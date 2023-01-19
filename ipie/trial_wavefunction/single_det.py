@@ -50,7 +50,7 @@ class SingleDet(TrialWavefunctionBase):
     def num_dets(self, ndets: int) -> None:
         raise RuntimeError("Cannot modify number of determinants in SingleDet trial.")
 
-    def calculate_energy(self, system, hamiltonian):
+    def calculate_energy(self, system, hamiltonian) -> np.ndarray:
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
