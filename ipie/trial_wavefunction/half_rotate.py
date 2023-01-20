@@ -8,6 +8,7 @@ from ipie.utils.mpi import get_shared_array
 from ipie.systems.generic import Generic as SysGeneric
 from ipie.hamiltonians.generic import Generic as HamGeneric
 
+
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
     system: SysGeneric,
@@ -15,9 +16,9 @@ def half_rotate_generic(
     comm: MPI.COMM_WORLD,
     orbsa: np.ndarray,
     orbsb: np.ndarray,
-    ndets: int=1,
-    verbose: bool=False,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    ndets: int = 1,
+    verbose: bool = False,
+) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
     if verbose:
         print("# Constructing half rotated Cholesky vectors.")
     assert len(orbsa.shape) == 3
@@ -29,14 +30,17 @@ def half_rotate_generic(
     na = orbsa.shape[-1]
     nb = orbsb.shape[-1]
     if trial.verbose:
-        print("# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M)))
-        print("# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M)))
+        print(
+            "# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M))
+        )
+        print(
+            "# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M))
+        )
 
     chol = hamiltonian.chol_vecs.reshape((M, M, nchol))
 
     shape_a = (ndets, nchol, (M * na))
     shape_b = (ndets, nchol, (M * nb))
-
 
     ctype = hamiltonian.chol_vecs.dtype
     ptype = orbsa.dtype
@@ -47,7 +51,6 @@ def half_rotate_generic(
     rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
     rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
 
-    print(orbsa.shape, orbsb.shape,)
     rH1a[:] = np.einsum("Jpi,pq->Jiq", orbsa, hamiltonian.H1[0], optimize=True)
     rH1b[:] = np.einsum("Jpi,pq->Jiq", orbsb, hamiltonian.H1[0], optimize=True)
 

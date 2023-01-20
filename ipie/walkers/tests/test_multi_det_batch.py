@@ -17,7 +17,6 @@
 #
 
 import itertools
-import os
 
 import numpy
 import pytest
