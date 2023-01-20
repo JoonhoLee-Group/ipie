@@ -22,7 +22,7 @@ from typing import Tuple, Union
 import numpy
 
 from ipie.utils.linalg import modified_cholesky
-from ipie.utils.misc import dotdict
+from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
@@ -165,6 +165,10 @@ def _gen_det_selection(d0, vir, occ, dist, nel):
 def get_random_phmsd_opt(
     nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True
 ):
+    if cmplx_coeffs:
+        coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
+    else:
+        coeffs = numpy.random.rand(ndet) + 0j
     if init:
         a = numpy.random.rand(nbasis * (nup + ndown))
         if cmplx_coeffs:
@@ -185,8 +189,7 @@ def get_random_phmsd_opt(
     d0b = numpy.array(numpy.arange(ndown, dtype=numpy.int32))
     ob = [d0b]
     if ndet == 1:
-        coeff = 1.0 + 0j if cmplx_coeffs else 1.0
-        return (numpy.array([coeff]), numpy.array([d0a]), numpy.array([d0b])), init_wfn
+        return (coeffs, numpy.array([d0a]), numpy.array([d0b])), init_wfn
     occ_a = numpy.arange(0, nup, dtype=numpy.int32)
     vir_a = numpy.arange(nup, nbasis, dtype=numpy.int32)
     occ_b = numpy.arange(0, ndown, dtype=numpy.int32)
@@ -204,10 +207,6 @@ def get_random_phmsd_opt(
             dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = len(occ_a)
-    if cmplx_coeffs:
-        coeffs = numpy.random.rand(_ndet) + 1j * numpy.random.rand(_ndet)
-    else:
-        coeffs = numpy.random.rand(_ndet) + 0j
     wfn = (coeffs, list(occ_a), list(occ_b))
     return wfn, init_wfn
 
@@ -378,8 +377,8 @@ def build_random_trial(
 def build_test_case_handlers_mpi(
     num_elec: Tuple[int, int],
     num_basis: int,
+    mpi_handler: MPIHandler,
     num_dets=1,
-    num_walkers=10,
     trial_type="phmsd",
     wfn_type="opt",
     complex_integrals: bool = False,
@@ -409,12 +408,13 @@ def build_test_case_handlers_mpi(
     )
     trial.half_rotate(system, ham)
     trial.calculate_energy(system, ham)
-    options["ntot_walkers"] = options.nwalkers * options.mpi_handler.comm.size
+    options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
     prop = Continuous(system, ham, trial, options, options=options)
 
+    print("init new: ", numpy.sum(init))
     handler_batch = WalkerBatchHandler(
         system,
         ham,
@@ -422,13 +422,13 @@ def build_test_case_handlers_mpi(
         options,
         init,
         options,
-        mpi_handler=options.mpi_handler,
+        mpi_handler=mpi_handler,
         verbose=False,
     )
     for i in range(options.num_steps):
         prop.propagate_walker_batch(
-            handler_batch.walkers_batch, system, ham, trial, 0.0
+            handler_batch.walkers_batch, system, ham, trial, trial.energy
         )
         handler_batch.walkers_batch.reortho()
-        handler_batch.pop_control(options.mpi_handler.comm)
+        handler_batch.pop_control(mpi_handler.comm)
     return handler_batch

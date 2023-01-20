@@ -71,6 +71,7 @@ def get_legacy_walker_energies(system, ham, trial, walkers):
 def build_legacy_test_case_handlers_mpi(
     num_elec: Tuple[int, int],
     num_basis: int,
+    mpi_handler,
     num_dets=1,
     wfn_type="phmsd",
     complex_integrals: bool = False,
@@ -115,6 +116,7 @@ def build_legacy_test_case_handlers_mpi(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         np.random.seed(seed)
+    options.ntot_walkers = options.nwalkers * mpi_handler.comm.size
     prop = LegacyContinuous(system, ham_legacy, trial, options, options=options)
     handler = Walkers(
         system,
@@ -123,15 +125,14 @@ def build_legacy_test_case_handlers_mpi(
         options,
         options,
         verbose=False,
-        comm=options.mpi_handler.comm,
+        comm=mpi_handler.comm,
     )
     for i in range(options.num_steps):
         for walker in handler.walkers:
-            prop.propagate_walker(walker, system, ham_legacy, trial, 0.0)
+            prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
-        if options.comm is not None:
-            handler.pop_control(options.mpi_handler)
+        handler.pop_control(mpi_handler.comm)
     return handler
 
 
@@ -179,13 +180,13 @@ def build_legacy_test_case_handlers(
         trial.psi = trial.psi[0]
     prop = LegacyContinuous(system, ham_legacy, trial, options, options=options)
     handler = Walkers(
-        system, ham_legacy, trial, options, options, verbose=False, comm=options.comm
+        system, ham_legacy, trial, options, options, verbose=True, comm=options.comm
     )
     for i in range(num_steps):
         for walker in handler.walkers:
-            prop.propagate_walker(walker, system, ham_legacy, trial, 0.0)
+            prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
-    #        if options.comm is not None:
-    #            handler.pop_control(options.comm)
+            if options.comm is not none:
+                handler.pop_control(options.comm)
     return handler

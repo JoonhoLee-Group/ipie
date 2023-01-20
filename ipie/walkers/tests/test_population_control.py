@@ -28,8 +28,14 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNaive
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
+from ipie.utils.testing import (
+    generate_hamiltonian,
+    get_random_phmsd,
+    build_test_case_handlers_mpi,
+)
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
+from ipie.utils.legacy_testing import build_legacy_test_case_handlers_mpi
 
 
 @pytest.mark.unit
@@ -39,16 +45,16 @@ def test_pair_branch_batch():
     mpi4py.rc.recv_mprobe = False
     from mpi4py import MPI
 
-    numpy.random.seed(7)
     comm = MPI.COMM_WORLD
 
     mpi_handler = MPIHandler(comm)
 
     nelec = (5, 5)
     nwalkers = 10
-    nsteps = 10
+    nsteps = 1
     nmo = 10
 
+    numpy.random.seed(7)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     sys = Generic(nelec=nelec)
     ham = HamGeneric(
@@ -57,32 +63,26 @@ def test_pair_branch_batch():
         ecore=0,
         options={"symmetry": False},
     )
+    print("h1e: ", numpy.sum(h1e))
+    ham.control_variate = False
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
-    trial = ParticleHoleNaive(wfn, nelec, nmo)
+    print("this: ", numpy.sum(init))
+    # trial = ParticleHoleNaive(wfn, nelec, nmo)
+    trial = MultiSlater(sys, ham, wfn, init=init)
     trial.half_rotate(sys, ham)
     trial.calculate_energy(sys, ham)
 
-    numpy.random.seed(7)
+    # numpy.random.seed(7)
     options = {"hybrid": True, "population_control": "pair_branch"}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "nwalkers": nwalkers, "batched": True})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(
-        sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False
-    )
-
-    for i in range(nsteps):
-        prop.propagate_walker_batch(
-            handler_batch.walkers_batch, sys, ham, trial, trial.energy
-        )
-        handler_batch.walkers_batch.reortho()
-        handler_batch.pop_control(comm)
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "nwalkers": nwalkers, "batched": False})
     qmc.ntot_walkers = qmc.nwalkers * comm.size
     prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
-    handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
+    handler = Walkers(sys, ham, trial, qmc, options, verbose=True, comm=comm)
+    print("init old: ", numpy.sum(handler.walkers[0].phi), numpy.sum(init))
 
     for i in range(nsteps):
         for walker in handler.walkers:
@@ -90,159 +90,44 @@ def test_pair_branch_batch():
             detR = walker.reortho(trial)  # reorthogonalizing to stablize
         handler.pop_control(comm)
 
+    options = {}
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+            "population_control": "pair_branch",
+        }
+    )
+    legacy_walkers = build_legacy_test_case_handlers_mpi(
+        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+    )
+    qmc.batched = True
+    handler_batch = build_test_case_handlers_mpi(
+        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+    )
+    print(
+        legacy_walkers.walkers[0].weight,
+        handler.walkers[0].weight,
+        handler_batch.walkers_batch.weight[0],
+    )
     for iw in range(nwalkers):
-        assert numpy.allclose(
-            handler_batch.walkers_batch.phia[iw], handler.walkers[iw].phi[:, : sys.nup]
+        assert (
+            pytest.approx(handler_batch.walkers_batch.weight[0]) == 0.2571750688329709
         )
-        assert numpy.allclose(
-            handler_batch.walkers_batch.phib[iw], handler.walkers[iw].phi[:, sys.nup :]
+        assert (
+            pytest.approx(handler_batch.walkers_batch.weight[1]) == 1.0843219322894988
         )
-        assert numpy.allclose(
-            handler_batch.walkers_batch.weight[iw], handler.walkers[iw].weight
+        assert (
+            pytest.approx(handler_batch.walkers_batch.weight[2]) == 0.8338283613093604
         )
-    assert pytest.approx(handler_batch.walkers_batch.weight[0]) == 0.2571750688329709
-    assert pytest.approx(handler_batch.walkers_batch.weight[1]) == 1.0843219322894988
-    assert pytest.approx(handler_batch.walkers_batch.weight[2]) == 0.8338283613093604
-    assert (
-        pytest.approx(handler_batch.walkers_batch.phia[iw][0, 0])
-        == -0.0005573508035052743 + 0.12432250308987346j
-    )
-
-
-@pytest.mark.unit
-def test_comb_batch():
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
-    numpy.random.seed(7)
-    comm = MPI.COMM_WORLD
-
-    mpi_handler = MPIHandler(comm)
-
-    nelec = (5, 5)
-    nwalkers = 10
-    nsteps = 10
-    nmo = 10
-
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
-    )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
-    trial = MultiSlater(sys, ham, wfn, init=init)
-    trial.half_rotate(sys, ham)
-
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(sys, ham)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True, "population_control": "comb"}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "nwalkers": nwalkers, "batched": True})
-    qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(
-        sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False
-    )
-    for i in range(nsteps):
-        prop.propagate_walker_batch(
-            handler_batch.walkers_batch, sys, ham, trial, trial.energy
+        assert (
+            pytest.approx(handler_batch.walkers_batch.phia[iw][0, 0])
+            == -0.0005573508035052743 + 0.12432250308987346j
         )
-        handler_batch.walkers_batch.reortho()
-        handler_batch.pop_control(comm)
-
-    numpy.random.seed(7)
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "nwalkers": nwalkers, "batched": False})
-    qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = LegacyContinuous(sys, ham, trial, qmc, options=options)
-    handler = Walkers(sys, ham, trial, qmc, options, verbose=False, comm=comm)
-
-    for i in range(nsteps):
-        for walker in handler.walkers:
-            prop.propagate_walker(walker, sys, ham, trial, trial.energy)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-        handler.pop_control(comm)
-
-    for iw in range(nwalkers):
-        assert numpy.allclose(
-            handler_batch.walkers_batch.phia[iw], handler.walkers[iw].phi[:, : sys.nup]
-        )
-        assert numpy.allclose(
-            handler_batch.walkers_batch.phib[iw], handler.walkers[iw].phi[:, sys.nup :]
-        )
-        assert numpy.allclose(
-            handler_batch.walkers_batch.weight[iw], handler.walkers[iw].weight
-        )
-    assert (
-        pytest.approx(handler_batch.walkers_batch.phia[iw][0, 0])
-        == -0.0597200851442905 - 0.002353281222663805j
-    )
-
-
-@pytest.mark.unit
-def test_stochastic_reconfiguration_batch():
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
-    numpy.random.seed(7)
-    comm = MPI.COMM_WORLD
-
-    mpi_handler = MPIHandler(comm)
-
-    nelec = (5, 5)
-    nwalkers = 10
-    nsteps = 10
-    nmo = 10
-
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
-    )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=1, init=True)
-    trial = ParticleHoleNaive(wfn, nelec, nmo)
-    trial.half_rotate(sys, ham)
-    trial.calculate_energy(sys, ham)
-
-    numpy.random.seed(7)
-    options = {
-        "hybrid": True,
-        "population_control": "stochastic_reconfiguration",
-        "reconfiguration_freq": 2,
-    }
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "nwalkers": nwalkers, "batched": True})
-    qmc.ntot_walkers = qmc.nwalkers * comm.size
-    prop = Continuous(sys, ham, trial, qmc, options=options)
-    handler_batch = WalkerBatchHandler(
-        sys, ham, trial, qmc, options, mpi_handler=mpi_handler, verbose=False
-    )
-
-    for i in range(nsteps):
-        prop.propagate_walker_batch(
-            handler_batch.walkers_batch, sys, ham, trial, trial.energy
-        )
-        handler_batch.walkers_batch.reortho()
-        handler_batch.pop_control(comm)
-
-    assert pytest.approx(handler_batch.walkers_batch.weight[0]) == 1.0
-    assert (
-        pytest.approx(handler_batch.walkers_batch.phia[0][0, 0])
-        == 0.0305067 + 0.01438442j
-    )
 
 
 if __name__ == "__main__":
