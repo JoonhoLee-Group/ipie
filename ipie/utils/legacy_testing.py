@@ -133,7 +133,7 @@ def build_legacy_test_case_handlers_mpi(
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
         handler.pop_control(mpi_handler.comm)
-    return handler
+    return handler, trial
 
 
 def build_legacy_test_case_handlers(
@@ -143,10 +143,11 @@ def build_legacy_test_case_handlers(
     wfn_type="phmsd",
     complex_integrals: bool = False,
     complex_trial: bool = False,
-    seed_ham: bool = None,
-    seed_wavefunction: bool = None,
+    seed: Union[int, None] = None,
     options={},
 ):
+    if seed is not None:
+        np.random.seed(seed)
     assert len(options) > 0
     h1e, chol, enuc, eri = generate_hamiltonian(
         num_basis, num_elec, cplx=complex_integrals
@@ -176,17 +177,24 @@ def build_legacy_test_case_handlers(
 
     trial = MultiSlater(system, ham_legacy, wfn, init=init)
     trial.half_rotate(system, ham_legacy)
+    trial.calculate_energy(system, ham_legacy)
     if trial.ndets == 1:
         trial.psi = trial.psi[0]
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        np.random.seed(seed)
     prop = LegacyContinuous(system, ham_legacy, trial, options, options=options)
     handler = Walkers(
-        system, ham_legacy, trial, options, options, verbose=True, comm=options.comm
+        system,
+        ham_legacy,
+        trial,
+        options,
+        options,
+        verbose=False,
     )
-    for i in range(num_steps):
+    for i in range(options.num_steps):
         for walker in handler.walkers:
             prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
-            if options.comm is not none:
-                handler.pop_control(options.comm)
-    return handler
+    return handler, trial

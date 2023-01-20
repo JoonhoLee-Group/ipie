@@ -204,6 +204,7 @@ class WalkerBatchHandler(object):
             (magn, dtheta) = cmath.polar(self.walkers_batch.detR)
             self.walkers_batch.weight *= magn
             self.walkers_batch.phase *= cmath.exp(1j * dtheta)
+        return detR
 
     def copy_historic_wfn(self):
         """Copy current wavefunction to psi_n for next back propagation step."""

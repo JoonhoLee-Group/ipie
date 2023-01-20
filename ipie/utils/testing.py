@@ -414,7 +414,6 @@ def build_test_case_handlers_mpi(
         numpy.random.seed(seed)
     prop = Continuous(system, ham, trial, options, options=options)
 
-    print("init new: ", numpy.sum(init))
     handler_batch = WalkerBatchHandler(
         system,
         ham,
@@ -431,4 +430,59 @@ def build_test_case_handlers_mpi(
         )
         handler_batch.walkers_batch.reortho()
         handler_batch.pop_control(mpi_handler.comm)
-    return handler_batch
+    return (handler_batch, trial)
+
+
+def build_test_case_handlers(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    options={},
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+    prop = Continuous(system, ham, trial, options, options=options)
+
+    handler_batch = WalkerBatchHandler(
+        system,
+        ham,
+        trial,
+        options,
+        init,
+        options,
+        verbose=False,
+    )
+    for i in range(options.num_steps):
+        prop.propagate_walker_batch(
+            handler_batch.walkers_batch, system, ham, trial, trial.energy
+        )
+        handler_batch.walkers_batch.reortho()
+    return (handler_batch, trial)

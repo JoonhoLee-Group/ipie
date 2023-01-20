@@ -20,21 +20,11 @@
 import numpy
 import pytest
 
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.walkers.handler import Walkers
-from ipie.propagation.continuous import Continuous
-from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.particle_hole import ParticleHoleNaive
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import (
-    generate_hamiltonian,
-    get_random_phmsd,
     build_test_case_handlers_mpi,
 )
-from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.legacy_testing import build_legacy_test_case_handlers_mpi
 
 
@@ -65,11 +55,11 @@ def test_pair_branch_batch():
             "population_control": "pair_branch",
         }
     )
-    legacy_walkers = build_legacy_test_case_handlers_mpi(
+    legacy_walkers, _ = build_legacy_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     qmc.batched = True
-    handler_batch = build_test_case_handlers_mpi(
+    handler_batch, _ = build_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     nup = nelec[0]
@@ -121,11 +111,11 @@ def test_comb_batch():
             "population_control": "comb",
         }
     )
-    legacy_walkers = build_legacy_test_case_handlers_mpi(
+    legacy_walkers, _ = build_legacy_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     qmc.batched = True
-    handler_batch = build_test_case_handlers_mpi(
+    handler_batch, _ = build_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     nup = nelec[0]
@@ -177,14 +167,10 @@ def test_stochastic_reconfiguration_batch():
             "reconfiguration_freq": 2,
         }
     )
-    legacy_walkers = build_legacy_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
-    )
     qmc.batched = True
-    handler_batch = build_test_case_handlers_mpi(
+    handler_batch, _ = build_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
-    nup = nelec[0]
 
     assert pytest.approx(handler_batch.walkers_batch.weight[0]) == 1.0
     assert (
