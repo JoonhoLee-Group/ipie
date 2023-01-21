@@ -41,16 +41,26 @@ def test_greens_function_batch():
             "num_steps": nsteps,
         }
     )
-    legacy_handler, trial = build_legacy_test_case_handlers(
-        nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
     )
     qmc.batched = True
-    handler_batch, trial = build_test_case_handlers(
-        nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
     )
-    legacy_walkers = legacy_handler.walkers
-    walkers = handler_batch.walkers_batch
-    ovlp = greens_function_single_det(walkers, trial, build_full=True)
+    legacy_walkers = legacy_data.walker_handler.walkers
+    walkers = batched_data.walker_handler.walkers_batch
+    ovlp = greens_function_single_det(walkers, batched_data.trial, build_full=True)
     for iw in range(nwalkers):
         numpy.testing.assert_allclose(
             legacy_walkers[iw].Ghalf[0], walkers.Ghalfa[iw], atol=1e-12
@@ -82,17 +92,17 @@ def test_overlap_batch():
             "num_steps": nsteps,
         }
     )
-    legacy_handler, legacy_trial = build_legacy_test_case_handlers(
+    legacy_data = build_legacy_test_case_handlers(
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     qmc.batched = True
-    handler_batch, trial = build_test_case_handlers(
+    batched_data = build_test_case_handlers(
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
-    legacy_walkers = legacy_handler.walkers
-    walkers = handler_batch.walkers_batch
-    ovlp = greens_function_single_det(walkers, trial, build_full=True)
-    ovlp_legacy = [w.calc_overlap(legacy_trial) for w in legacy_walkers]
+    legacy_walkers = legacy_data.walker_handler.walkers
+    walkers = batched_data.walker_handler.walkers_batch
+    ovlp = greens_function_single_det(walkers, batched_data.trial, build_full=True)
+    ovlp_legacy = [w.calc_overlap(legacy_data.trial) for w in legacy_walkers]
     assert numpy.allclose(ovlp_legacy, ovlp)
 
 
@@ -112,16 +122,16 @@ def test_reortho_batch():
             "num_steps": nsteps,
         }
     )
-    legacy_handler, legacy_trial = build_legacy_test_case_handlers(
+    legacy_data = build_legacy_test_case_handlers(
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     qmc.batched = True
-    handler_batch, trial = build_test_case_handlers(
+    batched_data = build_test_case_handlers(
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
-    legacy_walkers = legacy_handler.walkers
-    detR = handler_batch.orthogonalise(trial, False)
-    detR_legacy = [w.reortho(legacy_trial) for w in legacy_walkers]
+    legacy_walkers = legacy_data.walker_handler.walkers
+    detR = batched_data.walker_handler.orthogonalise(batched_data.trial, False)
+    detR_legacy = [w.reortho(legacy_data.trial) for w in legacy_walkers]
     assert numpy.allclose(detR_legacy, detR)
 
 

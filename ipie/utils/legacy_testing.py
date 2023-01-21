@@ -1,6 +1,7 @@
 import copy
-from typing import Tuple, Union
+from dataclasses import dataclass
 import numpy as np
+from typing import Tuple, Union
 
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.single_det import SingleDetWalker
@@ -68,15 +69,25 @@ def get_legacy_walker_energies(system, ham, trial, walkers):
     return etots, e1s, e2s
 
 
+@dataclass(frozen=True)
+class LegacyTestData:
+    trial: MultiSlater
+    walker_handler: Walkers
+    hamiltonian: HamGeneric
+    propagator: LegacyContinuous
+
+
 def build_legacy_test_case_handlers_mpi(
     num_elec: Tuple[int, int],
     num_basis: int,
     mpi_handler,
     num_dets=1,
-    wfn_type="phmsd",
+    trial_type="phmsd",
     complex_integrals: bool = False,
     complex_trial: bool = False,
     seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
     options={},
 ):
     if seed is not None:
@@ -93,8 +104,11 @@ def build_legacy_test_case_handlers_mpi(
         options={"symmetry": False},
     )
     ham_legacy.control_variate = False
+    ham_legacy.stochastic_ri = False
+    ham_legacy.pno = False
+    ham_legacy.control_variate = False
 
-    if wfn_type == "phmsd":
+    if trial_type == "phmsd":
         wfn, init = get_random_phmsd_opt(
             num_elec[0],
             num_elec[1],
@@ -104,15 +118,18 @@ def build_legacy_test_case_handlers_mpi(
             cmplx_coeffs=complex_trial,
         )
     else:
-        coeffs, wfn, init = get_random_nomsd(
+        coeffs, slater_mats, init = get_random_nomsd(
             num_elec[0], num_elec[1], num_basis, num_dets, cplx=complex_trial, init=True
         )
+        wfn = (coeffs, slater_mats)
 
     trial = MultiSlater(system, ham_legacy, wfn, init=init)
     trial.half_rotate(system, ham_legacy)
     trial.calculate_energy(system, ham_legacy)
     if trial.ndets == 1:
         trial.psi = trial.psi[0]
+        if rhf_trial:
+            trial.psi[:, num_elec[0] :] = trial.psi[:, : num_elec[0]]
     # necessary for backwards compatabilty with tests
     if seed is not None:
         np.random.seed(seed)
@@ -129,21 +146,27 @@ def build_legacy_test_case_handlers_mpi(
     )
     for i in range(options.num_steps):
         for walker in handler.walkers:
-            prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
+            if two_body_only:
+                prop.two_body_propagator(walker, system, ham_legacy, trial)
+            else:
+                prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
         handler.pop_control(mpi_handler.comm)
-    return handler, trial
+
+    return LegacyTestData(trial, handler, ham_legacy, prop)
 
 
 def build_legacy_test_case_handlers(
     num_elec: Tuple[int, int],
     num_basis: int,
     num_dets=1,
-    wfn_type="phmsd",
+    trial_type="phmsd",
     complex_integrals: bool = False,
     complex_trial: bool = False,
+    rhf_trial: bool = False,
     seed: Union[int, None] = None,
+    two_body_only: bool = False,
     options={},
 ):
     if seed is not None:
@@ -160,8 +183,10 @@ def build_legacy_test_case_handlers(
         options={"symmetry": False},
     )
     ham_legacy.control_variate = False
+    ham_legacy.stochastic_ri = False
+    ham_legacy.pno = False
 
-    if wfn_type == "phmsd":
+    if trial_type == "phmsd":
         wfn, init = get_random_phmsd_opt(
             num_elec[0],
             num_elec[1],
@@ -171,9 +196,14 @@ def build_legacy_test_case_handlers(
             cmplx_coeffs=complex_trial,
         )
     else:
-        coeffs, wfn, init = get_random_nomsd(
+        coeffs, slater_mats, init = get_random_nomsd(
             num_elec[0], num_elec[1], num_basis, num_dets, cplx=complex_trial, init=True
         )
+        if rhf_trial:
+            assert num_dets == 1
+            slater_mats[0, :, num_elec[0] :] = slater_mats[0, :, : num_elec[0]]
+            init[:, num_elec[0] :] = init[:, : num_elec[0]]
+        wfn = (coeffs, slater_mats)
 
     trial = MultiSlater(system, ham_legacy, wfn, init=init)
     trial.half_rotate(system, ham_legacy)
@@ -194,7 +224,11 @@ def build_legacy_test_case_handlers(
     )
     for i in range(options.num_steps):
         for walker in handler.walkers:
-            prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
+            if two_body_only:
+                prop.two_body_propagator(walker, system, ham_legacy, trial)
+            else:
+                prop.propagate_walker(walker, system, ham_legacy, trial, trial.energy)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
             walker.greens_function(trial)
-    return handler, trial
+
+    return LegacyTestData(trial, handler, ham_legacy, prop)

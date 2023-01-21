@@ -55,32 +55,42 @@ def test_pair_branch_batch():
             "population_control": "pair_branch",
         }
     )
-    legacy_walkers, _ = build_legacy_test_case_handlers_mpi(
+    legacy_data = build_legacy_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     qmc.batched = True
-    handler_batch, _ = build_test_case_handlers_mpi(
+    batched_data = build_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     nup = nelec[0]
     for iw in range(nwalkers):
         assert numpy.allclose(
-            handler_batch.walkers_batch.phia[iw],
-            legacy_walkers.walkers[iw].phi[:, :nup],
+            batched_data.walker_handler.walkers_batch.phia[iw],
+            legacy_data.walker_handler.walkers[iw].phi[:, :nup],
         )
         assert numpy.allclose(
-            handler_batch.walkers_batch.phib[iw],
-            legacy_walkers.walkers[iw].phi[:, nup:],
+            batched_data.walker_handler.walkers_batch.phib[iw],
+            legacy_data.walker_handler.walkers[iw].phi[:, nup:],
         )
         assert numpy.allclose(
-            handler_batch.walkers_batch.weight[iw], legacy_walkers.walkers[iw].weight
+            batched_data.walker_handler.walkers_batch.weight[iw],
+            legacy_data.walker_handler.walkers[iw].weight,
         )
 
-    assert pytest.approx(handler_batch.walkers_batch.weight[0]) == 0.2571750688329709
-    assert pytest.approx(handler_batch.walkers_batch.weight[1]) == 1.0843219322894988
-    assert pytest.approx(handler_batch.walkers_batch.weight[2]) == 0.8338283613093604
     assert (
-        pytest.approx(handler_batch.walkers_batch.phia[9][0, 0])
+        pytest.approx(batched_data.walker_handler.walkers_batch.weight[0])
+        == 0.2571750688329709
+    )
+    assert (
+        pytest.approx(batched_data.walker_handler.walkers_batch.weight[1])
+        == 1.0843219322894988
+    )
+    assert (
+        pytest.approx(batched_data.walker_handler.walkers_batch.weight[2])
+        == 0.8338283613093604
+    )
+    assert (
+        pytest.approx(batched_data.walker_handler.walkers_batch.phia[9][0, 0])
         == -0.0005573508035052743 + 0.12432250308987346j
     )
 
@@ -111,29 +121,42 @@ def test_comb_batch():
             "population_control": "comb",
         }
     )
-    legacy_walkers, _ = build_legacy_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+    legacy_data = build_legacy_test_case_handlers_mpi(
+        nelec,
+        nmo,
+        mpi_handler,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
     )
     qmc.batched = True
-    handler_batch, _ = build_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+    batched_data = build_test_case_handlers_mpi(
+        nelec,
+        nmo,
+        mpi_handler,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
     )
     nup = nelec[0]
 
     for iw in range(nwalkers):
         assert numpy.allclose(
-            handler_batch.walkers_batch.phia[iw],
-            legacy_walkers.walkers[iw].phi[:, :nup],
+            batched_data.walker_handler.walkers_batch.phia[iw],
+            legacy_data.walker_handler.walkers[iw].phi[:, :nup],
         )
         assert numpy.allclose(
-            handler_batch.walkers_batch.phib[iw],
-            legacy_walkers.walkers[iw].phi[:, nup:],
+            batched_data.walker_handler.walkers_batch.phib[iw],
+            legacy_data.walker_handler.walkers[iw].phi[:, nup:],
         )
         assert numpy.allclose(
-            handler_batch.walkers_batch.weight[iw], legacy_walkers.walkers[iw].weight
+            batched_data.walker_handler.walkers_batch.weight[iw],
+            legacy_data.walker_handler.walkers[iw].weight,
         )
     assert (
-        pytest.approx(handler_batch.walkers_batch.phia[9][0, 0])
+        pytest.approx(batched_data.walker_handler.walkers_batch.phia[9][0, 0])
         == -0.0597200851442905 - 0.002353281222663805j
     )
 
@@ -168,13 +191,13 @@ def test_stochastic_reconfiguration_batch():
         }
     )
     qmc.batched = True
-    handler_batch, _ = build_test_case_handlers_mpi(
+    batched_data = build_test_case_handlers_mpi(
         nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
 
-    assert pytest.approx(handler_batch.walkers_batch.weight[0]) == 1.0
+    assert pytest.approx(batched_data.walker_handler.walkers_batch.weight[0]) == 1.0
     assert (
-        pytest.approx(handler_batch.walkers_batch.phia[0][0, 0])
+        pytest.approx(batched_data.walker_handler.walkers_batch.phia[0][0, 0])
         == 0.0305067 + 0.01438442j
     )
 

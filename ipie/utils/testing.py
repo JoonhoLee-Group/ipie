@@ -17,6 +17,7 @@
 #
 
 import itertools
+from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
@@ -27,6 +28,7 @@ from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 from ipie.propagation.continuous import Continuous
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
@@ -301,7 +303,7 @@ def build_random_phmsd_trial(
     complex_trial: bool = False,
 ):
 
-    _functions = {
+    _classes = {
         "naive": ParticleHoleNaive,
         "opt": ParticleHoleWicks,
         "chunked": ParticleHoleWicksNonChunked,
@@ -315,7 +317,7 @@ def build_random_phmsd_trial(
         init=True,
         cmplx_coeffs=complex_trial,
     )
-    return _functions[wfn_type](wfn, num_elec, num_basis), init
+    return _classes[wfn_type](wfn, num_elec, num_basis), init
 
 
 def build_random_noci_trial(
@@ -340,10 +342,14 @@ def build_random_single_det_trial(
     num_elec: Tuple[int, int],
     num_basis: int,
     complex_trial: bool = False,
+    rhf_trial: bool = False,
 ):
     coeffs, wfn, init = get_random_nomsd(
         num_elec[0], num_elec[1], num_basis, ndet=1, cplx=complex_trial, init=True
     )
+    if rhf_trial:
+        wfn[0, :, num_elec[0] :] = wfn[0, :, : num_elec[0]]
+        init[:, num_elec[0] :] = init[:, : num_elec[0]]
     trial = SingleDet(wfn[0], num_elec, num_basis)
     return trial, init
 
@@ -355,10 +361,14 @@ def build_random_trial(
     trial_type="single_det",
     wfn_type="chunked",
     complex_trial: bool = False,
+    rhf_trial: bool = False,
 ):
     if trial_type == "single_det":
         return build_random_single_det_trial(
-            num_elec, num_basis, complex_trial=complex_trial
+            num_elec,
+            num_basis,
+            complex_trial=complex_trial,
+            rhf_trial=rhf_trial,
         )
     elif trial_type == "noci":
         return build_random_noci_trial(num_elec, num_basis, complex_trial=complex_trial)
@@ -374,6 +384,14 @@ def build_random_trial(
         raise ValueError(f"Unkown trial type: {trial_type}")
 
 
+@dataclass(frozen=True)
+class TestData:
+    trial: TrialWavefunctionBase
+    walker_handler: WalkerBatchHandler
+    hamiltonian: HamGeneric
+    propagator: Continuous
+
+
 def build_test_case_handlers_mpi(
     num_elec: Tuple[int, int],
     num_basis: int,
@@ -384,6 +402,8 @@ def build_test_case_handlers_mpi(
     complex_integrals: bool = False,
     complex_trial: bool = False,
     seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
     options={},
 ):
     if seed is not None:
@@ -405,6 +425,7 @@ def build_test_case_handlers_mpi(
         wfn_type=wfn_type,
         trial_type=trial_type,
         complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
     )
     trial.half_rotate(system, ham)
     trial.calculate_energy(system, ham)
@@ -424,13 +445,21 @@ def build_test_case_handlers_mpi(
         mpi_handler=mpi_handler,
         verbose=False,
     )
+    trial.calc_greens_function(handler_batch.walkers_batch)
     for i in range(options.num_steps):
-        prop.propagate_walker_batch(
-            handler_batch.walkers_batch, system, ham, trial, trial.energy
-        )
+        if two_body_only:
+            prop.two_body_propagator_batch(
+                handler_batch.walkers_batch, system, ham, trial
+            )
+        else:
+            prop.propagate_walker_batch(
+                handler_batch.walkers_batch, system, ham, trial, trial.energy
+            )
         handler_batch.walkers_batch.reortho()
         handler_batch.pop_control(mpi_handler.comm)
-    return (handler_batch, trial)
+        trial.calc_greens_function(handler_batch.walkers_batch)
+
+    return TestData(trial, handler_batch, ham, prop)
 
 
 def build_test_case_handlers(
@@ -442,6 +471,8 @@ def build_test_case_handlers(
     complex_integrals: bool = False,
     complex_trial: bool = False,
     seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
     options={},
 ):
     if seed is not None:
@@ -463,6 +494,7 @@ def build_test_case_handlers(
         wfn_type=wfn_type,
         trial_type=trial_type,
         complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
     )
     trial.half_rotate(system, ham)
     trial.calculate_energy(system, ham)
@@ -480,9 +512,17 @@ def build_test_case_handlers(
         options,
         verbose=False,
     )
+    trial.calc_greens_function(handler_batch.walkers_batch)
     for i in range(options.num_steps):
-        prop.propagate_walker_batch(
-            handler_batch.walkers_batch, system, ham, trial, trial.energy
-        )
+        if two_body_only:
+            prop.two_body_propagator_batch(
+                handler_batch.walkers_batch, system, ham, trial
+            )
+        else:
+            prop.propagate_walker_batch(
+                handler_batch.walkers_batch, system, ham, trial, trial.energy
+            )
         handler_batch.walkers_batch.reortho()
-    return (handler_batch, trial)
+        trial.calc_greens_function(handler_batch.walkers_batch)
+
+    return TestData(trial, handler_batch, ham, prop)

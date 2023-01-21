@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,22 +20,21 @@ import numpy
 import pytest
 
 from ipie.estimators.greens_function_batch import (
-        greens_function_single_det_batch,
-        greens_function_single_det,
-        compute_greens_function
-        )
+    greens_function_single_det_batch,
+    greens_function_single_det,
+    compute_greens_function,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
 from ipie.propagation.overlap import calc_overlap_single_det_batch
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.utils.testing import (
+    build_test_case_handlers,
+)
+from ipie.utils.legacy_testing import (
+    build_legacy_test_case_handlers,
+)
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
 
@@ -47,55 +45,47 @@ def test_overlap_rhf_batch():
     nelec = (5, 5)
     nwalkers = 2
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+            "rhf": True,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
+        rhf_trial=True,
     )
-    init[:, : nelec[0]] = init[:, nelec[0] :].copy()
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.psib = trial.psia.copy()
-    trial.psi[:, nelec[0] :] = trial.psia.copy()
-    trial.calculate_energy(system, ham)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.propagate_walker(walker, system, ham, trial, trial.energy)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-            walker.greens_function(trial)
-
-    walker_opts = {"rhf": True}
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, walker_opts=walker_opts
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+        rhf_trial=True,
     )
-    for iw in range(nwalkers):
-        walker_batch.phia[iw] = walkers[iw].phi[:, : nelec[0]].copy()
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
 
-    ovlp = calc_overlap_single_det_batch(walker_batch, trial)
-    ovlp_gf = greens_function_single_det_batch(walker_batch, trial)
+    ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
+    ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
     ot = [walkers[iw].ot for iw in range(walker_batch.nwalkers)]
     assert numpy.allclose(ovlp, ot)
     assert numpy.allclose(ovlp_gf, ot)
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
 
 
@@ -106,51 +96,44 @@ def test_overlap_batch():
     nelec = (6, 5)
     nwalkers = 2
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(system, ham)
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+    )
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
 
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.propagate_walker(walker, system, ham, trial, trial.energy)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-            walker.greens_function(trial)
-
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    for iw in range(nwalkers):
-        walker_batch.phia[iw] = walkers[iw].phi[:, : nelec[0]].copy()
-        walker_batch.phib[iw] = walkers[iw].phi[:, nelec[0] :].copy()
-
-    ovlp = calc_overlap_single_det_batch(walker_batch, trial)
-    ovlp_gf = greens_function_single_det_batch(walker_batch, trial)
+    ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
+    ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
     ot = [walkers[iw].ot for iw in range(walker_batch.nwalkers)]
     assert numpy.allclose(ovlp, ot)
     assert numpy.allclose(ovlp_gf, ot)
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
 
@@ -162,57 +145,42 @@ def test_two_body_rhf_batch():
     nelec = (5, 5)
     nwalkers = 8
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "rhf": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
+        two_body_only=True,
+        rhf_trial=True,
     )
-    init[:, : nelec[0]] = init[:, nelec[0] :].copy()
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.psib = trial.psia.copy()
-    trial.psi[:, nelec[0] :] = trial.psia.copy()
-    trial.calculate_energy(system, ham)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.two_body_propagator(walker, system, ham, trial)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-            walker.greens_function(trial)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-
-    walker_opts = {"rhf": True}
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, walker_opts=walker_opts
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+        two_body_only=True,
+        rhf_trial=True,
     )
-    greens_function_single_det(walker_batch, trial)
-    for i in range(nsteps):
-        prop.two_body_propagator_batch(walker_batch, system, ham, trial)
-        detR = walker_batch.reortho()  # reorthogonalizing to stablize
-        compute_greens_function(walker_batch, trial)
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
 
 
@@ -223,52 +191,40 @@ def test_two_body_batch():
     nelec = (6, 5)
     nwalkers = 2
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
+        two_body_only=True,
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(system, ham)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.two_body_propagator(walker, system, ham, trial)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-            walker.greens_function(trial)
-
-    numpy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    greens_function_single_det(walker_batch, trial)
-    for i in range(nsteps):
-        prop.two_body_propagator_batch(walker_batch, system, ham, trial)
-        detR = walker_batch.reortho()  # reorthogonalizing to stablize
-        compute_greens_function(walker_batch, trial)
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+        two_body_only=True,
+    )
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
 
@@ -280,51 +236,42 @@ def test_hybrid_rhf_batch():
     nelec = (5, 5)
     nwalkers = 8
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "rhf": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
+        rhf_trial=True,
     )
-    init[:, : nelec[0]] = init[:, nelec[0] :].copy()
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.psib = trial.psia.copy()
-    trial.psi[:, nelec[0] :] = trial.psia.copy()
-    trial.calculate_energy(system, ham)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-
-    numpy.random.seed(7)
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.propagate_walker(walker, system, ham, trial, trial.energy)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-
-    numpy.random.seed(7)
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+        rhf_trial=True,
+    )
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
-        assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:, : nelec[0]])
 
 
@@ -335,48 +282,24 @@ def test_hybrid_batch():
     nelec = (6, 5)
     nwalkers = 8
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec, nmo, num_dets=1, options=qmc, seed=7
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-
-    numpy.random.seed(7)
-
-    trial.calculate_energy(system, ham)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    for i in range(nsteps):
-        for walker in walkers:
-            prop.propagate_walker(walker, system, ham, trial, trial.energy)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-
-    numpy.random.seed(7)
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
-
+    qmc.batched = True
+    batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
         assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:, : nelec[0]])
@@ -390,44 +313,35 @@ def test_vhs():
     nelec = (6, 5)
     nwalkers = 8
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
     )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
+    legacy_data = build_legacy_test_case_handlers(
+        nelec, nmo, num_dets=1, options=qmc, seed=7
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-
-    numpy.random.seed(7)
-
-    trial.calculate_energy(system, ham)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(
-        nwalkers, ham.nfields
-    )
+    xshifted = numpy.random.normal(
+        0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields
+    ).reshape(nwalkers, legacy_data.hamiltonian.nfields)
     vhs_serial = []
     for iw in range(nwalkers):
-        vhs_serial.append(prop.propagator.construct_VHS(ham, xshifted[iw]))
+        vhs_serial.append(
+            legacy_data.propagator.propagator.construct_VHS(
+                legacy_data.hamiltonian, xshifted[iw]
+            )
+        )
 
-    numpy.random.seed(7)
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-    vhs_batch = prop.propagator.construct_VHS_batch(ham, xshifted.T.copy())
+    qmc.batched = True
+    batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
+    vhs_batch = batched_data.propagator.propagator.construct_VHS_batch(
+        batched_data.hamiltonian, xshifted.T.copy()
+    )
     for iw in range(nwalkers):
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
 

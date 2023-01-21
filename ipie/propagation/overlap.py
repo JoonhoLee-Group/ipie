@@ -48,7 +48,6 @@ def get_calc_overlap(trial):
         Propagator object.
     """
 
-    print(type(trial))
     if trial.name == "MultiSlater" and trial.ndets == 1:
         # calc_overlap = calc_overlap_single_det
         calc_overlap = calc_overlap_single_det_batch
@@ -488,8 +487,6 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = G0wa.shape[0]
     indices = numpy.indices((nexcit, nexcit))
-    # print(G0wa.shape)
-    # print(ndets_a)
     if ndets_a == 0:
         dets_a = None
     else:
