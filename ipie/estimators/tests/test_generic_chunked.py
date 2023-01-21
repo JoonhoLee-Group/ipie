@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +20,10 @@ import numpy
 import pytest
 from mpi4py import MPI
 
-from ipie.estimators.generic import local_energy_cholesky_opt
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_rhf_batch,
-                                             local_energy_single_det_uhf_batch)
-from ipie.estimators.local_energy_sd_chunked import \
-    local_energy_single_det_uhf_batch_chunked
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch
+from ipie.estimators.local_energy_sd_chunked import (
+    local_energy_single_det_uhf_batch_chunked,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
@@ -79,8 +76,8 @@ def test_generic_chunked():
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
-    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = SingleDet(system, ham, wfn)
+    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    trial = SingleDet(wfn, nelec, nmo)
     trial.half_rotate(system, ham)
 
     trial.calculate_energy(system, ham)
