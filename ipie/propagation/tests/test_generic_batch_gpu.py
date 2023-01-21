@@ -19,15 +19,9 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function_batch import compute_greens_function
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
-from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.utils.testing import build_test_case_handlers
+from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 
 
 @pytest.mark.gpu
@@ -37,108 +31,39 @@ def test_hybrid_batch():
     nelec = (5, 5)
     nwalkers = 10
     nsteps = 25
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
-    ham = LegacyHamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-    )
-    # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
-    )
-    trial = LegacyMultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(system, ham)
-
-    numpy.random.seed(7)
-    import cupy
-
-    cupy.random.seed(7)
-    options = {"hybrid": True}
-    qmc = dotdict({"dt": 0.005, "nstblz": 5})
-    prop = LegacyContinuous(system, ham, trial, qmc, options=options)
-
-    walkers = [SingleDetWalker(system, ham, trial) for iw in range(nwalkers)]
-    ovlps = []
-    for i in range(nsteps):
-        for walker in walkers:
-            ovlps += [walker.greens_function(trial)]
-            kinetic_real(walker.phi, system, prop.propagator.BH1)
-            detR = walker.reortho(trial)  # reorthogonalizing to stablize
-
-    numpy.random.seed(7)
-    cupy.random.seed(7)
-
-    options = {"hybrid": True}
     qmc = dotdict(
         {
             "dt": 0.005,
             "nstblz": 5,
-            "batched": True,
             "nwalkers": nwalkers,
-            "batched": True,
+            "batched": False,
+            "hybrid": True,
+            "rhf": True,
+            "num_steps": nsteps,
         }
     )
-
-    chol = chol.reshape((-1, nmo * nmo)).T.copy()
-
-    nchol = chol.shape[-1]
-    chol = chol.reshape((nmo, nmo, nchol))
-
-    idx = numpy.triu_indices(nmo)
-    cp_shape = (nmo * (nmo + 1) // 2, chol.shape[-1])
-    chol_packed = numpy.zeros(cp_shape, dtype=chol.dtype)
-    pack_cholesky(idx[0], idx[1], chol_packed, chol)
-    chol = chol.reshape((nmo * nmo, nchol))
-
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=0
+    legacy_data = build_legacy_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="nomsd",
+        rhf_trial=True,
     )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
-
-    prop.cast_to_cupy()
-    ham.cast_to_cupy()
-    trial.cast_to_cupy()
-    walker_batch.cast_to_cupy()
-
-    numpy.random.seed(7)
-    cupy.random.seed(7)
-    ovlps_batch = []
-    for i in range(nsteps):
-        ovlps_batch += [compute_greens_function(walker_batch, trial)]
-        walker_batch.phia = kinetic_spin_real_batch(
-            walker_batch.phia, prop.propagator.BH1[0]
-        )
-        walker_batch.phib = kinetic_spin_real_batch(
-            walker_batch.phib, prop.propagator.BH1[1]
-        )
-        walker_batch.reortho()
-
-    phi_batch = cupy.array(walker_batch.phia)
-    phi_batch = cupy.asnumpy(phi_batch)
-
-    # assert numpy.allclose(ovlps, cupy.asnumpy(ovlps_batch))
-
-    # Using abs following batched qr implementation on gpu which does not
-    # preserve previous gauge fixing of sequential algorithm.
-    for iw in range(nwalkers):
-        assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, : system.nup]))
-
-    phi_batch = cupy.array(walker_batch.phib)
-    phi_batch = cupy.asnumpy(phi_batch)
-    for iw in range(nwalkers):
-        assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, system.nup :]))
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        trial_type="single_det",
+        rhf_trial=True,
+    )
+    walkers = legacy_data.walker_handler.walkers
+    walker_batch = batched_data.walker_handler.walkers_batch
+    assert False, "FDM FIX THIS, rng state between gpu and cpu"
 
 
 if __name__ == "__main__":
