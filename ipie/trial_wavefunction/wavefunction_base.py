@@ -35,6 +35,7 @@ class TrialWavefunctionBase(object):
         self._half_rotated = False
         self.ortho_expansion = False
         self.optimized = True
+        self.compute_trial_energy = False
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)

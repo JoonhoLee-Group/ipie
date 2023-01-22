@@ -22,6 +22,7 @@ from typing import Tuple, Union
 
 import numpy
 
+from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
@@ -529,3 +530,59 @@ def build_test_case_handlers(
         trial.calc_greens_function(handler_batch.walkers_batch)
 
     return TestData(trial, handler_batch, ham, prop)
+
+
+def build_driver_test_instance(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+    seed: Union[int, None] = None,
+    options={},
+):
+    options = {
+        "verbosity": 0,
+        "get_sha1": False,
+        "qmc": dict(options),
+        "estimates": {
+            "filename": "estimates.test_generic_single_det_batch.h5",
+            "observables": {
+                "energy": {},
+            },
+        },
+        "walkers": {"population_control": "pair_branch"},
+    }
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    afqmc = AFQMCBatch(
+        comm=comm, system=system, hamiltonian=ham, options=options, trial=trial
+    )
+    return afqmc
