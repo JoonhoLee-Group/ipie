@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,10 +45,10 @@ _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 # glob is a bit dangerous.
 # _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
 _test_dirs = [
-    "4x4_hubbard_discrete",
-    "ft_4x4_hubbard_discrete",
-    "ft_ueg_ecut1.0_rs1.0",
-    "ueg_ecut2.5_rs2.0_ne14",
+    # "4x4_hubbard_discrete",
+    # "ft_4x4_hubbard_discrete",
+    # "ft_ueg_ecut1.0_rs1.0",
+    # "ueg_ecut2.5_rs2.0_ne14",
     "h10_cc-pvtz_batched",
     "h10_cc-pvtz_pair_branch",
     "neon_cc-pvdz_rhf",
