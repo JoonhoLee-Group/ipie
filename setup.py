@@ -7,16 +7,6 @@ try:
 except ImportError:
     from pip.req import parse_requirements
 
-# extensions = [
-    # Extension(
-        # "ipie.legacy.estimators.ueg_kernels",
-        # ["ipie/legacy/estimators/ueg_kernels.pyx"],
-        # extra_compile_args=["-O3"],
-        # include_dirs=[numpy.get_include()],
-    # ),
-# ]
-
-
 def load_requirements(fname):
     reqs = parse_requirements(fname, session="test")
     try:
@@ -49,9 +39,4 @@ setup(
     ],
     install_requires=load_requirements("requirements.txt"),
     long_description=open("README.rst").read(),
-    # ext_modules=cythonize(
-        # extensions,
-        # include_path=[numpy.get_include()],
-        # compiler_directives={"language_level": sys.version_info[0]},
-    # ),
 )
