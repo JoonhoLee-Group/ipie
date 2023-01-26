@@ -34,7 +34,13 @@ ipie currently supports:
 Installation
 ------------
 
-Clone the repository
+Linux and Mac OS wheels are available for installation via pip
+
+::
+
+    $ pip install ipie
+
+For develpment you can instead clone the repository
 
 ::
 
@@ -45,26 +51,33 @@ and run the following in the top-level ipie directory
 ::
 
     $ pip install -r requirements.txt
-    $ python setup.py build_ext --inplace
-    $ python setup.py install
-
-You may also need to set your PYTHONPATH appropriately.
+    $ pip install -e.
 
 Requirements
 ------------
 
-* python (>= 3.6)
-* numpy
-* scipy
-* h5py
-* mpi4py
-* cython
-* pandas
+ipie currently relies on MPI (via mpi4py) for parallelism and it is often the
+trickiest dependency to setup correctly.
 
-Minimum versions are listed in the requirements.txt.
-To run the tests you will need pytest.
-To perform error analysis you will also need `pyblock <https://github.com/jsspencer/pyblock>`_.
+One of the easiest ways (if you are using pip to install ipie wheels) is via conda:
 
+::
+
+    conda install openmpi
+
+which will just install the OpenMPI library. 
+We refer users to the mpi4py
+`documentation <https://mpi4py.readthedocs.io/en/stable/install.html>`_ for
+alternative ways of building mpi4py and the required MPI library.
+
+Further requirements are listed in requirements.txt.
+
+GPU Support
+-----------
+Cupy is is required when running calculations on GPUs which
+can be install following the instructions `here <https://cupy.dev/>`_ .
+
+Cuda aware MPI may be installed via conda-forge.
 
 Running the Test Suite
 ----------------------
