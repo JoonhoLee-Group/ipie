@@ -542,20 +542,9 @@ def build_driver_test_instance(
     complex_trial: bool = False,
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
+    density_diff=False,
     options={},
 ):
-    options = {
-        "verbosity": 0,
-        "get_sha1": False,
-        "qmc": dict(options),
-        "estimates": {
-            "filename": "estimates.test_generic_single_det_batch.h5",
-            "observables": {
-                "energy": {},
-            },
-        },
-        "walkers": {"population_control": "pair_branch"},
-    }
     if seed is not None:
         numpy.random.seed(seed)
     h1e, chol, enuc, eri = generate_hamiltonian(
@@ -568,6 +557,8 @@ def build_driver_test_instance(
         ecore=0,
         options={"symmetry": False},
     )
+    if density_diff:
+        ham.density_diff = True
     trial, init = build_random_trial(
         num_elec,
         num_basis,

@@ -41,31 +41,42 @@ pop_control_freq = 5
 stabilise_freq = 5
 comm = MPI.COMM_WORLD
 
-options = dotdict(
-    {
-        "dt": 0.005,
-        "nstblz": 5,
-        "nwalkers": nwalkers,
-        "nwalkers_per_task": nwalkers,
-        "batched": True,
-        "hybrid": True,
-        "steps": steps,
-        "blocks": blocks,
-        "pop_control_freq": pop_control_freq,
-        "stabilise_freq": stabilise_freq,
-        "rng_seed": seed,
-    }
-)
+options = {
+    "dt": 0.005,
+    "nstblz": 5,
+    "nwalkers": nwalkers,
+    "nwalkers_per_task": nwalkers,
+    "batched": True,
+    "hybrid": True,
+    "steps": steps,
+    "blocks": blocks,
+    "pop_control_freq": pop_control_freq,
+    "stabilise_freq": stabilise_freq,
+    "rng_seed": seed,
+}
+driver_options = {
+    "verbosity": 0,
+    "get_sha1": False,
+    "qmc": options,
+    "estimates": {
+        "filename": "estimates.test_generic_single_det_batch.h5",
+        "observables": {
+            "energy": {},
+        },
+    },
+    "walkers": {"population_control": "pair_branch"},
+}
 
 
 @pytest.mark.driver
 def test_generic_single_det_batch():
     afqmc = build_driver_test_instance(
-        nelec, nmo, trial_type="single_det", options=options
+        nelec, nmo, trial_type="single_det", options=driver_options, seed=7
     )
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
+        comm,
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
@@ -73,8 +84,17 @@ def test_generic_single_det_batch():
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
     denom_batch = afqmc.estimators["energy"]["EDenom"]
-    # weight_batch = afqmc.estimators['energy']['Weight']
-    legacy_afqmc = build_legacy_driver_instance(nelec, nmo, trial_type="single_det")
+    options["batched"] = False
+    data_batch = extract_observable(
+        "estimates.test_generic_single_det_batch.h5", "energy"
+    )
+    driver_options["estimates"] = {
+        "filename": "estimates.test_generic_single_det_batch.h5",
+        "mixed": {"energy_eval_freq": options["steps"]},
+    }
+    legacy_afqmc = build_legacy_driver_instance(
+        nelec, nmo, trial_type="single_det", options=driver_options, seed=7
+    )
     legacy_afqmc.run(comm=comm, verbose=1)
     legacy_afqmc.finalise(verbose=0)
     legacy_afqmc.estimators.estimators["mixed"].update(
@@ -86,9 +106,6 @@ def test_generic_single_det_batch():
         0,
     )
 
-    data_batch = extract_observable(
-        "estimates.test_generic_single_det_batch.h5", "energy"
-    )
     enum = legacy_afqmc.estimators.estimators["mixed"].names
     numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
     denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
@@ -134,40 +151,23 @@ def test_generic_single_det_batch():
 
 @pytest.mark.driver
 def test_generic_single_det_batch_density_diff():
-    options = {
-        "verbosity": 0,
-        "get_sha1": False,
-        "qmc": {
-            "timestep": 0.005,
-            "steps": steps,
-            "nwalkers_per_task": nwalkers,
-            "pop_control_freq": pop_control_freq,
-            "stabilise_freq": stabilise_freq,
-            "blocks": blocks,
-            "rng_seed": seed,
-            "batched": True,
+    driver_options["estimates"] = {
+        "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
+        "observables": {
+            "energy": {},
         },
-        "estimates": {
-            "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
-            "observables": {
-                "energy": {},
-            },
-        },
-        "trial": {"name": "MultiSlater"},
-        "walkers": {"population_control": "pair_branch"},
     }
-    numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=enuc,
-        options={"symmetry": False},
-    )
-    ham.density_diff = True
     comm = MPI.COMM_WORLD
-    afqmc = AFQMCBatch(comm=comm, system=sys, hamiltonian=ham, options=options)
+
+    driver_options["qmc"]["batched"] = True
+    afqmc = build_driver_test_instance(
+        nelec,
+        nmo,
+        trial_type="single_det",
+        options=driver_options,
+        seed=7,
+        density_diff=True,
+    )
     afqmc.run(comm=comm, verbose=0)
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
@@ -187,47 +187,33 @@ def test_generic_single_det_batch_density_diff():
     )
 
     numpy.random.seed(seed)
-    options = {
-        "verbosity": 0,
-        "get_sha1": False,
-        "qmc": {
-            "timestep": 0.005,
-            "steps": steps,
-            "nwalkers_per_task": nwalkers,
-            "pop_control_freq": pop_control_freq,
-            "stabilise_freq": stabilise_freq,
-            "blocks": blocks,
-            "rng_seed": seed,
-            "batched": False,
-        },
-        "estimates": {
-            "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
-            "mixed": {"energy_eval_freq": steps},
-        },
-        "trial": {"name": "MultiSlater"},
-        "walkers": {"population_control": "pair_branch"},
+    driver_options["estimates"] = {
+        "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
+        "mixed": {"energy_eval_freq": steps},
     }
-    numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec)
-    legacyham = LegacyHamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=enuc,
+    driver_options["qmc"]["batched"] = False
+    legacy_afqmc = build_legacy_driver_instance(
+        nelec,
+        nmo,
+        trial_type="single_det",
+        options=driver_options,
+        seed=7,
+        density_diff=True,
     )
-
-    comm = MPI.COMM_WORLD
-    afqmc = AFQMC(comm=comm, system=sys, hamiltonian=legacyham, options=options)
-    afqmc.estimators.estimators["mixed"].print_header()
-    afqmc.run(comm=comm, verbose=1)
-    afqmc.finalise(verbose=0)
-    afqmc.estimators.estimators["mixed"].update(
-        afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0
+    legacy_afqmc.run(comm=comm, verbose=1)
+    legacy_afqmc.finalise(verbose=0)
+    legacy_afqmc.estimators.estimators["mixed"].update(
+        legacy_afqmc.qmc,
+        legacy_afqmc.system,
+        legacy_afqmc.hamiltonian,
+        legacy_afqmc.trial,
+        legacy_afqmc.psi,
+        0,
     )
-    enum = afqmc.estimators.estimators["mixed"].names
-    numer = afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
-    denom = afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
-    weight = afqmc.estimators.estimators["mixed"].estimates[enum.weight]
+    enum = legacy_afqmc.estimators.estimators["mixed"].names
+    numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
+    denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
+    weight = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.weight]
 
     assert numer.real == pytest.approx(numer_batch.real)
     assert denom.real == pytest.approx(denom_batch.real)

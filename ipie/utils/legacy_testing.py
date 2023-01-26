@@ -244,17 +244,9 @@ def build_legacy_driver_instance(
     complex_trial: bool = False,
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
+    density_diff: bool = False,
     options={},
 ):
-    options = {
-        "verbosity": 0,
-        "get_sha1": False,
-        "qmc": dict(options),
-        "estimates": {
-            "filename": "estimates.test_generic_single_det_batch.h5",
-            "mixed": {"energy_eval_freq": options.steps},
-        },
-    }
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
@@ -296,7 +288,7 @@ def build_legacy_driver_instance(
             init[:, num_elec[0] :] = init[:, : num_elec[0]]
         wfn = (coeffs, slater_mats)
 
-    trial = MultiSlater(system, ham_legacy, wfn, init=init)
+    trial = MultiSlater(system, ham_legacy, wfn)
     trial.half_rotate(system, ham_legacy)
     trial.calculate_energy(system, ham_legacy)
     if trial.ndets == 1:

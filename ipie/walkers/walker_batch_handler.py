@@ -58,7 +58,7 @@ class WalkerBatchHandler(object):
         hamiltonian,
         trial,
         qmc,
-        initial_walker,
+        initial_walker=None,
         walker_opts={},
         mpi_handler=None,
         nprop_tot=None,
@@ -90,6 +90,8 @@ class WalkerBatchHandler(object):
             if verbose:
                 print("# Using single det walker with a single det trial.")
             self.walker_type = "SD"
+            if initial_walker is None:
+                initial_walker = trial.psi
             self.walkers_batch = SingleDetWalkerBatch(
                 system,
                 hamiltonian,
@@ -106,6 +108,8 @@ class WalkerBatchHandler(object):
             if verbose:
                 print("# Using single det walker with a multi det trial.")
             self.walker_type = "SD"
+            if initial_walker is None:
+                initial_walker = numpy.hstack([trial.psi0a, trial.psi0b]) 
             self.walkers_batch = MultiDetTrialWalkerBatch(
                 system,
                 hamiltonian,
