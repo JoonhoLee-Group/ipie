@@ -48,6 +48,8 @@ def test_constructor():
         "nup": 7,
         "ndown": 7,
     }
+    from ipie.legacy.systems.ueg import UEG
+
     system = UEG(model)
     ham = HamUEG(system, model)
     trial = HartreeFock(system, ham, {})
