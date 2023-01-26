@@ -34,6 +34,13 @@ try:
 except ImportError:
     have_pytest_mpi = False
 
+try:
+    from ipie.legacy.qmc.calc import get_driver as get_legacy_driver
+
+    _no_cython = False
+except:
+    _no_cython = True
+
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
@@ -45,10 +52,6 @@ _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 # glob is a bit dangerous.
 # _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
 _test_dirs = [
-    # "4x4_hubbard_discrete",
-    # "ft_4x4_hubbard_discrete",
-    # "ft_ueg_ecut1.0_rs1.0",
-    # "ueg_ecut2.5_rs2.0_ne14",
     "h10_cc-pvtz_batched",
     "h10_cc-pvtz_pair_branch",
     "neon_cc-pvdz_rhf",
@@ -58,6 +61,16 @@ _test_dirs = [
 _tests = [
     (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
     for d in _test_dirs
+]
+_legacy_test_dirs = [
+    "4x4_hubbard_discrete",
+    "ft_4x4_hubbard_discrete",
+    "ft_ueg_ecut1.0_rs1.0",
+    "ueg_ecut2.5_rs2.0_ne14",
+]
+_legacy_tests = [
+    (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
+    for d in _legacy_test_dirs
 ]
 
 
@@ -84,7 +97,13 @@ def run_test_system(input_file, benchmark_file):
         input_dict["hamiltonian"]["integrals"] = input_file[:-10] + "afqmc.h5"
         input_dict["trial"]["filename"] = input_file[:-10] + "afqmc.h5"
     input_dict["estimators"]["filename"] = output_file
-    afqmc = get_driver(input_dict, comm)
+    if input_dict["system"]["name"] in ["UEG", "Hubbard"]:
+
+        from ipie.legacy.qmc.calc import get_driver as get_legacy_driver
+
+        afqmc = get_legacy_driver(input_dict, comm)
+    else:
+        afqmc = get_driver(input_dict, comm)
     afqmc.run(comm=comm)
     if comm.rank == 0:
         with open(benchmark_file, "r") as f:
@@ -106,6 +125,15 @@ def run_test_system(input_file, benchmark_file):
 @pytest.mark.skipif(not have_pytest_mpi, reason="Test requires pytest-mpi plugin.")
 @pytest.mark.parametrize("input_dir, benchmark_dir", _tests)
 def test_system_mpi(input_dir, benchmark_dir):
+    run_test_system(input_dir, benchmark_dir)
+
+
+@pytest.mark.mpi
+@pytest.mark.skipif(serial_test, reason="Test should be run on multiple cores.")
+@pytest.mark.skipif(not have_pytest_mpi, reason="Test requires pytest-mpi plugin.")
+@pytest.mark.skipif(_no_cython, reason="Test requires legacy cython code.")
+@pytest.mark.parametrize("input_dir, benchmark_dir", _legacy_tests)
+def test_legacy_system_(input_dir, benchmark_dir):
     run_test_system(input_dir, benchmark_dir)
 
 
