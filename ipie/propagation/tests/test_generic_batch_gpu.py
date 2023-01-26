@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +23,7 @@ from ipie.estimators.greens_function_batch import compute_greens_function
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.trial_wavefunction.multi_slater import \
-    MultiSlater as LegacyMultiSlater
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.continuous import Continuous
@@ -34,11 +32,11 @@ from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
+from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+
 
 @pytest.mark.gpu
 def test_hybrid_batch():
@@ -67,6 +65,7 @@ def test_hybrid_batch():
 
     numpy.random.seed(7)
     import cupy
+
     cupy.random.seed(7)
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
@@ -142,18 +141,13 @@ def test_hybrid_batch():
     # Using abs following batched qr implementation on gpu which does not
     # preserve previous gauge fixing of sequential algorithm.
     for iw in range(nwalkers):
-        assert numpy.allclose(
-                abs(phi_batch[iw]),
-                abs(walkers[iw].phi[:, : system.nup])
-                )
+        assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, : system.nup]))
 
     phi_batch = cupy.array(walker_batch.phib)
     phi_batch = cupy.asnumpy(phi_batch)
     for iw in range(nwalkers):
-        assert numpy.allclose(
-                abs(phi_batch[iw]),
-                abs(walkers[iw].phi[:, system.nup :])
-                )
+        assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, system.nup :]))
+
 
 if __name__ == "__main__":
     test_hybrid_batch()

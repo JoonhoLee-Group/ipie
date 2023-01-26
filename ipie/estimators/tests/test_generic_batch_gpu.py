@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +27,10 @@ except:
     no_gpu = True
 
 
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_batch_gpu)
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch,
+    local_energy_single_det_batch_gpu,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.legacy.walkers.multi_det import MultiDetWalker
@@ -39,9 +40,13 @@ from ipie.propagation.force_bias import construct_force_bias_batch
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd, shaped_normal)
+from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.testing import (
+    generate_hamiltonian,
+    get_random_nomsd,
+    get_random_phmsd,
+    shaped_normal,
+)
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
@@ -49,6 +54,7 @@ from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 @pytest.mark.gpu
 def test_exchange_kernel_reduction():
     import cupy
+
     nchol = 101
     nocc = 31
     nwalk = 7
@@ -58,6 +64,7 @@ def test_exchange_kernel_reduction():
     exx = cupy.einsum("xjwi,xiwj->w", T, T)
     exx_test = cupy.zeros_like(exx)
     from ipie.estimators.kernels.gpu import exchange as kernels
+
     kernels.exchange_reduction(T, exx_test)
     assert numpy.allclose(exx_test, exx)
     nchol_left = nchol
@@ -82,6 +89,7 @@ def test_local_energy_single_det_batch():
     nwalkers = 10
     nsteps = 25
     from ipie.utils.backend import arraylib as xp
+
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     chol = chol.reshape((-1, nmo * nmo)).T.copy()
@@ -131,7 +139,11 @@ def test_local_energy_single_det_batch():
     )
 
     energies_einsum_chunks = local_energy_single_det_batch_gpu(
-        system, ham, walker_batch, trial, max_mem=1e-6,
+        system,
+        ham,
+        walker_batch,
+        trial,
+        max_mem=1e-6,
     )
     from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
 
@@ -149,6 +161,7 @@ def test_local_energy_single_det_batch():
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
     assert numpy.allclose(energies, energies_einsum_chunks)
+
 
 if __name__ == "__main__":
     test_local_energy_single_det_batch()

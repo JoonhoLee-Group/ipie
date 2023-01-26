@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +24,7 @@ import scipy.linalg
 
 from ipie.config import config
 
-from ipie.utils.pack import unpack_VHS_batch
+from ipie.utils.pack_numba import unpack_VHS_batch
 
 try:
     from ipie.utils.pack_numba_gpu import unpack_VHS_batch_gpu
@@ -273,13 +272,11 @@ class GenericContinuous(object):
 
         for icycle in range(handler.ssize - 1):
             synchronize()
-            handler.scomm.Isend(
-                xshifted_send, dest=handler.receivers[srank], tag=1
-            )
+            handler.scomm.Isend(xshifted_send, dest=handler.receivers[srank], tag=1)
             handler.scomm.Isend(VHS_send, dest=handler.receivers[srank], tag=2)
 
-            req1=handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
-            req2=handler.scomm.Irecv(VHS_recv, source=sender, tag=2)
+            req1 = handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
+            req2 = handler.scomm.Irecv(VHS_recv, source=sender, tag=2)
             req1.wait()
             req2.wait()
 
@@ -308,7 +305,7 @@ class GenericContinuous(object):
             dtype=VHS_recv.dtype,
         )
         # This should be abstracted by kernel import
-        if config.get_option('use_gpu'):
+        if config.get_option("use_gpu"):
             threadsperblock = 512
             nut = len(hamiltonian.sym_idx_i)
             blockspergrid = math.ceil(self.nwalkers * nut / threadsperblock)
