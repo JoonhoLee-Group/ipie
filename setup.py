@@ -1,30 +1,20 @@
 import sys
 
-import numpy
 from setuptools import find_packages, setup
-from setuptools.extension import Extension
 
 try:
     from pip._internal.req import parse_requirements
 except ImportError:
     from pip.req import parse_requirements
 
-from Cython.Build import cythonize
-
-extensions = [
-    Extension(
-        "ipie.legacy.estimators.ueg_kernels",
-        ["ipie/legacy/estimators/ueg_kernels.pyx"],
-        extra_compile_args=["-O3"],
-        include_dirs=[numpy.get_include()],
-    ),
-    Extension(
-        "ipie.propagation.wicks_kernels",
-        ["ipie/propagation/wicks_kernels.pyx"],
-        extra_compile_args=["-O3"],
-        include_dirs=[numpy.get_include()],
-    ),
-]
+# extensions = [
+    # Extension(
+        # "ipie.legacy.estimators.ueg_kernels",
+        # ["ipie/legacy/estimators/ueg_kernels.pyx"],
+        # extra_compile_args=["-O3"],
+        # include_dirs=[numpy.get_include()],
+    # ),
+# ]
 
 
 def load_requirements(fname):
@@ -59,9 +49,9 @@ setup(
     ],
     install_requires=load_requirements("requirements.txt"),
     long_description=open("README.rst").read(),
-    ext_modules=cythonize(
-        extensions,
-        include_path=[numpy.get_include()],
-        compiler_directives={"language_level": sys.version_info[0]},
-    ),
+    # ext_modules=cythonize(
+        # extensions,
+        # include_path=[numpy.get_include()],
+        # compiler_directives={"language_level": sys.version_info[0]},
+    # ),
 )

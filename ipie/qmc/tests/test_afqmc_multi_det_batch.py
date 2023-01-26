@@ -28,7 +28,7 @@ from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
-from ipie.legacy.qmc import AFQMC
+from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
