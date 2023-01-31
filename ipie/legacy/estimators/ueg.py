@@ -1,14 +1,13 @@
 import time
 
 import numpy
-import scipy.linalg
 
-try:
-    from ipie.legacy.estimators.ueg_kernels import (
-        build_J_opt, build_K_opt, coulomb_greens_function_per_qvec,
-        exchange_greens_function_per_qvec)
-except ImportError:
-    pass
+from ipie.legacy.estimators.ueg_kernels import (
+    build_J_opt,
+    build_K_opt,
+    coulomb_greens_function_per_qvec,
+    exchange_greens_function_per_qvec,
+)
 
 
 def exchange_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gprod, G):

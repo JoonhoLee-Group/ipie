@@ -8,13 +8,19 @@ from ipie.analysis.extraction import extract_mixed_estimates, extract_rdm
 from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.qmc.afqmc import AFQMC
-from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
-from ipie.qmc.calc import setup_calculation
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
 
+    _no_cython = False
+except ModuleNotFoundError:
+    _no_cython = True
+
+
+@pytest.mark.skipif(_no_cython, reason="No cython module found")
 @pytest.mark.driver
 def test_constructor():
     options = {
@@ -42,6 +48,8 @@ def test_constructor():
         "nup": 7,
         "ndown": 7,
     }
+    from ipie.legacy.systems.ueg import UEG
+
     system = UEG(model)
     ham = HamUEG(system, model)
     trial = HartreeFock(system, ham, {})
@@ -53,6 +61,7 @@ def test_constructor():
     assert afqmc.trial.energy.real == pytest.approx(1.7796083856572522)
 
 
+@pytest.mark.skipif(_no_cython, reason="No cython module found")
 @pytest.mark.driver
 def test_ueg():
     # FDM Updated benchmark to make run faster, old setup is commented out.
@@ -109,6 +118,7 @@ def test_ueg():
     assert ehy.imag == pytest.approx(0.192627296991027)
 
 
+@pytest.mark.skipif(_no_cython, reason="No cython module found")
 @pytest.mark.driver
 def test_hubbard():
     options = {

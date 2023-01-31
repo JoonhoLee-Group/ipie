@@ -5,14 +5,16 @@ import pytest
 from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_data
-from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
-from ipie.legacy.systems.ueg import UEG
-from ipie.legacy.trial_wavefunction.hartree_fock import HartreeFock
-from ipie.qmc.calc import setup_calculation
-from ipie.systems.generic import Generic
-from ipie.utils.testing import generate_hamiltonian
+
+try:
+    from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
+
+    _no_cython = False
+except ModuleNotFoundError:
+    _no_cython = True
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.driver
 def test_ueg():
     options = {

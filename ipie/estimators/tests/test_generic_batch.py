@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +19,14 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function_batch import \
-    greens_function_single_det_batch
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_rhf_batch,
-                                             local_energy_single_det_uhf_batch)
+from ipie.estimators.greens_function_batch import greens_function_single_det_batch
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch,
+    local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.local_energy import \
-    local_energy_generic_cholesky_opt
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
@@ -36,9 +35,8 @@ from ipie.propagation.overlap import calc_overlap_single_det_batch
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
+from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
 from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 

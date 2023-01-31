@@ -35,7 +35,7 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict, is_cupy
 from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 

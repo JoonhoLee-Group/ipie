@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,4 +31,17 @@ def unpack_VHS_batch(idx_i, idx_j, VHS_packed, VHS):
             VHS[iw, idx_i[i], idx_j[i]] = VHS_packed[iw, i]
             VHS[iw, idx_j[i], idx_i[i]] = VHS_packed[iw, i]
 
+    return
+
+
+@jit(nopython=True, fastmath=True)
+def pack_cholesky(idx_i, idx_j, Lchol_packed, Lchol):
+
+    nchol = Lchol.shape[2]
+    nbsf = Lchol.shape[0]
+    dim_upper_triangle = nbsf * (nbsf + 1) // 2
+
+    for i in range(dim_upper_triangle):
+        for x in range(nchol):
+            Lchol_packed[i, x] = Lchol[idx_i[i], idx_j[i], x]
     return

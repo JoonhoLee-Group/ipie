@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,25 +22,29 @@ from mpi4py import MPI
 
 try:
     import cupy
+
     no_gpu = not cupy.is_available()
 except:
     no_gpu = True
 
 from ipie.estimators.generic import local_energy_cholesky_opt
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_batch_gpu,
-                                             local_energy_single_det_rhf_batch,
-                                             local_energy_single_det_uhf_batch)
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch,
+    local_energy_single_det_batch_gpu,
+    local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch,
+)
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
-    local_energy_single_det_uhf_batch_chunked_gpu)
+    local_energy_single_det_uhf_batch_chunked_gpu,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict, is_cupy
 from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
@@ -137,6 +140,7 @@ def test_generic_chunked_gpu():
 
     assert numpy.allclose(energies_einsum, energies_chunked)
     assert numpy.allclose(energies_einsum, energies_chunked_low_mem)
+
 
 if __name__ == "__main__":
     test_generic_chunked_gpu()

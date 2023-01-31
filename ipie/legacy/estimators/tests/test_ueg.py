@@ -2,13 +2,20 @@ import numpy
 import pytest
 
 from ipie.legacy.estimators.greens_function import gab
-from ipie.legacy.estimators.ueg import fock_ueg, local_energy_ueg
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.systems.ueg import UEG
 from ipie.utils.misc import timeit
 from ipie.utils.testing import get_random_wavefunction
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg, local_energy_ueg
 
+    _no_cython = False
+except ModuleNotFoundError:
+    _no_cython = True
+
+
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_fock_build():
     sys = UEG({"rs": 2.0, "ecut": 2, "nup": 7, "ndown": 7, "thermal": True})
@@ -33,6 +40,7 @@ def test_fock_build():
     assert numpy.linalg.norm(fock - F) == pytest.approx(0.0)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_build_J():
     # sys = UEG({'rs': 2.0, 'ecut': 2.0, 'nup': 7, 'ndown': 7, 'thermal': True})
@@ -82,6 +90,7 @@ def test_build_J():
     assert numpy.linalg.norm(J1 - J2) == pytest.approx(0.0)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_build_K():
     sys = UEG({"rs": 2.0, "ecut": 2.0, "nup": 7, "ndown": 7, "thermal": True})

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,17 +22,15 @@ import numpy
 import pytest
 from mpi4py import MPI
 
-from ipie.analysis.extraction import extract_mixed_estimates, extract_rdm, extract_observable
+from ipie.analysis.extraction import extract_mixed_estimates, extract_observable
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.legacy.qmc.afqmc import AFQMC
-from ipie.legacy.trial_wavefunction.multi_slater import \
-    MultiSlater as LegacyMultiSlater
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.qmc.calc import setup_calculation
-from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.pack import pack_cholesky
+from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
+from ipie.legacy.qmc.afqmc import AFQMC
+from ipie.systems.generic import Generic
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 
 steps = 25
@@ -65,9 +62,8 @@ def test_generic_multi_det_batch():
         "estimates": {
             "filename": "estimates.test_generic_multi_det_batch.h5",
             "observables": {
-                "energy": {
-                    },
-                }
+                "energy": {},
+            },
         },
         "trial": {"name": "MultiSlater"},
         "walkers": {"population_control": "pair_branch"},
@@ -91,8 +87,9 @@ def test_generic_multi_det_batch():
     )
 
     wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(sys, ham, wfn, init=init, options={'wicks': False,
-        'optimized': False})
+    trial = MultiSlater(
+        sys, ham, wfn, init=init, options={"wicks": False, "optimized": False}
+    )
     if ndets == 1:
         trial.psi = trial.psi[0]
         trial.half_rotate(sys, ham)
@@ -112,10 +109,12 @@ def test_generic_multi_det_batch():
         afqmc.trial,
         afqmc.psi.walkers_batch,
     )
-    numer_batch = afqmc.estimators['energy']['ENumer']
-    denom_batch = afqmc.estimators['energy']['EDenom']
+    numer_batch = afqmc.estimators["energy"]["ENumer"]
+    denom_batch = afqmc.estimators["energy"]["EDenom"]
 
-    data_batch = extract_observable("estimates.test_generic_multi_det_batch.h5", 'energy')
+    data_batch = extract_observable(
+        "estimates.test_generic_multi_det_batch.h5", "energy"
+    )
 
     numpy.random.seed(seed)
     options = {
@@ -201,7 +200,7 @@ def test_generic_multi_det_batch():
         numpy.mean(data.EHybrid.values[:-1].real)
     )
     # assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(
-        # numpy.mean(data.Overlap.values[:-1].real)
+    # numpy.mean(data.Overlap.values[:-1].real)
     # )
 
 

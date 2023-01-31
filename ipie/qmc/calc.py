@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,9 +71,7 @@ def get_driver(options, comm):
     batched = get_input_value(qmc_opts, "batched", default=True, verbose=verbosity)
 
     if beta is not None or batched == False:
-        from ipie.legacy.qmc.calc import get_driver as legacy_get_driver
-
-        return legacy_get_driver(options, comm)
+        raise ValueError("Trying to use legacy features which aren't supported.")
     else:
         afqmc = AFQMCBatch(
             comm, options=options, parallel=comm.size > 1, verbose=verbosity
@@ -86,11 +83,11 @@ def get_driver(options, comm):
 def build_afqmc_driver(
     comm: mpi4py.MPI.Intracomm,
     nelec: tuple,
-    wavefunction_file: str="wavefunction.h5",
-    hamiltonian_file: str="hamiltonian.h5",
-    num_walkers_per_task: int=10,
-    estimator_filename: str='estimates.0.h5',
-    verbosity: int=0,
+    wavefunction_file: str = "wavefunction.h5",
+    hamiltonian_file: str = "hamiltonian.h5",
+    num_walkers_per_task: int = 10,
+    estimator_filename: str = "estimates.0.h5",
+    verbosity: int = 0,
 ):
     if comm.rank != 0:
         verbosity = 0

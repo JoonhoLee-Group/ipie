@@ -1,8 +1,10 @@
 import sys
+import os
 
 import numpy
 from setuptools import find_packages, setup
 from setuptools.extension import Extension
+
 
 try:
     from pip._internal.req import parse_requirements
@@ -11,26 +13,26 @@ except ImportError:
 
 from Cython.Build import cythonize
 
-extensions = [
-    Extension(
-        "ipie.legacy.estimators.ueg_kernels",
-        ["ipie/legacy/estimators/ueg_kernels.pyx"],
-        extra_compile_args=["-O3"],
-        include_dirs=[numpy.get_include()],
-    ),
-    Extension(
-        "ipie.propagation.wicks_kernels",
-        ["ipie/propagation/wicks_kernels.pyx"],
-        extra_compile_args=["-O3"],
-        include_dirs=[numpy.get_include()],
-    ),
-    Extension(
-        "ipie.utils.pack",
-        ["ipie/utils/pack.pyx"],
-        extra_compile_args=["-O3"],
-        include_dirs=[numpy.get_include()],
-    ),
-]
+
+# Giant hack to enable legacy code for CI
+_build_legacy_extension = os.environ.get("BUILD_LEGACY_IPIE", False)
+if _build_legacy_extension:
+    extensions = [
+        Extension(
+            "ipie.legacy.estimators.ueg_kernels",
+            ["ipie/legacy/estimators/ueg_kernels.pyx"],
+            extra_compile_args=["-O3"],
+            include_dirs=[numpy.get_include()],
+        ),
+    ]
+    cythonized_extension = cythonize(
+        extensions,
+        include_path=[numpy.get_include()],
+        compiler_directives={"language_level": sys.version_info[0]},
+    )
+else:
+    extensions = []
+    cythonized_extension = []
 
 
 def load_requirements(fname):
@@ -63,11 +65,7 @@ setup(
         "tools/fcidump_to_afqmc.py",
         "tools/pyscf/pyscf_to_ipie.py",
     ],
+    ext_modules=cythonized_extension,
     install_requires=load_requirements("requirements.txt"),
     long_description=open("README.rst").read(),
-    ext_modules=cythonize(
-        extensions,
-        include_path=[numpy.get_include()],
-        compiler_directives={"language_level": sys.version_info[0]},
-    ),
 )
