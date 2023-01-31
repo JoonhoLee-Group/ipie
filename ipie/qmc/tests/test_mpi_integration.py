@@ -54,7 +54,6 @@ _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 _test_dirs = [
     "h10_cc-pvtz_batched",
     "h10_cc-pvtz_pair_branch",
-    "neon_cc-pvdz_rhf",
     "benzene_cc-pvdz_batched",  # disabling
     "benzene_cc-pvdz_chunked",
 ]
@@ -64,6 +63,7 @@ _tests = [
 ]
 _legacy_test_dirs = [
     "4x4_hubbard_discrete",
+    "neon_cc-pvdz_rhf",
     "ft_4x4_hubbard_discrete",
     "ft_ueg_ecut1.0_rs1.0",
     "ueg_ecut2.5_rs2.0_ne14",
@@ -85,7 +85,7 @@ def compare_test_data(ref, test):
             raise RuntimeError("Issue with test vs reference data")
 
 
-def run_test_system(input_file, benchmark_file):
+def run_test_system(input_file, benchmark_file, legacy_job=False):
     comm = MPI.COMM_WORLD
     input_dict = read_input(input_file, comm)
     if input_dict["system"].get("integrals") is not None:
@@ -97,8 +97,7 @@ def run_test_system(input_file, benchmark_file):
         input_dict["hamiltonian"]["integrals"] = input_file[:-10] + "afqmc.h5"
         input_dict["trial"]["filename"] = input_file[:-10] + "afqmc.h5"
     input_dict["estimators"]["filename"] = output_file
-    if input_dict["system"]["name"] in ["UEG", "Hubbard"]:
-
+    if legacy_job:
         from ipie.legacy.qmc.calc import get_driver as get_legacy_driver
 
         afqmc = get_legacy_driver(input_dict, comm)
@@ -133,8 +132,8 @@ def test_system_mpi(input_dir, benchmark_dir):
 @pytest.mark.skipif(not have_pytest_mpi, reason="Test requires pytest-mpi plugin.")
 @pytest.mark.skipif(_no_cython, reason="Test requires legacy cython code.")
 @pytest.mark.parametrize("input_dir, benchmark_dir", _legacy_tests)
-def test_legacy_system_(input_dir, benchmark_dir):
-    run_test_system(input_dir, benchmark_dir)
+def test_legacy_system_mpi(input_dir, benchmark_dir):
+    run_test_system(input_dir, benchmark_dir, legacy_job=True)
 
 
 def teardown_module():
