@@ -21,6 +21,7 @@ import time
 import numpy
 from numba import jit
 
+from ipie.config import config
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch_gpu,
@@ -62,7 +63,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
     """
 
     if walker_batch.name == "SingleDetWalkerBatch":
-        if is_cupy(walker_batch.phia):
+        if config.get_option("use_gpu"):
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked_gpu(
                     system, hamiltonian, walker_batch, trial

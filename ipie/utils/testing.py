@@ -184,9 +184,9 @@ def get_random_phmsd_opt(
     if dist is None:
         # want to evenly distribute determinants among N excitation levels
         ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
-        dist_a = [ndet_level] * nup
+        dist_a = [ndet_level] * (nup + 1)
         ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
-        dist_b = [ndet_level] * ndown
+        dist_b = [ndet_level] * (ndown + 1)
     else:
         assert len(dist) == 2
         dist_a, dist_b = dist
@@ -202,11 +202,11 @@ def get_random_phmsd_opt(
     vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
     # dets = [(d0a, d0b)]
     dets = []
-    for ialpha in range(0, nup):
+    for ialpha in range(0, nup+1):
         oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
         if oa is None:
             continue
-        for ibeta in range(0, ndown):
+        for ibeta in range(0, ndown+1):
             ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
             if ob is None:
                 continue

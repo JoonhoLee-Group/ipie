@@ -23,13 +23,8 @@ import pytest
 from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_observable, extract_mixed_estimates
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.systems.generic import Generic
 from ipie.utils.testing import build_driver_test_instance
 from ipie.utils.legacy_testing import build_legacy_driver_instance
-from ipie.utils.misc import dotdict
 
 steps = 25
 blocks = 7

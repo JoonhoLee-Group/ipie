@@ -2,15 +2,13 @@ from mpi4py import MPI
 import numpy as np
 import pytest
 
-from ipie.utils.testing import (
-        get_random_phmsd_opt,
-        get_random_sys_ham
-        )
+from ipie.utils.testing import get_random_phmsd_opt, get_random_sys_ham
 from ipie.trial_wavefunction.particle_hole import (
-        ParticleHoleWicks,
-        ParticleHoleWicksSlow,
-        ParticleHoleWicksNonChunked,
-        )
+    ParticleHoleWicks,
+    ParticleHoleWicksSlow,
+    ParticleHoleWicksNonChunked,
+)
+
 
 @pytest.mark.unit
 def test_wicks_slow():
@@ -19,10 +17,10 @@ def test_wicks_slow():
     np.random.seed(7)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
     trial = ParticleHoleWicksSlow(
-            wavefunction,
-            (nalpha, nbeta),
-            nbasis,
-            )
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+    )
     assert trial.nelec == (nalpha, nbeta)
     assert trial.nbasis == nbasis
     assert trial.num_dets == len(trial.occa)
@@ -41,12 +39,13 @@ def test_wicks_slow():
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
     trial.half_rotate(sys, ham, comm=comm)
-    assert trial._rchola.shape == (naux, nbasis*nalpha)
-    assert trial._rcholb.shape == (naux, nbasis*nbeta)
+    assert trial._rchola.shape == (naux, nbasis * nalpha)
+    assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)
     assert trial._rH1b.shape == (nbeta, nbasis)
-    assert trial._rchola_act.shape == (naux, nbasis*trial.nact)
-    assert trial._rcholb_act.shape == (naux, nbasis*trial.nact)
+    assert trial._rchola_act.shape == (naux, nbasis * trial.nact)
+    assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)
+
 
 @pytest.mark.unit
 def test_wicks_opt():
@@ -55,10 +54,10 @@ def test_wicks_opt():
     nalpha, nbeta = (5, 5)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
     trial = ParticleHoleWicksNonChunked(
-            wavefunction,
-            (nalpha, nbeta),
-            nbasis,
-            )
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+    )
     assert trial.nelec == (nalpha, nbeta)
     assert trial.nbasis == nbasis
     assert trial.num_dets == len(trial.occa)
@@ -86,12 +85,13 @@ def test_wicks_opt():
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
     trial.half_rotate(sys, ham, comm=comm)
-    assert trial._rchola.shape == (naux, nbasis*nalpha)
-    assert trial._rcholb.shape == (naux, nbasis*nbeta)
+    assert trial._rchola.shape == (naux, nbasis * nalpha)
+    assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)
     assert trial._rH1b.shape == (nbeta, nbasis)
-    assert trial._rchola_act.shape == (naux, nbasis*trial.nact)
-    assert trial._rcholb_act.shape == (naux, nbasis*trial.nact)
+    assert trial._rchola_act.shape == (naux, nbasis * trial.nact)
+    assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)
+
 
 @pytest.mark.unit
 def test_wicks_opt_chunked():
@@ -100,11 +100,11 @@ def test_wicks_opt_chunked():
     nalpha, nbeta = (5, 5)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
     trial = ParticleHoleWicks(
-            wavefunction,
-            (nalpha, nbeta),
-            nbasis,
-            num_det_chunks=10,
-            )
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        num_det_chunks=10,
+    )
     assert trial.nelec == (nalpha, nbeta)
     assert trial.nbasis == nbasis
     assert trial.num_dets == len(trial.occa)
@@ -115,7 +115,7 @@ def test_wicks_opt_chunked():
         for iex, ex_list in enumerate(trial.cre_ex_a_chunk[ichunk]):
             num_dets += len(ex_list)
     assert num_dets == trial.num_dets
-    trial.num_dets = 200
+    trial.num_dets = 20
     trial.build()
     num_dets = 1
     for ichunk in range(trial.num_det_chunks):
@@ -141,9 +141,9 @@ def test_wicks_opt_chunked():
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
     trial.half_rotate(sys, ham, comm=comm)
-    assert trial._rchola.shape == (naux, nbasis*nalpha)
-    assert trial._rcholb.shape == (naux, nbasis*nbeta)
+    assert trial._rchola.shape == (naux, nbasis * nalpha)
+    assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)
     assert trial._rH1b.shape == (nbeta, nbasis)
-    assert trial._rchola_act.shape == (naux, nbasis*trial.nact)
-    assert trial._rcholb_act.shape == (naux, nbasis*trial.nact)
+    assert trial._rchola_act.shape == (naux, nbasis * trial.nact)
+    assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)

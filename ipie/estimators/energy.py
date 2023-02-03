@@ -18,9 +18,45 @@
 import numpy as np
 
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.estimators.local_energy_batch import local_energy_batch
+from ipie.estimators.local_energy_batch import (
+    local_energy_batch,
+    local_energy_multi_det_trial_batch,
+)
 from ipie.utils.io import get_input_value
 from ipie.utils.backend import arraylib as xp
+
+from ipie.trial_wavefunction.particle_hole import (
+    ParticleHoleNaive,
+    ParticleHoleWicks,
+    ParticleHoleWicksNonChunked,
+    ParticleHoleWicksSlow,
+)
+from ipie.trial_wavefunction.single_det import SingleDet
+
+from ipie.estimators.local_energy_wicks import (
+    local_energy_multi_det_trial_wicks_batch,
+    local_energy_multi_det_trial_wicks_batch_opt,
+    local_energy_multi_det_trial_wicks_batch_opt_chunked,
+)
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch_gpu,
+    local_energy_single_det_rhf_batch,
+    local_energy_single_det_uhf_batch,
+)
+from ipie.estimators.local_energy_sd_chunked import (
+    local_energy_single_det_uhf_batch_chunked,
+    local_energy_single_det_uhf_batch_chunked_gpu,
+)
+
+
+# Single dispatch
+_dispatcher = {
+    ParticleHoleNaive: local_energy_multi_det_trial_batch,
+    ParticleHoleWicks: local_energy_multi_det_trial_wicks_batch_opt_chunked,
+    ParticleHoleWicksNonChunked: local_energy_multi_det_trial_wicks_batch_opt,
+    ParticleHoleWicksSlow: local_energy_multi_det_trial_wicks_batch,
+    SingleDet: local_energy_batch,
+}
 
 
 class EnergyEstimator(EstimatorBase):
@@ -58,7 +94,7 @@ class EnergyEstimator(EstimatorBase):
     ):
         trial_wavefunction.calc_greens_function(walker_batch)
         # Need to be able to dispatch here
-        energy = local_energy_batch(
+        energy = _dispatcher[type(trial_wavefunction)](
             system, hamiltonian, walker_batch, trial_wavefunction
         )
         self._data["ENumer"] = xp.sum(walker_batch.weight * energy[:, 0].real)
