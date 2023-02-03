@@ -22,22 +22,9 @@ import numpy
 import pytest
 from mpi4py import MPI
 
-<<<<<<< HEAD
 from ipie.utils.testing import build_driver_test_instance
 from ipie.utils.legacy_testing import build_legacy_driver_instance
 from ipie.analysis.extraction import extract_observable, extract_mixed_estimates
-=======
-from ipie.analysis.extraction import extract_mixed_estimates, extract_observable
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
-from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater as LegacyMultiSlater
-from ipie.legacy.qmc.afqmc import AFQMC
-from ipie.systems.generic import Generic
-from ipie.utils.pack_numba import pack_cholesky
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
->>>>>>> develop
 
 steps = 25
 blocks = 5
@@ -77,59 +64,6 @@ driver_options = {
 
 @pytest.mark.driver
 def test_generic_multi_det_batch():
-<<<<<<< HEAD
-=======
-    options = {
-        "verbosity": 0,
-        "get_sha1": False,
-        "qmc": {
-            "timestep": 0.005,
-            "steps": steps,
-            "nwalkers_per_task": nwalkers,
-            "stabilise_freq": stabilise_freq,
-            "pop_control_freq": pop_control_freq,
-            "blocks": blocks,
-            "rng_seed": seed,
-            "batched": True,
-        },
-        "estimates": {
-            "filename": "estimates.test_generic_multi_det_batch.h5",
-            "observables": {
-                "energy": {},
-            },
-        },
-        "trial": {"name": "MultiSlater"},
-        "walkers": {"population_control": "pair_branch"},
-    }
-    numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    chol = chol.reshape((-1, nmo * nmo)).T.copy()
-
-    nchol = chol.shape[-1]
-    chol = chol.reshape((nmo, nmo, nchol))
-
-    idx = numpy.triu_indices(nmo)
-    cp_shape = (nmo * (nmo + 1) // 2, chol.shape[-1])
-    chol_packed = numpy.zeros(cp_shape, dtype=chol.dtype)
-    pack_cholesky(idx[0], idx[1], chol_packed, chol)
-    chol = chol.reshape((nmo * nmo, nchol))
-
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
-    )
-
-    wfn, init = get_random_phmsd(sys.nup, sys.ndown, ham.nbasis, ndet=ndets, init=True)
-    trial = MultiSlater(
-        sys, ham, wfn, init=init, options={"wicks": False, "optimized": False}
-    )
-    if ndets == 1:
-        trial.psi = trial.psi[0]
-        trial.half_rotate(sys, ham)
-
-    numpy.random.seed(seed)
-
->>>>>>> develop
     comm = MPI.COMM_WORLD
     afqmc = build_driver_test_instance(
         nelec,

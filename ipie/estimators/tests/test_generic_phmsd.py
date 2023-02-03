@@ -646,13 +646,8 @@ def test_kernels_gf():
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
     trial = ParticleHoleWicksNonChunked(
         wfn_2,
-<<<<<<< HEAD
         nelec,
         nmo,
-=======
-        init=init,
-        options={"optimized": False},
->>>>>>> develop
     )
     trial.build()
 
@@ -669,16 +664,6 @@ def test_kernels_gf():
     trial.calc_greens_function(walker_batch)
 
     from ipie.estimators.kernels.cpu import wicks as wk
-<<<<<<< HEAD
-=======
-    from ipie.estimators.local_energy_wicks import (
-        fill_opp_spin_factors_batched_doubles_chol,
-        fill_opp_spin_factors_batched_singles,
-        fill_opp_spin_factors_batched_triples_chol,
-        fill_same_spin_contribution_batched_contr,
-        get_same_spin_double_contribution_batched_contr,
-    )
->>>>>>> develop
 
     ndets = trial.num_dets
     nchol = ham.nchol
@@ -1417,18 +1402,11 @@ def test_phmsd_local_energy_active_space_polarised():
         )
         walker_batch_test_chunked.reortho()
 
-<<<<<<< HEAD
     greens_function_multi_det(walker_batch, trial, build_full=True)
     greens_function_multi_det_wicks_opt(walker_batch_test, trial_test, build_full=True)
     greens_function_multi_det_wicks_opt(
         walker_batch_test_chunked, trial_test_chunked, build_full=True
     )
-=======
-    from ipie.propagation.overlap import compute_determinants_batched
-
-    greens_function_multi_det(walker_batch, trial)
-    greens_function_multi_det_wicks_opt(walker_batch_test, trial_test)
->>>>>>> develop
     assert numpy.allclose(walker_batch.Ga, walker_batch_test.Ga)
     assert numpy.allclose(walker_batch.Gb, walker_batch_test.Gb)
     assert numpy.allclose(walker_batch.Ga, walker_batch_test_chunked.Ga)
@@ -1475,7 +1453,6 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     occb[2] = tmp
     core = [0, 1]
     ci, occa, occb = wfn
-<<<<<<< HEAD
     with_core_a = numpy.array(
         [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
     )
@@ -1488,15 +1465,6 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         with_core_a[::nskip],
         with_core_b[::nskip],
     )  # Get high excitation determinants too
-=======
-    # with_core_a = numpy.array(
-    # [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
-    # )
-    # with_core_b = numpy.array(
-    # [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
-    # )
-    nskip = 10
->>>>>>> develop
     wfn_2 = (
         ci[::nskip],
         occa[::nskip],

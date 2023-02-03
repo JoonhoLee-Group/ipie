@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from typing import Tuple, Union
 
-from ipie.legacy.qmc import AFQMC
+from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater

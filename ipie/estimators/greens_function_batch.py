@@ -168,11 +168,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     ndown = walker_batch.ndown
 
     ovlp_a = xp.einsum(
-<<<<<<< HEAD
         "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
-=======
-        "wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True
->>>>>>> develop
     )
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
