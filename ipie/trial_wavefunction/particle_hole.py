@@ -416,19 +416,22 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 f"# Using first {self.num_dets_for_props} determinants for evaluation."
             )
         start = time.time()
-        assert wicks_helper is not None
-        dets = wicks_helper.encode_dets(self.occa, self.occb)
-        phases = wicks_helper.convert_phase(self.occa, self.occb)
-        _keep = self.num_dets_for_props
-        self.G = wicks_helper.compute_opdm(
-            phases[:_keep] * self.coeffs[:_keep].copy(),
-            dets[:_keep],
-            self.nbasis,
-            sum(self.nelec),
-        )
-        end = time.time()
-        if self.verbose:
-            print("# Time to compute 1-RDM: {} s".format(end - start))
+        if _use_wicks_helper:
+            assert wicks_helper is not None
+            dets = wicks_helper.encode_dets(self.occa, self.occb)
+            phases = wicks_helper.convert_phase(self.occa, self.occb)
+            _keep = self.num_dets_for_props
+            self.G = wicks_helper.compute_opdm(
+                phases[:_keep] * self.coeffs[:_keep].copy(),
+                dets[:_keep],
+                self.nbasis,
+                sum(self.nelec),
+            )
+            end = time.time()
+            if self.verbose:
+                print("# Time to compute 1-RDM: {} s".format(end - start))
+        else:
+            self.G = self.compute_1rdm(self.nbasis)
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det_wicks_opt(walkers, self)
@@ -438,6 +441,56 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
+
+    def compute_1rdm(self, nbasis):
+        assert self.ortho_expansion == True
+        denom = np.sum(self.coeffs.conj() * self.coeffs)
+        Pa = np.zeros((nbasis, nbasis), dtype=np.complex128)
+        Pb = np.zeros((nbasis, nbasis), dtype=np.complex128)
+        P = [Pa, Pb]
+
+        def map_orb(orb, nbasis):
+            """Map spin orbital to spatial index."""
+            if orb // nbasis == 0:
+                s = 0
+                ix = orb
+            else:
+                s = 1
+                ix = orb - nbasis
+            return ix, s
+
+        for idet in range(self.num_dets):
+            di = self.spin_occs[idet]
+            # zero excitation case
+            for iorb in range(len(di)):
+                ii, spin_ii = map_orb(di[iorb], nbasis)
+                P[spin_ii][ii, ii] += self.coeffs[idet].conj() * self.coeffs[idet]
+            for jdet in range(idet + 1, self.num_dets):
+                dj = self.spin_occs[jdet]
+                from_orb = list(set(dj) - set(di))
+                to_orb = list(set(di) - set(dj))
+                nex = len(from_orb)
+                if nex > 1:
+                    continue
+                elif nex == 1:
+                    perm = get_perm(from_orb, to_orb, di, dj)
+                    if perm:
+                        phase = -1
+                    else:
+                        phase = 1
+                    ii, si = map_orb(from_orb[0], nbasis)
+                    aa, sa = map_orb(to_orb[0], nbasis)
+                    if si == sa:
+                        P[si][aa, ii] += (
+                            self.coeffs[jdet].conj() * self.coeffs[idet] * phase
+                        )
+                        P[si][ii, aa] += (
+                            self.coeffs[jdet] * self.coeffs[idet].conj() * phase
+                        )
+        P[0] /= denom
+        P[1] /= denom
+
+        return P
 
 
 # No chunking no excitation data structure
