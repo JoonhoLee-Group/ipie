@@ -18,7 +18,7 @@ class NOCI(TrialWavefunctionBase):
         slater_mats = wavefunction[1]
         self.psi = slater_mats
         self._num_dets = len(self.psi)
-        self._max_num_dets = self._num_dets
+        self._max_num_dets = self.num_dets
         imag_norm = np.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
         if imag_norm <= 1e-8:
             self.psi = np.array(self.psi.real, dtype=np.float64)

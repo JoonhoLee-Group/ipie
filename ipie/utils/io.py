@@ -119,6 +119,8 @@ def determine_wavefunction_type(filename: str):
         return "noci"
     elif "psi_T_alpha" in keys:
         return "single_determinant"
+    elif "Wavefunction" in keys:
+        return "qmcpack"
     else:
         raise RuntimeError("Unknown wavefunction.")
 
