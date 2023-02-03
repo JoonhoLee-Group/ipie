@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +34,13 @@ try:
 except ImportError:
     have_pytest_mpi = False
 
+try:
+    from ipie.legacy.qmc.calc import get_driver as get_legacy_driver
+
+    _no_cython = False
+except:
+    _no_cython = True
+
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
@@ -46,19 +52,25 @@ _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 # glob is a bit dangerous.
 # _test_dirs = [d for d in glob.glob(_data_dir+'/*') if os.path.isdir(d)]
 _test_dirs = [
-    "4x4_hubbard_discrete",
-    "ft_4x4_hubbard_discrete",
-    "ft_ueg_ecut1.0_rs1.0",
-    "ueg_ecut2.5_rs2.0_ne14",
     "h10_cc-pvtz_batched",
     "h10_cc-pvtz_pair_branch",
-    "neon_cc-pvdz_rhf",
     "benzene_cc-pvdz_batched",  # disabling
     "benzene_cc-pvdz_chunked",
 ]
 _tests = [
     (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
     for d in _test_dirs
+]
+_legacy_test_dirs = [
+    "4x4_hubbard_discrete",
+    "neon_cc-pvdz_rhf",
+    "ft_4x4_hubbard_discrete",
+    "ft_ueg_ecut1.0_rs1.0",
+    "ueg_ecut2.5_rs2.0_ne14",
+]
+_legacy_tests = [
+    (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
+    for d in _legacy_test_dirs
 ]
 
 
@@ -73,7 +85,7 @@ def compare_test_data(ref, test):
             raise RuntimeError("Issue with test vs reference data")
 
 
-def run_test_system(input_file, benchmark_file):
+def run_test_system(input_file, benchmark_file, legacy_job=False):
     comm = MPI.COMM_WORLD
     input_dict = read_input(input_file, comm)
     if input_dict["system"].get("integrals") is not None:
@@ -85,7 +97,12 @@ def run_test_system(input_file, benchmark_file):
         input_dict["hamiltonian"]["integrals"] = input_file[:-10] + "afqmc.h5"
         input_dict["trial"]["filename"] = input_file[:-10] + "afqmc.h5"
     input_dict["estimators"]["filename"] = output_file
-    afqmc = get_driver(input_dict, comm)
+    if legacy_job:
+        from ipie.legacy.qmc.calc import get_driver as get_legacy_driver
+
+        afqmc = get_legacy_driver(input_dict, comm)
+    else:
+        afqmc = get_driver(input_dict, comm)
     afqmc.run(comm=comm)
     if comm.rank == 0:
         with open(benchmark_file, "r") as f:
@@ -108,6 +125,15 @@ def run_test_system(input_file, benchmark_file):
 @pytest.mark.parametrize("input_dir, benchmark_dir", _tests)
 def test_system_mpi(input_dir, benchmark_dir):
     run_test_system(input_dir, benchmark_dir)
+
+
+@pytest.mark.mpi
+@pytest.mark.skipif(serial_test, reason="Test should be run on multiple cores.")
+@pytest.mark.skipif(not have_pytest_mpi, reason="Test requires pytest-mpi plugin.")
+@pytest.mark.skipif(_no_cython, reason="Test requires legacy cython code.")
+@pytest.mark.parametrize("input_dir, benchmark_dir", _legacy_tests)
+def test_legacy_system_mpi(input_dir, benchmark_dir):
+    run_test_system(input_dir, benchmark_dir, legacy_job=True)
 
 
 def teardown_module():

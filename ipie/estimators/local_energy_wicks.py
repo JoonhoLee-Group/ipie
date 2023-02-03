@@ -22,25 +22,14 @@ import numpy
 from numba import jit
 
 from ipie.estimators.generic import local_energy_generic_cholesky
-from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch_einsum,
-    local_energy_single_det_uhf_batch,
-    two_body_energy_uhf,
-)
 from ipie.propagation.overlap import (
     compute_determinants_batched,
     get_overlap_one_det_wicks,
+    get_cofactor_matrix_batched,
+    get_cofactor_matrix_4_batched,
 )
 from ipie.utils.linalg import minor_mask, minor_mask4
 
-try:
-    from ipie.propagation.wicks_kernels import (
-        get_cofactor_matrix_4_batched,
-        get_cofactor_matrix_batched,
-        get_det_matrix_batched,
-    )
-except ImportError:
-    pass
 
 from ipie.estimators.kernels.cpu import wicks as wk
 

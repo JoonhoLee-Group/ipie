@@ -29,7 +29,7 @@ from ipie.propagation.force_bias import (
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, build_random_single_det_trial
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 

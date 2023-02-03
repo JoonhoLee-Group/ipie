@@ -30,7 +30,7 @@ from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
 from ipie.utils.legacy_testing import build_legacy_test_case
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.trial_wavefunction.single_det import SingleDet

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +22,7 @@ from mpi4py import MPI
 
 try:
     import cupy
+
     no_gpu = not cupy.is_available()
 except:
     no_gpu = True
@@ -33,7 +33,7 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 
@@ -126,6 +126,7 @@ def test_generic_chunked_gpu():
 
     assert numpy.allclose(energies_einsum, energies_chunked)
     assert numpy.allclose(energies_einsum, energies_chunked_low_mem)
+
 
 if __name__ == "__main__":
     test_generic_chunked_gpu()

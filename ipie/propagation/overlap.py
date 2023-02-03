@@ -17,17 +17,11 @@
 #
 
 import itertools
-
 import numpy
 import scipy.linalg
 
 from ipie.estimators.kernels.cpu import wicks as wk
-from ipie.legacy.estimators.greens_function import gab_mod
 
-try:
-    from ipie.propagation.wicks_kernels import get_det_matrix_batched
-except ImportError:
-    pass
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
@@ -791,3 +785,105 @@ def calc_overlap_multi_det(walker_batch, trial):
                 * walker_batch.det_ovlpbs[iw, i]
             )
     return numpy.einsum("wi->w", walker_batch.det_weights)
+
+
+### Legacy overlap functions useful for testing.
+def get_det_matrix_batched(nex, cre, anh, G0, det_matrix):
+
+    nwalker = G0.shape[0]
+    ndet = cre.shape[0]
+
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            for iex in range(nex):
+                p = cre[idet][iex]
+                q = anh[idet][iex]
+                det_matrix[iw, idet, iex, iex] = G0[iw, p, q]
+                for jex in range(iex + 1, nex):
+                    r = cre[idet][jex]
+                    s = anh[idet][jex]
+                    det_matrix[iw, idet, iex, jex] = G0[iw, p, s]
+                    det_matrix[iw, idet, jex, iex] = G0[iw, r, q]
+    return det_matrix
+
+
+def reduce_to_CI_tensor(nwalker, ndet_level, ps, qs, tensor, rhs):
+    for iw in range(nwalker):
+        for idet in range(ndet_level):
+            # += not supported in cython for complex types.
+            tensor[iw, ps[idet], qs[idet]] = (
+                tensor[iw, ps[idet], qs[idet]] + rhs[iw, idet]
+            )
+
+
+def get_cofactor_matrix_batched(nwalker, ndet, nexcit, row, col, det_matrix, cofactor):
+
+    if nexcit - 1 <= 0:
+        for iw in range(nwalker):
+            for idet in range(ndet):
+                cofactor[iw, idet, 0, 0] = 1.0
+
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            for i in range(nexcit):
+                ishift = 0
+                jshift = 0
+                if i > row:
+                    ishift = 1
+                if i == nexcit - 1 and row == nexcit - 1:
+                    continue
+                for j in range(nexcit):
+                    if j > col:
+                        jshift = 1
+                    if j == nexcit - 1 and col == nexcit - 1:
+                        continue
+                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[
+                        iw, idet, i, j
+                    ]
+
+
+def get_cofactor_matrix_4_batched(
+    nwalker, ndet, nexcit, row_1, col_1, row_2, col_2, det_matrix, cofactor
+):
+
+    ncols = det_matrix.shape[3]
+    if ncols - 2 <= 0:
+        for iw in range(nwalker):
+            for idet in range(ndet):
+                cofactor[iw, idet, 0, 0] = 1.0
+        return
+
+    for iw in range(nwalker):
+        for idet in range(ndet):
+            for i in range(nexcit):
+                ishift_1 = 0
+                jshift_1 = 0
+                ishift_2 = 0
+                jshift_2 = 0
+                if i > row_1:
+                    ishift_1 = 1
+                if i > row_2:
+                    ishift_2 = 1
+                if i == nexcit - 2 and (row_1 == nexcit - 2):
+                    continue
+                if i == nexcit - 1 and (row_2 == nexcit - 1):
+                    continue
+                for j in range(nexcit):
+                    if j > col_1:
+                        jshift_1 = 1
+                    if j > col_2:
+                        jshift_2 = 1
+                    if j == nexcit - 2 and (col_1 == nexcit - 2):
+                        continue
+                    if j == nexcit - 1 and (col_2 == nexcit - 1):
+                        continue
+                    # if col_1 == nexcit-2 or col_2 == nexcit-2:
+                    # continue
+                    # print(i, j, i - (ishift_1+ishift_2), j -
+                    # (jshift_1+jshift_2), nexcit-2, row_1, row_2)
+                    cofactor[
+                        iw,
+                        idet,
+                        max(i - (ishift_1 + ishift_2), 0),
+                        max(j - (jshift_1 + jshift_2), 0),
+                    ] = det_matrix[iw, idet, i, j]

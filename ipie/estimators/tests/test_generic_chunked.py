@@ -27,10 +27,10 @@ from ipie.estimators.local_energy_sd_chunked import (
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
-from ipie.utils.misc import dotdict
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
-from ipie.utils.pack import pack_cholesky
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 

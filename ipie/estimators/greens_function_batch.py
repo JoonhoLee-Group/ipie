@@ -24,20 +24,14 @@ from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
 from ipie.propagation.overlap import (
     compute_determinants_batched,
     get_overlap_one_det_wicks,
+    get_cofactor_matrix_batched,
 )
 from ipie.utils.linalg import minor_mask
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
-try:
-    from ipie.propagation.wicks_kernels import (
-        get_cofactor_matrix_batched,
-        get_det_matrix_batched,
-        reduce_to_CI_tensor,
-    )
-except ImportError:
-    pass
+from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
 from numba import jit
 
 from ipie.estimators.kernels.cpu import wicks as wk
@@ -174,7 +168,11 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     ndown = walker_batch.ndown
 
     ovlp_a = xp.einsum(
+<<<<<<< HEAD
         "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
+=======
+        "wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True
+>>>>>>> develop
     )
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)

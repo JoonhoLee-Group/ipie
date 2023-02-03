@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: [ '3.8', '3.9', '3.10' ]
     runs-on:  ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -25,7 +25,8 @@ jobs:
         pip install pytest-cov
     - name: Install package
       run: |
-        python -m pip install -e .
+        # HACK FOR LEGACY CODE!
+        export BUILD_LEGACY_IPIE=1; python -m pip install -e .
     - name: Test with pytest
       run: |
         pip install pytest

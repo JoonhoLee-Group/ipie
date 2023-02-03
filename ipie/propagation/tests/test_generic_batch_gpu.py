@@ -65,6 +65,39 @@ def test_hybrid_batch():
     walker_batch = batched_data.walker_handler.walkers_batch
     assert False, "FDM FIX THIS, rng state between gpu and cpu"
 
+    # prop.cast_to_cupy()
+    # ham.cast_to_cupy()
+    # trial.cast_to_cupy()
+    # walker_batch.cast_to_cupy()
+
+    # numpy.random.seed(7)
+    # cupy.random.seed(7)
+    # ovlps_batch = []
+    # for i in range(nsteps):
+    #     ovlps_batch += [compute_greens_function(walker_batch, trial)]
+    #     walker_batch.phia = kinetic_spin_real_batch(
+    #         walker_batch.phia, prop.propagator.BH1[0]
+    #     )
+    #     walker_batch.phib = kinetic_spin_real_batch(
+    #         walker_batch.phib, prop.propagator.BH1[1]
+    #     )
+    #     walker_batch.reortho()
+
+    # phi_batch = cupy.array(walker_batch.phia)
+    # phi_batch = cupy.asnumpy(phi_batch)
+
+    # # assert numpy.allclose(ovlps, cupy.asnumpy(ovlps_batch))
+
+    # # Using abs following batched qr implementation on gpu which does not
+    # # preserve previous gauge fixing of sequential algorithm.
+    # for iw in range(nwalkers):
+    #     assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, : system.nup]))
+
+    # phi_batch = cupy.array(walker_batch.phib)
+    # phi_batch = cupy.asnumpy(phi_batch)
+    # for iw in range(nwalkers):
+    #     assert numpy.allclose(abs(phi_batch[iw]), abs(walkers[iw].phi[:, system.nup :]))
+
 
 if __name__ == "__main__":
     test_hybrid_batch()
