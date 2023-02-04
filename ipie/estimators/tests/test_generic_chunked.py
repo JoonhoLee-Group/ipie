@@ -77,7 +77,7 @@ def test_generic_chunked():
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = SingleDet(wfn, nelec, nmo)
+    trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(system, ham)
 
     trial.calculate_energy(system, ham)
@@ -94,8 +94,14 @@ def test_generic_chunked():
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
+    init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, mpi_handler=mpi_handler
+        system,
+        ham,
+        trial,
+        nwalkers,
+        init_walker,
+        mpi_handler=mpi_handler,
     )
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)

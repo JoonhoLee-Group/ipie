@@ -87,8 +87,9 @@ def test_generic_propagation_chunked():
     ham.chunk(mpi_handler)
     trial.chunk(mpi_handler)
 
+    init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, mpi_handler=mpi_handler
+        system, ham, trial, nwalkers, init_walker, mpi_handler=mpi_handler
     )
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
