@@ -66,7 +66,7 @@ class GenericContinuous(object):
         self.sqrt_dt = qmc.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
         start = time.time()
-        if trial.ndets > 1:
+        if trial.num_dets > 1:
             self.mf_shift = self.construct_mean_field_shift_multi_det(
                 hamiltonian, trial
             )

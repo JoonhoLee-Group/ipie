@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +22,12 @@ import numpy
 from numba import jit
 
 from ipie.estimators.generic import local_energy_generic_cholesky
-from ipie.propagation.overlap import (compute_determinants_batched,
-                                      get_overlap_one_det_wicks,
-                                      get_cofactor_matrix_batched, get_cofactor_matrix_4_batched
-                                      )
+from ipie.propagation.overlap import (
+    compute_determinants_batched,
+    get_overlap_one_det_wicks,
+    get_cofactor_matrix_batched,
+    get_cofactor_matrix_4_batched,
+)
 from ipie.utils.linalg import minor_mask, minor_mask4
 
 
@@ -140,7 +141,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
 
         cont3 = 0.0 + 0.0j
 
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
 
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
@@ -682,7 +683,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                     for i in range(1, trial.max_excite + 1)
                 ]
             )
-            for ichunk in range(trial.ndet_chunks)
+            for ichunk in range(trial.num_det_chunks)
         ]
     )
     det_sizes_b = max(
@@ -692,13 +693,13 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                 for i in range(1, trial.max_excite + 1)
             ]
         )
-        for ichunk in range(trial.ndet_chunks)
+        for ichunk in range(trial.num_det_chunks)
     )
     max_size = max(det_sizes_a, det_sizes_b)
     det_mat_buffer = numpy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
     # energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    for ichunk in range(trial.ndet_chunks):
+    for ichunk in range(trial.num_det_chunks):
         ndets_chunk = trial.ndets_per_chunk[ichunk]
         alpha_os_buffer = numpy.zeros(
             (nwalkers, ndets_chunk, nchol), dtype=numpy.complex128
@@ -889,7 +890,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         # 1 for reference determinant
         start = 1 + ichunk * trial.ndets_chunk_max
         # inclusive of endpoint
-        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.ndets)
+        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.num_dets)
         energy_os = numpy.einsum(
             "wJx,wJx,J->w",
             alpha_os_buffer[:, ma],
@@ -1229,6 +1230,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
 
 # Depracted / unused?
 # kernels were jitte with numba for better performance.
+
 
 def get_same_spin_double_contribution_batched(
     cre, anh, buffer, excit_map, chol_fact, det_sls
@@ -1621,4 +1623,3 @@ def build_exchange_contributions_opt(
             Lvo[iw, x, :, :] = numpy.dot(Q, theta_occ.T)
 
     return cont2_Kaa
-

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +17,27 @@
 #
 
 import itertools
+from dataclasses import dataclass
+from typing import Tuple, Union
 
 import numpy
 
+from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.utils.linalg import modified_cholesky
-from ipie.utils.misc import dotdict
+from ipie.utils.mpi import MPIHandler
+from ipie.systems import Generic
+from ipie.hamiltonians import Generic as HamGeneric
+from ipie.walkers.walker_batch_handler import WalkerBatchHandler
+from ipie.propagation.continuous import Continuous
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import (
+    ParticleHoleNaive,
+    ParticleHoleWicks,
+    ParticleHoleWicksNonChunked,
+    ParticleHoleWicksSlow,
+)
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
@@ -51,7 +66,7 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
     return h1e, chol, enuc, eri
 
 
-def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
+def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
     a = numpy.random.rand(ndet * nbasis * (nup + ndown))
     b = numpy.random.rand(ndet * nbasis * (nup + ndown))
     if cplx:
@@ -60,7 +75,16 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True):
     else:
         wfn = a.reshape((ndet, nbasis, nup + ndown))
         coeffs = numpy.random.rand(ndet)
-    return (coeffs, wfn)
+    if init:
+        a = numpy.random.rand(nbasis * (nup + ndown))
+        b = numpy.random.rand(nbasis * (nup + ndown))
+        if cplx:
+            init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        else:
+            init_wfn = a.reshape((nbasis, nup + ndown))
+        return (coeffs, wfn, init_wfn)
+    else:
+        return (coeffs, wfn)
 
 
 def truncated_combinations(iterable, r, count):
@@ -86,7 +110,9 @@ def truncated_combinations(iterable, r, count):
         yield tuple(pool[i] for i in indices)
 
 
-def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False):
+def get_random_phmsd(
+    nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True
+):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
     ob = [c for c in itertools.combinations(orbs, ndown)]
@@ -111,7 +137,10 @@ def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False):
     if init:
         a = numpy.random.rand(nbasis * (nup + ndown))
         b = numpy.random.rand(nbasis * (nup + ndown))
-        init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        if cmplx:
+            init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        else:
+            init_wfn = a.reshape((nbasis, nup + ndown))
     return wfn, init_wfn
 
 
@@ -136,10 +165,28 @@ def _gen_det_selection(d0, vir, occ, dist, nel):
     return dets
 
 
-def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
+def get_random_phmsd_opt(
+    nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True
+):
+    if cmplx_coeffs:
+        coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
+    else:
+        coeffs = numpy.random.rand(ndet) + 0j
+    if init:
+        a = numpy.random.rand(nbasis * (nup + ndown))
+        if cmplx_coeffs:
+            b = numpy.random.rand(nbasis * (nup + ndown))
+            init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+        else:
+            init_wfn = a.reshape((nbasis, nup + ndown))
+    else:
+        init_wfn = None
     if dist is None:
-        dist_a = [int(ndet**0.5) // (int(nup**0.5))] * nup
-        dist_b = [int(ndet**0.5) // (int(ndown**0.5))] * ndown
+        # want to evenly distribute determinants among N excitation levels
+        ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
+        dist_a = [ndet_level] * (nup + 1)
+        ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
+        dist_b = [ndet_level] * (ndown + 1)
     else:
         assert len(dist) == 2
         dist_a, dist_b = dist
@@ -147,29 +194,26 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None):
     oa = [d0a]
     d0b = numpy.array(numpy.arange(ndown, dtype=numpy.int32))
     ob = [d0b]
+    if ndet == 1:
+        return (coeffs, numpy.array([d0a]), numpy.array([d0b])), init_wfn
     occ_a = numpy.arange(0, nup, dtype=numpy.int32)
     vir_a = numpy.arange(nup, nbasis, dtype=numpy.int32)
     occ_b = numpy.arange(0, ndown, dtype=numpy.int32)
     vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
     # dets = [(d0a, d0b)]
     dets = []
-    for ialpha in range(0, nup):
+    for ialpha in range(0, nup+1):
         oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
         if oa is None:
             continue
-        for ibeta in range(0, ndown):
+        for ibeta in range(0, ndown+1):
             ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
             if ob is None:
                 continue
             dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
-    _ndet = len(occ_a)
-    coeffs = numpy.random.rand(_ndet) + 1j * numpy.random.rand(_ndet)
-    wfn = (coeffs, list(occ_a), list(occ_b))
-    if init:
-        a = numpy.random.rand(nbasis * (nup + ndown))
-        b = numpy.random.rand(nbasis * (nup + ndown))
-        init_wfn = (a + 1j * b).reshape((nbasis, nup + ndown))
+    _ndet = min(len(occ_a), ndet)
+    wfn = (coeffs, list(occ_a[:_ndet]), list(occ_b[:_ndet]))
     return wfn, init_wfn
 
 
@@ -202,12 +246,25 @@ def shaped_normal(shape, cmplx=False):
     return arr.reshape(shape)
 
 
+def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
+    sys = Generic(nelec=(nalpha, nbeta))
+    chol = shaped_normal((naux, nmo, nmo), cmplx=cmplx)
+    h1e = shaped_normal((nmo, nmo), cmplx=cmplx)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((naux, nmo * nmo)).T.copy(),
+        h1e_mod=h1e.copy(),
+        ecore=0,
+        verbose=False,
+    )
+    return sys, ham
+
+
 def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     assert ndets == 1
     numpy.random.seed(seed)
-    wfn = get_random_nomsd(nocc, nocc, nmo, ndet=1)
+    wfn = get_random_nomsd(nocc, nocc, nmo, ndet=ndets)
     h1e = shaped_normal((nmo, nmo))
-    from ipie.systems import Generic
 
     system = Generic(nelec=(nocc, nocc))
     chol = shaped_normal((naux, nmo, nmo))
@@ -220,19 +277,16 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         ecore=0,
         verbose=False,
     )
-    from ipie.trial_wavefunction import MultiSlater
 
-    trial = MultiSlater(system, ham, wfn, options={"build_greens_function": False})
     if ndets == 1:
-        trial.psi = trial.psi[0]
-        trial.psia = trial.psi[:, :nocc].copy()
-        trial.psib = trial.psi[:, nocc:].copy()
+        trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
-        trial.psia = trial.psi[0, :, :nocc].copy()
-        trial.psib = trial.psi[0, :, nocc:].copy()
+        trial = NOCI(wfn, (nocc, nocc), nmo)
     from ipie.walkers import SingleDetWalkerBatch
 
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    walker_batch = SingleDetWalkerBatch(
+        system, ham, trial, nwalkers, initial_walker=wfn[1][0]
+    )
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     Ghalfb = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     walker_batch.Ghalfa = Ghalfa
@@ -243,3 +297,283 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     trial._rH1b = shaped_normal((nocc, nmo))
     # trial.psi = trial.psi[0]
     return system, ham, walker_batch, trial
+
+
+def build_random_phmsd_trial(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    wfn_type="opt",
+    complex_trial: bool = False,
+):
+
+    _classes = {
+        "naive": ParticleHoleNaive,
+        "opt": ParticleHoleWicks,
+        "chunked": ParticleHoleWicksNonChunked,
+        "slow": ParticleHoleWicksSlow,
+    }
+    wfn, init = get_random_phmsd_opt(
+        num_elec[0],
+        num_elec[1],
+        num_basis,
+        ndet=num_dets,
+        init=True,
+        cmplx_coeffs=complex_trial,
+    )
+    return _classes[wfn_type](wfn, num_elec, num_basis), init
+
+
+def build_random_noci_trial(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    complex_trial: bool = False,
+):
+    coeffs, wfn, init = get_random_nomsd(
+        num_elec[0],
+        num_elec[1],
+        num_basis,
+        ndet=num_dets,
+        cplx=complex_trial,
+        init=True,
+    )
+    trial = NOCI((coeffs, wfn), num_elec, num_basis)
+    return trial, init
+
+
+def build_random_single_det_trial(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+):
+    coeffs, wfn, init = get_random_nomsd(
+        num_elec[0], num_elec[1], num_basis, ndet=1, cplx=complex_trial, init=True
+    )
+    if rhf_trial:
+        wfn[0, :, num_elec[0] :] = wfn[0, :, : num_elec[0]]
+        init[:, num_elec[0] :] = init[:, : num_elec[0]]
+    trial = SingleDet(wfn[0], num_elec, num_basis)
+    return trial, init
+
+
+def build_random_trial(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="single_det",
+    wfn_type="chunked",
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+):
+    if trial_type == "single_det":
+        return build_random_single_det_trial(
+            num_elec,
+            num_basis,
+            complex_trial=complex_trial,
+            rhf_trial=rhf_trial,
+        )
+    elif trial_type == "noci":
+        return build_random_noci_trial(num_elec, num_basis, complex_trial=complex_trial)
+    elif trial_type == "phmsd":
+        return build_random_phmsd_trial(
+            num_elec,
+            num_basis,
+            complex_trial=complex_trial,
+            wfn_type=wfn_type,
+            num_dets=num_dets,
+        )
+    else:
+        raise ValueError(f"Unkown trial type: {trial_type}")
+
+
+@dataclass(frozen=True)
+class TestData:
+    trial: TrialWavefunctionBase
+    walker_handler: WalkerBatchHandler
+    hamiltonian: HamGeneric
+    propagator: Continuous
+
+
+def build_test_case_handlers_mpi(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    mpi_handler: MPIHandler,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    options={},
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+    prop = Continuous(system, ham, trial, options, options=options)
+
+    handler_batch = WalkerBatchHandler(
+        system,
+        ham,
+        trial,
+        options,
+        init,
+        options,
+        mpi_handler=mpi_handler,
+        verbose=False,
+    )
+    trial.calc_greens_function(handler_batch.walkers_batch)
+    for i in range(options.num_steps):
+        if two_body_only:
+            prop.two_body_propagator_batch(
+                handler_batch.walkers_batch, system, ham, trial
+            )
+        else:
+            prop.propagate_walker_batch(
+                handler_batch.walkers_batch, system, ham, trial, trial.energy
+            )
+        handler_batch.walkers_batch.reortho()
+        handler_batch.pop_control(mpi_handler.comm)
+        trial.calc_greens_function(handler_batch.walkers_batch)
+
+    return TestData(trial, handler_batch, ham, prop)
+
+
+def build_test_case_handlers(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    options={},
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+    prop = Continuous(system, ham, trial, options, options=options)
+
+    handler_batch = WalkerBatchHandler(
+        system,
+        ham,
+        trial,
+        options,
+        init,
+        options,
+        verbose=False,
+    )
+    trial.calc_greens_function(handler_batch.walkers_batch)
+    for i in range(options.num_steps):
+        if two_body_only:
+            prop.two_body_propagator_batch(
+                handler_batch.walkers_batch, system, ham, trial
+            )
+        else:
+            prop.propagate_walker_batch(
+                handler_batch.walkers_batch, system, ham, trial, trial.energy
+            )
+        handler_batch.walkers_batch.reortho()
+        trial.calc_greens_function(handler_batch.walkers_batch)
+
+    return TestData(trial, handler_batch, ham, prop)
+
+
+def build_driver_test_instance(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+    seed: Union[int, None] = None,
+    density_diff=False,
+    options={},
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    if density_diff:
+        ham.density_diff = True
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    afqmc = AFQMCBatch(
+        comm=comm, system=system, hamiltonian=ham, options=options, trial=trial
+    )
+    return afqmc

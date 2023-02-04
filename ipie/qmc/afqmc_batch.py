@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,8 +39,7 @@ from ipie.qmc.utils import set_rng_seed
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value, serialise, to_json
-from ipie.utils.misc import (get_git_info, print_env_info,
-                             is_cupy)
+from ipie.utils.misc import get_git_info, print_env_info, is_cupy
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
@@ -111,6 +109,7 @@ class AFQMCBatch(object):
         hamiltonian=None,
         trial=None,
         parallel=False,
+        walkers=None,
         verbose=False,
     ):
         if verbose is not None:
@@ -182,7 +181,7 @@ class AFQMCBatch(object):
             )
 
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
-        if config.get_option('use_gpu'):
+        if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
             props = xp.cuda.runtime.getDeviceProperties(0)
             xp.cuda.runtime.setDevice(self.shared_comm.rank)
@@ -194,7 +193,6 @@ class AFQMCBatch(object):
                             comm.size, ngpus
                         )
                     )
-
 
         if self.qmc.nwalkers is None:
             assert self.qmc.nwalkers_per_task is not None
@@ -277,15 +275,18 @@ class AFQMCBatch(object):
         )
         if comm.rank == 0:
             print("# Getting WalkerBatchHandler")
-        self.psi = WalkerBatchHandler(
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.qmc,
-            walker_opts=wlk_opts,
-            mpi_handler=self.mpi_handler,
-            verbose=verbose,
-        )
+        if walkers is not None:
+            self.psi = walkers
+        else:
+            self.psi = WalkerBatchHandler(
+                self.system,
+                self.hamiltonian,
+                self.trial,
+                self.qmc,
+                walker_opts=wlk_opts,
+                mpi_handler=self.mpi_handler,
+                verbose=verbose,
+            )
         est_opts = get_input_value(
             options,
             "estimators",
@@ -295,13 +296,14 @@ class AFQMCBatch(object):
         )
         est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
         self.estimators = EstimatorHandler(
-                comm,
-                self.system,
-                self.hamiltonian,
-                self.trial,
-                walker_state=self.psi.accumulator_factors,
-                options=est_opts,
-                verbose=(comm.rank == 0 and verbose))
+            comm,
+            self.system,
+            self.hamiltonian,
+            self.trial,
+            walker_state=self.psi.accumulator_factors,
+            options=est_opts,
+            verbose=(comm.rank == 0 and verbose),
+        )
 
         if self.mpi_handler.nmembers > 1:
             if comm.rank == 0:
@@ -311,7 +313,7 @@ class AFQMCBatch(object):
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
 
-        if config.get_option('use_gpu'):
+        if config.get_option("use_gpu"):
             self.propagators.cast_to_cupy(verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
             self.trial.cast_to_cupy(verbose and comm.rank == 0)
@@ -320,6 +322,7 @@ class AFQMCBatch(object):
             if comm.rank == 0:
                 try:
                     import cupy
+
                     _have_cupy = True
                 except:
                     _have_cupy = False
@@ -406,7 +409,7 @@ class AFQMCBatch(object):
                     a_max=wbound,
                     out=self.psi.walkers_batch.weight,
                 )  # in-place clipping
-    
+
             synchronize()
             self.tprop_clip += time.time() - start_clip
 
@@ -430,7 +433,7 @@ class AFQMCBatch(object):
             start = time.time()
             self.psi.update_accumulators()
             synchronize()
-            self.testim += time.time() - start # we dump this time into estimator
+            self.testim += time.time() - start  # we dump this time into estimator
             # calculate estimators
             start = time.time()
             if step % self.qmc.nsteps == 0:
@@ -442,9 +445,8 @@ class AFQMCBatch(object):
                     self.psi.walkers_batch,
                 )
                 self.estimators.print_block(
-                        comm, step//self.qmc.nsteps,
-                        self.psi.accumulator_factors
-                        )
+                    comm, step // self.qmc.nsteps, self.psi.accumulator_factors
+                )
                 self.psi.zero_accumulators()
             synchronize()
             self.testim += time.time() - start

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +58,7 @@ class SingleDetWalkerBatch(WalkerBatch):
         hamiltonian,
         trial,
         nwalkers,
+        initial_walker,
         walker_opts={},
         index=0,
         nprop_tot=None,
@@ -71,6 +71,7 @@ class SingleDetWalkerBatch(WalkerBatch):
             hamiltonian,
             trial,
             nwalkers,
+            initial_walker,
             walker_opts=walker_opts,
             index=index,
             nprop_tot=nprop_tot,
@@ -80,8 +81,6 @@ class SingleDetWalkerBatch(WalkerBatch):
 
         self.name = "SingleDetWalkerBatch"
 
-        calc_overlap = get_calc_overlap(trial)
-        # self.ot = calc_overlap(self, trial)
         self.le_oratio = 1.0
 
         self.Ga = numpy.zeros(

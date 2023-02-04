@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +17,19 @@
 #          linusjoonho <linusjoonho@gmail.com>
 #
 
-import cmath
 import math
-import sys
 import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import compute_greens_function
-from ipie.legacy.estimators.local_energy import local_energy
-from ipie.propagation.force_bias import construct_force_bias_batch
+from ipie.config import config
+
 from ipie.propagation.generic import GenericContinuous
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
-from ipie.propagation.overlap import get_calc_overlap
+from ipie.propagation.operations import kinetic_spin_real_batch
 
 from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize, cast_to_device
+from ipie.utils.backend import synchronize
 
 
 class Continuous(object):
@@ -69,9 +64,6 @@ class Continuous(object):
         self.propagator = GenericContinuous(
             system, hamiltonian, trial, qmc, options=options, verbose=verbose
         )
-
-        self.calc_overlap = get_calc_overlap(trial)
-        # self.compute_greens_function = get_greens_function(trial)
 
         assert self.hybrid
         if verbose:
@@ -259,8 +251,8 @@ class Continuous(object):
         xbar = xp.zeros((walker_batch.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
-            self.propagator.vbias_batch = construct_force_bias_batch(
-                hamiltonian, walker_batch, trial, walker_batch.mpi_handler
+            self.propagator.vbias_batch = trial.calc_force_bias(
+                hamiltonian, walker_batch, walker_batch.mpi_handler
             )
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
@@ -278,9 +270,9 @@ class Continuous(object):
         self.nfb_trig += xp.sum(idx_to_rescale)
 
         # Normally distrubted auxiliary fields.
-        xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers).reshape(
-            walker_batch.nwalkers, hamiltonian.nfields
-        )
+        xi = xp.random.normal(
+            0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers
+        ).reshape(walker_batch.nwalkers, hamiltonian.nfields)
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
@@ -300,7 +292,7 @@ class Continuous(object):
         self.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
         start_time = time.time()
-        if is_cupy(trial.psi):
+        if config.get_option("use_gpu"):
             walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
             if walker_batch.ndown > 0 and not walker_batch.rhf:
                 walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
@@ -336,16 +328,14 @@ class Continuous(object):
         Returns
         -------
         """
-        if is_cupy(
-            walker_batch.phia
-        ):
+        if is_cupy(walker_batch.phia):
             gpu = True
         else:
             gpu = False
 
         synchronize()
         start_time = time.time()
-        ovlp = compute_greens_function(walker_batch, trial)
+        ovlp = trial.calc_greens_function(walker_batch)
         synchronize()
         self.tgf += time.time() - start_time
 
@@ -382,7 +372,7 @@ class Continuous(object):
 
         # Now apply phaseless approximation
         start_time = time.time()
-        ovlp_new = self.calc_overlap(walker_batch, trial)
+        ovlp_new = trial.calc_overlap(walker_batch)
         synchronize()
         self.tovlp += time.time() - start_time
 

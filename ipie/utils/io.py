@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,47 +26,63 @@ import h5py
 import numpy
 import scipy.sparse
 
-from ipie.utils.linalg import (modified_cholesky, molecular_orbitals_rhf,
-                               molecular_orbitals_uhf)
+from ipie.utils.linalg import (
+    modified_cholesky,
+    molecular_orbitals_rhf,
+    molecular_orbitals_uhf,
+)
 from ipie.utils.misc import merge_dicts, serialise
 
 
 def write_hamiltonian(
-        hcore: numpy.ndarray,
-        LXmn: numpy.ndarray,
-        e0: float,
-        filename: str='hamiltonian.h5') -> None:
-    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
+    hcore: numpy.ndarray,
+    LXmn: numpy.ndarray,
+    e0: float,
+    filename: str = "hamiltonian.h5",
+) -> None:
+    assert (
+        len(hcore.shape) == 2
+    ), "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
-    naux = LXmn.size // (nmo*nmo)
-    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
-    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    naux = LXmn.size // (nmo * nmo)
+    assert (
+        len(LXmn.shape) == 3
+    ), "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = (
+        f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    )
     assert LXmn.shape[0] == naux, message
-    with h5py.File(filename, 'w') as fh5:
-        fh5['hcore'] = hcore
-        fh5['LXmn'] = LXmn
-        fh5['e0'] = e0
+    with h5py.File(filename, "w") as fh5:
+        fh5["hcore"] = hcore
+        fh5["LXmn"] = LXmn
+        fh5["e0"] = e0
 
 
 def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
-    with h5py.File(filename, 'r') as fh5:
-        hcore = fh5['hcore'][:]
-        LXmn = fh5['LXmn'][:]
-        e0 = float(fh5['e0'][()])
-    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
+    with h5py.File(filename, "r") as fh5:
+        hcore = fh5["hcore"][:]
+        LXmn = fh5["LXmn"][:]
+        e0 = float(fh5["e0"][()])
+    assert (
+        len(hcore.shape) == 2
+    ), "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
-    naux = LXmn.size // (nmo*nmo)
-    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
-    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    naux = LXmn.size // (nmo * nmo)
+    assert (
+        len(LXmn.shape) == 3
+    ), "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = (
+        f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
+    )
     assert LXmn.shape[0] == naux, message
     return hcore, LXmn, e0
 
 
 def write_wavefunction(
-        wfn: Union[tuple, numpy.ndarray, list],
-        filename: str='wavefunction.h5',
-        phi0: Union[None, list]=None
-        ) -> None:
+    wfn: Union[tuple, numpy.ndarray, list],
+    filename: str = "wavefunction.h5",
+    phi0: Union[None, list] = None,
+) -> None:
     if isinstance(wfn, numpy.ndarray) or isinstance(wfn, list):
         write_single_det_wavefunction(wfn, filename, phi0=phi0)
     else:
@@ -94,96 +109,102 @@ def read_wavefunction(filename: str):
         raise RuntimeError("Unknown file format.")
 
 
+def determine_wavefunction_type(filename: str):
+    with h5py.File(filename, "r") as fh5:
+        keys = list(fh5.keys())
+
+    if "occ_alpha" in keys:
+        return "particle_hole"
+    elif "ci_coeffs" in keys:
+        return "noci"
+    elif "psi_T_alpha" in keys:
+        return "single_determinant"
+    elif "Wavefunction" in keys:
+        return "qmcpack"
+    else:
+        raise RuntimeError("Unknown wavefunction.")
+
+
 def write_single_det_wavefunction(
-        wfn: Union[numpy.ndarray, list],
-        filename: str,
-        phi0: Union[None, list]=None
-        ) -> None:
-    with h5py.File(filename, 'w') as fh5:
+    wfn: Union[numpy.ndarray, list], filename: str, phi0: Union[None, list] = None
+) -> None:
+    with h5py.File(filename, "w") as fh5:
         if isinstance(wfn, list) or len(wfn.shape) == 3:
             assert len(wfn) == 2, "Expected list for UHF wavefunction."
-            fh5['psi_T_alpha'] = wfn[0]
-            fh5['psi_T_beta'] = wfn[1]
+            fh5["psi_T_alpha"] = wfn[0]
+            fh5["psi_T_beta"] = wfn[1]
             if phi0 is None:
-                fh5['phi0_alpha'] = wfn[0]
-                fh5['phi0_beta'] = wfn[1]
+                fh5["phi0_alpha"] = wfn[0]
+                fh5["phi0_beta"] = wfn[1]
             else:
-                fh5['phi0_alpha'] = phi0[0]
-                fh5['phi0_beta'] = phi0[1]
+                fh5["phi0_alpha"] = phi0[0]
+                fh5["phi0_beta"] = phi0[1]
         else:
             assert len(wfn.shape) == 2, "Expected 2D array for RHF wavefunction."
-            fh5['psi_T_alpha'] = wfn
+            fh5["psi_T_alpha"] = wfn
             if phi0 is None:
-                fh5['phi0_alpha'] = wfn
+                fh5["phi0_alpha"] = wfn
             else:
-                fh5['phi0_alpha'] = phi0[0]
+                fh5["phi0_alpha"] = phi0[0]
 
 
 def write_particle_hole_wavefunction(
-        wfn: tuple,
-        filename: str,
-        phi0: Union[None, list]=None
-        ) -> None:
+    wfn: tuple, filename: str, phi0: Union[None, list] = None
+) -> None:
     assert len(wfn) == 3, "Expected (ci, occa, occb)."
-    with h5py.File(filename, 'w') as fh5:
-        fh5['ci_coeffs'] = wfn[0]
-        fh5['occ_alpha'] = wfn[1]
-        fh5['occ_beta'] = wfn[2]
+    with h5py.File(filename, "w") as fh5:
+        fh5["ci_coeffs"] = wfn[0]
+        fh5["occ_alpha"] = wfn[1]
+        fh5["occ_beta"] = wfn[2]
 
 
 def write_noci_wavefunction(
-        wfn: tuple,
-        filename: str,
-        phi0: Union[None, list]=None
-        ) -> None:
+    wfn: tuple, filename: str, phi0: Union[None, list] = None
+) -> None:
     assert len(wfn) == 2, "Expected (ci, psi)."
     assert isinstance(wfn[1], list)
     assert len(wfn[1][0].shape) == 3, "Expected psi.shape = (ndet, nmo, nocca)"
     assert len(wfn[1][1].shape) == 3, "Expected psi.shape = (ndet, nmo, noccb)"
     ndet = len(wfn[0])
-    with h5py.File(filename, 'w') as fh5:
-        fh5['ci_coeffs'] = wfn[0]
-        fh5['psi_T_alpha'] = wfn[1][0]
-        fh5['psi_T_beta'] = wfn[1][1]
+    with h5py.File(filename, "w") as fh5:
+        fh5["ci_coeffs"] = wfn[0]
+        fh5["psi_T_alpha"] = wfn[1][0]
+        fh5["psi_T_beta"] = wfn[1][1]
         if phi0 is None:
-            fh5['phi0_alpha'] = wfn[1][0][0]
-            fh5['phi0_beta'] = wfn[1][1][0]
+            fh5["phi0_alpha"] = wfn[1][0][0]
+            fh5["phi0_beta"] = wfn[1][1][0]
         else:
-            fh5['phi0_alpha'] = phi0[0]
-            fh5['phi0_beta'] = phi0[1]
+            fh5["phi0_alpha"] = phi0[0]
+            fh5["phi0_beta"] = phi0[1]
 
 
 def read_particle_hole_wavefunction(
-        filename: str
-        ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
-    with h5py.File(filename, 'r') as fh5:
-        ci_coeffs = fh5['ci_coeffs'][:]
-        occ_alpha = fh5['occ_alpha'][:]
-        occ_beta = fh5['occ_beta'][:]
+    filename: str,
+) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    with h5py.File(filename, "r") as fh5:
+        ci_coeffs = fh5["ci_coeffs"][:]
+        occ_alpha = fh5["occ_alpha"][:]
+        occ_beta = fh5["occ_beta"][:]
     return (ci_coeffs, occ_alpha, occ_beta), None
 
 
-def read_noci_wavefunction(
-        filename: str
-        ) -> Tuple[numpy.ndarray, list]:
-    with h5py.File(filename, 'r') as fh5:
-        ci_coeffs = fh5['ci_coeffs'][:]
+def read_noci_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
+    with h5py.File(filename, "r") as fh5:
+        ci_coeffs = fh5["ci_coeffs"][:]
         ndets = len(ci_coeffs)
         for idet in range(ndets):
-            psia = fh5[f'psi_T_alpha'][:]
-            psib = fh5[f'psi_T_beta'][:]
+            psia = fh5[f"psi_T_alpha"][:]
+            psib = fh5[f"psi_T_beta"][:]
     return (ci_coeffs, [psia, psib]), None
 
 
-def read_single_det_wavefunction(
-        filename: str
-        ) -> Tuple[numpy.ndarray, list]:
-    with h5py.File(filename, 'r') as fh5:
-        psia = fh5['psi_T_alpha'][:]
-        phi0a = fh5['phi0_alpha'][:]
+def read_single_det_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
+    with h5py.File(filename, "r") as fh5:
+        psia = fh5["psi_T_alpha"][:]
+        phi0a = fh5["phi0_alpha"][:]
         try:
-            psib = fh5['psi_T_beta'][:]
-            phi0b = fh5['phi0_beta'][:]
+            psib = fh5["psi_T_beta"][:]
+            phi0b = fh5["phi0_beta"][:]
             wfn = [psia, psib]
             phi0 = [phi0a, phi0b]
         except KeyError:
@@ -199,20 +220,22 @@ def format_fixed_width_strings(strings):
 def format_fixed_width_floats(floats):
     return " ".join("{: .16e}".format(f) for f in floats)
 
+
 def format_fixed_width_cmplx(floats):
     return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)
 
+
 def write_json_input_file(
-        input_filename: str,
-        hamil_filename: str,
-        wfn_filename: str,
-        nelec: tuple,
-        num_walkers: int=640,
-        timestep: float=0.005,
-        num_blocks: float=10,
-        estimates_filename: str='estimates.0.h5',
-        options: dict={},
-        ):
+    input_filename: str,
+    hamil_filename: str,
+    wfn_filename: str,
+    nelec: tuple,
+    num_walkers: int = 640,
+    timestep: float = 0.005,
+    num_blocks: float = 10,
+    estimates_filename: str = "estimates.0.h5",
+    options: dict = {},
+):
     na, nb = nelec
     basic = {
         "system": {
@@ -245,7 +268,7 @@ def to_json(afqmc):
     return json_string
 
 
-def get_input_value(inputs, key, default=0, alias=None, verbose=False):
+def get_input_value(inputs, key, default, alias=None, verbose=False):
     """Helper routine to parse input options."""
     val = inputs.get(key, None)
     if val is not None and verbose:
@@ -520,6 +543,7 @@ def to_qmcpack_complex(array):
     shape = array.shape
     return array.view(numpy.float64).reshape(shape + (2,))
 
+
 def from_qmcpack_dense(filename):
     with h5py.File(filename, "r") as fh5:
         enuc = fh5["Hamiltonian/Energies"][:][0]
@@ -540,6 +564,7 @@ def from_qmcpack_dense(filename):
         nalpha = dims[4]
         nbeta = dims[5]
         return (hcore, chol, enuc, int(nmo), int(nalpha), int(nbeta))
+
 
 def from_qmcpack_sparse(filename):
     with h5py.File(filename, "r") as fh5:
@@ -595,6 +620,7 @@ def from_qmcpack_sparse(filename):
         )
         return (hcore, chol_vecs, enuc, int(nmo), int(nalpha), int(nbeta))
 
+
 def write_qmcpack_dense(
     hcore,
     chol,
@@ -625,6 +651,7 @@ def write_qmcpack_dense(
         )
         if ortho is not None:
             fh5["Hamiltonian/X"] = ortho
+
 
 def write_qmcpack_sparse(
     hcore,
@@ -695,6 +722,7 @@ def read_fortran_complex_numbers(filename):
     orbs = [complex(t[0], t[1]) for t in tuples]
     return numpy.array(orbs)
 
+
 def fcidump_header(nel, norb, spin):
     header = (
         "&FCI\n"
@@ -721,6 +749,7 @@ def read_qmcpack_wfn(filename, skip=9):
 
 def from_qmcpack_complex(data, shape):
     return data.view(numpy.complex128).ravel().reshape(shape)
+
 
 def to_sparse(vals, offset=0, cutoff=1e-8):
     nz = numpy.where(numpy.abs(vals) > cutoff)

@@ -20,21 +20,16 @@ import numpy
 import pytest
 from mpi4py import MPI
 
-from ipie.estimators.generic import local_energy_cholesky_opt
-from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch,
-    local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf_batch,
-)
+from ipie.estimators.local_energy_sd import local_energy_single_det_batch
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.continuous import Continuous
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.misc import dotdict, is_cupy
-from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.misc import dotdict
+from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
@@ -81,13 +76,10 @@ def test_generic_chunked():
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
-    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = MultiSlater(system, ham, wfn)
+    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(system, ham)
 
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
@@ -102,8 +94,14 @@ def test_generic_chunked():
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
+    init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, mpi_handler=mpi_handler
+        system,
+        ham,
+        trial,
+        nwalkers,
+        init_walker,
+        mpi_handler=mpi_handler,
     )
     for i in range(nsteps):
         prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)

@@ -88,11 +88,11 @@ def calc_overlap_single_det(walker_batch, trial):
     ot = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
     for iw in range(walker_batch.nwalkers):
-        Oalpha = xp.dot(trial.psia.conj().T, walker_batch.phia[iw])
+        Oalpha = xp.dot(trial.psi0a.conj().T, walker_batch.phia[iw])
         sign_a, logdet_a = xp.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
         if nb > 0:
-            Obeta = xp.dot(trial.psib.conj().T, walker_batch.phib[iw])
+            Obeta = xp.dot(trial.psi0b.conj().T, walker_batch.phib[iw])
             sign_b, logdet_b = xp.linalg.slogdet(Obeta)
 
         ot[iw] = (
@@ -122,13 +122,13 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     nup = walker_batch.nup
     ndown = walker_batch.ndown
     ovlp_a = xp.einsum(
-        "wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True
+        "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
     )
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum(
-            "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
+            "wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True
         )
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
@@ -256,7 +256,7 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
 
         ovlp = 0.0 + 0.0j
         ovlp += trial.coeffs[0].conj()
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
             nex_a = len(trial.anh_a[jdet])
             nex_b = len(trial.anh_b[jdet])
             ovlp_a, ovlp_b = get_overlap_one_det_wicks(
@@ -481,8 +481,6 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = G0wa.shape[0]
     indices = numpy.indices((nexcit, nexcit))
-    # print(G0wa.shape)
-    # print(ndets_a)
     if ndets_a == 0:
         dets_a = None
     else:
@@ -668,8 +666,8 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
 
 
 def compute_determinants_batched(G0a, G0b, trial):
-    na = trial._nalpha
-    nb = trial._nbeta
+    na = trial.nelec[0]
+    nb = trial.nelec[1]
     nwalker = G0a.shape[0]
     ndets = len(trial.coeffs)
     dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)

@@ -112,24 +112,22 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
 
     det = []
     for iw in range(walker_batch.nwalkers):
-        ovlp = xp.dot(walker_batch.phia[iw].T, trial.psi[:, :nup].conj())
+        ovlp = xp.dot(walker_batch.phia[iw].T, trial.psi0a.conj())
         ovlp_inv = xp.linalg.inv(ovlp)
         walker_batch.Ghalfa[iw] = xp.dot(ovlp_inv, walker_batch.phia[iw].T)
         if not trial.half_rotated or build_full:
-            walker_batch.Ga[iw] = xp.dot(
-                trial.psi[:, :nup].conj(), walker_batch.Ghalfa[iw]
-            )
+            walker_batch.Ga[iw] = xp.dot(trial.psi0a.conj(), walker_batch.Ghalfa[iw])
         sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
         if ndown > 0 and not walker_batch.rhf:
-            ovlp = xp.dot(walker_batch.phib[iw].T, trial.psi[:, nup:].conj())
+            ovlp = xp.dot(walker_batch.phib[iw].T, trial.psi0b.conj())
             sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp)
             walker_batch.Ghalfb[iw] = xp.dot(
                 xp.linalg.inv(ovlp), walker_batch.phib[iw].T
             )
             if not trial.half_rotated or build_full:
                 walker_batch.Gb[iw] = xp.dot(
-                    trial.psi[:, nup:].conj(), walker_batch.Ghalfb[iw]
+                    trial.psi0a.conj(), walker_batch.Ghalfb[iw]
                 )
             det += [
                 sign_a
@@ -170,7 +168,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     ndown = walker_batch.ndown
 
     ovlp_a = xp.einsum(
-        "wmi,mj->wij", walker_batch.phia, trial.psia.conj(), optimize=True
+        "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
     )
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
@@ -180,12 +178,12 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     )
     if not trial.half_rotated or build_full:
         walker_batch.Ga = xp.einsum(
-            "mi,win->wmn", trial.psia.conj(), walker_batch.Ghalfa, optimize=True
+            "mi,win->wmn", trial.psi0a.conj(), walker_batch.Ghalfa, optimize=True
         )
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum(
-            "wmi,mj->wij", walker_batch.phib, trial.psib.conj(), optimize=True
+            "wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True
         )
         ovlp_inv_b = xp.linalg.inv(ovlp_b)
 
@@ -195,7 +193,7 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
         )
         if not trial.half_rotated or build_full:
             walker_batch.Gb = xp.einsum(
-                "mi,win->wmn", trial.psib.conj(), walker_batch.Ghalfb, optimize=True
+                "mi,win->wmn", trial.psi0b.conj(), walker_batch.Ghalfb, optimize=True
             )
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
@@ -338,7 +336,7 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
         walker_batch.CIa[iw].fill(0.0 + 0.0j)
         walker_batch.CIb[iw].fill(0.0 + 0.0j)
 
-        for jdet in range(1, trial.ndets):
+        for jdet in range(1, trial.num_dets):
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
 
@@ -1347,18 +1345,18 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     logdets_a = numpy.zeros_like(ovlps0)
     logdets_b = numpy.zeros_like(ovlps0)
     for iw in range(walker_batch.nwalkers):
-        ovlp = numpy.dot(walker_batch.phia[iw].T, trial.psi[0, :, :na].conj())
+        ovlp = numpy.dot(walker_batch.phia[iw].T, trial.psi0a.conj())
         ovlp_inv = numpy.linalg.inv(ovlp)
         walker_batch.Ghalfa[iw] = numpy.dot(ovlp_inv, walker_batch.phia[iw].T)
-        G0a[iw] = numpy.dot(trial.psi[0, :, :na].conj(), walker_batch.Ghalfa[iw])
+        G0a[iw] = numpy.dot(trial.psi0a.conj(), walker_batch.Ghalfa[iw])
         sign_a, log_ovlp_a = numpy.linalg.slogdet(ovlp)
         sign_b, log_ovlp_b = 1.0, 0.0
-        ovlp = numpy.dot(walker_batch.phib[iw].T, trial.psi[0, :, na:].conj())
+        ovlp = numpy.dot(walker_batch.phib[iw].T, trial.psi0b.conj())
         sign_b, log_ovlp_b = numpy.linalg.slogdet(ovlp)
         walker_batch.Ghalfb[iw] = numpy.dot(
             numpy.linalg.inv(ovlp), walker_batch.phib[iw].T
         )
-        G0b[iw] = numpy.dot(trial.psi[0, :, na:].conj(), walker_batch.Ghalfb[iw])
+        G0b[iw] = numpy.dot(trial.psi0b.conj(), walker_batch.Ghalfb[iw])
         signs_a[iw] = sign_a
         signs_b[iw] = sign_b
         logdets_a[iw] = log_ovlp_a

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,22 +16,24 @@
 #          Joonho Lee
 #
 
-import sys
+import numpy as np
 
-import numpy
-
-from ipie.legacy.estimators.greens_function import gab_spin
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.io import (
-        get_input_value,
-        read_qmcpack_wfn_hdf,
-        read_wavefunction)
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import (ParticleHoleWicks,
+                                                   ParticleHoleWicksNonChunked)
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.utils.io import (determine_wavefunction_type, get_input_value,
+                           read_noci_wavefunction,
+                           read_particle_hole_wavefunction,
+                           read_qmcpack_wfn_hdf, read_single_det_wavefunction)
 
 
 def get_trial_wavefunction(
-    system, hamiltonian, options={}, comm=None, scomm=None, verbose=0
+    system, hamiltonian, options={}, comm=None, scomm=None, verbose=False
 ):
-    """Wrapper to select trial wavefunction class.
+    """Wavefunction factory.
 
     Parameters
     ----------
@@ -54,114 +55,150 @@ def get_trial_wavefunction(
     trial : class or None
         Trial wavfunction class.
     """
-    if comm is not None and comm.rank == 0:
+    assert comm is not None
+    if comm.rank == 0:
         if verbose:
             print("# Building trial wavefunction object.")
     wfn_file = get_input_value(
-        options, "filename", default=None, alias=["wavefunction_file"], verbose=verbose
+        options,
+        "filename",
+        default="wavefunction.h5",
+        alias=["wavefunction_file"],
+        verbose=verbose,
     )
-    wfn_type = options.get("name", "MultiSlater")
-    if wfn_type == "MultiSlater":
-        psi0 = None
-        if wfn_file is not None:
-            if verbose:
-                print("# Reading wavefunction from {}.".format(wfn_file))
-            try:
-                psit, psi0 = read_wavefunction(wfn_file)
-                # TODO make this saner during wavefunction refactor.
-                if psi0 is not None:
-                    psi0 = numpy.hstack(psi0)
-                if len(psit) < 3:
-                    psit = numpy.hstack(psit)
-                    read = (numpy.array([1.0+0j]), psit.reshape((1,)+psit.shape))
-                else:
-                    read = psit
-            except RuntimeError:
-                # Fall back to old format.
-                read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
-            thresh = options.get("threshold", None)
-            if thresh is not None:
-                coeff = read[0]
-                ndets = len(coeff[abs(coeff) > thresh])
-                if verbose:
-                    print(
-                        "# Discarding determinants with weight "
-                        "  below {}.".format(thresh)
-                    )
-            else:
-                ndets = options.get("ndets", None)
-                if ndets is None:
-                    ndets = len(read[0])
-            if verbose:
-                print(
-                    "# Number of determinants in trial wavefunction: {}".format(ndets)
-                )
-            if ndets is not None:
-                wfn = []
-                # Wavefunction is a tuple, immutable so have to iterate through
-                for x in read:
-                    wfn.append(x[:ndets])
-        else:
-            if verbose:
-                print("# Guessing RHF trial wavefunction.")
-            na = system.nup
-            nb = system.ndown
-            wfn = numpy.zeros(
-                (1, hamiltonian.nbasis, system.nup + system.ndown),
-                dtype=numpy.complex128,
+    wfn_type = determine_wavefunction_type(wfn_file)
+    ndets = get_input_value(
+        options,
+        "ndets",
+        default=-1,
+        verbose=verbose,
+    )
+    ndets_props = get_input_value(
+        options,
+        "ndets_for_trial_props",
+        default=min(ndets, 100),
+        alias=["ndets_prop"],
+        verbose=verbose,
+    )
+    ndet_chunks = get_input_value(
+        options,
+        "ndet_chunks",
+        default=1,
+        alias=["nchunks", "chunks"],
+        verbose=verbose,
+    )
+    if wfn_type == "particle_hole":
+        wfn, phi0 = read_particle_hole_wavefunction(wfn_file)
+        if ndet_chunks == 1:
+            trial = ParticleHoleWicksNonChunked(
+                wfn,
+                system.nelec,
+                hamiltonian.nbasis,
+                num_dets_for_trial=ndets,
+                num_dets_for_props=ndets_props,
             )
-            coeffs = numpy.array([1.0 + 0j])
-            I = numpy.identity(hamiltonian.nbasis, dtype=numpy.complex128)
-            wfn[0, :, :na] = I[:, :na]
-            wfn[0, :, na:] = I[:, :nb]
-            wfn = (coeffs, wfn)
-        trial = MultiSlater(
-            system, hamiltonian, wfn, init=psi0, options=options, verbose=verbose
-        )
-        if system.name == "Generic":
-            if trial.ndets == 1 or trial.ortho_expansion:
-                trial.half_rotate(system, hamiltonian, scomm)
-        rediag = get_input_value(
-            options, "recompute_ci", default=False, alias=["rediag"], verbose=verbose
-        )
-        if rediag:
-            if comm.rank == 0:
-                if verbose:
-                    print("# Recomputing trial wavefunction ci coeffs.")
-                coeffs = trial.recompute_ci_coeffs(
-                    system.nup, system.ndown, hamiltonian
-                )
-            else:
-                coeffs = None
-            coeffs = comm.bcast(coeffs, root=0)
-            trial.coeffs = coeffs
-    else:
-        print("Unknown trial wavefunction type.")
-        sys.exit()
-
-    spin_proj = get_input_value(
-        options, "spin_proj", default=None, alias=["spin_project"], verbose=verbose
-    )
-    init_walker = get_input_value(
-        options, "init_walker", default=None, alias=["initial_walker"], verbose=verbose
-    )
-    if spin_proj:
-        na, nb = system.nelec
-        if verbose:
-            print("# Performing spin projection for walker's initial wavefunction.")
-        if comm.rank == 0:
-            if init_walker == "free_electron":
-                eigs, eigv = numpy.linalg.eigh(system.H1[0])
-            else:
-                rdm, rdmh = gab_spin(trial.psi[0], trial.psi[0], na, nb)
-                eigs, eigv = numpy.linalg.eigh(rdm[0] + rdm[1])
-                ix = numpy.argsort(eigs)[::-1]
-                trial.noons = eigs[ix]
-                eigv = eigv[:, ix]
         else:
-            eigv = None
-        eigv = comm.bcast(eigv, root=0)
-        trial.init[:, :na] = eigv[:, :na].copy()
-        trial.init[:, na:] = eigv[:, :nb].copy()
+            trial = ParticleHoleWicks(
+                wfn,
+                system.nelec,
+                hamiltonian.nbasis,
+                num_dets_for_trial=ndets,
+                num_dets_for_props=ndets_props,
+                num_det_chunks=ndet_chunks,
+            )
+    elif wfn_type == "noci":
+        wfn, phi0 = read_noci_wavefunction(wfn_file)
+        trial = NOCI(
+            wfn,
+            system.nelec,
+            hamiltonian.nbasis,
+        )
+    elif wfn_type == "single_determinant":
+        wfn, phi0 = read_single_det_wavefunction(wfn_file)
+        trial = SingleDet(
+            np.hstack(wfn),
+            system.nelec,
+            hamiltonian.nbasis,
+        )
+    elif wfn_type == "qmcpack":
+        trial = setup_qmcpack_wavefunction(
+            system.nelec,
+            hamiltonian.nbasis,
+            wfn_file,
+            ndets,
+            ndets_props,
+            ndet_chunks,
+        )
+    else:
+        raise RuntimeError("Unknown wavefunction type")
+    trial.build()
+
+    if verbose:
+        print(
+            "# Number of determinants in trial wavefunction: {}".format(trial.num_dets)
+        )
+    trial.half_rotate(system, hamiltonian, scomm)
 
     return trial
+
+
+def setup_qmcpack_wavefunction(
+    nelec: tuple,
+    nbasis: int,
+    wfn_file: str,
+    ndets: int,
+    ndets_props: int,
+    ndet_chunks: int,
+) -> TrialWavefunctionBase:
+    wfn, phi0 = read_qmcpack_wfn_hdf(wfn_file)
+    if len(wfn) == 3:
+        wfn, phi0 = read_particle_hole_wavefunction(wfn_file)
+        if ndet_chunks == 1:
+            trial = ParticleHoleWicksNonChunked(
+                wfn,
+                nelec,
+                nbasis,
+                num_dets_for_trial=ndets,
+                num_dets_for_props=ndets_props,
+            )
+        else:
+            trial = ParticleHoleWicks(
+                wfn,
+                nelec,
+                nbasis,
+                num_dets_for_trial=ndets,
+                num_dets_for_props=ndets_props,
+                num_det_chunks=ndet_chunks,
+            )
+    elif len(wfn) == 2:
+        if len(wfn[0]) == 1:
+            trial = SingleDet(
+                wfn[1][0],
+                nelec,
+                nbasis,
+            )
+        else:
+            trial = NOCI(
+                wfn,
+                nelec,
+                nbasis,
+            )
+    else:
+        raise RuntimeError("Unknown QMCPACK wavefunction format.")
+    return trial
+
+
+def chunk_trial(trial):
+    self.chunked = True  # Boolean to indicate that chunked cholesky is available
+
+    if handler.scomm.rank == 0:  # Creating copy for every rank == 0
+        self._rchola = self._rchola.copy()
+        self._rcholb = self._rcholb.copy()
+
+    self._rchola_chunk = handler.scatter_group(self._rchola)  # distribute over chol
+    self._rcholb_chunk = handler.scatter_group(self._rcholb)  # distribute over chol
+
+    tot_size = handler.allreduce_group(self._rchola_chunk.size)
+    assert self._rchola.size == tot_size
+    tot_size = handler.allreduce_group(self._rcholb_chunk.size)
+    assert self._rcholb.size == tot_size

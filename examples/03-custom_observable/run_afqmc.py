@@ -20,16 +20,11 @@ import os
 
 import numpy as np
 
-from pyscf import cc, gto, scf
+from pyscf import gto, scf
 
 from mpi4py import MPI
 
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
-from ipie.utils.mpi import get_shared_comm
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
@@ -98,7 +93,7 @@ class Diagonal1RDM(EstimatorBase):
         self.scalar_estimator = False
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        greens_function(walker_batch, trial_wavefunction, build_full=True)
+        trial_wavefunction.calc_greens_function(walker_batch)
         from ipie.estimators.greens_function_batch import get_greens_function
 
         numer = np.einsum(
@@ -147,7 +142,7 @@ class Mixed1RDM(EstimatorBase):
         self.scalar_estimator = False
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        greens_function(walker_batch, trial_wavefunction, build_full=True)
+        trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
         from ipie.estimators.greens_function_batch import get_greens_function
 
         numer = np.array(
@@ -182,8 +177,8 @@ print(qmc_data[0, 0].trace().real)
 
 # Necessary to test your implementation, in particular that reading / writing is
 # happening as expected.
-greens_function(afqmc.psi.walkers_batch, afqmc.trial, build_full=True)
 weights = afqmc.psi.walkers_batch.weight
+afqmc.trial.calc_greens_function(afqmc.psi.walkers_batch, build_full=True)
 refa = np.einsum("w,wij->ij", weights, afqmc.psi.walkers_batch.Ga.copy())
 refa /= np.sum(weights)
 qmc_data = extract_observable(afqmc.estimators.filename, "1RDM")

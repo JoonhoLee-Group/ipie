@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +16,10 @@
 #          Joonho Lee
 #
 
-import copy
-
 import numpy
-import scipy.linalg
 
-from ipie.estimators.greens_function_batch import get_greens_function
-from ipie.legacy.estimators.local_energy import local_energy_multi_det
-from ipie.propagation.overlap import get_calc_overlap
-from ipie.utils.misc import get_numeric_names
+from ipie.trial_wavefunction.particle_hole import ParticleHoleNaive
+from ipie.trial_wavefunction.noci import NOCI
 from ipie.walkers.walker_batch import WalkerBatch
 
 
@@ -59,6 +53,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         hamiltonian,
         trial,
         nwalkers,
+        initial_walker,
         walker_opts={},
         index=0,
         det_weights="zeros",
@@ -76,6 +71,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             hamiltonian,
             trial,
             nwalkers,
+            initial_walker,
             walker_opts=walker_opts,
             index=index,
             nprop_tot=nprop_tot,
@@ -83,7 +79,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
             mpi_handler=mpi_handler,
         )
         self.name = "MultiDetTrialWalkerBatch"
-        self.ndets = trial.ndets
+        self.ndets = trial.num_dets
 
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of
@@ -100,9 +96,8 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
 
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
-        calc_overlap = get_calc_overlap(trial)
 
-        self.ot = calc_overlap(self, trial)
+        self.ot = trial.calc_overlap(self)  # calc_overlap(self, trial)
         # TODO: fix name.
         self.ovlp = self.ot
         self.le_oratio = 1.0
@@ -150,7 +145,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
                     dtype=numpy.complex128,
                 )
         # else:
-        if not trial.wicks:
+        if isinstance(trial, ParticleHoleNaive) or isinstance(trial, NOCI):
             self.Gia = numpy.zeros(
                 shape=(
                     self.nwalkers,
@@ -196,7 +191,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         )
 
         # Contains overlaps of the current walker with the trial wavefunction.
-        get_greens_function(trial)(self, trial)
+        trial.calc_greens_function(self)
 
     def contract_one_body(self, ints, trial):
         numer = 0.0

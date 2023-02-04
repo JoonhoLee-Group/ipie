@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,13 +18,14 @@
 import importlib
 import sys
 
+
 def purge_ipie_modules():
-    modules = [m for m in sys.modules.keys() if 'ipie' in m]
+    modules = [m for m in sys.modules.keys() if "ipie" in m]
     for m in modules:
         del sys.modules[m]
 
-class Config:
 
+class Config:
     def __init__(self):
         self.options = {}
 
@@ -45,10 +45,11 @@ class Config:
         return _val
 
     def __str__(self):
-        _str = ''
+        _str = ""
         for k, v in self.options.items():
-            _str += '{} : {}\n'.format(k, v)
+            _str += "{} : {}\n".format(k, v)
         return _str
+
 
 config = Config()
 
@@ -57,9 +58,12 @@ config = Config()
 # Otherwise I couldnt figure out a way to successfully reload ipie.utils.backend
 # in order for arraylib etc to be correctly set.
 import os
-IPIE_USE_GPU = os.environ.get('IPIE_USE_GPU', False)
+
+IPIE_USE_GPU = os.environ.get("IPIE_USE_GPU", False)
+IPIE_USE_MIXED_PRECISION = os.environ.get("IPIE_USE_MIXED_PRECISION", False)
 # Default to not using for the moment.
-config.add_option('use_gpu', bool(int(IPIE_USE_GPU)))
+config.add_option("use_gpu", bool(int(IPIE_USE_GPU)))
+config.add_option("mixed_precision", bool(int(IPIE_USE_MIXED_PRECISION)))
 # Memory limits should be in GB
-config.add_option('max_memory_for_wicks', 2.0)
-config.add_option('max_memory_sd_energy_gpu', 2.0)
+config.add_option("max_memory_for_wicks", 2.0)
+config.add_option("max_memory_sd_energy_gpu", 2.0)
