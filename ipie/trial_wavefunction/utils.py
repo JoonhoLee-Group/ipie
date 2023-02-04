@@ -16,22 +16,18 @@
 #          Joonho Lee
 #
 
+import numpy as np
+
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-)
+from ipie.trial_wavefunction.particle_hole import (ParticleHoleWicks,
+                                                   ParticleHoleWicksNonChunked)
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.utils.io import (
-    determine_wavefunction_type,
-    get_input_value,
-    read_noci_wavefunction,
-    read_particle_hole_wavefunction,
-    read_qmcpack_wfn_hdf,
-    read_single_det_wavefunction,
-)
+from ipie.utils.io import (determine_wavefunction_type, get_input_value,
+                           read_noci_wavefunction,
+                           read_particle_hole_wavefunction,
+                           read_qmcpack_wfn_hdf, read_single_det_wavefunction)
 
 
 def get_trial_wavefunction(
@@ -119,9 +115,8 @@ def get_trial_wavefunction(
         )
     elif wfn_type == "single_determinant":
         wfn, phi0 = read_single_det_wavefunction(wfn_file)
-        print(type(wfn))
         trial = SingleDet(
-            wfn,
+            np.hstack(wfn),
             system.nelec,
             hamiltonian.nbasis,
         )
