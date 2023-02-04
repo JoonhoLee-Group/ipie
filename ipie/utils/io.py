@@ -210,7 +210,7 @@ def read_single_det_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
         except KeyError:
             wfn = [psia, psia]
             phi0 = [phi0a, phi0a]
-    return wfn, phi0
+    return numpy.hstack(wfn), phi0
 
 
 def format_fixed_width_strings(strings):

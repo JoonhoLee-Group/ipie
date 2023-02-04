@@ -97,11 +97,11 @@ class SingleDet(TrialWavefunctionBase):
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_single_det_batch(walkers, self)
 
-    def calc_greens_function(self, walkers) -> np.ndarray:
+    def calc_greens_function(self, walkers, build_full=False) -> np.ndarray:
         if config.get_option("use_gpu"):
-            return greens_function_single_det_batch(walkers, self)
+            return greens_function_single_det_batch(walkers, self, build_full=build_full)
         else:
-            return greens_function_single_det(walkers, self)
+            return greens_function_single_det(walkers, self, build_full=build_full)
 
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         if hamiltonian.chunked:

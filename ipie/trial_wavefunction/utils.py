@@ -119,6 +119,7 @@ def get_trial_wavefunction(
         )
     elif wfn_type == "single_determinant":
         wfn, phi0 = read_single_det_wavefunction(wfn_file)
+        print(type(wfn))
         trial = SingleDet(
             wfn,
             system.nelec,
