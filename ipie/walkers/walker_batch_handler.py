@@ -86,6 +86,7 @@ class WalkerBatchHandler(object):
             print("# qmc.nwalkers = {}".format(self.nwalkers))
             print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
 
+        # This shouldn't be happening here.
         if isinstance(trial, SingleDet):
             if verbose:
                 print("# Using single det walker with a single det trial.")
@@ -109,7 +110,7 @@ class WalkerBatchHandler(object):
                 print("# Using single det walker with a multi det trial.")
             self.walker_type = "SD"
             if initial_walker is None:
-                initial_walker = numpy.hstack([trial.psi0a, trial.psi0b]) 
+                initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
             self.walkers_batch = MultiDetTrialWalkerBatch(
                 system,
                 hamiltonian,
@@ -802,3 +803,93 @@ class WalkerAccumulator(object):
 
     def to_text(self, vals):
         return format_fixed_width_floats(vals.real)
+
+
+class CustomWalkerBatchHandler(WalkerBatchHandler):
+    """Container for groups of walkers which make up a wavefunction.
+
+    Parameters
+    ----------
+    system : object
+        System object.
+    trial : object
+        Trial wavefunction object.
+    nwalkers : int
+        Number of walkers to initialise.
+    nprop_tot : int
+        Total number of propagators to store for back propagation + itcf.
+    nbp : int
+        Number of back propagation steps.
+    """
+
+    def __init__(
+        self,
+        num_walkers_local,
+        num_walkers_global,
+        num_steps,
+        walker_batch,
+        mpi_handler=None,
+        pop_control_method="pair_branch",
+        min_weight=0.1,
+        max_weight=4,
+        reconfiguration_frequency=50,
+        verbose=False,
+    ):
+        self.nwalkers = num_walkers_local
+        self.ntot_walkers = num_walkers_global
+        # weight, unscaled weight and hybrid energy accumulated across a block.
+        # Mostly here for legacy purposes.
+        self.accumulator_factors = WalkerAccumulator(
+            ["Weight", "WeightFactor", "HybridEnergy"], num_steps
+        )
+
+        if mpi_handler is None:
+            rank = 0
+        else:
+            rank = mpi_handler.comm.rank
+
+        if verbose:
+            print("# Setting up walkers.handler_batch.Walkers.")
+            print("# qmc.nwalkers = {}".format(self.nwalkers))
+            print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
+
+        # This shouldn't be happening here.
+        self.walkers_batch = walker_batch
+
+        self.buff_size = self.walkers_batch.buff_size
+
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+
+        self.reconfiguration_counter = 0
+        self.min_weight = min_weight
+        self.max_weight = max_weight
+        self.reconfiguration_freq = reconfiguration_frequency
+        self.pcont_method = pop_control_method
+
+        if verbose:
+            print(
+                "# Using {} population control " "algorithm.".format(self.pcont_method)
+            )
+            mem = float(self.walker_buffer.nbytes) / (1024.0**3)
+            print("# Buffer size for communication: {:13.8e} GB".format(mem))
+            if mem > 2.0:
+                # TODO: FDM FIX THIS
+                print(
+                    " # Warning: Walker buffer size > 2GB. May run into MPI" "issues."
+                )
+
+        walker_batch_size = 3 * self.nwalkers + self.walkers_batch.phia.size
+        if not self.walkers_batch.rhf:
+            walker_batch_size += self.walkers_batch.phib.size
+
+        self.target_weight = self.ntot_walkers
+        self.set_total_weight(self.ntot_walkers)
+        self.start_time_const = 0.0
+        self.communication_time = 0.0
+        self.non_communication_time = 0.0
+        self.recv_time = 0.0
+        self.send_time = 0.0
+        self.write_restart = False
+
+        if verbose:
+            print("# Finish setting up walkers.handler.Walkers.")

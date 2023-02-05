@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,31 +18,31 @@
 
 """Generate AFQMC data from PYSCF (molecular) simulation."""
 import time
+from dataclasses import dataclass
+from typing import Tuple, Union
 
 import h5py
 import numpy
 import scipy.linalg
-from typing import Union, Tuple
-
 from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
-from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.generic import local_energy_generic_cholesky
-from ipie.utils.io import write_wavefunction, write_hamiltonian
+from ipie.legacy.estimators.greens_function import gab
+from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.misc import dotdict
 
 
 def gen_ipie_input_from_pyscf_chk(
-        pyscf_chkfile: str,
-        hamil_file: str="hamiltonian.h5",
-        wfn_file: str="wavefunction.h5",
-        verbose: bool=True,
-        chol_cut: float=1e-5,
-        ortho_ao: bool=False,
-        mcscf: bool=False,
-        linear_dep_thresh: float=1e-8,
-        num_frozen_core: int=0,
+    pyscf_chkfile: str,
+    hamil_file: str = "hamiltonian.h5",
+    wfn_file: str = "wavefunction.h5",
+    verbose: bool = True,
+    chol_cut: float = 1e-5,
+    ortho_ao: bool = False,
+    mcscf: bool = False,
+    linear_dep_thresh: float = 1e-8,
+    num_frozen_core: int = 0,
 ) -> None:
 
     if mcscf:
@@ -52,56 +51,96 @@ def gen_ipie_input_from_pyscf_chk(
         scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
     mol = scf_data["mol"]
     hcore = scf_data["hcore"]
-    ortho_ao_mat = scf_data['X']
-    mo_coeffs = scf_data['mo_coeff']
-    mo_occ = scf_data['mo_occ']
+    ortho_ao_mat = scf_data["X"]
+    mo_coeffs = scf_data["mo_coeff"]
+    mo_occ = scf_data["mo_occ"]
     if ortho_ao:
         basis_change_matrix = ortho_ao_mat
     else:
         basis_change_matrix = mo_coeffs
     if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
         if verbose:
-            print("# UHF mo coefficients found and ortho-ao == False. Using"
-            " alpha mo coefficients for basis transformation.")
+            print(
+                "# UHF mo coefficients found and ortho-ao == False. Using"
+                " alpha mo coefficients for basis transformation."
+            )
         basis_change_matrix = mo_coeffs[0]
-    hcore, chol, e0 = generate_integrals(mol, hcore, basis_change_matrix,
-                                         chol_cut=chol_cut,
-                                         verbose=verbose)
+    ham = generate_hamiltonian(
+        mol,
+        mo_coeffs,
+        hcore,
+        basis_change_matrix,
+        chol_cut=chol_cut,
+        num_frozen_core=num_frozen_core,
+        verbose=verbose,
+    )
+    write_hamiltonian(ham.h1e, ham.chol, ham.e0, filename=hamil_file)
+    nelec = (mol.nelec[0] - num_frozen_core, mol.nelec[1] - num_frozen_core)
+    if verbose:
+        print(f"# Number of electrons in simulation: {nelec}")
+    if mcscf:
+        ci_coeffs = scf_data["ci_coeffs"]
+        occa = scf_data["occa"]
+        occb = scf_data["occb"]
+        write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
+    else:
+        wfn = generate_wavefunction_from_mo_coeff(
+            mo_coeffs,
+            mo_occ,
+            basis_change_matrix,
+            nelec,
+            ortho_ao=ortho_ao,
+            num_frozen_core=num_frozen_core,
+        )
+        write_wavefunction(wfn, wfn_file)
+
+
+@dataclass(frozen=True)
+class Hamiltonian:
+    h1e: numpy.ndarray
+    chol: numpy.ndarray
+    e0: float
+
+
+@dataclass(frozen=True)
+class Wavefunction:
+    wfn: Union[Tuple, numpy.ndarray]
+
+
+def generate_hamiltonian(
+    mol,
+    mo_coeffs: numpy.ndarray,
+    hcore: numpy.ndarray,
+    basis_change_matrix: numpy.ndarray,
+    chol_cut: float = 1e-8,
+    num_frozen_core: int = 0,
+    ortho_ao: bool = False,
+    verbose: bool = False,
+) -> Hamiltonian:
+    h1e, chol, e0 = generate_integrals(
+        mol, hcore, basis_change_matrix, chol_cut=chol_cut, verbose=verbose
+    )
     if num_frozen_core > 0:
         assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
         assert num_frozen_core <= mol.nelec[0], f"{num_frozen_core} < {mol.nelec[0]}"
         assert num_frozen_core <= mol.nelec[1], f"{num_frozen_core} < {mol.nelec[1]}"
-        h1eff, chol_act, e0_eff = freeze_core(hcore, chol, e0, mo_coeffs,
-                num_frozen_core, verbose=verbose)
-        write_hamiltonian(h1eff[0], chol_act, e0_eff, filename=hamil_file)
-        nelec = (mol.nelec[0]-num_frozen_core, mol.nelec[1]-num_frozen_core)
+        h1e_eff, chol_act, e0_eff = freeze_core(
+            h1e, chol, e0, mo_coeffs, num_frozen_core, verbose=verbose
+        )
+        return Hamiltonian(h1e_eff, chol_act, e0_eff)
     else:
-        write_hamiltonian(hcore, chol, e0, filename=hamil_file)
-        nelec = mol.nelec
-    if verbose:
-        print(f"# Number of electrons in simulation: {nelec}")
-    if mcscf:
-        ci_coeffs = scf_data['ci_coeffs']
-        occa = scf_data['occa']
-        occb = scf_data['occb']
-        write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
-    else:
-        write_wavefunction_from_mo_coeff(mo_coeffs, mo_occ, basis_change_matrix,
-                wfn_file, nelec, ortho_ao, num_frozen_core=num_frozen_core)
+        return Hamiltonian(h1e, chol, e0)
 
 
-
-def write_wavefunction_from_mo_coeff(
-        mo_coeff: Union[list, numpy.ndarray],
-        mo_occ: Union[list, numpy.ndarray],
-        X: numpy.ndarray,
-        filename: str,
-        nelec: tuple,
-        ortho_ao: bool=False,
-        num_frozen_core: int=0
-) -> None:
-    """Generate QMCPACK trial wavefunction.
-    """
+def generate_wavefunction_from_mo_coeff(
+    mo_coeff: Union[list, numpy.ndarray],
+    mo_occ: Union[list, numpy.ndarray],
+    X: numpy.ndarray,
+    nelec: tuple,
+    ortho_ao: bool = False,
+    num_frozen_core: int = 0,
+) -> Union[list, numpy.ndarray]:
+    """Generate QMCPACK trial wavefunction."""
     uhf = isinstance(mo_coeff, list) or len(mo_coeff.shape) == 3
     if not uhf and nelec[0] != nelec[1]:
         rohf = True
@@ -114,41 +153,43 @@ def write_wavefunction_from_mo_coeff(
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
-            wfna = numpy.dot(Xinv, mo_coeff[0])[:, mo_occ[0]>0]
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1]>0]
-            write_wavefunction([wfna, wfnb], filename=filename)
+            wfna = numpy.dot(Xinv, mo_coeff[0])[:, mo_occ[0] > 0]
+            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1] > 0]
+            wfn = [wfna, wfnb]
         elif rohf:
             _occ_a = mo_occ > 0
             _occ_b = mo_occ > 1
             wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
             wfnb = numpy.dot(Xinv, mo_coeff)[:, _occ_b]
-            write_wavefunction([wfna, wfnb], filename=filename)
+            wfn = [wfna, wfnb]
         else:
             mo_occ = numpy.array(mo_occ, dtype=numpy.int64)
             _occ_a = mo_occ > 0
             wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
-            write_wavefunction(wfna, filename=filename)
+            wfn = wfna
     else:
         if uhf:
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, mo_occ[0][num_frozen_core:]>0]
+            wfna = I[:, mo_occ[0][num_frozen_core:] > 0]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
             wfnb = numpy.dot(Xinv, mo_coeff[1])[:, num_frozen_core:]
-            wfnb = wfnb[:, mo_occ[1][num_frozen_core:]>0]
-            write_wavefunction([wfna, wfnb], filename=filename)
+            wfnb = wfnb[:, mo_occ[1][num_frozen_core:] > 0]
+            wfn = [wfna, wfnb]
         elif rohf:
             I = numpy.identity(nmo, dtype=numpy.float64)
             _occ_a = mo_occ > 0
             _occ_b = mo_occ > 1
             wfna = I[:, _occ_a[num_frozen_core:]].copy()
             wfnb = I[:, _occ_b[num_frozen_core:]].copy()
-            write_wavefunction([wfna, wfnb], filename=filename)
+            wfn = [wfna, wfnb]
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
             I = numpy.identity(nmo, dtype=numpy.float64)
-            wfna = I[:, mo_occ[num_frozen_core:]>0]
-            write_wavefunction(wfna, filename=filename)
+            wfna = I[:, mo_occ[num_frozen_core:] > 0]
+            wfn = wfna
+    return wfn
+
 
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     # Unpack SCF data.
@@ -535,18 +576,18 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
             X = get_ortho_ao(s1e)
         if base == "mcscf":
             try:
-               ci_coeffs =  fh5['mcscf/ci_coeffs'][:]
-               occa =  fh5['mcscf/occs_alpha'][:]
-               occb =  fh5['mcscf/occs_beta'][:]
+                ci_coeffs = fh5["mcscf/ci_coeffs"][:]
+                occa = fh5["mcscf/occs_alpha"][:]
+                occb = fh5["mcscf/occs_beta"][:]
             except KeyError:
-               ci_coeffs = None
-               occa = None
-               occb = None
+                ci_coeffs = None
+                occa = None
+                occb = None
     mo_occ = lib.chkfile.load(chkfile, base + "/mo_occ")
     mo_coeff = lib.chkfile.load(chkfile, base + "/mo_coeff")
     if mo_coeff is None:
         mo_occ = lib.chkfile.load(chkfile, "/scf" + "/mo_occ")
-        mo_coeff = lib.chkfile.load(chkfile,"/scf" + "/mo_coeff")
+        mo_coeff = lib.chkfile.load(chkfile, "/scf" + "/mo_coeff")
     scf_data = {
         "mol": mol,
         "mo_occ": mo_occ,
@@ -555,10 +596,11 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
         "mo_coeff": mo_coeff,
     }
     if base == "mcscf":
-        scf_data['ci_coeffs'] = ci_coeffs
-        scf_data['occa'] = occa
-        scf_data['occb'] = occb
+        scf_data["ci_coeffs"] = ci_coeffs
+        scf_data["occa"] = occa
+        scf_data["occb"] = occb
     return scf_data
+
 
 def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
     # 1. Construct one-body hamiltonian
@@ -599,11 +641,10 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
     # 4. Subtract one-body term from writing H2 as sum of squares.
     if verbose:
         print(f"# Number of active orbitals: {nact}")
-        print(
-            f"# Freezing {nfrozen} core orbitals."
-        )
+        print(f"# Freezing {nfrozen} core orbitals.")
         print(f"# Frozen core energy : {ecore.real:15.12e}")
     return h1e, chol, ecore.real
+
 
 def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     mol = mf.mol
@@ -622,19 +663,21 @@ def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     return h1e, chol, enuc, X
 
 
-def integrals_from_chkfile(
-    chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
-):
+def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False):
     scf_data = load_from_pyscf_chkfile(chkfile)
     mol = scf_data["mol"]
     hcore = scf_data["hcore"]
     if ortho_ao:
         oao = scf_data["X"]
     else:
-        X = scf_data['mo_coeff']
+        X = scf_data["mo_coeff"]
         if len(X.shape) == 3:
             X = X[0]
     h1e, chol, enuc = generate_integrals(
-        mol, hcore, X, chol_cut=chol_cut, verbose=verbose,
+        mol,
+        hcore,
+        X,
+        chol_cut=chol_cut,
+        verbose=verbose,
     )
     return h1e, chol, enuc, X
