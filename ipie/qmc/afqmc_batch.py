@@ -110,7 +110,7 @@ class AFQMCBatch(object):
         trial=None,
         parallel=False,
         walkers=None,
-        verbose=False,
+        verbose: int=0,
         qmc_opt=None,
         num_walkers: int = 100,
         num_steps_per_block: int = 25,
