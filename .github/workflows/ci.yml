@@ -7,7 +7,9 @@ jobs:
     strategy:
       matrix:
         python-version: [ '3.8', '3.9', '3.10' ]
-    runs-on:  ubuntu-20.04
+        mpi:
+          - openmpi
+    runs-on:  ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v1
@@ -16,6 +18,8 @@ jobs:
         architecture: 'x64'
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: ${{ matrix.mpi }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
