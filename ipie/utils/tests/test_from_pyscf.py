@@ -159,6 +159,7 @@ def test_frozen_uhf():
     mol.verbose = 0
     mol.build()
     mf = scf.UHF(mol)
+    mf.chkfile = "scf.chk"
     energy = mf.kernel()
     ncore = 1
     h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,
@@ -188,6 +189,7 @@ def test_frozen_rohf():
     mol.verbose = 0
     mol.build()
     mf = scf.ROHF(mol)
+    mf.chkfile = "scf.chk"
     energy = mf.kernel()
     ncore = 1
     h1e, chol, enuc, basis_change_mat = integrals_from_scf(mf, verbose=0,

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,6 @@
 #          Joonho Lee
 #
 
-import h5py
 import numpy
 
 array = numpy.array
@@ -25,13 +23,13 @@ zeros = numpy.zeros
 einsum = numpy.einsum
 isrealobj = numpy.isrealobj
 
-import sys
-import time
 
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_hamiltonian,
-                           read_hamiltonian)
-from ipie.utils.backend import cast_to_device
+from ipie.utils.io import (
+    from_qmcpack_dense,
+    from_qmcpack_sparse,
+    write_hamiltonian,
+    read_hamiltonian,
+)
 
 
 class Generic(object):

@@ -104,13 +104,18 @@ class AFQMCBatch(object):
     def __init__(
         self,
         comm,
-        options=None,
+        options={},
         system=None,
         hamiltonian=None,
         trial=None,
         parallel=False,
         walkers=None,
-        verbose=False,
+        verbose: int=0,
+        qmc_opt=None,
+        num_walkers: int = 100,
+        num_steps_per_block: int = 25,
+        num_blocks: int = 100,
+        timestep: float = 0.005,
     ):
         if verbose is not None:
             self.verbosity = verbose
@@ -143,13 +148,21 @@ class AFQMCBatch(object):
         self._init_time = time.time()
         self.run_time = time.asctime()
 
-        qmc_opt = get_input_value(
-            options,
-            "qmc",
-            default={},
-            alias=["qmc_options"],
-            verbose=self.verbosity > 1,
-        )
+        if qmc_opt is not None:
+            qmc_opt = get_input_value(
+                options,
+                "qmc",
+                default={},
+                alias=["qmc_options"],
+                verbose=self.verbosity > 1,
+            )
+        else:
+            qmc_opt = {
+                "num_walkers": num_walkers,
+                "timestep": timestep,
+                "nsteps": num_steps_per_block,
+                "num_blocks": num_blocks,
+            }
 
         self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
         self.shared_comm = self.mpi_handler.shared_comm

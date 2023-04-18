@@ -202,11 +202,11 @@ def get_random_phmsd_opt(
     vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
     # dets = [(d0a, d0b)]
     dets = []
-    for ialpha in range(0, nup+1):
+    for ialpha in range(0, nup + 1):
         oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
         if oa is None:
             continue
-        for ibeta in range(0, ndown+1):
+        for ibeta in range(0, ndown + 1):
             ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
             if ob is None:
                 continue
@@ -306,7 +306,6 @@ def build_random_phmsd_trial(
     wfn_type="opt",
     complex_trial: bool = False,
 ):
-
     _classes = {
         "naive": ParticleHoleNaive,
         "opt": ParticleHoleWicks,
@@ -574,6 +573,11 @@ def build_driver_test_instance(
 
     comm = MPI.COMM_WORLD
     afqmc = AFQMCBatch(
-        comm=comm, system=system, hamiltonian=ham, options=options, trial=trial
+        comm=comm,
+        system=system,
+        hamiltonian=ham,
+        options=options,
+        trial=trial,
+        qmc_opt=options["qmc"],
     )
     return afqmc

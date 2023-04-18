@@ -62,7 +62,7 @@ def setup_calculation(input_options):
     return (afqmc, comm)
 
 
-def get_driver(options, comm):
+def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMCBatch:
     verbosity = options.get("verbosity", 1)
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     beta = get_input_value(qmc_opts, "beta", default=None)
@@ -74,7 +74,7 @@ def get_driver(options, comm):
         raise ValueError("Trying to use legacy features which aren't supported.")
     else:
         afqmc = AFQMCBatch(
-            comm, options=options, parallel=comm.size > 1, verbose=verbosity
+            comm, options=options, qmc_opt=qmc_opts, parallel=comm.size > 1, verbose=verbosity
         )
 
     return afqmc
