@@ -127,7 +127,7 @@ def generate_hamiltonian(
         h1e_eff, chol_act, e0_eff = freeze_core(
             h1e, chol, e0, mo_coeffs, num_frozen_core, verbose=verbose
         )
-        return Hamiltonian(h1e_eff, chol_act, e0_eff)
+        return Hamiltonian(h1e_eff[0], chol_act, e0_eff)
     else:
         return Hamiltonian(h1e, chol, e0)
 
