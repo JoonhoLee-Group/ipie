@@ -67,8 +67,6 @@ class UHFWalkers(BaseWalkers):
         )
 
         # should completely deprecate these
-        # self.name = "UHFWalkers"
-        # self.name = "SingleDetWalkerBatch"
         self.field_configs = None
 
         self.phia = numpy.array(

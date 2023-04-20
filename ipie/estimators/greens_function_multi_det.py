@@ -1,5 +1,7 @@
 import numpy
 import scipy.linalg
+from numba import jit
+
 from ipie.propagation.overlap import (
     compute_determinants_batched,
     get_overlap_one_det_wicks,
@@ -10,9 +12,8 @@ from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
-from numba import jit
-
 from ipie.estimators.kernels.cpu import wicks as wk
+from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
 
 
 
