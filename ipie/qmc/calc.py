@@ -101,7 +101,7 @@ def build_afqmc_driver(
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
     }
-    afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
+    afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity, num_walkers=num_walkers_per_task)
     return afqmc
 
 

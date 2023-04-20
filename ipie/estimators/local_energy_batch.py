@@ -37,6 +37,9 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt,
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
+from ipie.walkers.base_walkers import BaseWalkers
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
 from ipie.utils.misc import is_cupy
 
 
@@ -62,7 +65,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         Total, one-body and two-body energies.
     """
 
-    if walker_batch.name == "SingleDetWalkerBatch":
+    if isinstance(walker_batch,BaseWalkers) or isinstance(walker_batch,SingleDetWalkerBatch):
         if config.get_option("use_gpu"):
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked_gpu(
@@ -87,7 +90,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
                 )
                 # \TODO switch to this
                 # return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
-    elif walker_batch.name == "MultiDetTrialWalkerBatch" and trial.wicks == False:
+    elif isinstance(walker_batch,MultiDetTrialWalkerBatch) and trial.wicks == False:
         return local_energy_multi_det_trial_batch(
             system, hamiltonian, walker_batch, trial
         )

@@ -58,13 +58,14 @@ def gen_ipie_input_from_pyscf_chk(
         basis_change_matrix = ortho_ao_mat
     else:
         basis_change_matrix = mo_coeffs
-    if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
-        if verbose:
-            print(
-                "# UHF mo coefficients found and ortho-ao == False. Using"
-                " alpha mo coefficients for basis transformation."
-            )
-        basis_change_matrix = mo_coeffs[0]
+
+        if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
+            if verbose:
+                print(
+                    "# UHF mo coefficients found and ortho-ao == False. Using"
+                    " alpha mo coefficients for basis transformation."
+                )
+            basis_change_matrix = mo_coeffs[0]
     ham = generate_hamiltonian(
         mol,
         mo_coeffs,

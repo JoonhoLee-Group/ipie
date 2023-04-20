@@ -46,10 +46,10 @@ from ipie.utils.backend import get_host_memory, synchronize
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
-class AFQMCBatch(object):
-    """AFQMCBatch driver.
+class AFQMC(object):
+    """AFQMC driver.
 
-    Zero temperature AFQMCBatch using open ended random walk.
+    Zero temperature AFQMC using open ended random walk.
 
     This object contains all the instances of the classes which parse input
     options.
@@ -66,8 +66,6 @@ class AFQMCBatch(object):
         Input options relating to trial wavefunction.
     propagator : dict
         Input options relating to propagator.
-    parallel : bool
-        If true we are running in parallel.
     verbose : bool
         If true we print out additional setup information.
 
@@ -108,10 +106,9 @@ class AFQMCBatch(object):
         system=None,
         hamiltonian=None,
         trial=None,
-        parallel=False,
-        walkers=None,
+        walkers =None,
         verbose: int=0,
-        qmc_opt=None,
+        seed: int =None,
         num_walkers: int = 100,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
@@ -148,21 +145,12 @@ class AFQMCBatch(object):
         self._init_time = time.time()
         self.run_time = time.asctime()
 
-        if qmc_opt is not None:
-            qmc_opt = get_input_value(
-                options,
-                "qmc",
-                default={},
-                alias=["qmc_options"],
-                verbose=self.verbosity > 1,
-            )
-        else:
-            qmc_opt = {
-                "num_walkers": num_walkers,
-                "timestep": timestep,
-                "nsteps": num_steps_per_block,
-                "num_blocks": num_blocks,
-            }
+        qmc_opt = {
+            "num_walkers": num_walkers,
+            "timestep": timestep,
+            "nsteps": num_steps_per_block,
+            "num_blocks": num_blocks,
+        }
 
         self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
         self.shared_comm = self.mpi_handler.shared_comm
@@ -192,6 +180,7 @@ class AFQMCBatch(object):
             self.hamiltonian = get_hamiltonian(
                 self.system, ham_opts, verbose=verbose, comm=self.shared_comm
             )
+
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
@@ -212,7 +201,6 @@ class AFQMCBatch(object):
         if self.qmc.nwalkers_per_task is None:
             assert self.qmc.nwalkers is not None
             self.qmc.nwalkers_per_task = int(self.qmc.nwalkers / comm.size)
-
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
@@ -232,7 +220,10 @@ class AFQMCBatch(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
 
-        self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        if seed is None:
+            self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
+        else:
+            self.qmc.rng_seed = set_rng_seed(seed, comm)
 
         self.cplx = self.determine_dtype(options.get("propagator", {}), self.system)
 
@@ -288,18 +279,13 @@ class AFQMCBatch(object):
         )
         if comm.rank == 0:
             print("# Getting WalkerBatchHandler")
+        
         if walkers is not None:
             self.psi = walkers
         else:
-            self.psi = WalkerBatchHandler(
-                self.system,
-                self.hamiltonian,
-                self.trial,
-                self.qmc,
-                walker_opts=wlk_opts,
-                mpi_handler=self.mpi_handler,
-                verbose=verbose,
-            )
+            print("# walkers class is not given. so it should crash")
+            exit()
+
         est_opts = get_input_value(
             options,
             "estimators",
@@ -330,7 +316,7 @@ class AFQMCBatch(object):
             self.propagators.cast_to_cupy(verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
             self.trial.cast_to_cupy(verbose and comm.rank == 0)
-            self.psi.walkers_batch.cast_to_cupy(verbose and comm.rank == 0)
+            self.psi.cast_to_cupy(verbose and comm.rank == 0)
         else:
             if comm.rank == 0:
                 try:
@@ -366,7 +352,7 @@ class AFQMCBatch(object):
         self.setup_timers()
         eshift = 0.0
 
-        self.psi.orthogonalise(self.trial, self.propagators.free_projection)
+        self.psi.orthogonalise(self.propagators.free_projection)
 
         total_steps = self.qmc.nsteps * self.qmc.nblocks
         # Delay initialization incase user defined estimators added after
@@ -378,7 +364,7 @@ class AFQMCBatch(object):
             self.system,
             self.hamiltonian,
             self.trial,
-            self.psi.walkers_batch,
+            self.psi,
         )
         self.psi.update_accumulators()
         self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
@@ -392,13 +378,13 @@ class AFQMCBatch(object):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
-                self.psi.orthogonalise(self.trial, self.propagators.free_projection)
+                self.psi.orthogonalise(self.propagators.free_projection)
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
 
             self.propagators.propagate_walker_batch(
-                self.psi.walkers_batch,
+                self.psi,
                 self.system,
                 self.hamiltonian,
                 self.trial,
@@ -414,13 +400,13 @@ class AFQMCBatch(object):
 
             start_clip = time.time()
             if step > 1:
-                # wbound = min(100.0, self.psi.walkers_batch.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
-                wbound = self.psi.walkers_batch.total_weight * 0.10
+                # wbound = min(100.0, self.psi.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
+                wbound = self.psi.total_weight * 0.10
                 xp.clip(
-                    self.psi.walkers_batch.weight,
+                    self.psi.weight,
                     a_min=-wbound,
                     a_max=wbound,
-                    out=self.psi.walkers_batch.weight,
+                    out=self.psi.weight,
                 )  # in-place clipping
 
             synchronize()
@@ -455,7 +441,7 @@ class AFQMCBatch(object):
                     self.system,
                     self.hamiltonian,
                     self.trial,
-                    self.psi.walkers_batch,
+                    self.psi,
                 )
                 self.estimators.print_block(
                     comm, step // self.qmc.nsteps, self.psi.accumulator_factors
@@ -621,22 +607,3 @@ class AFQMCBatch(object):
         self.tpopc_comm = 0
         self.tpopc_non_comm = 0
         self.tstep = 0
-
-    def get_one_rdm(self, skip=0):
-        """Get back-propagated estimate for the one RDM.
-
-        Returns
-        -------
-        rdm : :class:`numpy.ndarray`
-            Back propagated estimate for 1RMD.
-        error : :class:`numpy.ndarray`
-            Standard error in the RDM.
-        """
-        from ipie.analysis import blocking
-
-        filename = self.estimators.h5f_name
-        try:
-            bp_rdm, bp_rdm_err = blocking.reblock_rdm(filename)
-        except IndexError:
-            bp_rdm, bp_rdm_err = None, None
-        return (bp_rdm, bp_rdm_err)

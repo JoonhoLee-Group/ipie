@@ -10,7 +10,7 @@ from ipie.propagation.overlap import (
     calc_overlap_multi_det_wicks,
     calc_overlap_multi_det_wicks_opt,
 )
-from ipie.estimators.greens_function_batch import (
+from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det,
     greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt,
