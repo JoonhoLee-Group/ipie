@@ -2,7 +2,7 @@ import numpy as np
 
 from ipie.propagation.overlap import calc_overlap_multi_det
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.estimators.greens_function_batch import greens_function_multi_det
+from ipie.estimators.greens_function_multi_det import greens_function_multi_det
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 
 

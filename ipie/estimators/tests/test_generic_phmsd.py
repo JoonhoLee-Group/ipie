@@ -21,7 +21,7 @@ import os
 import numpy
 import pytest
 
-from ipie.estimators.greens_function_batch import (
+from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det,
     greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt,
@@ -680,7 +680,7 @@ def test_kernels_gf():
     )
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
-    from ipie.estimators.greens_function_batch import (
+    from ipie.estimators.greens_function_multi_det import (
         build_CI_single_excitation,
         build_CI_single_excitation_opt,
     )
@@ -693,7 +693,7 @@ def test_kernels_gf():
     build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
-    from ipie.estimators.greens_function_batch import (
+    from ipie.estimators.greens_function_multi_det import (
         build_CI_double_excitation,
         build_CI_double_excitation_opt,
     )
@@ -708,7 +708,7 @@ def test_kernels_gf():
     build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
-    from ipie.estimators.greens_function_batch import (
+    from ipie.estimators.greens_function_multi_det import (
         build_CI_triple_excitation,
         build_CI_triple_excitation_opt,
     )
@@ -723,7 +723,7 @@ def test_kernels_gf():
     build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
-    from ipie.estimators.greens_function_batch import (
+    from ipie.estimators.greens_function_multi_det import (
         build_CI_nfold_excitation,
         build_CI_nfold_excitation_opt,
     )
@@ -844,7 +844,7 @@ def test_kernels_gf_active_space():
     )
     walker_batch_ref.CIa.fill(0.0 + 0.0j)
     walker_batch_ref.CIb.fill(0.0 + 0.0j)
-    from ipie.estimators.greens_function_batch import (
+    from ipie.estimators.greens_function_multi_det import (
         build_CI_double_excitation_opt,
         build_CI_nfold_excitation_opt,
         build_CI_single_excitation_opt,
@@ -877,7 +877,7 @@ def test_kernels_gf_active_space():
         assert numpy.allclose(refb, CIb_full)
     walker_batch_test.Q0a = numpy.eye(nmo)[None, :] - walker_batch_test.G0a.copy()
     walker_batch_test.Q0b = numpy.eye(nmo)[None, :] - walker_batch_test.G0b.copy()
-    from ipie.estimators.greens_function_batch import contract_CI
+    from ipie.estimators.greens_function_multi_det import contract_CI
 
     act_orb = trial_ref.act_orb_alpha
     occ_orb = trial_ref.occ_orb_alpha

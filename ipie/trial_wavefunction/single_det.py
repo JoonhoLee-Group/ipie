@@ -3,7 +3,7 @@ import time
 
 from ipie.config import config
 from ipie.estimators.generic import half_rotated_cholesky_jk
-from ipie.estimators.greens_function_batch import (
+from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
     greens_function_single_det_batch,
 )
