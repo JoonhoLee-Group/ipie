@@ -33,10 +33,10 @@ def get_initial_walker(trial: TrialWavefunctionBase)->(int,numpy.ndarray):
         ndets = 1
     elif isinstance(trial, ParticleHoleWicks):
         initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        ndets = trial._num_dets_for_trial
+        ndets = trial.num_dets
     elif isinstance(trial, ParticleHoleWicksNonChunked):
         initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        ndets = trial._num_dets_for_trial
+        ndets = trial.num_dets
     else:
         raise Exception("Unrecognized trial type in get_initial_walker")
     return ndets, initial_walker
@@ -46,26 +46,24 @@ class UHFWalkers(BaseWalkers):
 
     Parameters
     ----------
-    system : object
-        System object.
     nwalkers : int
         The number of walkers in this batch
     """
 
     def __init__(
         self,
-        initial_walker,
-        nup, ndown, nbasis,
-        num_walkers_local,
-        num_walkers_global,
-        num_steps,
-        ndets = None, # it's here for interface purposes
+        initial_walker:numpy.ndarray,
+        nup:int, ndown:int, nbasis:int,
+        num_walkers_local:int,
+        num_walkers_global:int,
+        num_steps:int,
+        ndets:int = None, # it's here for interface purposes
         mpi_handler=None,
         pop_control_method="pair_branch",
-        min_weight=0.1,
-        max_weight=4,
-        reconfiguration_frequency=50,
-        verbose=False
+        min_weight:float=0.1,
+        max_weight:float=4,
+        reconfiguration_frequency:int=50,
+        verbose:bool=False
     ):
         assert len(initial_walker.shape) == 2
         self.nbasis = nbasis
@@ -112,7 +110,7 @@ class UHFWalkers(BaseWalkers):
             dtype=numpy.complex128,
         )
 
-        self.buff_names += ["phia, phib"]
+        self.buff_names += ["phia", "phib"]
 
         self.buff_size = round(
             self.set_buff_size_single_walker() / float(self.nwalkers)

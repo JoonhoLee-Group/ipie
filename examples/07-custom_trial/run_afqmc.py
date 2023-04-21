@@ -186,7 +186,6 @@ walkers = UHFWalkers(np.hstack([orbs, orbs]),
 )
 
 np.random.seed(7)
-# QMCOpts needs to die.
 afqmc = AFQMC(
     comm,
     system=system,
