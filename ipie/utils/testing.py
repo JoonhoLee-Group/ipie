@@ -22,7 +22,7 @@ from typing import Tuple, Union
 
 import numpy
 
-from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.afqmc import AFQMC
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
@@ -572,7 +572,7 @@ def build_driver_test_instance(
     from mpi4py import MPI
 
     comm = MPI.COMM_WORLD
-    afqmc = AFQMCBatch(
+    afqmc = AFQMC(
         comm=comm,
         system=system,
         hamiltonian=ham,

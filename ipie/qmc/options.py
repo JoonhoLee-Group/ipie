@@ -17,10 +17,6 @@
 #          Joonho Lee
 #
 
-import copy
-
-import numpy
-
 from ipie.utils.io import get_input_value
 
 

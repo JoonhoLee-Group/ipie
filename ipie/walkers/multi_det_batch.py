@@ -56,7 +56,6 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         initial_walker,
         walker_opts={},
         index=0,
-        det_weights="zeros",
         verbose=False,
         nprop_tot=None,
         nbp=None,

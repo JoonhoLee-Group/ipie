@@ -2,12 +2,10 @@ import mpi4py
 import numpy
 
 from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.propagation.utils import get_propagator_driver
 from ipie.legacy.propagation.utils import get_propagator_driver as get_propagator_driver_legacy
-from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.options import QMCOpts
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
