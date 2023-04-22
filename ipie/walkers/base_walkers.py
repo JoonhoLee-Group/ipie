@@ -472,7 +472,7 @@ class BaseWalkers:
         self.add_non_communication()
 
         self.start_time()
-        comm.Gather(walker_info_0, glob_inf_0, root=0)
+        comm.Gather(walker_info_0, glob_inf_0, root=0) # gather |w_i| from all processors (comm.size x nwalkers)
         self.add_communication()
 
         # Want same random number seed used on all processors
@@ -482,10 +482,10 @@ class BaseWalkers:
             glob_inf = numpy.zeros(
                 (self.nwalkers * comm.size, 4), dtype=numpy.float64
             )
-            glob_inf[:, 0] = glob_inf_0.ravel()
-            glob_inf[:, 1] = glob_inf_1.ravel()
-            glob_inf[:, 2] = glob_inf_2.ravel()
-            glob_inf[:, 3] = glob_inf_3.ravel()
+            glob_inf[:, 0] = glob_inf_0.ravel() # contains walker |w_i|
+            glob_inf[:, 1] = glob_inf_1.ravel() # all initialized to 1 when it becomes 2 then it will be "branched"
+            glob_inf[:, 2] = glob_inf_2.ravel() # contain processor+walker indices (initial) (i.e., where walkers live)
+            glob_inf[:, 3] = glob_inf_3.ravel() # contain processor+walker indices (final) (i.e., where walkers live)
             total_weight = sum(w[0] for w in glob_inf)
             sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
             isort = numpy.argsort(sort, kind="mergesort")
@@ -494,6 +494,7 @@ class BaseWalkers:
             e = len(glob_inf) - 1
             tags = []
             isend = 0
+            # go through walkers pair-wise
             while s < e:
                 if glob_inf[s][0] < self.min_weight or glob_inf[e][0] > self.max_weight:
                     # sum of paired walker weights
@@ -536,6 +537,7 @@ class BaseWalkers:
         self.start_time()
 
         data = numpy.empty([self.nwalkers, 4], dtype=numpy.float64)
+        # 0 = weight, 1 = status (live, branched, die), 2 = initial index, 3 = final index
         comm.Scatter(glob_inf, data, root=0)
 
         self.add_communication()
@@ -688,7 +690,6 @@ class BaseWalkers:
             ndarray = numpy.ndarray
             array = numpy.array
             isrealobj = numpy.isrealobj
-
         s = 0
         buff = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         for d in self.buff_names:
@@ -721,7 +722,7 @@ class BaseWalkers:
         #     stack_buff = self.stack.get_buffer()
         #     return numpy.concatenate((buff, stack_buff))
         # else:
-            return buff
+        return buff
 
     def set_buffer(self, iw, buff):
         """Set walker buffer following MPI communication

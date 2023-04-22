@@ -227,28 +227,8 @@ class AFQMC(object):
             verbose=verbose,
         )
         self.tsetup = time.time() - self._init_time
-        wlk_opts = get_input_value(
-            options,
-            "walkers",
-            default={},
-            alias=["walker", "walker_opts"],
-            verbose=self.verbosity > 1,
-        )
-        if comm.rank == 0:
-            print("# Getting WalkerBatchHandler")
+        self.psi = walkers
 
-        if walkers is not None:
-            self.psi = walkers
-        else:
-            self.psi = WalkerBatchHandler(
-                self.system,
-                self.hamiltonian,
-                self.trial,
-                self.qmc,
-                walker_opts=wlk_opts,
-                mpi_handler=self.mpi_handler,
-                verbose=verbose,
-            )
         est_opts = get_input_value(
             options,
             "estimators",
@@ -256,7 +236,7 @@ class AFQMC(object):
             alias=["estimates", "estimator"],
             verbose=self.verbosity > 1,
         )
-        est_opts["stack_size"] = wlk_opts.get("stack_size", 1)
+        est_opts["stack_size"] = 1 # remove in the future
         self.estimators = EstimatorHandler(
             comm,
             self.system,
@@ -333,7 +313,7 @@ class AFQMC(object):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-
+            
             self.propagators.propagate_walker_batch(
                 self.psi,
                 self.system,

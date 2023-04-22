@@ -77,7 +77,7 @@ def test_overlap_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
@@ -125,7 +125,7 @@ def test_overlap_batch():
         trial_type="single_det",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
@@ -178,7 +178,7 @@ def test_two_body_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -222,7 +222,7 @@ def test_two_body_batch():
         two_body_only=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -268,7 +268,7 @@ def test_hybrid_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -298,7 +298,7 @@ def test_hybrid_batch():
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])

@@ -70,7 +70,7 @@ def test_phmsd_force_bias_batch():
         trial_type="phmsd",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     nchols = batched_data.hamiltonian.nchol
     # fb_slow = prop.construct_force_bias_slow(batched_data.hamiltonian, walker, trial)
@@ -142,7 +142,7 @@ def test_phmsd_greens_function_batch():
         wfn_type="naive",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Gia[iw], walkers[iw].Gi[:, 0, :, :])
         assert numpy.allclose(walker_batch.Gib[iw], walkers[iw].Gi[:, 1, :, :])
@@ -158,7 +158,7 @@ def test_phmsd_greens_function_batch():
         trial_type="phmsd",
         wfn_type="slow",
     )
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0, :, :])
         assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1, :, :])
@@ -209,8 +209,8 @@ def test_phmsd_overlap_batch():
         wfn_type="opt",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
-    walker_batch_opt = batched_data_opt.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
+    walker_batch_opt = batched_data_opt.walkers
 
     ovlps0 = [w.calc_overlap(legacy_data.trial) for w in walkers]
     ovlps = calc_overlap_multi_det_wicks(walker_batch, batched_data.trial)
@@ -440,7 +440,7 @@ def test_phmsd_propagation_batch():
         wfn_type="opt",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     for iw in range(nwalkers):
         assert numpy.allclose(walkers[iw].phi[:, : nelec[0]], walker_batch.phia[iw])
         assert numpy.allclose(walkers[iw].phi[:, nelec[0] :], walker_batch.phib[iw])

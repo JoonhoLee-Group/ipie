@@ -30,7 +30,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.propagation.continuous import Continuous
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -490,7 +490,7 @@ def build_test_case_handlers_mpi(
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
     nsteps = get_input_value(options, "nsteps", default=25, alias=["num_steps"])
     pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
-    reconf_freq = get_input_value(options, "reconfiguration_frequency", default=50 )
+    reconf_freq = get_input_value(options, "reconfiguration_freq", default=50 )
 
     ndets, _ = get_initial_walker(trial)
     walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
@@ -500,32 +500,6 @@ def build_test_case_handlers_mpi(
                                         pop_control_method=pop_control, 
                                         reconfiguration_frequency=reconf_freq)
     walkers.build(trial) # any intermediates that require information from trial
-
-    # handler_batch = WalkerBatchHandler(
-    #     system,
-    #     ham,
-    #     trial,
-    #     options,
-    #     init,
-    #     options,
-    #     verbose=False,
-    # )
-    # trial.calc_greens_function(handler_batch.walkers_batch)
-    # for i in range(options.num_steps):
-    #     if two_body_only:
-    #         prop.two_body_propagator_batch(
-    #             handler_batch.walkers_batch, system, ham, trial
-    #         )
-    #     else:
-    #         prop.propagate_walker_batch(
-    #             handler_batch.walkers_batch, system, ham, trial, trial.energy
-    #         )
-    #     handler_batch.walkers_batch.reortho()
-    #     handler_batch.pop_control(mpi_handler.comm)
-    #     trial.calc_greens_function(handler_batch.walkers_batch)
-    # return TestData(trial, handler_batch.walkers_batch, ham, prop)
-
-
     trial.calc_greens_function(walkers)
     for i in range(options.num_steps):
         if two_body_only:
@@ -654,11 +628,23 @@ def build_driver_test_instance(
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers_per_task
 
-    ndets, initial_walker = get_initial_walker(trial)
-    walkers = UHFWalkersTrial[type(trial)](initial_walker, system.nup, system.ndown, ham.nbasis,
-                                        qmc.nwalkers_per_task, qmc.nwalkers, qmc.nsteps,
-                                        ndets=ndets)
+    nwalkers = qmc.nwalkers
+    nsteps = qmc.nsteps
+    pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
+    reconf_freq = get_input_value(options, "reconfiguration_frequency", default=50 )
     
+    ndets, init = get_initial_walker(trial) # Here we update init...
+    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
+                                        nwalkers, nwalkers, nsteps,
+                                        ndets=num_dets,
+                                        pop_control_method=pop_control, 
+                                        reconfiguration_frequency=reconf_freq)
+    walkers.build(trial) # any intermediates that require information from trial
+    # walkers.ovlp = trial.calc_greens_function(walkers)
+
+    # print("walkers.ovlp = {}".format(walkers.ovlp))
+    # print("qmc.npop_control = {}".format(qmc.npop_control))
+
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(
         comm=comm,

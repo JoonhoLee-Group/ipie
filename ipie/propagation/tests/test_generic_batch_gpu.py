@@ -62,7 +62,7 @@ def test_hybrid_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     assert False, "FDM FIX THIS, rng state between gpu and cpu"
 
     # prop.cast_to_cupy()
