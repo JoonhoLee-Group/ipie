@@ -23,7 +23,8 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device
 from ipie.utils.backend import synchronize, qr, qr_mode
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks, ParticleHoleNaive, ParticleHoleWicksNonChunked
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks, ParticleHoleWicksSlow, ParticleHoleNaive, ParticleHoleWicksNonChunked
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
@@ -264,7 +265,7 @@ class UHFWalkersParticleHole(UHFWalkers):
             dtype=numpy.complex128,
         )
 
-class UHFWalkersParticleHoleNaive(UHFWalkers):
+class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
     """UHF style walker specialized for its use with ParticleHoleNaive trial.
 
     Parameters
@@ -296,6 +297,7 @@ class UHFWalkersParticleHoleNaive(UHFWalkers):
             num_walkers_local,
             num_walkers_global,
             num_steps,
+            ndets,
             mpi_handler=mpi_handler,
             pop_control_method=pop_control_method,
             min_weight=min_weight,
@@ -350,10 +352,19 @@ class UHFWalkersParticleHoleNaive(UHFWalkers):
             dtype=numpy.complex128,
         )
     def build(self,trial):
-        return
+        self.CIa = numpy.zeros(
+            shape=(self.nwalkers, self.nbasis, self.nbasis),
+            dtype=numpy.complex128,
+        )
+        self.CIb = numpy.zeros(
+            shape=(self.nwalkers, self.nbasis, self.nbasis),
+            dtype=numpy.complex128,
+        )
 UHFWalkersTrial = {
     SingleDet: UHFWalkers,
     ParticleHoleWicks: UHFWalkersParticleHole,
+    ParticleHoleWicksSlow: UHFWalkersParticleHoleNaive,
     ParticleHoleWicksNonChunked:UHFWalkersParticleHole,
-    ParticleHoleNaive: UHFWalkersParticleHoleNaive
+    ParticleHoleNaive: UHFWalkersParticleHoleNaive,
+    NOCI: UHFWalkersParticleHoleNaive
 }
