@@ -20,7 +20,11 @@ cd $root_dir
 echo "Finished running example 2."
 cd 03-custom_observable
 python run_afqmc.py
-total_error=$(($? + $err_1 + $err_2))
+err_3=$?
+cd 08-custom_observable
+python run_afqmc.py
+err_8=$?
+total_error=$(($err_1 + $err_2 + $err_3 + $err_8))
 echo "Finished running example 3."
 
 if [[ $total_error > 0 ]]; then

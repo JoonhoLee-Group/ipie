@@ -177,9 +177,9 @@ print(qmc_data[0, 0].trace().real)
 
 # Necessary to test your implementation, in particular that reading / writing is
 # happening as expected.
-weights = afqmc.psi.walkers_batch.weight
-afqmc.trial.calc_greens_function(afqmc.psi.walkers_batch, build_full=True)
-refa = np.einsum("w,wij->ij", weights, afqmc.psi.walkers_batch.Ga.copy())
+weights = afqmc.psi.weight
+afqmc.trial.calc_greens_function(afqmc.psi, build_full=True)
+refa = np.einsum("w,wij->ij", weights, afqmc.psi.Ga.copy())
 refa /= np.sum(weights)
 qmc_data = extract_observable(afqmc.estimators.filename, "1RDM")
 assert qmc_data.shape == (21, 2, 10, 10)
