@@ -27,7 +27,6 @@ from ipie.config import config
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
 from ipie.estimators.handler import EstimatorHandler
-from ipie.propagation.utils import get_propagator_driver
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.base_walkers import WalkerAccumulator
 
@@ -37,6 +36,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
 
+from ipie.propagation.propagator import Propagator
 
 class AFQMC(object):
     """AFQMC driver.
@@ -99,6 +99,7 @@ class AFQMC(object):
         hamiltonian=None,
         trial=None,
         walkers=None,
+        propagator = None,
         verbose: int=0,
         seed: int =None,
         nwalkers: int = 100,
@@ -197,13 +198,10 @@ class AFQMC(object):
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
 
-        # self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         if seed is None:
             self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         else:
             self.qmc.rng_seed = set_rng_seed(seed, comm)
-
-        # self.cplx = self.determine_dtype(options.get("propagator", {}), self.system)
 
         mem = get_host_memory()
         if comm.rank == 0:
@@ -218,19 +216,17 @@ class AFQMC(object):
             self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
 
         comm.barrier()
-        prop_opt = options.get("propagator", {})
-        if comm.rank == 0:
-            print("# Getting propagator driver")
-        self.propagators = get_propagator_driver(
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.qmc,
-            options=prop_opt,
-            verbose=verbose,
-        )
+        
+        # set walkers
+        self.walkers = walkers
+        
+        if propagator is None:
+            self.propagator = Propagator[type(self.hamiltonian)](self.qmc.dt)
+            self.propagator.build(self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose)
+        else:
+            self.propagator = propagator
+
         self.tsetup = time.time() - self._init_time
-        self.psi = walkers
 
         # Using only default population control
         self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
@@ -263,10 +259,10 @@ class AFQMC(object):
             self.trial.chunk(self.mpi_handler)
 
         if config.get_option("use_gpu"):
-            self.propagators.cast_to_cupy(verbose and comm.rank == 0)
+            self.propagator.cast_to_cupy(verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
             self.trial.cast_to_cupy(verbose and comm.rank == 0)
-            self.psi.cast_to_cupy(verbose and comm.rank == 0)
+            self.walkers.cast_to_cupy(verbose and comm.rank == 0)
 
         if comm.rank == 0:
             mem_avail = get_host_memory()
@@ -286,11 +282,11 @@ class AFQMC(object):
         """
         tzero_setup = time.time()
         if psi is not None:
-            self.psi = psi
+            self.walkers = psi
         self.setup_timers()
         eshift = 0.0
 
-        self.psi.orthogonalise(self.propagators.free_projection)
+        self.walkers.orthogonalise()
 
         total_steps = self.qmc.nsteps * self.qmc.nblocks
         # Delay initialization incase user defined estimators added after
@@ -302,9 +298,9 @@ class AFQMC(object):
             self.system,
             self.hamiltonian,
             self.trial,
-            self.psi,
+            self.walkers,
         )
-        self.accumulators.update(self.psi)
+        self.accumulators.update(self.walkers)
         self.estimators.print_block(comm, 0, self.accumulators)
         self.accumulators.zero()
 
@@ -316,34 +312,33 @@ class AFQMC(object):
             start_step = time.time()
             if step % self.qmc.nstblz == 0:
                 start = time.time()
-                self.psi.orthogonalise(self.propagators.free_projection)
+                self.walkers.orthogonalise()
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
             
-            self.propagators.propagate_walker_batch(
-                self.psi,
-                self.system,
+            self.propagator.propagate_walkers(
+                self.walkers,
                 self.hamiltonian,
                 self.trial,
                 eshift,
             )
 
-            self.tprop_fbias = self.propagators.tfbias
-            self.tprop_ovlp = self.propagators.tovlp
-            self.tprop_update = self.propagators.tupdate
-            self.tprop_gf = self.propagators.tgf
-            self.tprop_vhs = self.propagators.tvhs
-            self.tprop_gemm = self.propagators.tgemm
+            self.tprop_fbias = self.propagator.timer.tfbias
+            self.tprop_ovlp = self.propagator.timer.tovlp
+            self.tprop_update = self.propagator.timer.tupdate
+            self.tprop_gf = self.propagator.timer.tgf
+            self.tprop_vhs = self.propagator.timer.tvhs
+            self.tprop_gemm = self.propagator.timer.tgemm
 
             start_clip = time.time()
             if step > 1:
                 wbound = self.pcontrol.total_weight * 0.10
                 xp.clip(
-                    self.psi.weight,
+                    self.walkers.weight,
                     a_min=-wbound,
                     a_max=wbound,
-                    out=self.psi.weight,
+                    out=self.walkers.weight,
                 )  # in-place clipping
 
             synchronize()
@@ -357,7 +352,7 @@ class AFQMC(object):
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
-                self.pcontrol.pop_control(self.psi, comm)
+                self.pcontrol.pop_control(self.walkers, comm)
                 synchronize()
                 self.tpopc += time.time() - start
                 self.tpopc_send = self.pcontrol.timer.send_time
@@ -367,7 +362,7 @@ class AFQMC(object):
 
             # accumulate weight, hybrid energy etc. across block
             start = time.time()
-            self.accumulators.update(self.psi)
+            self.accumulators.update(self.walkers)
             synchronize()
             self.testim += time.time() - start  # we dump this time into estimator
             # calculate estimators
@@ -378,7 +373,7 @@ class AFQMC(object):
                     self.system,
                     self.hamiltonian,
                     self.trial,
-                    self.psi,
+                    self.walkers,
                 )
                 self.estimators.print_block(
                     comm, step // self.qmc.nsteps, self.accumulators
@@ -388,8 +383,8 @@ class AFQMC(object):
             self.testim += time.time() - start
             
             # restart write features disabled
-            # if self.psi.write_restart and step % self.psi.write_freq == 0:
-            #     self.psi.write_walkers_batch(comm)
+            # if self.walkers.write_restart and step % self.walkers.write_freq == 0:
+            #     self.walkers.write_walkers_batch(comm)
 
             if step < self.qmc.neqlb:
                 eshift = self.accumulators.eshift

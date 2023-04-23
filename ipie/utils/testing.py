@@ -32,7 +32,6 @@ from ipie.hamiltonians import Generic as HamGeneric
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.propagation.continuous import Continuous
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.noci import NOCI
@@ -42,6 +41,8 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicksNonChunked,
     ParticleHoleWicksSlow,
 )
+
+from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric, PhaselessGenericChunked
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
@@ -393,7 +394,7 @@ class TestData:
     trial: TrialWavefunctionBase
     walkers: BaseWalkers
     hamiltonian: HamGeneric
-    propagator: Continuous
+    propagator: PhaselessBase
 
 def build_classes_test_case(
     num_elec: Tuple[int, int],
@@ -406,7 +407,6 @@ def build_classes_test_case(
     complex_trial: bool = False,
     seed: Union[int, None] = None,
     rhf_trial: bool = False,
-    two_body_only: bool = False,
     options={},
 ):
     if seed is not None:
@@ -436,7 +436,8 @@ def build_classes_test_case(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
-    prop = Continuous(system, ham, trial, options, options=options)
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
 
     return system, ham, trial, init, prop
 
@@ -482,7 +483,8 @@ def build_test_case_handlers_mpi(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
-    prop = Continuous(system, ham, trial, options, options=options)
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
     nsteps = get_input_value(options, "nsteps", default=25, alias=["num_steps"])
@@ -497,12 +499,12 @@ def build_test_case_handlers_mpi(
     trial.calc_greens_function(walkers)
     for i in range(options.num_steps):
         if two_body_only:
-            prop.two_body_propagator_batch(
-                walkers, system, ham, trial
+            prop.propagate_walkers_two_body(
+                walkers, ham, trial
             )
         else:
-            prop.propagate_walker_batch(
-                walkers, system, ham, trial, trial.energy
+            prop.propagate_walkers(
+                walkers, ham, trial, trial.energy
             )
         walkers.reortho()
         pcontrol.pop_control(walkers, mpi_handler.comm)
@@ -549,26 +551,20 @@ def build_test_case_handlers(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
-    prop = Continuous(system, ham, trial, options, options=options)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    nsteps = get_input_value(options, "nsteps", default=25, alias=["num_steps"])
-    pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
-    reconf_freq = get_input_value(options, "reconfiguration_frequency", default=50 )
-
     walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers.build(trial) # any intermediates that require information from trial
+ 
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
  
     trial.calc_greens_function(walkers)
     for i in range(options.num_steps):
         if two_body_only:
-            prop.two_body_propagator_batch(
-                walkers, system, ham, trial
-            )
+            prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
-            prop.propagate_walker_batch(
-                walkers, system, ham, trial, trial.energy
-            )
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
         walkers.reortho()
         trial.calc_greens_function(walkers)
 

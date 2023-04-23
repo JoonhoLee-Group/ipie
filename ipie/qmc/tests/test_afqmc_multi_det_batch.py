@@ -81,10 +81,10 @@ def test_generic_multi_det_batch():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi,
+        afqmc.walkers,
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
-    denom_batch = afqmc.estimators["energy"]["EDenom"]
+    denom_batch = afqmc.estimators["energy"]["EDenom"]  
 
     data_batch = extract_observable(
         "estimates.test_generic_multi_det_batch.h5", "energy"

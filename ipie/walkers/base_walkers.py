@@ -162,7 +162,7 @@ class BaseWalkers:
                         size += 1
         return size
 
-    def orthogonalise(self, free_projection):
+    def orthogonalise(self, free_projection=False):
         """Orthogonalise all walkers.
 
         Parameters

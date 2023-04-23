@@ -82,7 +82,7 @@ def test_generic_single_det_batch():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi,
+        afqmc.walkers,
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
     denom_batch = afqmc.estimators["energy"]["EDenom"]
@@ -177,7 +177,7 @@ def test_generic_single_det_batch_density_diff():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi,
+        afqmc.walkers,
     )
 
     numer_batch = afqmc.estimators["energy"]["ENumer"]

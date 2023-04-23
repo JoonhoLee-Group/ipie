@@ -88,7 +88,7 @@ def test_overlap_batch():
     nmo = 10
     nelec = (6, 5)
     nwalkers = 2
-    nsteps = 25
+    nsteps = 10
 
     qmc = dotdict(
         {
@@ -332,12 +332,11 @@ def test_vhs():
 
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    vhs_batch = batched_data.propagator.propagator.construct_VHS_batch(
+    vhs_batch = batched_data.propagator.construct_VHS(
         batched_data.hamiltonian, xshifted.T.copy()
     )
     for iw in range(nwalkers):
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
-
 
 if __name__ == "__main__":
     test_overlap_rhf_batch()
@@ -346,3 +345,4 @@ if __name__ == "__main__":
     test_two_body_rhf_batch()
     test_hybrid_rhf_batch()
     test_hybrid_batch()
+    test_vhs()

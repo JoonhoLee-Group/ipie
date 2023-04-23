@@ -37,7 +37,7 @@ from ipie.propagation.overlap import (
     get_cofactor_matrix_batched,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.propagation.overlap import get_det_matrix_batched
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
@@ -101,14 +101,16 @@ def test_greens_function_wicks_opt():
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers_wick, system, ham, trial, 0)
+        prop.propagate_walkers(walkers_wick, ham, trial, 0)
         walkers_wick.reortho()
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_opt, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_opt)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers_opt, system, ham, trial_opt, 0)
+        prop.propagate_walkers(walkers_opt, ham, trial_opt, 0)
         walkers_opt.reortho()
     numpy.random.seed(7)
     walkers_slow.phia = walkers_wick.phia
@@ -270,14 +272,15 @@ def test_det_matrix():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
+
     walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
 
     nexcit = 4
@@ -364,9 +367,11 @@ def test_phmsd_local_energy():
     walker_batch_test2.build(trial)
 
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_slow, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_slow)
+
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial_slow, 0)
+        prop.propagate_walkers(walker_batch, ham, trial_slow, 0)
         walker_batch.reortho()
 
     import copy
@@ -430,13 +435,14 @@ def test_kernels_energy():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
+
     walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
 
     greens_function_multi_det_wicks_opt(walker_batch, trial)
@@ -659,14 +665,15 @@ def test_kernels_gf():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
+
     walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
 
     trial.calc_greens_function(walker_batch)
@@ -812,8 +819,10 @@ def test_kernels_gf_active_space():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_ref)
+
     I = numpy.eye(nmo)
     init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
@@ -825,7 +834,7 @@ def test_kernels_gf_active_space():
 
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        prop.propagate_walkers(walker_batch_ref, ham, trial_ref, 0)
         walker_batch_ref.reortho()
 
     walker_batch_test.phia = walker_batch_ref.phia.copy()
@@ -1015,8 +1024,9 @@ def test_kernels_energy_active_space():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_ref)
 
     walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
@@ -1026,7 +1036,7 @@ def test_kernels_energy_active_space():
 
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        prop.propagate_walkers(walker_batch_ref, ham, trial_ref, 0)
         walker_batch_ref.reortho()
 
     walker_batch_test.phia = walker_batch_ref.phia.copy()
@@ -1299,8 +1309,8 @@ def test_phmsd_local_energy_active_space():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_ref)
 
     walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
@@ -1310,7 +1320,7 @@ def test_phmsd_local_energy_active_space():
 
     numpy.random.seed(7)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        prop.propagate_walkers(walker_batch_ref, ham, trial_ref, 0)
         walker_batch_ref.reortho()
 
     import copy
@@ -1405,20 +1415,24 @@ def test_phmsd_local_energy_active_space_polarised():
     walker_batch_test_chunked.build(trial_test_chunked)
 
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
+
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_test, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_test)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
+        prop.propagate_walkers(walker_batch_test, ham, trial_test, 0)
         walker_batch_test.reortho()
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_test_chunked, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_test_chunked)
     for i in range(nsteps):
-        prop.propagate_walker_batch(
-            walker_batch_test_chunked, system, ham, trial_test_chunked, 0
+        prop.propagate_walkers(
+         walker_batch_test_chunked, ham, trial_test_chunked, 0
         )
         walker_batch_test_chunked.reortho()
 
@@ -1535,23 +1549,26 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     
     # Naive
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_ref, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_ref)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_ref, system, ham, trial_ref, 0)
+        prop.propagate_walkers(walker_batch_ref, ham, trial_ref, 0)
         walker_batch_ref.reortho()
 
     # No optimization
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
+        prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
 
     # chunked
     numpy.random.seed(7)
-    prop = Continuous(system, ham, trial_test, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial_test)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch_test, system, ham, trial_test, 0)
+        prop.propagate_walkers(walker_batch_test, ham, trial_test, 0)
         walker_batch_test.reortho()
 
     import copy

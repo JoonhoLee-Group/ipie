@@ -28,7 +28,7 @@ except:
     no_gpu = True
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
@@ -87,8 +87,6 @@ def test_generic_chunked_gpu():
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
 
     mpi_handler = MPIHandler(comm, options={"nmembers": 2}, verbose=(rank == 0))
     if comm.rank == 0:
@@ -97,6 +95,9 @@ def test_generic_chunked_gpu():
     if comm.rank == 0:
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
+
+    prop = PhaselessGenericChunked(time_step=qmc["dt"])
+    prop.build(ham,trial,mpi_handler=mpi_handler)
 
     walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers,
                                            mpi_handler = mpi_handler)

@@ -25,7 +25,7 @@ from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
@@ -83,8 +83,6 @@ def test_generic_chunked():
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
 
     mpi_handler = MPIHandler(comm, options={"nmembers": 3}, verbose=(rank == 0))
     if comm.rank == 0:
@@ -94,13 +92,16 @@ def test_generic_chunked():
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
+    prop = PhaselessGenericChunked(time_step=qmc["dt"])
+    prop.build(ham,trial,mpi_handler=mpi_handler)
+
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walkers = UHFWalkersTrial[type(trial)](init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
                                            mpi_handler = mpi_handler)
     walkers.build(trial)
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
+        prop.propagate_walkers(walkers, ham, trial, trial.energy)
         walkers.reortho()
 
     energies = local_energy_single_det_batch(system, ham, walkers, trial)

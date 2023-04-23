@@ -26,7 +26,7 @@ from ipie.estimators.local_energy_sd import (
     local_energy_single_det_uhf_batch,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
 from ipie.utils.legacy_testing import build_legacy_test_case
 from ipie.utils.misc import dotdict
@@ -120,11 +120,12 @@ def test_local_energy_single_det_batch():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc, options={"dt": 0.005})
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers.build(trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, ham, trial, 0)
+        prop.propagate_walkers(walkers, ham, trial, 0)
         walkers.reortho()
 
     ovlp = greens_function_single_det_batch(walkers, trial)
@@ -181,7 +182,6 @@ def test_local_energy_single_det_batch_packed():
     wfn = numpy.zeros((nmo, sum(nelec)), dtype=numpy.complex128)
     occa0 = ci_wfn[1][0]
     occb0 = ci_wfn[2][0]
-    print(occa0)
     wfn[:, : nelec[0]] = I[:, occa0]
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
@@ -196,11 +196,12 @@ def test_local_energy_single_det_batch_packed():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers.build(trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, ham, trial, 0.0)
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
         walkers.reortho()
 
     ovlp = greens_function_single_det_batch(walkers, trial)
@@ -259,7 +260,8 @@ def test_local_energy_single_det_batch_rhf():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walker_opts = dotdict({"rhf": True})
     # walkers = SingleDetWalkerBatch(
     #     system, ham, trial, nwalkers, init, walker_opts={"rhf": True}
@@ -268,7 +270,7 @@ def test_local_energy_single_det_batch_rhf():
     walkers.build(trial)
     walkers.rhf = True
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, ham, trial, 0.0)
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
         walkers.reortho()
 
     ovlp = greens_function_single_det_batch(walkers, trial)
@@ -336,7 +338,8 @@ def test_local_energy_single_det_batch_rhf_packed():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walker_opts = dotdict({"rhf": True})
     # walkers = SingleDetWalkerBatch(
     #     system, ham, trial, nwalkers, init, walker_opts=walker_opts
@@ -346,7 +349,7 @@ def test_local_energy_single_det_batch_rhf_packed():
     walkers.rhf = True
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, ham, trial, 0.0)
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
         walkers.reortho()
 
     ovlp = greens_function_single_det_batch(walkers, trial)

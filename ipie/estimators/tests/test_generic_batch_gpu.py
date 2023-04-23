@@ -32,7 +32,7 @@ from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch_gpu,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.pack_numba import pack_cholesky
@@ -111,7 +111,8 @@ def test_local_energy_single_det_batch():
 
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
     
     walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers.build(trial)
