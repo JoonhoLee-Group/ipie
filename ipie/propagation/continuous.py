@@ -228,12 +228,12 @@ class Continuous(object):
         synchronize()
         return ehyb
 
-    def two_body_propagator_batch(self, walker_batch, system, hamiltonian, trial):
+    def two_body_propagator_batch(self, walkers, system, hamiltonian, trial):
         """It applies the two-body propagator to a batch of walkers
         Parameters
         ----------
         walker batch :
-            walker_batch class
+            walkers class
         hamiltonian :
             hamiltonian class
         fb : boolean
@@ -248,11 +248,11 @@ class Continuous(object):
             shifited auxiliary field
         """
         # Optimal force bias.
-        xbar = xp.zeros((walker_batch.nwalkers, hamiltonian.nfields))
+        xbar = xp.zeros((walkers.nwalkers, hamiltonian.nfields))
         if self.force_bias:
             start_time = time.time()
             self.propagator.vbias_batch = trial.calc_force_bias(
-                hamiltonian, walker_batch, walker_batch.mpi_handler
+                hamiltonian, walkers, walkers.mpi_handler
             )
             xbar = -self.propagator.sqrt_dt * (
                 1j * self.propagator.vbias_batch - self.propagator.mf_shift
@@ -271,8 +271,8 @@ class Continuous(object):
 
         # Normally distrubted auxiliary fields.
         xi = xp.random.normal(
-            0.0, 1.0, hamiltonian.nfields * walker_batch.nwalkers
-        ).reshape(walker_batch.nwalkers, hamiltonian.nfields)
+            0.0, 1.0, hamiltonian.nfields * walkers.nwalkers
+        ).reshape(walkers.nwalkers, hamiltonian.nfields)
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
@@ -284,7 +284,7 @@ class Continuous(object):
         start_time = time.time()
         if hamiltonian.chunked:
             VHS = self.propagator.construct_VHS_batch_chunked(
-                hamiltonian, xshifted.T.copy(), walker_batch.mpi_handler
+                hamiltonian, xshifted.T.copy(), walkers.mpi_handler
             )
         else:
             VHS = self.propagator.construct_VHS_batch(hamiltonian, xshifted.T.copy())
@@ -293,18 +293,18 @@ class Continuous(object):
         assert len(VHS.shape) == 3
         start_time = time.time()
         if config.get_option("use_gpu"):
-            walker_batch.phia = self.apply_exponential_batch(walker_batch.phia, VHS)
-            if walker_batch.ndown > 0 and not walker_batch.rhf:
-                walker_batch.phib = self.apply_exponential_batch(walker_batch.phib, VHS)
+            walkers.phia = self.apply_exponential_batch(walkers.phia, VHS)
+            if walkers.ndown > 0 and not walkers.rhf:
+                walkers.phib = self.apply_exponential_batch(walkers.phib, VHS)
         else:
-            for iw in range(walker_batch.nwalkers):
+            for iw in range(walkers.nwalkers):
                 # 2.b Apply two-body
-                walker_batch.phia[iw] = self.apply_exponential(
-                    walker_batch.phia[iw], VHS[iw]
+                walkers.phia[iw] = self.apply_exponential(
+                    walkers.phia[iw], VHS[iw]
                 )
-                if walker_batch.ndown > 0 and not walker_batch.rhf:
-                    walker_batch.phib[iw] = self.apply_exponential(
-                        walker_batch.phib[iw], VHS[iw]
+                if walkers.ndown > 0 and not walkers.rhf:
+                    walkers.phib[iw] = self.apply_exponential(
+                        walkers.phib[iw], VHS[iw]
                     )
         synchronize()
         self.tgemm += time.time() - start_time

@@ -35,11 +35,11 @@ def test_energy_estimator():
     estim = EnergyEstimator(system=system, ham=ham, trial=trial)
     estim.compute_estimator(system, walker_batch, ham, trial)
     assert len(estim.names) == 5
-    assert estim['ENumer'].real == pytest.approx(701.1659507455258)
+    assert estim['ENumer'].real == pytest.approx(-754.0373585215561)
     assert estim['ETotal'] == pytest.approx(0.0)
     tmp = estim.data.copy()
     estim.post_reduce_hook(tmp)
-    assert tmp[estim.get_index('ETotal')] == pytest.approx(70.11659507455259)
+    assert tmp[estim.get_index('ETotal')] == pytest.approx(-75.40373585215562)
     assert estim.print_to_stdout
     assert estim.ascii_filename == None
     assert estim.shape == (5,)

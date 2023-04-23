@@ -23,16 +23,19 @@ import uuid
 
 from ipie.config import config
 
-from ipie.estimators.handler import EstimatorHandler
-from ipie.propagation.utils import get_propagator_driver
+
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
+from ipie.estimators.handler import EstimatorHandler
+from ipie.propagation.utils import get_propagator_driver
+from ipie.walkers.pop_controller import PopController
+from ipie.walkers.base_walkers import WalkerAccumulator
+
 from ipie.utils.io import get_input_value, to_json
 from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
-from ipie.walkers.walker_batch_handler import WalkerBatchHandler
 
 
 class AFQMC(object):
@@ -229,6 +232,10 @@ class AFQMC(object):
         self.tsetup = time.time() - self._init_time
         self.psi = walkers
 
+        # Using only default population control
+        self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
+        self.accumulators = WalkerAccumulator(["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps) # lagacy purposes??
+
         est_opts = get_input_value(
             options,
             "estimators",
@@ -242,7 +249,7 @@ class AFQMC(object):
             self.system,
             self.hamiltonian,
             self.trial,
-            walker_state=self.psi.accumulator_factors,
+            walker_state=self.accumulators,
             options=est_opts,
             verbose=(comm.rank == 0 and verbose),
         )
@@ -297,9 +304,9 @@ class AFQMC(object):
             self.trial,
             self.psi,
         )
-        self.psi.update_accumulators()
-        self.estimators.print_block(comm, 0, self.psi.accumulator_factors)
-        self.psi.zero_accumulators()
+        self.accumulators.update(self.psi)
+        self.estimators.print_block(comm, 0, self.accumulators)
+        self.accumulators.zero()
 
         synchronize()
         self.tsetup += time.time() - tzero_setup
@@ -331,8 +338,7 @@ class AFQMC(object):
 
             start_clip = time.time()
             if step > 1:
-                # wbound = min(100.0, self.psi.total_weight * 0.10) # bounds are supposed to be the smaller of 100 and 0.1 * tot weight but not clear how useful this is
-                wbound = self.psi.total_weight * 0.10
+                wbound = self.pcontrol.total_weight * 0.10
                 xp.clip(
                     self.psi.weight,
                     a_min=-wbound,
@@ -351,17 +357,17 @@ class AFQMC(object):
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()
-                self.psi.pop_control(comm)
+                self.pcontrol.pop_control(self.psi, comm)
                 synchronize()
                 self.tpopc += time.time() - start
-                self.tpopc_send = self.psi.send_time
-                self.tpopc_recv = self.psi.recv_time
-                self.tpopc_comm = self.psi.communication_time
-                self.tpopc_non_comm = self.psi.non_communication_time
+                self.tpopc_send = self.pcontrol.timer.send_time
+                self.tpopc_recv = self.pcontrol.timer.recv_time
+                self.tpopc_comm = self.pcontrol.timer.communication_time
+                self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
 
             # accumulate weight, hybrid energy etc. across block
             start = time.time()
-            self.psi.update_accumulators()
+            self.accumulators.update(self.psi)
             synchronize()
             self.testim += time.time() - start  # we dump this time into estimator
             # calculate estimators
@@ -375,17 +381,20 @@ class AFQMC(object):
                     self.psi,
                 )
                 self.estimators.print_block(
-                    comm, step // self.qmc.nsteps, self.psi.accumulator_factors
+                    comm, step // self.qmc.nsteps, self.accumulators
                 )
-                self.psi.zero_accumulators()
+                self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
-            if self.psi.write_restart and step % self.psi.write_freq == 0:
-                self.psi.write_walkers_batch(comm)
+            
+            # restart write features disabled
+            # if self.psi.write_restart and step % self.psi.write_freq == 0:
+            #     self.psi.write_walkers_batch(comm)
+
             if step < self.qmc.neqlb:
-                eshift = self.psi.accumulator_factors.eshift
+                eshift = self.accumulators.eshift
             else:
-                eshift += self.psi.accumulator_factors.eshift - eshift
+                eshift += self.accumulators.eshift - eshift
             synchronize()
             self.tstep += time.time() - start_step
 

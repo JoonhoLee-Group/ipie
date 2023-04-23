@@ -136,10 +136,10 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             verbose=verbosity,
         )
         ndets, initial_walker = get_initial_walker(trial)
-        walkers = UHFWalkersTrial[type(trial)](initial_walker, system.nup, system.ndown, hamiltonian.nbasis,
-                                         qmc.nwalkers_per_task, qmc.nwalkers, qmc.nsteps,
-                                         ndets=ndets,
-                                         mpi_handler = mpi_handler, pop_control_method=wlk_opts["population_control"])
+        walkers = UHFWalkersTrial[type(trial)](initial_walker, 
+                                        system.nup, system.ndown, 
+                                        hamiltonian.nbasis, qmc.nwalkers_per_task,
+                                        mpi_handler = mpi_handler)
         walkers.build(trial) # any intermediates that require information from trial
         afqmc = AFQMC(
             comm,  options=options, 
@@ -157,6 +157,8 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             pop_control_freq=qmc.npop_control,
             verbose=verbosity
         )
+
+        afqmc.pcontrol.method = wlk_opts["population_control"]
 
     return afqmc
 

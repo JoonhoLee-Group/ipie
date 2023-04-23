@@ -27,7 +27,8 @@ from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det_wicks_opt,
 )
 from ipie.estimators.local_energy_batch import (
-    local_energy_multi_det_trial_batch,
+    local_energy_multi_det_trial_batch)
+from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
 )
@@ -65,9 +66,10 @@ def test_walker_overlap_nomsd():
     nelec = (system.nup, system.ndown)
     trial = NOCI((coeffs, wfn), nelec, ham.nbasis)
 
-    walker_batch = UHFWalkersTrial[type(trial)](wfn[0], system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, nwalkers,25,ndets=ndets)
-    walker_batch.ovlp = trial.calc_overlap(walker_batch)
+    walkers = UHFWalkersTrial[type(trial)](wfn[0], system.nup, system.ndown, ham.nbasis,
+                                    nwalkers, 25)
+    walkers.build(trial)
+    walkers.ovlp = trial.calc_overlap(walkers)
     def calc_ovlp(a, b):
         return numpy.linalg.det(numpy.dot(a.conj().T, b))
 
@@ -80,8 +82,8 @@ def test_walker_overlap_nomsd():
             ovlp[iw] += (
                 coeffs[i].conj() * calc_ovlp(d[:, :na], pa) * calc_ovlp(d[:, na:], pb)
             )
-    assert ovlp.real == pytest.approx(walker_batch.ovlp.real)
-    assert ovlp.imag == pytest.approx(walker_batch.ovlp.imag)
+    assert ovlp.real == pytest.approx(walkers.ovlp.real)
+    assert ovlp.imag == pytest.approx(walkers.ovlp.imag)
 
 
 @pytest.mark.unit
@@ -109,7 +111,8 @@ def test_walker_overlap_phmsd():
     trial = ParticleHoleNaive(wfn, nelec, ham.nbasis)
     
     walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, nwalkers,25,ndets=len(coeffs))
+                                    nwalkers, 25)
+    walkers.build(trial)
     walkers.ovlp = trial.calc_greens_function(walkers)
 
     I = numpy.eye(ham.nbasis)
@@ -179,17 +182,17 @@ def test_walker_energy():
     # walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
 
     walkers0 = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, nwalkers,25,ndets=ndets)
+                                    nwalkers,25)
     walkers0.build(trial_slow)
     walkers0.ovlp = trial_slow.calc_greens_function(walkers0)
 
     walkers = UHFWalkersTrial[type(trial_slow)](init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, nwalkers,25,ndets=ndets)
+                                    nwalkers,25)
     walkers.build(trial_slow)
     walkers.ovlp = trial_slow.calc_greens_function(walkers)
 
     walkers_opt = UHFWalkersTrial[type(trial_opt)](init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, nwalkers,25,ndets=ndets)
+                                    nwalkers,25)
     walkers_opt.build(trial_opt)
     walkers_opt.ovlp = trial_opt.calc_greens_function(walkers_opt)
 
