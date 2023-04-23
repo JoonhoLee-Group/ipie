@@ -32,7 +32,7 @@ from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.uhf_walkers import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -95,22 +95,18 @@ def test_generic_chunked():
     trial.chunk(mpi_handler)
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-    walker_batch = SingleDetWalkerBatch(
-        system,
-        ham,
-        trial,
-        nwalkers,
-        init_walker,
-        mpi_handler=mpi_handler,
-    )
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers,
+                                           mpi_handler = mpi_handler)
+    walkers.build(trial)
 
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    for i in range(nsteps):
+        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
+        walkers.reortho()
+
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
     energies_chunked = local_energy_single_det_uhf_batch_chunked(
-        system, ham, walker_batch, trial
+        system, ham, walkers, trial
     )
 
     assert numpy.allclose(energies, energies_chunked)

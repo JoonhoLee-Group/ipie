@@ -17,4 +17,4 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-from .single_det_batch import SingleDetWalkerBatch
+from .uhf_walkers import UHFWalkers, UHFWalkersTrial

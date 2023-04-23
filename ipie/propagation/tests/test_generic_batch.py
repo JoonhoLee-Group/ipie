@@ -21,13 +21,8 @@ import pytest
 
 from ipie.estimators.greens_function_batch import (
     greens_function_single_det_batch,
-    greens_function_single_det,
-    compute_greens_function,
 )
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
 from ipie.propagation.overlap import calc_overlap_single_det_batch
-from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
     build_test_case_handlers,
@@ -35,8 +30,6 @@ from ipie.utils.testing import (
 from ipie.utils.legacy_testing import (
     build_legacy_test_case_handlers,
 )
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
 
 @pytest.mark.unit
 def test_overlap_rhf_batch():
