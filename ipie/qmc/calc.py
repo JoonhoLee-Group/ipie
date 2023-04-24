@@ -170,6 +170,7 @@ def build_afqmc_driver(
     hamiltonian_file: str = "hamiltonian.h5",
     num_walkers_per_task: int = 10,
     estimator_filename: str = "estimates.0.h5",
+    seed: int = None,
     verbosity: int = 0,
 ):
     if comm.rank != 0:
@@ -179,7 +180,7 @@ def build_afqmc_driver(
             "nup": nelec[0],
             "ndown": nelec[1],
         },
-        "qmc": {"nwalkers_per_task": num_walkers_per_task},
+        "qmc": {"nwalkers_per_task": num_walkers_per_task, "rng_seed": seed},
         "hamiltonian": {"integrals": hamiltonian_file},
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},

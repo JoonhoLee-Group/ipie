@@ -1,3 +1,4 @@
+import numpy as np
 from pyscf import gto, scf, cc
 from mpi4py import MPI
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
@@ -21,12 +22,13 @@ if comm.rank == 0:
 comm.barrier()
 
 from ipie.qmc.calc import build_afqmc_driver
-afqmc = build_afqmc_driver(comm, nelec=mol.nelec, nwalkers_per_task=1000)
+# fixing random seed for reproducibility
+afqmc = build_afqmc_driver(comm, nelec=mol.nelec, num_walkers_per_task=100, seed=41100801)
 if comm.rank == 0:
     print(afqmc.qmc) # Inspect the default qmc options
 
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 500
+afqmc.qmc.nblocks = 10
 afqmc.estimators.overwite = True
 afqmc.run(comm=comm)
 
@@ -36,8 +38,10 @@ if comm.rank == 0:
 
     qmc_data = extract_observable(afqmc.estimators.filename, "energy")
     y = qmc_data["ETotal"]
-    y = y[50:] # discard first 50 blocks
+    y = y[1:] # discard first 50 blocks
 
     from ipie.analysis.autocorr import reblock_by_autocorr
     df = reblock_by_autocorr(y, verbose=1)
-    print(df.to_csv(index=False))
+
+    assert np.isclose(df.at[0,'ETotal_ac'], -5.325611614468466)
+    assert np.isclose(df.at[0,'ETotal_error_ac'], 0.00938082351500978)
