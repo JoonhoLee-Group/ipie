@@ -32,12 +32,12 @@ from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch_gpu,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, shaped_normal
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.uhf_walkers import UHFWalkersTrial
 from ipie.trial_wavefunction.single_det import SingleDet
 
 
@@ -111,41 +111,44 @@ def test_local_energy_single_det_batch():
 
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham,trial)
+    
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
 
     prop.cast_to_cupy()
     ham.cast_to_cupy()
     trial.cast_to_cupy()
-    walker_batch.cast_to_cupy()
+    walkers.cast_to_cupy()
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
+        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
+        walkers.reortho()
 
     energies_einsum = local_energy_single_det_batch_gpu(
-        system, ham, walker_batch, trial
+        system, ham, walkers, trial
     )
 
     energies_einsum_chunks = local_energy_single_det_batch_gpu(
         system,
         ham,
-        walker_batch,
+        walkers,
         trial,
         max_mem=1e-6,
     )
     from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
 
     energies_einsum_old = local_energy_single_det_batch_gpu_old(
-        system, ham, walker_batch, trial
+        system, ham, walkers, trial
     )
-    walker_batch.Ghalfa = cupy.asnumpy(walker_batch.Ghalfa)
-    walker_batch.Ghalfb = cupy.asnumpy(walker_batch.Ghalfb)
+    walkers.Ghalfa = cupy.asnumpy(walkers.Ghalfa)
+    walkers.Ghalfb = cupy.asnumpy(walkers.Ghalfb)
     trial._rchola = cupy.asnumpy(trial._rchola)
     trial._rcholb = cupy.asnumpy(trial._rcholb)
     trial._rH1a = cupy.asnumpy(trial._rH1a)
     trial._rH1b = cupy.asnumpy(trial._rH1b)
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)

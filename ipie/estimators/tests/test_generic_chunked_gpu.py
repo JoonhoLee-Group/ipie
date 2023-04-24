@@ -28,14 +28,14 @@ except:
     no_gpu = True
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.uhf_walkers import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -87,8 +87,6 @@ def test_generic_chunked_gpu():
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
 
     mpi_handler = MPIHandler(comm, options={"nmembers": 2}, verbose=(rank == 0))
     if comm.rank == 0:
@@ -98,30 +96,32 @@ def test_generic_chunked_gpu():
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, mpi_handler=mpi_handler
-    )
+    prop = PhaselessGenericChunked(time_step=qmc["dt"])
+    prop.build(ham,trial,mpi_handler=mpi_handler)
 
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers,
+                                           mpi_handler = mpi_handler)
+    walkers.build(trial)
     if not no_gpu:
         prop.cast_to_cupy()
         ham.cast_to_cupy()
         trial.cast_to_cupy()
-        walker_batch.cast_to_cupy()
+        walkers.cast_to_cupy()
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
+        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
+        walkers.reortho()
 
     trial._rchola = cupy.asarray(trial._rchola)
     trial._rcholb = cupy.asarray(trial._rcholb)
     energies_einsum = local_energy_single_det_batch_gpu(
-        system, ham, walker_batch, trial
+        system, ham, walkers, trial
     )
     energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(
-        system, ham, walker_batch, trial
+        system, ham, walkers, trial
     )
     energies_chunked_low_mem = local_energy_single_det_uhf_batch_chunked_gpu(
-        system, ham, walker_batch, trial, max_mem=1e-6
+        system, ham, walkers, trial, max_mem=1e-6
     )
 
     assert numpy.allclose(energies_einsum, energies_chunked)

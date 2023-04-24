@@ -26,15 +26,15 @@ from ipie.estimators.local_energy_sd import (
     local_energy_single_det_uhf_batch,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
 from ipie.utils.legacy_testing import build_legacy_test_case
 from ipie.utils.misc import dotdict
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.walkers.uhf_walkers import UHFWalkersTrial
 from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_energies
 
 
@@ -65,20 +65,21 @@ def test_greens_function_batch():
         wfn, init, system, ham, nsteps, nwalkers, dt
     )
     numpy.random.seed(7)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers, init)
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
     for iw in range(nwalkers):
-        walker_batch.phia[iw] = legacy_walkers[iw].phi[:, : nelec[0]].copy()
-        walker_batch.phib[iw] = legacy_walkers[iw].phi[:, nelec[0] :].copy()
-    ovlp = greens_function_single_det_batch(walker_batch, trial)
+        walkers.phia[iw] = legacy_walkers[iw].phi[:, : nelec[0]].copy()
+        walkers.phib[iw] = legacy_walkers[iw].phi[:, nelec[0] :].copy()
+    ovlp = greens_function_single_det_batch(walkers, trial)
 
-    ot = [legacy_walkers[iw].ot for iw in range(walker_batch.nwalkers)]
+    ot = [legacy_walkers[iw].ot for iw in range(walkers.nwalkers)]
     assert numpy.allclose(ovlp, ot)
 
     for iw in range(nwalkers):
-        # assert numpy.allclose(walker_batch.Ga[iw], walkers[iw].G[0])
-        # assert numpy.allclose(walker_batch.Gb[iw], walkers[iw].G[1])
-        assert numpy.allclose(walker_batch.Ghalfa[iw], legacy_walkers[iw].Ghalf[0])
-        assert numpy.allclose(walker_batch.Ghalfb[iw], legacy_walkers[iw].Ghalf[1])
+        # assert numpy.allclose(walkers.Ga[iw], walkers[iw].G[0])
+        # assert numpy.allclose(walkers.Gb[iw], walkers[iw].G[1])
+        assert numpy.allclose(walkers.Ghalfa[iw], legacy_walkers[iw].Ghalf[0])
+        assert numpy.allclose(walkers.Ghalfb[iw], legacy_walkers[iw].Ghalf[1])
 
 
 @pytest.mark.unit
@@ -119,24 +120,26 @@ def test_local_energy_single_det_batch():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc, options={"dt": 0.005})
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers, init)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0)
-        walker_batch.reortho()
+        prop.propagate_walkers(walkers, ham, trial, 0)
+        walkers.reortho()
 
-    ovlp = greens_function_single_det_batch(walker_batch, trial)
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
-    energies_uhf = local_energy_single_det_uhf_batch(system, ham, walker_batch, trial)
+    ovlp = greens_function_single_det_batch(walkers, trial)
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
+    energies_uhf = local_energy_single_det_uhf_batch(system, ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_uhf)
 
     for iw in range(nwalkers):
         assert numpy.allclose(
-            walker_batch.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
+            walkers.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
         )
         assert numpy.allclose(
-            walker_batch.phib[iw], legacy_walkers[iw].phi[:, nelec[0] :]
+            walkers.phib[iw], legacy_walkers[iw].phi[:, nelec[0] :]
         )
         assert numpy.allclose(etots[iw], energies[iw, 0])
         assert numpy.allclose(e1s[iw], energies[iw, 1])
@@ -179,7 +182,6 @@ def test_local_energy_single_det_batch_packed():
     wfn = numpy.zeros((nmo, sum(nelec)), dtype=numpy.complex128)
     occa0 = ci_wfn[1][0]
     occb0 = ci_wfn[2][0]
-    print(occa0)
     wfn[:, : nelec[0]] = I[:, occa0]
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
@@ -194,24 +196,26 @@ def test_local_energy_single_det_batch_packed():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers, init)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0.0)
-        walker_batch.reortho()
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
+        walkers.reortho()
 
-    ovlp = greens_function_single_det_batch(walker_batch, trial)
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    ovlp = greens_function_single_det_batch(walkers, trial)
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
     for iw in range(nwalkers):
         # unnecessary test
-        # energy = local_energy_single_det_batch(system, ham, walker_batch, trial, iw = iw)
+        # energy = local_energy_single_det_batch(system, ham, walkers, trial, iw = iw)
         # assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(
-            walker_batch.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
+            walkers.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
         )
         assert numpy.allclose(
-            walker_batch.phib[iw], legacy_walkers[iw].phi[:, nelec[0] :]
+            walkers.phib[iw], legacy_walkers[iw].phi[:, nelec[0] :]
         )
         assert numpy.allclose(etots[iw], energies[iw, 0])
         assert numpy.allclose(e1s[iw], energies[iw, 1])
@@ -256,21 +260,25 @@ def test_local_energy_single_det_batch_rhf():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walker_opts = dotdict({"rhf": True})
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, init, walker_opts={"rhf": True}
-    )
+    # walkers = SingleDetWalkerBatch(
+    #     system, ham, trial, nwalkers, init, walker_opts={"rhf": True}
+    # )
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
+    walkers.rhf = True
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0.0)
-        walker_batch.reortho()
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
+        walkers.reortho()
 
-    ovlp = greens_function_single_det_batch(walker_batch, trial)
-    energies = local_energy_single_det_rhf_batch(system, ham, walker_batch, trial)
+    ovlp = greens_function_single_det_batch(walkers, trial)
+    energies = local_energy_single_det_rhf_batch(system, ham, walkers, trial)
 
     for iw in range(nwalkers):
         assert numpy.allclose(
-            walker_batch.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
+            walkers.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
         )
         # assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(etots[iw], energies[iw, 0])
@@ -330,21 +338,26 @@ def test_local_energy_single_det_batch_rhf_packed():
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
-    prop = Continuous(system, ham, trial, qmc)
+    prop = PhaselessGeneric(time_step=qmc["dt"])
+    prop.build(ham,trial)
     walker_opts = dotdict({"rhf": True})
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, init, walker_opts=walker_opts
-    )
-    for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, 0.0)
-        walker_batch.reortho()
+    # walkers = SingleDetWalkerBatch(
+    #     system, ham, trial, nwalkers, init, walker_opts=walker_opts
+    # )
+    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers.build(trial)
+    walkers.rhf = True
 
-    ovlp = greens_function_single_det_batch(walker_batch, trial)
-    energies = local_energy_single_det_rhf_batch(system, ham, walker_batch, trial)
+    for i in range(nsteps):
+        prop.propagate_walkers(walkers, ham, trial, 0.0)
+        walkers.reortho()
+
+    ovlp = greens_function_single_det_batch(walkers, trial)
+    energies = local_energy_single_det_rhf_batch(system, ham, walkers, trial)
 
     for iw in range(nwalkers):
         assert numpy.allclose(
-            walker_batch.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
+            walkers.phia[iw], legacy_walkers[iw].phi[:, : nelec[0]]
         )
         # assert numpy.allclose(energy, energies[iw])
         assert numpy.allclose(etots[iw], energies[iw, 0])

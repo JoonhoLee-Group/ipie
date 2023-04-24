@@ -6,14 +6,7 @@ from pyscf import gto, scf
 
 from mpi4py import MPI
 
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk, get_ortho_ao
-from ipie.utils.mpi import get_shared_comm
-
-from ipie.legacy.estimators.greens_function import gab
+from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
 mol = gto.M(
     atom=[("H", 3.2 * i, 0, 0) for i in range(2)],

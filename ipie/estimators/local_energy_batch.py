@@ -15,11 +15,7 @@
 # Authors: Joonho Lee
 #          Fionn Malone <fionn.malone@gmail.com>
 #
-
-import time
-
 import numpy
-from numba import jit
 
 from ipie.config import config
 from ipie.estimators.local_energy import local_energy_G
@@ -32,15 +28,7 @@ from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
     local_energy_single_det_uhf_batch_chunked_gpu,
 )
-from ipie.estimators.local_energy_wicks import (
-    local_energy_multi_det_trial_wicks_batch,
-    local_energy_multi_det_trial_wicks_batch_opt,
-    local_energy_multi_det_trial_wicks_batch_opt_chunked,
-)
-from ipie.walkers.base_walkers import BaseWalkers
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.utils.misc import is_cupy
+from ipie.walkers.uhf_walkers import UHFWalkers
 
 
 # TODO: should pass hamiltonian here and make it work for all possible types
@@ -65,7 +53,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         Total, one-body and two-body energies.
     """
 
-    if isinstance(walker_batch,BaseWalkers) or isinstance(walker_batch,SingleDetWalkerBatch):
+    if isinstance(walker_batch,UHFWalkers):
         if config.get_option("use_gpu"):
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked_gpu(
@@ -90,39 +78,9 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
                 )
                 # \TODO switch to this
                 # return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
-    elif isinstance(walker_batch,MultiDetTrialWalkerBatch) and trial.wicks == False:
+    else:
+        print("# Warning: local_energy_batch is not production level for multi-det trials.")
         return local_energy_multi_det_trial_batch(
-            system, hamiltonian, walker_batch, trial
-        )
-    elif (
-        trial.name == "MultiSlater"
-        and trial.num_dets > 1
-        and trial.wicks == True
-        and not trial.optimized
-    ):
-        # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
-        return local_energy_multi_det_trial_wicks_batch(
-            system, hamiltonian, walker_batch, trial
-        )
-    elif (
-        trial.name == "MultiSlater"
-        and trial.num_dets > 1
-        and trial.wicks == True
-        and trial.optimized == True
-        and trial.ndet_chunks > 1
-    ):
-        # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
-        return local_energy_multi_det_trial_wicks_batch_opt_chunked(
-            system, hamiltonian, walker_batch, trial
-        )
-    elif (
-        trial.name == "MultiSlater"
-        and trial.num_dets > 1
-        and trial.wicks == True
-        and trial.optimized == True
-    ):
-        # return local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
-        return local_energy_multi_det_trial_wicks_batch_opt(
             system, hamiltonian, walker_batch, trial
         )
 

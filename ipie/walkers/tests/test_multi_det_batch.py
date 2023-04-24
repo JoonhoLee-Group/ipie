@@ -27,7 +27,8 @@ from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det_wicks_opt,
 )
 from ipie.estimators.local_energy_batch import (
-    local_energy_multi_det_trial_batch,
+    local_energy_multi_det_trial_batch)
+from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
 )
@@ -45,7 +46,7 @@ from ipie.trial_wavefunction.particle_hole import (
 from ipie.utils.linalg import reortho
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
+from ipie.walkers.uhf_walkers import UHFWalkersTrial
 
 
 @pytest.mark.unit
@@ -64,8 +65,11 @@ def test_walker_overlap_nomsd():
     # Test NOMSD type wavefunction.
     nelec = (system.nup, system.ndown)
     trial = NOCI((coeffs, wfn), nelec, ham.nbasis)
-    walker_batch = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, wfn[0])
 
+    walkers = UHFWalkersTrial[type(trial)](wfn[0], system.nup, system.ndown, ham.nbasis,
+                                    nwalkers, 25)
+    walkers.build(trial)
+    walkers.ovlp = trial.calc_overlap(walkers)
     def calc_ovlp(a, b):
         return numpy.linalg.det(numpy.dot(a.conj().T, b))
 
@@ -78,8 +82,8 @@ def test_walker_overlap_nomsd():
             ovlp[iw] += (
                 coeffs[i].conj() * calc_ovlp(d[:, :na], pa) * calc_ovlp(d[:, na:], pb)
             )
-    assert ovlp.real == pytest.approx(walker_batch.ovlp.real)
-    assert ovlp.imag == pytest.approx(walker_batch.ovlp.imag)
+    assert ovlp.real == pytest.approx(walkers.ovlp.real)
+    assert ovlp.imag == pytest.approx(walkers.ovlp.imag)
 
 
 @pytest.mark.unit
@@ -105,7 +109,12 @@ def test_walker_overlap_phmsd():
     init = (a + 1j * b).reshape((ham.nbasis, system.nup + system.ndown))
     nelec = (system.nup, system.ndown)
     trial = ParticleHoleNaive(wfn, nelec, ham.nbasis)
-    walker = MultiDetTrialWalkerBatch(system, ham, trial, nwalkers, init)
+    
+    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
+                                    nwalkers, 25)
+    walkers.build(trial)
+    walkers.ovlp = trial.calc_greens_function(walkers)
+
     I = numpy.eye(ham.nbasis)
     ovlp_sum = numpy.zeros(nwalkers, dtype=numpy.complex128)
     for iw in range(nwalkers):
@@ -120,16 +129,16 @@ def test_walker_overlap_phmsd():
             gb = numpy.dot(init[:, system.nup :], numpy.dot(isb, psib.conj().T)).T
             ovlp = numpy.linalg.det(sa) * numpy.linalg.det(sb)
             ovlp_sum[iw] += c.conj() * ovlp
-            walk_ovlp = walker.det_ovlpas[iw, idet] * walker.det_ovlpbs[iw, idet]
+            walk_ovlp = walkers.det_ovlpas[iw, idet] * walkers.det_ovlpbs[iw, idet]
             assert ovlp == pytest.approx(walk_ovlp)
-            assert numpy.linalg.norm(ga - walker.Gia[iw, idet]) == pytest.approx(0)
-            assert numpy.linalg.norm(gb - walker.Gib[iw, idet]) == pytest.approx(0)
+            assert numpy.linalg.norm(ga - walkers.Gia[iw, idet]) == pytest.approx(0)
+            assert numpy.linalg.norm(gb - walkers.Gib[iw, idet]) == pytest.approx(0)
 
     trial = ParticleHoleWicksSlow(wfn, nelec, ham.nbasis)
-    ovlp_wicks = calc_overlap_multi_det_wicks(walker, trial)
+    ovlp_wicks = calc_overlap_multi_det_wicks(walkers, trial)
 
-    assert ovlp_sum == pytest.approx(walker.ovlp)
-    assert ovlp_wicks == pytest.approx(walker.ovlp)
+    assert ovlp_sum == pytest.approx(walkers.ovlp)
+    assert ovlp_wicks == pytest.approx(walkers.ovlp)
 
 
 @pytest.mark.unit
@@ -168,8 +177,25 @@ def test_walker_energy():
     trial_opt.half_rotate(system, ham)
 
     nwalkers = 10
-    walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
-    walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
+    ndets = len(oa)
+    # walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
+    # walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
+
+    walkers0 = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
+                                    nwalkers,25)
+    walkers0.build(trial_slow)
+    walkers0.ovlp = trial_slow.calc_greens_function(walkers0)
+
+    walkers = UHFWalkersTrial[type(trial_slow)](init, system.nup, system.ndown, ham.nbasis,
+                                    nwalkers,25)
+    walkers.build(trial_slow)
+    walkers.ovlp = trial_slow.calc_greens_function(walkers)
+
+    walkers_opt = UHFWalkersTrial[type(trial_opt)](init, system.nup, system.ndown, ham.nbasis,
+                                    nwalkers,25)
+    walkers_opt.build(trial_opt)
+    walkers_opt.ovlp = trial_opt.calc_greens_function(walkers_opt)
+
 
     nume = 0
     deno = 0
@@ -191,23 +217,23 @@ def test_walker_energy():
         energies[iw] = nume / deno
 
     greens_function_multi_det_wicks(
-        walker, trial
+        walkers0, trial
     )  # compute green's function using Wick's theorem
     greens_function_multi_det_wicks_opt(
-        walker_opt, trial_opt
+        walkers_opt, trial_opt
     )  # compute green's function using Wick's theorem
-    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker, trial)
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walkers0, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(
-        system, ham, walker_opt, trial_opt
+        system, ham, walkers_opt, trial_opt
     )
-    greens_function_multi_det(walker, trial_slow)
-    e_simple = local_energy_multi_det_trial_batch(system, ham, walker, trial_slow)
+    greens_function_multi_det(walkers, trial_slow)
+    e_simple = local_energy_multi_det_trial_batch(system, ham, walkers, trial_slow)
 
     assert e_simple[:, 0] == pytest.approx(energies)
     assert e_wicks_opt[:, 0] == pytest.approx(e_wicks[:, 0])
     assert e_wicks[:, 0] == pytest.approx(energies)
 
-    # e = local_energy_batch(system, ham, walker, trial, iw=0)
+    # e = local_energy_batch(system, ham, walkers, trial, iw=0)
     # assert e[:,0] == pytest.approx(energies[0])
 
 

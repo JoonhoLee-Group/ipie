@@ -22,13 +22,16 @@ from typing import Tuple, Union
 
 import numpy
 
-from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.utils.io import get_input_value
+from ipie.qmc.afqmc import AFQMC
+from ipie.qmc.options import QMCOpts
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
-from ipie.walkers.walker_batch_handler import WalkerBatchHandler
-from ipie.propagation.continuous import Continuous
+from ipie.walkers.pop_controller import PopController
+from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
+from ipie.walkers.base_walkers import BaseWalkers
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.noci import NOCI
@@ -38,6 +41,8 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicksNonChunked,
     ParticleHoleWicksSlow,
 )
+
+from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric, PhaselessGenericChunked
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
@@ -282,21 +287,18 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
         trial = NOCI(wfn, (nocc, nocc), nmo)
-    from ipie.walkers import SingleDetWalkerBatch
+    walkers = UHFWalkersTrial[type(trial)](wfn[1][0],system.nup,system.ndown,ham.nbasis, nwalkers)
+    walkers.build(trial)
 
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, initial_walker=wfn[1][0]
-    )
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
     Ghalfb = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
-    walker_batch.Ghalfa = Ghalfa
-    walker_batch.Ghalfb = Ghalfa
+    walkers.Ghalfa = Ghalfa
+    walkers.Ghalfb = Ghalfb
     trial._rchola = shaped_normal((naux, nocc * nmo))
     trial._rcholb = shaped_normal((naux, nocc * nmo))
     trial._rH1a = shaped_normal((nocc, nmo))
     trial._rH1b = shaped_normal((nocc, nmo))
-    # trial.psi = trial.psi[0]
-    return system, ham, walker_batch, trial
+    return system, ham, walkers, trial
 
 
 def build_random_phmsd_trial(
@@ -390,9 +392,54 @@ def build_random_trial(
 @dataclass(frozen=True)
 class TestData:
     trial: TrialWavefunctionBase
-    walker_handler: WalkerBatchHandler
+    walkers: BaseWalkers
     hamiltonian: HamGeneric
-    propagator: Continuous
+    propagator: PhaselessBase
+
+def build_classes_test_case(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    mpi_handler: MPIHandler,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    options={},
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, enuc, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(system, ham)
+    trial.calculate_energy(system, ham)
+    options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
+
+    return system, ham, trial, init, prop
 
 
 def build_test_case_handlers_mpi(
@@ -436,34 +483,34 @@ def build_test_case_handlers_mpi(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
-    prop = Continuous(system, ham, trial, options, options=options)
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
 
-    handler_batch = WalkerBatchHandler(
-        system,
-        ham,
-        trial,
-        options,
-        init,
-        options,
-        mpi_handler=mpi_handler,
-        verbose=False,
-    )
-    trial.calc_greens_function(handler_batch.walkers_batch)
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    nsteps = get_input_value(options, "nsteps", default=25, alias=["num_steps"])
+    pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
+    reconf_freq = get_input_value(options, "reconfiguration_freq", default=50 )
+
+    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler = mpi_handler)
+    walkers.build(trial) # any intermediates that require information from trial
+                                        # pop_control_method=pop_control, 
+                                        # reconfiguration_frequency=reconf_freq)    
+    pcontrol = PopController(nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq)
+    trial.calc_greens_function(walkers)
     for i in range(options.num_steps):
         if two_body_only:
-            prop.two_body_propagator_batch(
-                handler_batch.walkers_batch, system, ham, trial
+            prop.propagate_walkers_two_body(
+                walkers, ham, trial
             )
         else:
-            prop.propagate_walker_batch(
-                handler_batch.walkers_batch, system, ham, trial, trial.energy
+            prop.propagate_walkers(
+                walkers, ham, trial, trial.energy
             )
-        handler_batch.walkers_batch.reortho()
-        handler_batch.pop_control(mpi_handler.comm)
-        trial.calc_greens_function(handler_batch.walkers_batch)
+        walkers.reortho()
+        pcontrol.pop_control(walkers, mpi_handler.comm)
+        trial.calc_greens_function(walkers)
 
-    return TestData(trial, handler_batch, ham, prop)
-
+    return TestData(trial, walkers, ham, prop)
 
 def build_test_case_handlers(
     num_elec: Tuple[int, int],
@@ -504,32 +551,24 @@ def build_test_case_handlers(
     # necessary for backwards compatabilty with tests
     if seed is not None:
         numpy.random.seed(seed)
-    prop = Continuous(system, ham, trial, options, options=options)
 
-    handler_batch = WalkerBatchHandler(
-        system,
-        ham,
-        trial,
-        options,
-        init,
-        options,
-        verbose=False,
-    )
-    trial.calc_greens_function(handler_batch.walkers_batch)
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial) # any intermediates that require information from trial
+ 
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
+ 
+    trial.calc_greens_function(walkers)
     for i in range(options.num_steps):
         if two_body_only:
-            prop.two_body_propagator_batch(
-                handler_batch.walkers_batch, system, ham, trial
-            )
+            prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
-            prop.propagate_walker_batch(
-                handler_batch.walkers_batch, system, ham, trial, trial.energy
-            )
-        handler_batch.walkers_batch.reortho()
-        trial.calc_greens_function(handler_batch.walkers_batch)
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        walkers.reortho()
+        trial.calc_greens_function(walkers)
 
-    return TestData(trial, handler_batch, ham, prop)
-
+    return TestData(trial, walkers, ham, prop)
 
 def build_driver_test_instance(
     num_elec: Tuple[int, int],
@@ -571,13 +610,32 @@ def build_driver_test_instance(
     trial.calculate_energy(system, ham)
     from mpi4py import MPI
 
+    qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
+    qmc = QMCOpts(qmc_opts, verbose=0)
+    qmc.nwalkers = qmc.nwalkers_per_task
+
+    nwalkers = qmc.nwalkers
+    
+    ndets, init = get_initial_walker(trial) # Here we update init...
+    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial) # any intermediates that require information from trial
+
     comm = MPI.COMM_WORLD
-    afqmc = AFQMCBatch(
+    afqmc = AFQMC(
         comm=comm,
+        options=options,
         system=system,
         hamiltonian=ham,
-        options=options,
         trial=trial,
-        qmc_opt=options["qmc"],
+        walkers=walkers,
+        seed=qmc.rng_seed, 
+        nwalkers=qmc.nwalkers,
+        nwalkers_per_task=qmc.nwalkers_per_task,
+        num_steps_per_block=qmc.nsteps, 
+        num_blocks=qmc.nblocks, 
+        timestep=qmc.dt,
+        stabilise_freq=qmc.nstblz,
+        pop_control_freq=qmc.npop_control,
+        verbose=0
     )
     return afqmc

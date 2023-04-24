@@ -21,6 +21,7 @@ import time
 
 import numpy
 
+from ipie.systems.generic import Generic as SysGeneric
 from ipie.hamiltonians.generic import Generic, construct_h1e_mod, read_integrals
 from ipie.utils.io import get_input_value
 from ipie.utils.mpi import get_shared_array, have_shared_mem
@@ -42,7 +43,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     ham : object
         Hamiltonian class.
     """
-    if ham_opts["name"] == "Generic":
+    if isinstance(system,SysGeneric):
         filename = ham_opts.get("integrals", None)
         if filename is None:
             if comm.rank == 0:

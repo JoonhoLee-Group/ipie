@@ -74,8 +74,6 @@ def test_generic_multi_det_batch():
         seed=7,
         num_dets=ndets,
     )
-    # print(afqmc.trial.occa)
-    # print(afqmc.trial.occb)
     afqmc.run(comm=comm, verbose=1)
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
@@ -83,10 +81,10 @@ def test_generic_multi_det_batch():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi.walkers_batch,
+        afqmc.walkers,
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
-    denom_batch = afqmc.estimators["energy"]["EDenom"]
+    denom_batch = afqmc.estimators["energy"]["EDenom"]  
 
     data_batch = extract_observable(
         "estimates.test_generic_multi_det_batch.h5", "energy"

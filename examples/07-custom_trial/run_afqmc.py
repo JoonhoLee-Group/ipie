@@ -126,7 +126,7 @@ num_steps_per_block = 25
 num_blocks = 10
 timestep = 0.005
 
-from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.afqmc import AFQMC
 
 # 1. Build out system
 from ipie.systems.generic import Generic
@@ -179,37 +179,20 @@ trial.build()
 trial.half_rotate(system, ham)
 
 # 4. Build walkers
-from ipie.walkers.walker_batch_handler import CustomWalkerBatchHandler
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
-
-# Make this cleaner?
-walkers = SingleDetWalkerBatch(
-    system,
-    ham,
-    trial,
-    num_walkers,
-    initial_walker=np.hstack([orbs, orbs]),
-)
-
-# Current walker batch handler is trial dependent, this needs to change.
-walker_handler = CustomWalkerBatchHandler(
-    num_walkers,
-    num_walkers,
-    num_steps_per_block,
-    walkers,
+from ipie.walkers.uhf_walkers import UHFWalkers
+walkers = UHFWalkers(np.hstack([orbs, orbs]),
+    system.nup, system.ndown, ham.nbasis, 
+    num_walkers,num_walkers, num_steps_per_block
 )
 
 np.random.seed(7)
-# QMCOpts needs to die.
-# AFQMCBatch -> AFQMC
-afqmc = AFQMCBatch(
+afqmc = AFQMC(
     comm,
     system=system,
     hamiltonian=ham,
     trial=trial,
-    walkers=walker_handler,
-    num_walkers=num_walkers,
+    walkers=walkers,
+    nwalkers=num_walkers,
     num_steps_per_block=num_steps_per_block,
     num_blocks=num_blocks,
     timestep=timestep,

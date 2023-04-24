@@ -24,7 +24,6 @@ from ipie.utils.testing import build_test_case_handlers
 from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
 
-
 @pytest.mark.unit
 def test_greens_function_batch():
     nelec = (5, 5)
@@ -59,7 +58,7 @@ def test_greens_function_batch():
         seed=7,
     )
     legacy_walkers = legacy_data.walker_handler.walkers
-    walkers = batched_data.walker_handler.walkers_batch
+    walkers = batched_data.walkers
     ovlp = greens_function_single_det(walkers, batched_data.trial, build_full=True)
     for iw in range(nwalkers):
         numpy.testing.assert_allclose(
@@ -100,7 +99,7 @@ def test_overlap_batch():
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     legacy_walkers = legacy_data.walker_handler.walkers
-    walkers = batched_data.walker_handler.walkers_batch
+    walkers = batched_data.walkers
     ovlp = greens_function_single_det(walkers, batched_data.trial, build_full=True)
     ovlp_legacy = [w.calc_overlap(legacy_data.trial) for w in legacy_walkers]
     assert numpy.allclose(ovlp_legacy, ovlp)
@@ -130,7 +129,7 @@ def test_reortho_batch():
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
     legacy_walkers = legacy_data.walker_handler.walkers
-    detR = batched_data.walker_handler.orthogonalise(batched_data.trial, False)
+    detR = batched_data.walkers.orthogonalise(False)
     detR_legacy = [w.reortho(legacy_data.trial) for w in legacy_walkers]
     assert numpy.allclose(detR_legacy, detR)
 

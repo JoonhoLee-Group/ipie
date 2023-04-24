@@ -38,11 +38,16 @@ except ImportError:
     parallel = False
 
 from ipie.estimators.handler import EstimatorHandler
-from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.comm import FakeComm
 from ipie.utils.io import get_input_value, to_json
 from ipie.utils.misc import serialise
 
+from ipie.systems.utils import get_system
+from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
+from ipie.utils.mpi import MPIHandler
 
 def init_communicator():
     if parallel:
@@ -62,9 +67,43 @@ def setup_calculation(input_options):
     return (afqmc, comm)
 
 
-def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMCBatch:
+def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
     verbosity = options.get("verbosity", 1)
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
+    sys_opts = get_input_value(
+        options,
+        "system",
+        default={},
+        alias=["model"],
+        verbose=verbosity > 1,
+    )
+    ham_opts = get_input_value(
+        options, "hamiltonian", default={}, verbose=verbosity > 1
+    )
+    # backward compatibility with previous code (to be removed)
+    for item in sys_opts.items():
+        if item[0].lower() == "name" and "name" in ham_opts.keys():
+            continue
+        ham_opts[item[0]] = item[1]
+
+    twf_opt = get_input_value(
+        options,
+        "trial",
+        default={},
+        alias=["trial_wavefunction"],
+        verbose=verbosity > 1,
+    )
+
+    wlk_opts = get_input_value(
+        options,
+        "walkers",
+        default={},
+        alias=["walker", "walker_opts"],
+        verbose=verbosity > 1,
+    )
+    wlk_opts["pop_control"] = wlk_opts.get("pop_control", "pair_branch")
+    wlk_opts["population_control"] = wlk_opts["pop_control"]
+
     beta = get_input_value(qmc_opts, "beta", default=None)
     if comm.rank != 0:
         verbosity = 0
@@ -73,9 +112,53 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMCBatch:
     if beta is not None or batched == False:
         raise ValueError("Trying to use legacy features which aren't supported.")
     else:
-        afqmc = AFQMCBatch(
-            comm, options=options, qmc_opt=qmc_opts, parallel=comm.size > 1, verbose=verbosity
+        from ipie.qmc.options import QMCOpts
+        qmc = QMCOpts(qmc_opts, verbose=0)
+        if qmc.nwalkers is None:
+            assert qmc.nwalkers_per_task is not None
+            qmc.nwalkers = qmc.nwalkers_per_task * comm.size
+        if qmc.nwalkers_per_task is None:
+            assert qmc.nwalkers is not None
+            qmc.nwalkers_per_task = int(qmc.nwalkers / comm.size)
+
+        mpi_handler = MPIHandler(comm, qmc_opts, verbose=verbosity)
+        system = get_system(sys_opts, verbose=verbosity, comm=comm)
+        # Have to deal with shared comm in the future. I think we will remove this...
+        hamiltonian = get_hamiltonian(
+            system, ham_opts, verbose=verbosity, comm=comm
         )
+        trial = get_trial_wavefunction(
+            system,
+            hamiltonian,
+            options=twf_opt,
+            comm=comm,
+            scomm=comm,
+            verbose=verbosity,
+        )
+        ndets, initial_walker = get_initial_walker(trial)
+        walkers = UHFWalkersTrial[type(trial)](initial_walker, 
+                                        system.nup, system.ndown, 
+                                        hamiltonian.nbasis, qmc.nwalkers_per_task,
+                                        mpi_handler = mpi_handler)
+        walkers.build(trial) # any intermediates that require information from trial
+        afqmc = AFQMC(
+            comm,  options=options, 
+            system=system,
+            hamiltonian=hamiltonian,
+            trial=trial,
+            walkers=walkers,
+            seed=qmc.rng_seed, 
+            nwalkers=qmc.nwalkers,
+            nwalkers_per_task=qmc.nwalkers_per_task,
+            num_steps_per_block=qmc.nsteps, 
+            num_blocks=qmc.nblocks, 
+            timestep=qmc.dt,
+            stabilise_freq=qmc.nstblz,
+            pop_control_freq=qmc.npop_control,
+            verbose=verbosity
+        )
+
+        afqmc.pcontrol.method = wlk_opts["population_control"]
 
     return afqmc
 
@@ -101,8 +184,7 @@ def build_afqmc_driver(
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
     }
-    afqmc = AFQMCBatch(comm, options=options, parallel=comm.size > 1, verbose=verbosity, num_walkers=num_walkers_per_task)
-    return afqmc
+    return get_driver(options,comm)
 
 
 def read_input(input_file, comm, verbose=False):
@@ -139,80 +221,3 @@ def read_input(input_file, comm, verbose=False):
 
     return options
 
-
-def setup_parallel(options, comm=None, verbose=False):
-    """Wrapper routine for initialising simulation
-
-    Parameters
-    ----------
-    options : dict
-        Input options.
-    comm : MPI communicator
-        MPI communicator object.
-    verbose : bool
-        If true print out set up information.
-
-    Returns
-    -------
-    afqmc : :class:`pie.afqmc.CPMC`
-        CPMC driver.
-    """
-    if comm.rank == 0:
-        afqmc = get_driver(options, comm)
-        system = afqmc.system
-        print("# Setup base driver.")
-    else:
-        afqmc = None
-        system = None
-    system = comm.bcast(system)
-    afqmc = comm.bcast(afqmc, root=0)
-    afqmc.init_time = time.time()
-    if afqmc.trial.error:
-        print("# Error in constructing trial wavefunction. Exiting")
-        sys.exit()
-    afqmc.rank = comm.Get_rank()
-    afqmc.nprocs = comm.Get_size()
-    afqmc.root = afqmc.rank == 0
-    # We can't serialise '_io.BufferWriter' object, so just delay initialisation
-    # of estimators object to after MPI communication.
-    # Simpler to just ensure a fixed number of walkers per core.
-    afqmc.qmc.nwalkers = int(afqmc.qmc.nwalkers / afqmc.nprocs)
-    afqmc.qmc.ntot_walkers = afqmc.qmc.nwalkers * afqmc.nprocs
-    if afqmc.qmc.nwalkers == 0:
-        # This should occur on all processors so we don't need to worry about
-        # race conditions / mpi4py hanging.
-        if afqmc.root and afqmc.verbosity > 1:
-            print(
-                "# WARNING: Not enough walkers for selected core count."
-                "There must be at least one walker per core set in the "
-                "input file. Setting one walker per core."
-            )
-        afqmc.qmc.nwalkers = 1
-
-    estimator_opts = options.get("estimates", {})
-    walker_opts = options.get("walkers", {"weight": 1})
-    afqmc.estimators = EstimatorHandler(
-        comm,
-        afqmc.system,
-        afqmc.hamiltonian,
-        afqmc.trial,
-        options=estimator_opts,
-        verbose=(comm.rank == 0 and verbose),
-    )
-    afqmc.psi = Walkers(
-        walker_opts,
-        afqmc.system,
-        afqmc.trial,
-        afqmc.qmc,
-        verbose=(comm.rank == 0 and verbose),
-        comm=comm,
-    )
-    afqmc.psi.add_field_config(
-        afqmc.estimators.nprop_tot, afqmc.estimators.nbp, afqmc.system, numpy.complex128
-    )
-    if comm.rank == 0:
-        json_string = to_json(afqmc)
-        afqmc.estimators.json_string = json_string
-        afqmc.estimators.dump_metadata()
-
-    return afqmc

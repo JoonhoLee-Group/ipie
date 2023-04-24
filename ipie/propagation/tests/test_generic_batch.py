@@ -21,13 +21,8 @@ import pytest
 
 from ipie.estimators.greens_function_batch import (
     greens_function_single_det_batch,
-    greens_function_single_det,
-    compute_greens_function,
 )
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
 from ipie.propagation.overlap import calc_overlap_single_det_batch
-from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
     build_test_case_handlers,
@@ -35,8 +30,6 @@ from ipie.utils.testing import (
 from ipie.utils.legacy_testing import (
     build_legacy_test_case_handlers,
 )
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
-
 
 @pytest.mark.unit
 def test_overlap_rhf_batch():
@@ -77,7 +70,7 @@ def test_overlap_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
@@ -95,7 +88,7 @@ def test_overlap_batch():
     nmo = 10
     nelec = (6, 5)
     nwalkers = 2
-    nsteps = 25
+    nsteps = 10
 
     qmc = dotdict(
         {
@@ -125,7 +118,7 @@ def test_overlap_batch():
         trial_type="single_det",
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
@@ -178,7 +171,7 @@ def test_two_body_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -222,7 +215,7 @@ def test_two_body_batch():
         two_body_only=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -268,7 +261,7 @@ def test_hybrid_rhf_batch():
         rhf_trial=True,
     )
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
 
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
@@ -298,7 +291,7 @@ def test_hybrid_batch():
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
     walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walker_handler.walkers_batch
+    walker_batch = batched_data.walkers
     for iw in range(nwalkers):
         assert numpy.allclose(walker_batch.Ghalfa[iw], walkers[iw].Ghalf[0])
         assert numpy.allclose(walker_batch.Ghalfb[iw], walkers[iw].Ghalf[1])
@@ -339,12 +332,11 @@ def test_vhs():
 
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    vhs_batch = batched_data.propagator.propagator.construct_VHS_batch(
+    vhs_batch = batched_data.propagator.construct_VHS(
         batched_data.hamiltonian, xshifted.T.copy()
     )
     for iw in range(nwalkers):
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
-
 
 if __name__ == "__main__":
     test_overlap_rhf_batch()
@@ -353,3 +345,4 @@ if __name__ == "__main__":
     test_two_body_rhf_batch()
     test_hybrid_rhf_batch()
     test_hybrid_batch()
+    test_vhs()

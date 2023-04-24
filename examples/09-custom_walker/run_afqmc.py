@@ -124,7 +124,6 @@ num_steps_per_block = 25
 num_blocks = 10
 timestep = 0.005
 
-from ipie.qmc.afqmc_batch import AFQMCBatch
 from ipie.qmc.afqmc import AFQMC
 
 # 1. Build out system
@@ -184,13 +183,13 @@ class CustomUHFWalkers(UHFWalkers):
     def __init__(
         self,
         initial_walker,
-        nup, ndown,
+        nup, ndown, nbasis,
         num_walkers_local,
         num_walkers_global,
         num_steps,
     ):
         super().__init__(
-            initial_walker, nup, ndown, num_walkers_local, num_walkers_global, num_steps
+            initial_walker, nup, ndown, nbasis, num_walkers_local, num_walkers_global, num_steps
         )
 
     def reortho(
@@ -201,7 +200,7 @@ class CustomUHFWalkers(UHFWalkers):
 
 walkers = CustomUHFWalkers(
     np.hstack([orbs, orbs]),# initial_walkers
-    system.nup, system.ndown,
+    system.nup, system.ndown, ham.nbasis,
     num_walkers,
     num_walkers,
     num_steps_per_block
@@ -213,7 +212,7 @@ afqmc = AFQMC(
     hamiltonian=ham,
     trial=trial,
     walkers=walkers,
-    num_walkers=num_walkers,
+    nwalkers=num_walkers,
     num_steps_per_block=num_steps_per_block,
     num_blocks=num_blocks,
     timestep=timestep,

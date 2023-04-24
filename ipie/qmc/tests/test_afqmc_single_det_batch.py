@@ -27,11 +27,18 @@ from ipie.utils.testing import build_driver_test_instance
 from ipie.utils.legacy_testing import build_legacy_driver_instance
 
 steps = 25
-blocks = 7
+blocks = 10
 seed = 7
-nwalkers = 15
+nwalkers = 10
 nmo = 14
 nelec = (4, 3)
+# steps = 1
+# blocks = 10
+# seed = 7
+# nwalkers = 1
+# nmo = 4
+# nelec = (2, 1)
+
 pop_control_freq = 5
 stabilise_freq = 5
 comm = MPI.COMM_WORLD
@@ -75,11 +82,10 @@ def test_generic_single_det_batch():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi.walkers_batch,
+        afqmc.walkers,
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
     denom_batch = afqmc.estimators["energy"]["EDenom"]
-    options["batched"] = False
     data_batch = extract_observable(
         "estimates.test_generic_single_det_batch.h5", "energy"
     )
@@ -87,6 +93,7 @@ def test_generic_single_det_batch():
         "filename": "estimates.test_generic_single_det_batch.h5",
         "mixed": {"energy_eval_freq": options["steps"]},
     }
+    options["batched"] = False
     legacy_afqmc = build_legacy_driver_instance(
         nelec, nmo, trial_type="single_det", options=driver_options, seed=7
     )
@@ -170,7 +177,7 @@ def test_generic_single_det_batch_density_diff():
         afqmc.system,
         afqmc.hamiltonian,
         afqmc.trial,
-        afqmc.psi.walkers_batch,
+        afqmc.walkers,
     )
 
     numer_batch = afqmc.estimators["energy"]["ENumer"]
