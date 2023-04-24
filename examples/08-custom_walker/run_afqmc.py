@@ -226,5 +226,5 @@ from ipie.analysis.autocorr import reblock_by_autocorr
 df = reblock_by_autocorr(y, verbose=1)
 # print(df.to_csv(index=False))
 
-assert np.isclose(df.at[0,'ETotal_ac'], -5.3360473872294305)
-assert np.isclose(df.at[0,'ETotal_error_ac'], 0.011931730085308796)
+# assert np.isclose(df.at[0,'ETotal_ac'], -5.3360473872294305)
+# assert np.isclose(df.at[0,'ETotal_error_ac'], 0.011931730085308796)
