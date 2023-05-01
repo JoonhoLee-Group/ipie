@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 class PropagatorTimer(object):
     def __init__(self):
@@ -9,7 +9,7 @@ class PropagatorTimer(object):
         self.tvhs = 0.0
         self.tgemm = 0.0
 
-class ContinuousBase(object):
+class ContinuousBase(ABC):
     """A base class for continuous HS transform AFQMC propagators."""
 
     def __init__(self, time_step, verbose=False):

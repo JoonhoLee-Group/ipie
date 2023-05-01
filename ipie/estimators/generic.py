@@ -26,7 +26,6 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-
 # FDM: deprecated remove?
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
     """Compute local energy using half-rotated eri tensor.
