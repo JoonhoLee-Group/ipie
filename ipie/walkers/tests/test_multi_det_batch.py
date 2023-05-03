@@ -33,6 +33,7 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.legacy.estimators.ci import simple_fci
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
@@ -148,11 +149,18 @@ def test_walker_energy():
     nmo = 5
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
+
+    legacy_ham = LegacyHamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
+        ecore=enuc,
+    )
+
     (e0, ev), (d, oa, ob) = simple_fci(system, ham, gen_dets=True)
     na = system.nup
     init = get_random_wavefunction(nelec, nmo)
@@ -211,7 +219,7 @@ def test_walker_energy():
             ovlp = numpy.linalg.det(oa) * numpy.linalg.det(ob)
             ga = numpy.dot(init[:, : system.nup], numpy.dot(isa, psia.conj().T)).T
             gb = numpy.dot(init[:, system.nup :], numpy.dot(isb, psib.conj().T)).T
-            e = local_energy_generic_cholesky(system, ham, numpy.array([ga, gb]))[0]
+            e = local_energy_generic_cholesky(system, legacy_ham, numpy.array([ga, gb]))[0]
             nume += trial.coeffs[i].conj() * ovlp * e
             deno += trial.coeffs[i].conj() * ovlp
         energies[iw] = nume / deno

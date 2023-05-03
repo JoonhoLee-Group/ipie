@@ -24,7 +24,7 @@ def construct_one_body_propagator(hamiltonian, mf_shift, dt):
     """
     nb = hamiltonian.nbasis
     shift = 1j * numpy.einsum(
-        "mx,x->m", hamiltonian.chol_vecs, mf_shift
+        "mx,x->m", hamiltonian.chol, mf_shift
     ).reshape(nb, nb)
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
     expH1 = numpy.array(
@@ -40,20 +40,21 @@ def construct_mean_field_shift(hamiltonian, trial):
         \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
     """
-    # hamiltonian.chol_vecs [X, M^2]
-    if hamiltonian.sparse:
-        mf_shift = 1j * hamiltonian.chol_vecs * trial.G[0].ravel()
-        mf_shift += 1j * hamiltonian.chol_vecs * trial.G[1].ravel()
+    # hamiltonian.chol [X, M^2]
+    # sparse is deprecated
+    # if hamiltonian.sparse:
+    #     mf_shift = 1j * hamiltonian.chol * trial.G[0].ravel()
+    #     mf_shift += 1j * hamiltonian.chol * trial.G[1].ravel()
+    # else:
+    Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    if numpy.isrealobj(hamiltonian.chol):
+        tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
+        tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
+        mf_shift = 1.0j * tmp_real - tmp_imag
     else:
-        Gcharge = (trial.G[0] + trial.G[1]).ravel()
-        if numpy.isrealobj(hamiltonian.chol_vecs):
-            tmp_real = numpy.dot(hamiltonian.chol_vecs.T, Gcharge.real)
-            tmp_imag = numpy.dot(hamiltonian.chol_vecs.T, Gcharge.imag)
-            mf_shift = 1.0j * tmp_real - tmp_imag
-        else:
-            mf_shift = 1j * numpy.dot(
-                hamiltonian.chol_vecs.T, (trial.G[0] + trial.G[1]).ravel()
-            )
+        mf_shift = 1j * numpy.dot(
+            hamiltonian.chol.T, (trial.G[0] + trial.G[1]).ravel()
+        )
     return mf_shift
 
 class PhaselessBase(ContinuousBase):

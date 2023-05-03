@@ -1,21 +1,35 @@
-import ast
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Fionn Malone <fmalone@google.com>
+#          Joonho Lee
+#
 
-import h5py
 import numpy
 
 array = numpy.array
 zeros = numpy.zeros
 einsum = numpy.einsum
 isrealobj = numpy.isrealobj
-import sys
-import time
 
-import scipy.linalg
 
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
-from ipie.utils.linalg import modified_cholesky
-from ipie.utils.mpi import get_shared_array, have_shared_mem
+from ipie.utils.io import (
+    from_qmcpack_dense,
+    from_qmcpack_sparse,
+    write_hamiltonian,
+    read_hamiltonian,
+)
 
 
 class Generic(object):
@@ -79,20 +93,15 @@ class Generic(object):
             print("# Parsing input options for hamiltonians.Generic.")
         self.name = "Generic"
         self.verbose = verbose
-        self.stochastic_ri = options.get("stochastic_ri", False)
-        self.pno = options.get("pno", False)
-        self.thresh_pno = options.get("thresh_pno", 1e-6)
         self.exact_eri = options.get("exact_eri", False)
-        self.control_variate = options.get("control_variate", False)
-        if self.stochastic_ri:
-            self.control_variate = False
-        self.mu = options.get("chemical_potential", 0.0)
-        self._alt_convention = False  # chemical potential sign convention
+        self.mixed_precision = options.get("mixed_precision", False)
+        self.density_diff = options.get("density_diff", False)
+        self.symmetry = options.get("symmetry", True)
+        self.chunked = False  # chunking disabled by default
 
         self.ecore = ecore
         self.chol_vecs = chol  # [M^2, nchol]
-
-        self.symmetry = options.get("symmetry", False)
+        self.chol = self.chol_vecs
 
         if self.symmetry:
             self.chol_packed = chol_packed
@@ -103,44 +112,37 @@ class Generic(object):
         else:
             self.chol_packed = None  # [M*(M+1)/2, nchol] if used
             self.sym_idx = None
+        
+        # unncessary booleans for legacy compatibility
+        self.control_variate=False
+        self.stochastic_ri=False
+        self.pno = False
 
+        if self.mixed_precision:
+            if not self.density_diff:
+                self.density_diff = True
+                if self.verbose:
+                    print(
+                        "# density_diff is switched on for more stable mixed precision"
+                    )
+            if self.symmetry:
+                self.chol_packed = self.chol_packed.astype(numpy.float32)
+            else:
+                self.chol_vecs = self.chol_vecs.astype(numpy.float32)  # [M^2, nchol]
 
         if self.exact_eri:
             if self.verbose:
-                print("# exact_eri is true for local energy")
+                print("# exact_eri is used for the local energy evaluation")
 
-        if self.pno:
+        if self.density_diff:
             if self.verbose:
                 print(
-                    "# pno is true for local energy with a threshold of {}".format(
-                        self.thresh_pno
-                    )
+                    "# density_diff is used for the force bias and the local energy evaluation"
                 )
-            self.ij_list_aa = []
-            self.ij_list_bb = []
-            self.ij_list_ab = []
 
-            for i in range(self.nup):
-                for j in range(i, self.nup):
-                    self.ij_list_aa += [(i, j)]
-
-            for i in range(self.ndown):
-                for j in range(i, self.ndown):
-                    self.ij_list_bb += [(i, j)]
-
-            for i in range(self.nup):
-                for j in range(self.ndown):
-                    self.ij_list_ab += [(i, j)]
-
-        if self.stochastic_ri:
-            self.nsamples = nsamples
+        if self.mixed_precision:
             if self.verbose:
-                print(
-                    "# stochastic_ri is true for local energy with {} samples".format(
-                        self.nsamples
-                    )
-                )
-                print("# control_variate = {}".format(self.control_variate))
+                print("# mixed_precision is used for the propagation")
 
         if isrealobj(self.chol_vecs.dtype):
             if verbose:
@@ -185,31 +187,79 @@ class Generic(object):
         return numpy.dot(self.chol_vecs[ik], self.chol_vecs[jl])
 
     def write_integrals(self, nelec, filename="hamil.h5"):
-        if self.sparse:
-            write_qmcpack_sparse(
-                self.H1[0],
-                self.chol_vecs.copy(),
-                nelec,
-                self.nbasis,
-                ecuc=self.ecore,
-                filename=filename,
-            )
+        write_hamiltonian(
+            self.H1[0],
+            self.chol_vecs.T.reshape((self.nchol, self.nbasis, self.nbasis)),
+            self.ecore,
+            filename=filename,
+        )
+
+    def chunk(self, handler, verbose=False):
+        self.chunked = True  # Boolean to indicate that chunked cholesky is available
+
+        chol_idxs = [i for i in range(self.nchol)]
+        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
+
+        if self.symmetry:
+            # if handler.srank == 0:  # creating copies for every rank = 0!!!!
+            self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = handler.scatter_group(
+                self.chol_packed
+            )  # distribute over chol
+
+            # if handler.srank == 0:
+            self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_packed_chunk = (
+                self.chol_packed_chunk.T.copy()
+            )  # [M^2, chol_chunk]
+
+            tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
+
+            assert self.chol_packed.size == tot_size
         else:
-            write_qmcpack_dense(
-                self.H1[0],
-                self.chol_vecs.copy(),
-                nelec,
-                self.nbasis,
-                enuc=self.ecore,
-                filename=filename,
-                real_chol=not self.cplx_chol,
-            )
+            # if handler.comm.rank == 0:
+            self.chol_vecs = self.chol_vecs.T.copy()  # [chol, M^2]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = handler.scatter_group(
+                self.chol_vecs
+            )  # distribute over chol
+
+            # if handler.comm.rank == 0:
+            self.chol_vecs = self.chol_vecs.T.copy()  # [M^2, chol]
+            handler.comm.barrier()
+
+            self.chol_vecs_chunk = self.chol_vecs_chunk.T.copy()  # [M^2, chol_chunk]
+
+            tot_size = handler.allreduce_group(self.chol_vecs_chunk.size)
+            assert self.chol_vecs.size == tot_size
 
     # This function casts relevant member variables into cupy arrays
+    # Keeping this specific for the moment as too much logic.
+    # A sign it should be split up..
     def cast_to_cupy(self, verbose=False):
         import cupy
 
-        size = self.H1.size + self.h1e_mod.size + self.chol_vecs.size
+        size = self.H1.size + self.h1e_mod.size
+        if self.chunked:
+            if self.symmetry:
+                size += self.chol_packed_chunk.size
+            else:
+                size += self.chol_vecs_chunk.size
+        else:
+            if self.symmetry:
+                size += self.chol_packed.size
+            else:
+                size += self.chol_vecs.size
+
+        if self.symmetry:
+            size += self.sym_idx_i.size
+            size += self.sym_idx_j.size
+
         if verbose:
             expected_bytes = size * 8.0  # float64
             print(
@@ -220,7 +270,20 @@ class Generic(object):
 
         self.H1 = cupy.asarray(self.H1)
         self.h1e_mod = cupy.asarray(self.h1e_mod)
-        self.chol_vecs = cupy.asarray(self.chol_vecs)
+        if self.symmetry:
+            self.sym_idx_i = cupy.asarray(self.sym_idx_i)
+            self.sym_idx_j = cupy.asarray(self.sym_idx_j)
+
+        if self.chunked:
+            if self.symmetry:
+                self.chol_packed_chunk = cupy.asarray(self.chol_packed_chunk)
+            else:
+                self.chol_vecs_chunk = cupy.asarray(self.chol_vecs_chunk)
+        else:
+            if self.symmetry:
+                self.chol_packed = cupy.asarray(self.chol_packed)
+            else:
+                self.chol_vecs = cupy.asarray(self.chol_vecs)
 
         free_bytes, total_bytes = cupy.cuda.Device().mem_info
         used_bytes = total_bytes - free_bytes
@@ -238,19 +301,26 @@ def read_integrals(integral_file):
             integral_file
         )
         chol_vecs = schol_vecs.toarray()
+        return h1e, chol_vecs, ecore
     except KeyError:
+        pass
+    try:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_dense(integral_file)
-    except OSError:
-        print("# Unknown Hamiltonian file {}.".format(integral_file))
-    except:
-        print("# Unknown Hamiltonian file format.")
-    return h1e, chol_vecs, ecore
+        return h1e, chol_vecs, ecore
+    except KeyError:
+        pass
+    try:
+        (h1e, chol_vecs, ecore) = read_hamiltonian(integral_file)
+        naux = chol_vecs.shape[0]
+        nbsf = chol_vecs.shape[-1]
+        return h1e, chol_vecs.T.reshape((nbsf, nbsf, naux)), ecore
+    except KeyError:
+        return None
 
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
     # Eqn (17) of [Motta17]_
-    # print("here")
     nbasis = h1e.shape[-1]
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis * nchol))
@@ -258,6 +328,5 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     v0 = 0.5 * numpy.dot(
         chol_view, chol_view.T
     )  # einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
-    # print("done", chol_view.shape)
     h1e_mod[0, :, :] = h1e[0] - v0
     h1e_mod[1, :, :] = h1e[1] - v0

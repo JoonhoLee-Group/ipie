@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Tuple, Union
 
 import numpy as np
@@ -11,7 +11,7 @@ _wfn_type = Union[
 ]
 
 
-class TrialWavefunctionBase(object):
+class TrialWavefunctionBase(ABC):
     """Base class for trialwavefunction types.
 
     Developer should decouple building wavefunction state and construction.

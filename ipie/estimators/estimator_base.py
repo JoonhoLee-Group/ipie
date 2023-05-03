@@ -16,7 +16,7 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 import numpy as np
 
@@ -24,7 +24,7 @@ from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import to_host
 
-class EstimatorBase(object):
+class EstimatorBase(ABC):
 
     def __init__(self):
         self._ascii_filename = None

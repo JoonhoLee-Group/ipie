@@ -123,7 +123,7 @@ class PhaselessGeneric(PhaselessBase):
         self.timer.tgemm += time.time() - start_time
 
     # Any class inherited from PhaselessGeneric should override this method.
-    @abstractmethod
+    # @abstractmethod
     def construct_VHS(self, hamiltonian, xshifted):
         if is_cupy(
             xshifted
@@ -134,60 +134,60 @@ class PhaselessGeneric(PhaselessBase):
 
         nwalkers = xshifted.shape[-1]
 
-        if hamiltonian.mixed_precision:  # cast it to float
-            xshifted = xshifted.astype(numpy.complex64)
+        # if hamiltonian.mixed_precision:  # cast it to float
+            # xshifted = xshifted.astype(numpy.complex64)
 
-        if hamiltonian.symmetry:
-            if xp.isrealobj(hamiltonian.chol_vecs):
-                VHS_packed = hamiltonian.chol_packed.dot(
-                    xshifted.real
-                ) + 1.0j * hamiltonian.chol_packed.dot(xshifted.imag)
-            else:
-                VHS_packed = hamiltonian.chol_packed.dot(xshifted)
-            # (nb, nb, nw) -> (nw, nb, nb)
-            VHS_packed = (
-                self.isqrt_dt
-                * VHS_packed.T.reshape(
-                    nwalkers, hamiltonian.chol_packed.shape[0]
-                ).copy()
-            )
-
-            if hamiltonian.mixed_precision:  # cast it to double
-                VHS_packed = VHS_packed.astype(numpy.complex128)
-
-            VHS = xp.zeros(
-                (nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
-                dtype=VHS_packed.dtype,
-            )
-            if iscupy:
-                threadsperblock = 512
-                nbsf = hamiltonian.nbasis
-                nut = round(nbsf * (nbsf + 1) / 2)
-                blockspergrid = math.ceil(self.nwalkers * nut / threadsperblock)
-                unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
-                    hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS
-                )
-            else:
-                unpack_VHS_batch(
-                    hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS
-                )
+        # if hamiltonian.symmetry:
+        if xp.isrealobj(hamiltonian.chol):
+            VHS_packed = hamiltonian.chol_packed.dot(
+                xshifted.real
+            ) + 1.0j * hamiltonian.chol_packed.dot(xshifted.imag)
         else:
-            if xp.isrealobj(hamiltonian.chol_vecs):
-                VHS = hamiltonian.chol_vecs.dot(
-                    xshifted.real
-                ) + 1.0j * hamiltonian.chol_vecs.dot(xshifted.imag)
-            else:
-                VHS = hamiltonian.chol_vecs.dot(xshifted)
-            # (nb, nb, nw) -> (nw, nb, nb)
-            VHS = (
-                self.isqrt_dt
-                * VHS.T.reshape(
-                    nwalkers, hamiltonian.nbasis, hamiltonian.nbasis
-                ).copy()
-            )
+            VHS_packed = hamiltonian.chol_packed.dot(xshifted)
+        # (nb, nb, nw) -> (nw, nb, nb)
+        VHS_packed = (
+            self.isqrt_dt
+            * VHS_packed.T.reshape(
+                nwalkers, hamiltonian.chol_packed.shape[0]
+            ).copy()
+        )
 
-            if hamiltonian.mixed_precision:  # cast it to double
-                VHS = VHS.astype(numpy.complex128)
+        # if hamiltonian.mixed_precision:  # cast it to double
+        #     VHS_packed = VHS_packed.astype(numpy.complex128)
+
+        VHS = xp.zeros(
+            (nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
+            dtype=VHS_packed.dtype,
+        )
+        if iscupy:
+            threadsperblock = 512
+            nbsf = hamiltonian.nbasis
+            nut = round(nbsf * (nbsf + 1) / 2)
+            blockspergrid = math.ceil(self.nwalkers * nut / threadsperblock)
+            unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
+                hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS
+            )
+        else:
+            unpack_VHS_batch(
+                hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS
+            )
+        # else:
+        #     if xp.isrealobj(hamiltonian.chol):
+        #         VHS = hamiltonian.chol.dot(
+        #             xshifted.real
+        #         ) + 1.0j * hamiltonian.chol.dot(xshifted.imag)
+        #     else:
+        #         VHS = hamiltonian.chol.dot(xshifted)
+        #     # (nb, nb, nw) -> (nw, nb, nb)
+        #     VHS = (
+        #         self.isqrt_dt
+        #         * VHS.T.reshape(
+        #             nwalkers, hamiltonian.nbasis, hamiltonian.nbasis
+        #         ).copy()
+        #     )
+
+            # if hamiltonian.mixed_precision:  # cast it to double
+            #     VHS = VHS.astype(numpy.complex128)
 
         return VHS
     
@@ -203,13 +203,12 @@ class PhaselessGenericChunked(PhaselessGeneric):
 
     def construct_VHS(self, hamiltonian, xshifted):
         assert hamiltonian.chunked
-        assert hamiltonian.symmetry
-        assert xp.isrealobj(hamiltonian.chol_vecs)
+        assert xp.isrealobj(hamiltonian.chol)
 
         nwalkers = xshifted.shape[-1]
 
-        if hamiltonian.mixed_precision:  # cast it to float
-            xshifted = xshifted.astype(numpy.complex64)
+        # if hamiltonian.mixed_precision:  # cast it to float
+        #     xshifted = xshifted.astype(numpy.complex64)
 
         #       xshifted is unique for each processor!
         xshifted_send = xshifted.copy()

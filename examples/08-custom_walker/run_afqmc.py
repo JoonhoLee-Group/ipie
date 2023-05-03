@@ -148,12 +148,10 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 num_basis = integrals.h1e.shape[0]
 num_chol = integrals.chol.shape[0]
 
-ham = HamGeneric(
+ham = HamGeneric[integrals.chol.dtype](
     np.array([integrals.h1e, integrals.h1e]),
     integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-    integrals.e0,
-    options={"symmetry": False},  # Remove dictionaries just use keywords
-)
+    integrals.e0)
 
 # 3. Build trial wavefunction
 from ipie.utils.from_pyscf import generate_wavefunction_from_mo_coeff

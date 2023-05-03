@@ -17,4 +17,5 @@
 #          Joonho Lee
 #
 
+from .generic_base import GenericBase
 from .generic import Generic

@@ -21,7 +21,7 @@ import cmath
 import sys
 import time
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import h5py
 import numpy
 from mpi4py import MPI
@@ -86,7 +86,7 @@ class WalkerAccumulator(object):
     def to_text(self, vals):
         return format_fixed_width_floats(vals.real)
 
-class BaseWalkers:
+class BaseWalkers (ABC):
     """Container for groups of walkers which make up a wavefunction.
 
     Parameters

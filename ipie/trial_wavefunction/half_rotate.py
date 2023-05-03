@@ -37,12 +37,12 @@ def half_rotate_generic(
             "# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M))
         )
 
-    chol = hamiltonian.chol_vecs.reshape((M, M, nchol))
+    chol = hamiltonian.chol.reshape((M, M, nchol))
 
     shape_a = (ndets, nchol, (M * na))
     shape_b = (ndets, nchol, (M * nb))
 
-    ctype = hamiltonian.chol_vecs.dtype
+    ctype = hamiltonian.chol.dtype
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
     rchola = get_shared_array(comm, shape_a, integral_type)

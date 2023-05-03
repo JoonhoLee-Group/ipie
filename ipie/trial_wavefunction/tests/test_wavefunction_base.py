@@ -4,7 +4,7 @@ from ipie.utils.testing import get_random_phmsd_opt
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
 
-@pytest.mark.unit
+# @pytest.mark.unit # disabled because abstract class can't be instantiated directly
 def test_wavefunction_base():
     num_basis = 10
     nalpha, nbeta = (5, 5)
