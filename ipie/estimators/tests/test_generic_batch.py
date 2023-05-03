@@ -37,6 +37,8 @@ from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 from ipie.walkers.uhf_walkers import UHFWalkersTrial
 from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_energies
 
+from ipie.legacy.hamiltonians._generic import Generic as HamGenericRef
+
 
 @pytest.mark.unit
 def test_greens_function_batch():
@@ -48,7 +50,7 @@ def test_greens_function_batch():
     dt = 0.005
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -61,8 +63,15 @@ def test_greens_function_batch():
     trial.build()
     trial.half_rotate(system, ham)
 
+    from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+    legacy_ham = LegacyHamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
+        ecore=0,
+    )
+
     legacy_walkers = build_legacy_test_case(
-        wfn, init, system, ham, nsteps, nwalkers, dt
+        wfn, init, system, legacy_ham, nsteps, nwalkers, dt
     )
     numpy.random.seed(7)
     walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
@@ -92,11 +101,10 @@ def test_local_energy_single_det_batch():
     dt = 0.005
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     # Test PH type wavefunction.
     ci_wfn, init = get_random_phmsd(
@@ -111,12 +119,19 @@ def test_local_energy_single_det_batch():
     trial = SingleDet(wfn, nelec, nmo)
     trial.build()
     trial.half_rotate(system, ham)
-
+    
+    from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
+    legacy_ham = LegacyHamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
+    )
     numpy.random.seed(7)
     legacy_walkers = build_legacy_test_case(
-        ci_wfn, init, system, ham, nsteps, nwalkers, dt
+        ci_wfn, init, system, legacy_ham, nsteps, nwalkers, dt
     )
-    etots, e1s, e2s = get_legacy_walker_energies(system, ham, trial, legacy_walkers)
+    etots, e1s, e2s = get_legacy_walker_energies(system, legacy_ham, trial, legacy_walkers)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
@@ -159,7 +174,6 @@ def test_local_energy_single_det_batch_packed():
 
     nchol = chol.shape[-1]
     chol = chol.reshape((nmo, nmo, nchol))
-
     idx = numpy.triu_indices(nmo)
     cp_shape = (nmo * (nmo + 1) // 2, chol.shape[-1])
     chol_packed = numpy.zeros(cp_shape, dtype=chol.dtype)
@@ -167,13 +181,23 @@ def test_local_energy_single_det_batch_packed():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+
+    ham = HamGeneric[chol.dtype](
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol,
+        ecore=0,
+        # chol_packed=chol_packed,
+        # options={"symmetry": True},
+    )
+
+    legacy_ham = HamGenericRef(
         h1e=numpy.array([h1e, h1e]),
         chol=chol,
         ecore=0,
         chol_packed=chol_packed,
         options={"symmetry": True},
     )
+
     # Test PH type wavefunction.
     ci_wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=1, init=True
@@ -190,9 +214,9 @@ def test_local_energy_single_det_batch_packed():
 
     numpy.random.seed(7)
     legacy_walkers = build_legacy_test_case(
-        ci_wfn, init, system, ham, nsteps, nwalkers, dt
+        ci_wfn, init, system, legacy_ham, nsteps, nwalkers, dt
     )
-    etots, e1s, e2s = get_legacy_walker_energies(system, ham, trial, legacy_walkers)
+    etots, e1s, e2s = get_legacy_walker_energies(system, legacy_ham, trial, legacy_walkers)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
@@ -232,11 +256,10 @@ def test_local_energy_single_det_batch_rhf():
     dt = 0.005
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
+        ecore=0
     )
     ci_wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=1, init=True
@@ -253,10 +276,17 @@ def test_local_energy_single_det_batch_rhf():
     init[:, : nelec[0]] = init[:, nelec[0] :].copy()
 
     numpy.random.seed(7)
-    legacy_walkers = build_legacy_test_case(
-        ci_wfn, init, system, ham, nsteps, nwalkers, dt
+    legacy_ham = HamGenericRef(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
+        ecore=0,
+        options={"symmetry": False},
     )
-    etots, e1s, e2s = get_legacy_walker_energies(system, ham, trial, legacy_walkers)
+
+    legacy_walkers = build_legacy_test_case(
+        ci_wfn, init, system, legacy_ham, nsteps, nwalkers, dt
+    )
+    etots, e1s, e2s = get_legacy_walker_energies(system, legacy_ham, trial, legacy_walkers)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
@@ -285,7 +315,6 @@ def test_local_energy_single_det_batch_rhf():
         assert numpy.allclose(e1s[iw], energies[iw, 1])
         assert numpy.allclose(e2s[iw], energies[iw, 2])
 
-
 @pytest.mark.unit
 def test_local_energy_single_det_batch_rhf_packed():
     numpy.random.seed(7)
@@ -308,7 +337,13 @@ def test_local_energy_single_det_batch_rhf_packed():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol,
+        ecore=0,
+    )
+    
+    legacy_ham = HamGenericRef(
         h1e=numpy.array([h1e, h1e]),
         chol=chol,
         ecore=0,
@@ -332,9 +367,9 @@ def test_local_energy_single_det_batch_rhf_packed():
 
     numpy.random.seed(7)
     legacy_walkers = build_legacy_test_case(
-        ci_wfn, init, system, ham, nsteps, nwalkers, dt
+        ci_wfn, init, system, legacy_ham, nsteps, nwalkers, dt
     )
-    etots, e1s, e2s = get_legacy_walker_energies(system, ham, trial, legacy_walkers)
+    etots, e1s, e2s = get_legacy_walker_energies(system, legacy_ham, trial, legacy_walkers)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})

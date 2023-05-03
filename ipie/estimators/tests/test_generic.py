@@ -20,11 +20,10 @@
 import numpy
 import pytest
 
-from ipie.estimators.generic import (local_energy_cholesky_opt,
-                                     local_energy_generic_opt)
+from ipie.estimators.generic import local_energy_cholesky_opt
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.generic import (
-    local_energy_generic_cholesky, local_energy_generic_cholesky_opt_batched)
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky_opt_batched
+from ipie.estimators.generic import local_energy_generic_cholesky
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.trial_wavefunction.single_det import SingleDet
@@ -37,7 +36,7 @@ def test_local_energy_cholesky():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[eri.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -57,7 +56,7 @@ def test_local_energy_cholesky_opt():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[eri.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -73,13 +72,14 @@ def test_local_energy_cholesky_opt():
     assert e[2] == pytest.approx(-2.3347281779866)
 
 
+# @pytest.mark.unit
 def test_local_energy_cholesky_opt_batched():
     numpy.random.seed(7)
     nmo = 24
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[eri.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,

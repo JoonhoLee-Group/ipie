@@ -1,15 +1,10 @@
 import sys
 import time
 
-import numpy
-
-from ipie.hamiltonians.generic import construct_h1e_mod, read_integrals
 from ipie.hamiltonians.utils import get_generic_integrals
-from ipie.legacy.hamiltonians.generic import Generic
+from ipie.legacy.hamiltonians._generic import Generic
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.hamiltonians.ueg import UEG
-from ipie.utils.mpi import get_shared_array, have_shared_mem
-
 
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     """Wrapper to select hamiltonian class

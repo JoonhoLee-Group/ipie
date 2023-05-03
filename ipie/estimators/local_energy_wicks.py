@@ -34,7 +34,7 @@ from ipie.utils.linalg import minor_mask, minor_mask4
 from ipie.estimators.kernels.cpu import wicks as wk
 
 
-def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
+def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -45,7 +45,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
-    walker_batch : WalkerBatch
+    walkers : WalkerBatch
         Walkers object.
     trial : trial object
         Trial wavefunctioni.
@@ -55,29 +55,29 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
     local_energy : np.ndarray
         Total, one-body and two-body energies.
     """
-    nwalkers = walker_batch.nwalkers
+    nwalkers = walkers.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
-    Ga = walker_batch.Ga.reshape((nwalkers, nbasis * nbasis))
-    Gb = walker_batch.Gb.reshape((nwalkers, nbasis * nbasis))
+    Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
+    Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
     e1bs = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
     e2bs = []
     for iwalker in range(nwalkers):
-        ovlpa0 = walker_batch.det_ovlpas[iwalker, 0]
-        ovlpb0 = walker_batch.det_ovlpbs[iwalker, 0]
+        ovlpa0 = walkers.det_ovlpas[iwalker, 0]
+        ovlpb0 = walkers.det_ovlpbs[iwalker, 0]
         ovlp0 = ovlpa0 * ovlpb0
-        ovlp = walker_batch.ovlp[iwalker]
+        ovlp = walkers.ovlp[iwalker]
 
         # useful variables
-        G0a = walker_batch.G0a[iwalker]
-        G0b = walker_batch.G0b[iwalker]
-        G0Ha = walker_batch.Ghalfa[iwalker]
-        G0Hb = walker_batch.Ghalfb[iwalker]
-        Q0a = walker_batch.Q0a[iwalker]
-        Q0b = walker_batch.Q0b[iwalker]
-        CIa = walker_batch.CIa[iwalker]
-        CIb = walker_batch.CIb[iwalker]
+        G0a = walkers.G0a[iwalker]
+        G0b = walkers.G0b[iwalker]
+        G0Ha = walkers.Ghalfa[iwalker]
+        G0Hb = walkers.Ghalfb[iwalker]
+        Q0a = walkers.Q0a[iwalker]
+        Q0b = walkers.Q0b[iwalker]
+        CIa = walkers.CIa[iwalker]
+        CIb = walkers.CIb[iwalker]
         G0 = [G0a, G0b]
 
         # contribution 1 (disconnected)
@@ -86,15 +86,15 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
         P0 = G0[0] + G0[1]
-        Xa = ham.chol_vecs.T.dot(
+        Xa = ham.chol.T.dot(
             G0[0].ravel()
-        )  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol_vecs)
-        Xb = ham.chol_vecs.T.dot(
+        )  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol)
+        Xb = ham.chol.T.dot(
             G0[1].ravel()
-        )  # numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol_vecs)
+        )  # numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol)
 
-        LXa = numpy.einsum("mx,x->m", ham.chol_vecs, Xa, optimize=True)
-        LXb = numpy.einsum("mx,x->m", ham.chol_vecs, Xb, optimize=True)
+        LXa = numpy.einsum("mx,x->m", ham.chol, Xa, optimize=True)
+        LXb = numpy.einsum("mx,x->m", ham.chol, Xb, optimize=True)
         LXa = LXa.reshape((nbasis, nbasis))
         LXb = LXb.reshape((nbasis, nbasis))
 
@@ -112,7 +112,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
         cont2_Kaa = 0.0 + 0.0j
         cont2_Kbb = 0.0 + 0.0j
         for x in range(nchol):
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             LGL = Lmn.dot(G0a.T).dot(Lmn)
             cont2_Kaa -= numpy.sum(LGL * QCIGa)
 
@@ -128,14 +128,14 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
             "iq,pj,ijx->qpx",
             Q0a,
             G0a,
-            ham.chol_vecs.reshape((nbasis, nbasis, nchol)),
+            ham.chol.reshape((nbasis, nbasis, nchol)),
             optimize=True,
         )
         Lbb = numpy.einsum(
             "iq,pj,ijx->qpx",
             Q0b,
             G0b,
-            ham.chol_vecs.reshape((nbasis, nbasis, nchol)),
+            ham.chol.reshape((nbasis, nbasis, nchol)),
             optimize=True,
         )
 
@@ -432,7 +432,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch, trial):
 
     etot = e1bs + e2bs
 
-    energy = numpy.zeros((walker_batch.nwalkers, 3), dtype=numpy.complex128)
+    energy = numpy.zeros((walkers.nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = etot
     energy[:, 1] = e1bs
     energy[:, 2] = e2bs
@@ -586,7 +586,7 @@ def build_contributions12(
 
 
 def local_energy_multi_det_trial_wicks_batch_opt_chunked(
-    system, ham, walker_batch, trial, max_mem=2.0
+    system, ham, walkers, trial, max_mem=2.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -603,7 +603,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
-    walker_batch : WalkerBatch
+    walkers : WalkerBatch
         Walkers object.
     trial : trial object
         Trial wavefunctioni.
@@ -615,29 +615,29 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     local_energy : np.ndarray
         Total, one-body and two-body energies.
     """
-    nwalkers = walker_batch.nwalkers
+    nwalkers = walkers.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
     nalpha = system.nup
     nbeta = system.ndown
-    Ga = walker_batch.Ga.reshape((nwalkers, nbasis * nbasis))
-    Gb = walker_batch.Gb.reshape((nwalkers, nbasis * nbasis))
+    Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
+    Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
     e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
-    ovlpa0 = walker_batch.det_ovlpas[:, 0]
-    ovlpb0 = walker_batch.det_ovlpbs[:, 0]
+    ovlpa0 = walkers.det_ovlpas[:, 0]
+    ovlpb0 = walkers.det_ovlpbs[:, 0]
     ovlp0 = ovlpa0 * ovlpb0
-    ovlp = walker_batch.ovlp
+    ovlp = walkers.ovlp
 
     # useful variables
-    G0a = walker_batch.G0a
-    G0b = walker_batch.G0b
-    G0Ha = walker_batch.Ghalfa
-    G0Hb = walker_batch.Ghalfb
-    Q0a = walker_batch.Q0a
-    Q0b = walker_batch.Q0b
-    CIa = walker_batch.CIa
-    CIb = walker_batch.CIb
+    G0a = walkers.G0a
+    G0b = walkers.G0b
+    G0Ha = walkers.Ghalfa
+    G0Hb = walkers.Ghalfb
+    Q0a = walkers.Q0a
+    Q0b = walkers.Q0b
+    CIa = walkers.CIa
+    CIb = walkers.CIb
 
     Lvo_a = numpy.zeros(
         (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
@@ -650,10 +650,10 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         trial._rcholb,
         trial._rchola_act,
         trial._rcholb_act,
-        walker_batch.Ghalfa,
-        walker_batch.Ghalfb,
-        walker_batch.CIa,
-        walker_batch.CIb,
+        walkers.Ghalfa,
+        walkers.Ghalfb,
+        walkers.CIa,
+        walkers.CIb,
         Lvo_a,
         Lvo_b,
     )
@@ -663,7 +663,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
     dets_a_full, dets_b_full = compute_determinants_batched(
-        walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+        walkers.Ghalfa, walkers.Ghalfb, trial
     )
     ndets = len(trial.coeffs)
     cphase_a = trial.coeffs.conj() * trial.phase_a
@@ -725,7 +725,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                     trial.anh_ex_a_chunk[ichunk][iexcit],
                     trial.occ_map_a,
                     trial.nfrozen,
-                    walker_batch.Ghalfa,
+                    walkers.Ghalfa,
                     det_mat_a,
                 )
                 if iexcit == 1:
@@ -814,7 +814,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                     trial.anh_ex_b_chunk[ichunk][iexcit],
                     trial.occ_map_b,
                     trial.nfrozen,
-                    walker_batch.Ghalfb,
+                    walkers.Ghalfb,
                     det_mat_b,
                 )
                 if iexcit == 1:
@@ -922,7 +922,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
 
 
 def local_energy_multi_det_trial_wicks_batch_opt(
-    system, ham, walker_batch, trial, max_mem=2.0
+    system, ham, walkers, trial, max_mem=2.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -940,7 +940,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
         System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
-    walker_batch : WalkerBatch
+    walkers : WalkerBatch
         Walkers object.
     trial : trial object
         Trial wavefunctioni.
@@ -952,29 +952,29 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     local_energy : np.ndarray
         Total, one-body and two-body energies.
     """
-    nwalkers = walker_batch.nwalkers
+    nwalkers = walkers.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
     nalpha = system.nup
     nbeta = system.ndown
-    Ga = walker_batch.Ga.reshape((nwalkers, nbasis * nbasis))
-    Gb = walker_batch.Gb.reshape((nwalkers, nbasis * nbasis))
+    Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
+    Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
     e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
-    ovlpa0 = walker_batch.det_ovlpas[:, 0]
-    ovlpb0 = walker_batch.det_ovlpbs[:, 0]
+    ovlpa0 = walkers.det_ovlpas[:, 0]
+    ovlpb0 = walkers.det_ovlpbs[:, 0]
     ovlp0 = ovlpa0 * ovlpb0
-    ovlp = walker_batch.ovlp
+    ovlp = walkers.ovlp
 
     # useful variables
-    G0a = walker_batch.G0a
-    G0b = walker_batch.G0b
-    G0Ha = walker_batch.Ghalfa
-    G0Hb = walker_batch.Ghalfb
-    Q0a = walker_batch.Q0a
-    Q0b = walker_batch.Q0b
-    CIa = walker_batch.CIa
-    CIb = walker_batch.CIb
+    G0a = walkers.G0a
+    G0b = walkers.G0b
+    G0Ha = walkers.Ghalfa
+    G0Hb = walkers.Ghalfb
+    Q0a = walkers.Q0a
+    Q0b = walkers.Q0b
+    CIa = walkers.CIa
+    CIb = walkers.CIb
 
     Lvo_a = numpy.zeros(
         (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
@@ -987,10 +987,10 @@ def local_energy_multi_det_trial_wicks_batch_opt(
         trial._rcholb,
         trial._rchola_act,
         trial._rcholb_act,
-        walker_batch.Ghalfa,
-        walker_batch.Ghalfb,
-        walker_batch.CIa,
-        walker_batch.CIb,
+        walkers.Ghalfa,
+        walkers.Ghalfb,
+        walkers.CIa,
+        walkers.CIb,
         Lvo_a,
         Lvo_b,
     )
@@ -1000,7 +1000,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
     dets_a_full, dets_b_full = compute_determinants_batched(
-        walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+        walkers.Ghalfa, walkers.Ghalfb, trial
     )
     ndets = len(trial.coeffs)
     cphase_a = trial.coeffs.conj() * trial.phase_a
@@ -1047,7 +1047,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                 trial.anh_ex_a[iexcit],
                 trial.occ_map_a,
                 trial.nfrozen,
-                walker_batch.Ghalfa,
+                walkers.Ghalfa,
                 det_mat_a,
             )
             if iexcit == 1:
@@ -1136,7 +1136,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                 trial.anh_ex_b[iexcit],
                 trial.occ_map_b,
                 trial.nfrozen,
-                walker_batch.Ghalfb,
+                walkers.Ghalfb,
                 det_mat_b,
             )
             if iexcit == 1:
@@ -1558,8 +1558,8 @@ def fill_opp_spin_factors_batched_triples_chol(
 
 
 @jit(nopython=True, fastmath=True)
-def build_exchange_contribution(chol_vecs, G0a, G0b, QCIGa, QCIGb):
-    nchol = chol_vecs.shape[-1]
+def build_exchange_contribution(chol, G0a, G0b, QCIGa, QCIGb):
+    nchol = chol.shape[-1]
     nbasis = G0a.shape[-1]
     nwalkers = G0a.shape[0]
     cont2_Kaa = numpy.zeros(nwalkers, dtype=numpy.complex128)
@@ -1570,7 +1570,7 @@ def build_exchange_contribution(chol_vecs, G0a, G0b, QCIGa, QCIGb):
         G0b_real = G0b[iw].real.copy()
         G0b_imag = G0b[iw].imag.copy()
         for x in range(nchol):
-            Lmn = chol_vecs[:, x].copy().reshape((nbasis, nbasis))
+            Lmn = chol[:, x].copy().reshape((nbasis, nbasis))
             LGL = Lmn @ G0a_real.T @ Lmn + 1j * (Lmn @ G0a_imag.T @ Lmn)
             cont2_Kaa[iw] -= numpy.sum(LGL * QCIGa[iw])
             LGL = Lmn @ G0b_real.T @ Lmn + 1j * (Lmn @ G0b_imag.T @ Lmn)

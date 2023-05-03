@@ -439,12 +439,12 @@ def test_phmsd_propagation_batch():
         trial_type="phmsd",
         wfn_type="opt",
     )
-    walkers = legacy_data.walker_handler.walkers
-    walker_batch = batched_data.walkers
+    legacy_walkers = legacy_data.walker_handler.walkers
+    walkers = batched_data.walkers
     for iw in range(nwalkers):
-        assert numpy.allclose(walkers[iw].phi[:, : nelec[0]], walker_batch.phia[iw])
-        assert numpy.allclose(walkers[iw].phi[:, nelec[0] :], walker_batch.phib[iw])
-        assert numpy.allclose(walkers[iw].weight, walker_batch.weight[iw])
+        assert numpy.allclose(legacy_walkers[iw].phi[:, : nelec[0]], walkers.phia[iw])
+        assert numpy.allclose(legacy_walkers[iw].phi[:, nelec[0] :], walkers.phib[iw])
+        assert numpy.allclose(legacy_walkers[iw].weight, walkers.weight[iw])
 
 
 if __name__ == "__main__":

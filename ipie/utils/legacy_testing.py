@@ -16,7 +16,7 @@ from ipie.utils.testing import (
     get_random_phmsd_opt,
 )
 from ipie.utils.misc import dotdict
-from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians._generic import Generic as HamGeneric
 from ipie.systems.generic import Generic
 
 
@@ -34,6 +34,7 @@ def build_legacy_test_case(
     options = {"hybrid": True}
     ham_legacy = copy.deepcopy(ham)
     ham_legacy.control_variate = False
+    ham_legacy.stochastic_ri = False
     trial = MultiSlater(system, ham_legacy, wfn, init=init)
     trial.half_rotate(system, ham_legacy)
     if trial.ndets == 1:

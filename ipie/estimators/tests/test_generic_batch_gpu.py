@@ -94,7 +94,7 @@ def test_local_energy_single_det_batch():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[integrals.chol.dtype](
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=0
     )
     # Test PH type wavefunction.

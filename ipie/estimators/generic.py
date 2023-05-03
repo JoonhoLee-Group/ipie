@@ -86,16 +86,16 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(ham.chol_vecs):
-        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
+    if numpy.isrealobj(ham.chol):
+        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(
             Ga.imag.ravel()
         )
-        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
+        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(
             Gb.imag.ravel()
         )
     else:
-        Xa = ham.chol_vecs.T.dot(Ga.ravel())
-        Xb = ham.chol_vecs.T.dot(Gb.ravel())
+        Xa = ham.chol.T.dot(Ga.ravel())
+        Xb = ham.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -107,9 +107,9 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol_vecs):
+    if numpy.isrealobj(ham.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -118,7 +118,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)

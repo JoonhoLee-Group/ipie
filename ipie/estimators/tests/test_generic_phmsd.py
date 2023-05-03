@@ -60,11 +60,9 @@ def test_greens_function_wicks_opt():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
     )
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(
@@ -250,11 +248,10 @@ def test_det_matrix():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(
@@ -318,11 +315,10 @@ def test_phmsd_local_energy():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     # Test PH type wavefunction.
     # wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5, init=True)
@@ -415,11 +411,10 @@ def test_kernels_energy():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=5000, init=True
@@ -645,11 +640,11 @@ def test_kernels_gf():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     wfn, init = get_random_phmsd(
         system.nup, system.ndown, ham.nbasis, ndet=5000, init=True
@@ -768,11 +763,11 @@ def test_kernels_gf_active_space():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     wfn, init_act = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
@@ -966,11 +961,11 @@ def test_kernels_energy_active_space():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
@@ -1268,11 +1263,11 @@ def test_phmsd_local_energy_active_space():
     core = [0, 1]
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
@@ -1361,11 +1356,11 @@ def test_phmsd_local_energy_active_space_polarised():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
@@ -1466,11 +1461,11 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
+        # options={"symmetry": False},
     )
     from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 

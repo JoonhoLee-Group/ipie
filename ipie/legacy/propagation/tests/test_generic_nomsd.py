@@ -3,7 +3,7 @@ import os
 import numpy
 import pytest
 
-from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians._generic import Generic as HamGeneric
 from ipie.legacy.estimators.greens_function import gab, gab_spin
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.legacy.propagation.generic import GenericContinuous
