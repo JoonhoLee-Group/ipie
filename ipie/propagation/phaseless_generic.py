@@ -132,7 +132,6 @@ class PhaselessGeneric(PhaselessBase):
     # Any class inherited from PhaselessGeneric should override this method.
     @plum.dispatch
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray)->xp.ndarray:
-        print("JOONHO here GenericRealChol for construct VHS")
         nwalkers = xshifted.shape[-1]
 
         VHS_packed = hamiltonian.chol_packed.dot(

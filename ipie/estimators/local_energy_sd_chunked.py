@@ -27,7 +27,7 @@ from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
 from ipie.estimators.kernels import exchange_reduction
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host, synchronize
+from ipie.utils.backend import synchronize
 
 # Local energy routies for chunked (distributed) integrals. Distributed here
 # means over MPI processes with information typically residing on different

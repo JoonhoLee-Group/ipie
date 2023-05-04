@@ -80,7 +80,7 @@ class SingleDet(TrialWavefunctionBase):
             print("# Time to evaluate local energy: {} s".format(time.time() - start))
 
     @plum.dispatch
-    def half_rotate(self, hamiltonian:GenericRealChol, comm:mpi4py.MPI.Intracomm =None):
+    def half_rotate(self: "SingleDet", hamiltonian:GenericRealChol, comm:mpi4py.MPI.Intracomm =None):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
@@ -102,7 +102,7 @@ class SingleDet(TrialWavefunctionBase):
         self.half_rotated = True
 
     @plum.dispatch
-    def half_rotate(self, hamiltonian:GenericComplexChol, comm:mpi4py.MPI.Intracomm =None):
+    def half_rotate(self: "SingleDet", hamiltonian:GenericComplexChol, comm:mpi4py.MPI.Intracomm =None):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))

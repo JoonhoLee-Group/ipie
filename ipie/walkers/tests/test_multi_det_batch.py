@@ -175,14 +175,14 @@ def test_walker_energy():
     trial.half_rotate(ham)
     trial_slow = ParticleHoleNaive((ev[:, 0], oa, ob), nelec, nmo)
     trial_slow.calculate_energy(system, ham)
-    trial_slow.half_rotate(system, ham)
+    trial_slow.half_rotate(ham)
     trial_opt = ParticleHoleWicks(
         (ev[:, 0], oa, ob),
         nelec,
         nmo,
     )
     trial_opt.calculate_energy(system, ham)
-    trial_opt.half_rotate(system, ham)
+    trial_opt.half_rotate(ham)
 
     nwalkers = 10
     ndets = len(oa)

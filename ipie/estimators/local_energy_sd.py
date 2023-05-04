@@ -16,7 +16,6 @@
 #          Joonho Lee <linusjoonho@gmail.com>
 #
 
-import time
 from math import ceil
 
 import numpy

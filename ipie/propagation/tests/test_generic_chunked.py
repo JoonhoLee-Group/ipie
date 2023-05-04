@@ -20,7 +20,7 @@ import numpy
 import pytest
 from mpi4py import MPI
 
-from ipie.legacy.hamiltonians._generic import Generic as HamGeneric
+from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessGenericChunked,PhaselessGeneric
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
@@ -75,7 +75,7 @@ def test_generic_propagation_chunked():
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
-    trial, init = build_random_single_det_trial(nelec, nmo)
+    trial, _ = build_random_single_det_trial(nelec, nmo)
     trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
 

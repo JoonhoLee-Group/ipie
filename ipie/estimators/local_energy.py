@@ -18,9 +18,7 @@
 #
 
 from ipie.estimators.generic import (local_energy_cholesky_opt,
-                                     local_energy_cholesky_opt_dG,
-                                     local_energy_generic_cholesky,
-                                     local_energy_generic_opt)
+                                     local_energy_generic_cholesky)
 from ipie.legacy.estimators.ci import get_hmatel
 from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
 

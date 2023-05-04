@@ -33,7 +33,7 @@ def test_phmsd_force_bias():
         system.nup, system.ndown, ham.nbasis, ndet=2, init=True
     )
     trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(ham)
+    trial.half_rotate(system, ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
     prop = GenericContinuous(system, ham, trial, qmc)
     walker = MultiDetWalker(system, ham, trial)
@@ -100,12 +100,9 @@ def test_phmsd_overlap():
 
     ndets = wfn[0].shape[0]
 
-    nbsf = ham.nbasis
     denom = 0.0 + 0.0j
     for idet in range(ndets):
-        Gi, Gihalf = gab_spin(trial.psi[idet], walker.phi, nelec[0], nelec[1])
-        Gia = Gi[0]
-        Gib = Gi[1]
+        Gi, _ = gab_spin(trial.psi[idet], walker.phi, nelec[0], nelec[1])
         Oia = numpy.dot(
             trial.psi[idet][:, : nelec[0]].conj().T, walker.phi[:, : nelec[0]]
         )
