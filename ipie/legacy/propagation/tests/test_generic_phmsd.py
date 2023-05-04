@@ -33,7 +33,7 @@ def test_phmsd_force_bias():
         system.nup, system.ndown, ham.nbasis, ndet=2, init=True
     )
     trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
     prop = GenericContinuous(system, ham, trial, qmc)
     walker = MultiDetWalker(system, ham, trial)

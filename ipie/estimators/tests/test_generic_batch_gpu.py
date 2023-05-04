@@ -37,7 +37,7 @@ from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, shaped_normal
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 from ipie.trial_wavefunction.single_det import SingleDet
 
 
@@ -104,7 +104,7 @@ def test_local_energy_single_det_batch():
     Id = numpy.eye(ham.nbasis)
     wfn = numpy.hstack([Id[:, : system.nup], Id[:, : system.ndown]])
     trial = SingleDet(wfn, system.nelec, ham.nbasis, init=init)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     # trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)

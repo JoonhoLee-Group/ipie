@@ -31,7 +31,7 @@ from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, build_random_single_det_trial
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -76,7 +76,7 @@ def test_generic_propagation_chunked():
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
     )
     trial, init = build_random_single_det_trial(nelec, nmo)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})

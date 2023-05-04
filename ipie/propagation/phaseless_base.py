@@ -7,7 +7,12 @@ from ipie.propagation.operations import kinetic_spin_real_batch
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
-def construct_one_body_propagator(hamiltonian, mf_shift, dt):
+import plum
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+
+@plum.dispatch
+def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
     """Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -32,7 +37,27 @@ def construct_one_body_propagator(hamiltonian, mf_shift, dt):
     )
     return expH1
 
-def construct_mean_field_shift(hamiltonian, trial):
+@plum.dispatch
+def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
+    nb = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
+    shift = xp.zeros((nb,nb), dtype=hamiltonian.chol.dtype)
+    shift = 1j * numpy.einsum(
+        "mx,x->m", hamiltonian.A, mf_shift[:nchol]
+    ).reshape(nb, nb)
+
+    shift += 1j * numpy.einsum(
+        "mx,x->m", hamiltonian.B, mf_shift[nchol:]
+    ).reshape(nb, nb)
+
+    H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
+    expH1 = numpy.array(
+        [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
+    )
+    return expH1
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
     """Compute mean field shift.
 
     .. math::
@@ -41,20 +66,34 @@ def construct_mean_field_shift(hamiltonian, trial):
 
     """
     # hamiltonian.chol [X, M^2]
-    # sparse is deprecated
-    # if hamiltonian.sparse:
-    #     mf_shift = 1j * hamiltonian.chol * trial.G[0].ravel()
-    #     mf_shift += 1j * hamiltonian.chol * trial.G[1].ravel()
-    # else:
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    if numpy.isrealobj(hamiltonian.chol):
-        tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
-        tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
-        mf_shift = 1.0j * tmp_real - tmp_imag
-    else:
-        mf_shift = 1j * numpy.dot(
-            hamiltonian.chol.T, (trial.G[0] + trial.G[1]).ravel()
-        )
+    tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
+    mf_shift = 1.0j * tmp_real - tmp_imag
+    return mf_shift
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase):
+    """Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [X, M^2]
+    Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    
+    nchol = hamiltonian.nchol
+    nfields = hamiltonian.nfields
+
+    mf_shift = numpy.zeros(nfields, dtype=hamiltonian.chol.dtype)
+    mf_shift[:nchol] = 1j * numpy.dot(
+        hamiltonian.A.T, Gcharge.ravel()
+    )
+    mf_shift[nchol:] = 1j * numpy.dot(
+        hamiltonian.B.T, Gcharge.ravel()
+    )
     return mf_shift
 
 class PhaselessBase(ContinuousBase):

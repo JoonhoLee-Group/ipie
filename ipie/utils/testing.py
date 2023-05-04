@@ -30,7 +30,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.single_det import SingleDet
@@ -430,7 +430,7 @@ def build_classes_test_case(
         complex_trial=complex_trial,
         rhf_trial=rhf_trial,
     )
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
     options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
     # necessary for backwards compatabilty with tests
@@ -476,7 +476,7 @@ def build_test_case_handlers_mpi(
         complex_trial=complex_trial,
         rhf_trial=rhf_trial,
     )
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
     options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
     # necessary for backwards compatabilty with tests
@@ -544,7 +544,7 @@ def build_test_case_handlers(
         complex_trial=complex_trial,
         rhf_trial=rhf_trial,
     )
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
     # necessary for backwards compatabilty with tests
     if seed is not None:
@@ -603,7 +603,7 @@ def build_driver_test_instance(
         complex_trial=complex_trial,
         rhf_trial=rhf_trial,
     )
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
     from mpi4py import MPI
 

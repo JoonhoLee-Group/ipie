@@ -23,24 +23,7 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device
 from ipie.utils.backend import synchronize, qr, qr_mode
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks, ParticleHoleWicksSlow, ParticleHoleNaive, ParticleHoleWicksNonChunked
-from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
-def get_initial_walker(trial: TrialWavefunctionBase)->(int,numpy.ndarray):
-    if isinstance(trial, SingleDet):
-        initial_walker = trial.psi
-        num_dets = 1
-    elif isinstance(trial, ParticleHoleWicks):
-        initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        num_dets = trial.num_dets
-    elif isinstance(trial, ParticleHoleWicksNonChunked):
-        initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        num_dets = trial.num_dets
-    else:
-        raise Exception("Unrecognized trial type in get_initial_walker")
-    return num_dets, initial_walker
 
 class UHFWalkers(BaseWalkers):
     """UHF style walker.
@@ -316,11 +299,3 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
             shape=(self.nwalkers, self.nbasis, self.nbasis),
             dtype=numpy.complex128,
         )
-UHFWalkersTrial = {
-    SingleDet: UHFWalkers,
-    ParticleHoleWicks: UHFWalkersParticleHole,
-    ParticleHoleWicksSlow: UHFWalkersParticleHoleNaive,
-    ParticleHoleWicksNonChunked:UHFWalkersParticleHole,
-    ParticleHoleNaive: UHFWalkersParticleHoleNaive,
-    NOCI: UHFWalkersParticleHoleNaive
-}
