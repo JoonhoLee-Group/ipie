@@ -73,8 +73,8 @@ def test_generic_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
+    ham = HamGeneric[chol.dtype](
+        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
     )
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)

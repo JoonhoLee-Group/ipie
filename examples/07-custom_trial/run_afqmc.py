@@ -150,16 +150,14 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 num_basis = integrals.h1e.shape[0]
 num_chol = integrals.chol.shape[0]
 
-ham = HamGeneric(
+ham = HamGeneric[integrals.chol.dtype](
     np.array([integrals.h1e, integrals.h1e]),
     integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
     integrals.e0,
-    options={"symmetry": False},  # Remove dictionaries just use keywords
 )
 
 # 3. Build trial wavefunction
 from ipie.utils.from_pyscf import generate_wavefunction_from_mo_coeff
-from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
 orbs = generate_wavefunction_from_mo_coeff(
     mf.mo_coeff,
@@ -181,9 +179,7 @@ trial.half_rotate(system, ham)
 # 4. Build walkers
 from ipie.walkers.uhf_walkers import UHFWalkers
 walkers = UHFWalkers(np.hstack([orbs, orbs]),
-    system.nup, system.ndown, ham.nbasis, 
-    num_walkers,num_walkers, num_steps_per_block
-)
+    system.nup, system.ndown, ham.nbasis, num_walkers)
 
 np.random.seed(7)
 afqmc = AFQMC(
@@ -196,9 +192,24 @@ afqmc = AFQMC(
     num_steps_per_block=num_steps_per_block,
     num_blocks=num_blocks,
     timestep=timestep,
+    seed = 59306159,
     options={"estimators": {"observables": {}}},
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
 afqmc.estimators.overwrite = True
 afqmc.estimators["energy"] = estimator
 afqmc.run(comm=comm)
+
+# We can extract the qmc data as as a pandas data frame like so
+from ipie.analysis.extraction import extract_observable
+
+qmc_data = extract_observable(afqmc.estimators.filename, "energy")
+y = qmc_data["ETotal"]
+y = y[1:] # discard first 1 block
+
+from ipie.analysis.autocorr import reblock_by_autocorr
+df = reblock_by_autocorr(y, verbose=1)
+# print(df.to_csv(index=False))
+
+# assert np.isclose(df.at[0,'ETotal_ac'], -5.3360473872294305)
+# assert np.isclose(df.at[0,'ETotal_error_ac'], 0.011931730085308796)

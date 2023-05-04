@@ -246,8 +246,10 @@ def shaped_normal(shape, cmplx=False):
         arr_r = numpy.random.normal(size=size)
         arr_i = numpy.random.normal(size=size)
         arr = arr_r + 1j * arr_i
+        arr = numpy.array(arr,dtype=numpy.complex128)
     else:
         arr = numpy.random.normal(size=size)
+        arr = numpy.array(arr, dtype=numpy.float64)
     return arr.reshape(shape)
 
 
@@ -255,10 +257,10 @@ def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
     sys = Generic(nelec=(nalpha, nbeta))
     chol = shaped_normal((naux, nmo, nmo), cmplx=cmplx)
     h1e = shaped_normal((nmo, nmo), cmplx=cmplx)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
-        h1e_mod=h1e.copy(),
+        # h1e_mod=h1e.copy(),
         ecore=0,
         verbose=False,
     )
@@ -274,11 +276,9 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     system = Generic(nelec=(nocc, nocc))
     chol = shaped_normal((naux, nmo, nmo))
     from ipie.hamiltonians import Generic as HamGeneric
-
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
-        h1e_mod=h1e.copy(),
         ecore=0,
         verbose=False,
     )
@@ -415,7 +415,7 @@ def build_classes_test_case(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
@@ -462,11 +462,10 @@ def build_test_case_handlers_mpi(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     trial, init = build_random_trial(
         num_elec,
@@ -531,11 +530,10 @@ def build_test_case_handlers(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     trial, init = build_random_trial(
         num_elec,
@@ -589,11 +587,10 @@ def build_driver_test_instance(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric(
+    ham = HamGeneric[chol.dtype](
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
-        options={"symmetry": False},
     )
     if density_diff:
         ham.density_diff = True

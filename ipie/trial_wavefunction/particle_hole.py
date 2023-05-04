@@ -417,6 +417,8 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             )
         start = time.time()
         if _use_wicks_helper:
+            if self.verbose:
+                print("# Using Wicks helper to compute 1-RDM.")
             assert wicks_helper is not None
             dets = wicks_helper.encode_dets(self.occa, self.occb)
             phases = wicks_helper.convert_phase(self.occa, self.occb)

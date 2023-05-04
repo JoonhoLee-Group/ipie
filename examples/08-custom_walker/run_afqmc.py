@@ -148,12 +148,10 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 num_basis = integrals.h1e.shape[0]
 num_chol = integrals.chol.shape[0]
 
-ham = HamGeneric(
+ham = HamGeneric[integrals.chol.dtype](
     np.array([integrals.h1e, integrals.h1e]),
     integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-    integrals.e0,
-    options={"symmetry": False},  # Remove dictionaries just use keywords
-)
+    integrals.e0)
 
 # 3. Build trial wavefunction
 from ipie.utils.from_pyscf import generate_wavefunction_from_mo_coeff
@@ -184,13 +182,8 @@ class CustomUHFWalkers(UHFWalkers):
         self,
         initial_walker,
         nup, ndown, nbasis,
-        num_walkers_local,
-        num_walkers_global,
-        num_steps,
-    ):
-        super().__init__(
-            initial_walker, nup, ndown, nbasis, num_walkers_local, num_walkers_global, num_steps
-        )
+        nwalkers):
+        super().__init__(initial_walker, nup, ndown, nbasis, nwalkers)
 
     def reortho(
         self
@@ -201,10 +194,7 @@ class CustomUHFWalkers(UHFWalkers):
 walkers = CustomUHFWalkers(
     np.hstack([orbs, orbs]),# initial_walkers
     system.nup, system.ndown, ham.nbasis,
-    num_walkers,
-    num_walkers,
-    num_steps_per_block
-)
+    num_walkers)
 
 afqmc = AFQMC(
     comm,
@@ -223,3 +213,16 @@ estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
 afqmc.estimators.overwrite = True
 afqmc.estimators["energy"] = estimator
 afqmc.run(comm=comm)
+
+from ipie.analysis.extraction import extract_observable
+
+qmc_data = extract_observable(afqmc.estimators.filename, "energy")
+y = qmc_data["ETotal"]
+y = y[1:] # discard first 1 block
+
+from ipie.analysis.autocorr import reblock_by_autocorr
+df = reblock_by_autocorr(y, verbose=1)
+# print(df.to_csv(index=False))
+
+# assert np.isclose(df.at[0,'ETotal_ac'], -5.3360473872294305)
+# assert np.isclose(df.at[0,'ETotal_error_ac'], 0.011931730085308796)

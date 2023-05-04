@@ -29,8 +29,7 @@ from ipie.analysis.blocking import (
         reblock_minimal
         )
 
-
-@pytest.mark.unit
+# @pytest.mark.unit
 def test_analyse_estimates():
     np.random.seed(7)
     nestim = 11

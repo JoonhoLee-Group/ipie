@@ -4,6 +4,7 @@ from ipie.propagation.overlap import calc_overlap_multi_det
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.estimators.greens_function_multi_det import greens_function_multi_det
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
 
 
 class NOCI(TrialWavefunctionBase):
@@ -66,3 +67,6 @@ class NOCI(TrialWavefunctionBase):
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det(walkers, self)
+    
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+        return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)

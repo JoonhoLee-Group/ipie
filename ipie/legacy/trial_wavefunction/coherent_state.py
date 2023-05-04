@@ -8,12 +8,7 @@ import scipy.sparse.linalg
 from scipy.linalg import expm
 from scipy.optimize import minimize
 
-from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
-from ipie.legacy.estimators.greens_function import gab_spin
-from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
-                                            local_energy_hubbard_holstein)
 from ipie.legacy.hamiltonians.hubbard import Hubbard
-from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
     HarmonicOscillator
