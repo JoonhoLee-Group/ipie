@@ -92,7 +92,7 @@ class UHFWalkers(BaseWalkers):
         self.rhf = False # interfacing with old codes...
 
     def build(self,trial):
-        return
+        self.ovlp = trial.calc_greens_function(self)
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
@@ -222,6 +222,8 @@ class UHFWalkersParticleHole(UHFWalkers):
             shape=(self.nwalkers, trial.nact, trial.nocc_beta),
             dtype=numpy.complex128,
         )
+        self.ovlp = trial.calc_greens_function(self)
+
 
 class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
     """UHF style walker specialized for its use with ParticleHoleNaive trial.
@@ -299,3 +301,4 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
             shape=(self.nwalkers, self.nbasis, self.nbasis),
             dtype=numpy.complex128,
         )
+        self.ovlp = trial.calc_greens_function(self)
