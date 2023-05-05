@@ -72,8 +72,8 @@ def test_generic_propagation_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
+    ham = HamGeneric[chol.dtype](
+        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
     )
     trial, _ = build_random_single_det_trial(nelec, nmo)
     trial.half_rotate(ham)
