@@ -15,7 +15,6 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import importlib
 import sys
 
 
