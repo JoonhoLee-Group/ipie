@@ -356,14 +356,13 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
         return slices_alpha, slices_beta
 
-    def half_rotate(self, system, hamiltonian, comm=None):
+    def half_rotate(self, hamiltonian, comm=None):
         # First get half rotated integrals for reference determinant
         ndets = 1
         orbsa = self.psi0a.reshape((ndets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((ndets, self.nbasis, self.nbeta))
         rot_1body, rot_chol = half_rotate_generic(
             self,
-            system,
             hamiltonian,
             comm,
             orbsa,
@@ -386,7 +385,6 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         )
         _, rot_chol_act = half_rotate_generic(
             self,
-            system,
             hamiltonian,
             comm,
             act_orbs,

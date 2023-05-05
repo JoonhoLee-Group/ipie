@@ -1,5 +1,3 @@
-from ipie.utils.linalg import minor_mask
-from ipie.utils.misc import is_cupy
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 

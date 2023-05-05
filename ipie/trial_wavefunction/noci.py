@@ -44,12 +44,11 @@ class NOCI(TrialWavefunctionBase):
         # )
         # print("# Time to evaluate local energy: {} s".format(time.time() - start))
 
-    def half_rotate(self, system, hamiltonian, comm=None):
+    def half_rotate(self, hamiltonian, comm=None):
         orbsa = self.psi[: self.num_dets, :, : self.nalpha]
         orbsb = self.psi[: self.num_dets, :, self.nalpha :]
         rot_1body, rot_chol = half_rotate_generic(
             self,
-            system,
             hamiltonian,
             comm,
             orbsa,

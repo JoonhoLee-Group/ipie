@@ -20,14 +20,10 @@
 
 from __future__ import print_function
 
-import copy
 import os
-import time
-import warnings
 
 import h5py
 import numpy
-import scipy.linalg
 
 from mpi4py import MPI
 
@@ -35,9 +31,6 @@ from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.utils.io import get_input_value, format_fixed_width_strings
-
-from ipie.utils.misc import is_cupy
-
 
 # Some supported (non-custom) estimators
 _predefined_estimators = {

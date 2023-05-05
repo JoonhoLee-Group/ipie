@@ -61,7 +61,6 @@ def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
             hamiltonian, walkers, trial
         )
 
-
 def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
     Ga = walkers.Ga.reshape(walkers.nwalkers, hamiltonian.nbasis**2)
     Gb = walkers.Gb.reshape(walkers.nwalkers, hamiltonian.nbasis**2)
@@ -80,8 +79,8 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
         vbias_batch_tmp = vbias_batch_tmp.T.copy()
         return vbias_batch_tmp
 
-
-def construct_force_bias_batch_single_det(hamiltonian, walkers, trial):
+# only implement real Hamiltonian
+def construct_force_bias_batch_single_det(hamiltonian: "GenericRealChol", walkers: "UHFWalkers", trial: "SingleDetTrial"):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -106,89 +105,37 @@ def construct_force_bias_batch_single_det(hamiltonian, walkers, trial):
         Ghalfa = walkers.Ghalfa.reshape(
             walkers.nwalkers, walkers.nup * hamiltonian.nbasis
         )
-        if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
-            vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
-            vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
-            vbias_batch = xp.empty(
-                (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
-            )
-            vbias_batch.real = vbias_batch_real.T.copy()
-            vbias_batch.imag = vbias_batch_imag.T.copy()
-            synchronize()
-            return vbias_batch
-        else:
-            vbias_batch_tmp = 2.0 * trial._rchola.dot(Ghalfa.T)
-            return vbias_batch
-            return vbias_batch_tmp.T
+        vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
+        vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
+        vbias_batch = xp.empty(
+            (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
+        )
+        vbias_batch.real = vbias_batch_real.T.copy()
+        vbias_batch.imag = vbias_batch_imag.T.copy()
+        synchronize()
+
+        return vbias_batch
 
     else:
-        if config.get_option("mixed_precision"):
-            assert False, "Is mixed precision working?"
-            dGhalfa = (
-                walkers.Ghalfa.reshape(
-                    walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-                )
-                - trial.psia.T.ravel()
-            )
-            dGhalfb = (
-                walkers.Ghalfb.reshape(
-                    walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-                )
-                - trial.psib.T.ravel()
-            )
-            dGhalfa = dGhalfa.astype(numpy.complex64)
-            dGhalfb = dGhalfb.astype(numpy.complex64)
-            if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
-                # single precision
-                vbias_batch_real = trial._rchola.dot(
-                    dGhalfa.T.real
-                ) + trial._rcholb.dot(dGhalfb.T.real)
-                vbias_batch_imag = trial._rchola.dot(
-                    dGhalfa.T.imag
-                ) + trial._rcholb.dot(dGhalfb.T.imag)
-                # double precision
-                vbias_batch = xp.empty(
-                    (walkers.nwalkers, hamiltonian.nchol),
-                    dtype=walkers.Ghalfa.dtype,
-                )
-                vbias_batch.real = vbias_batch_real.T.copy() + trial._vbias0.real
-                vbias_batch.imag = vbias_batch_imag.T.copy() + trial._vbias0.imag
-                synchronize()
-                return vbias_batch
-            else:
-                vbias_batch_tmp = trial._rchola.dot(dGhalfa.T) + trial._rcholb.dot(
-                    dGhalfb.T
-                )
-                vbias_batch_tmp += trial._vbias0
-                synchronize()
-                return vbias_batch_tmp.T
-        else:
-            Ghalfa = walkers.Ghalfa.reshape(
-                walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-            )
-            Ghalfb = walkers.Ghalfb.reshape(
-                walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-            )
-            if xp.isrealobj(trial._rchola) and xp.isrealobj(trial._rcholb):
-                vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(
-                    Ghalfb.T.real
-                )
-                vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(
-                    Ghalfb.T.imag
-                )
-                vbias_batch = xp.empty(
-                    (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
-                )
-                vbias_batch.real = vbias_batch_real.T.copy()
-                vbias_batch.imag = vbias_batch_imag.T.copy()
-                synchronize()
-                return vbias_batch
-            else:
-                vbias_batch_tmp = trial._rchola.dot(Ghalfa.T) + trial._rcholb.dot(
-                    Ghalfb.T
-                )
-                synchronize()
-                return vbias_batch_tmp.T
+        Ghalfa = walkers.Ghalfa.reshape(
+            walkers.nwalkers, walkers.nup * hamiltonian.nbasis
+        )
+        Ghalfb = walkers.Ghalfb.reshape(
+            walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
+        )
+        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(
+            Ghalfb.T.real
+        )
+        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(
+            Ghalfb.T.imag
+        )
+        vbias_batch = xp.empty(
+            (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
+        )
+        vbias_batch.real = vbias_batch_real.T.copy()
+        vbias_batch.imag = vbias_batch_imag.T.copy()
+        synchronize()
+        return vbias_batch
 
 
 def construct_force_bias_batch_single_det_chunked(

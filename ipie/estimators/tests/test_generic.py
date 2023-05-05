@@ -63,7 +63,7 @@ def test_local_energy_cholesky_opt():
     )
     ci, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     e = local_energy_cholesky_opt(
         system, ham.ecore, trial.Ghalf[0], trial.Ghalf[1], trial
     )
@@ -86,7 +86,7 @@ def test_local_energy_cholesky_opt_batched():
     )
     wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = MultiSlater(system, ham, wfn)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     Ga_batched = numpy.array([trial.G[0], trial.G[0], trial.G[0]])
     Gb_batched = numpy.array([trial.G[1], trial.G[1], trial.G[1]])
     Gahalf_batched = numpy.array([trial.Ghalf[0], trial.Ghalf[0], trial.Ghalf[0]])

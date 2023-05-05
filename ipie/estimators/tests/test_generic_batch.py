@@ -34,7 +34,7 @@ from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_energies
 
 from ipie.legacy.hamiltonians._generic import Generic as HamGenericRef
@@ -61,7 +61,7 @@ def test_greens_function_batch():
     )
     trial = ParticleHoleWicks(wfn, nelec, nmo)
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
 
     from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
     legacy_ham = LegacyHamGeneric(
@@ -118,7 +118,7 @@ def test_local_energy_single_det_batch():
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     
     from ipie.legacy.hamiltonians.generic import Generic as LegacyHamGeneric
     legacy_ham = LegacyHamGeneric(
@@ -210,7 +210,7 @@ def test_local_energy_single_det_batch_packed():
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
 
     numpy.random.seed(7)
     legacy_walkers = build_legacy_test_case(
@@ -272,7 +272,7 @@ def test_local_energy_single_det_batch_rhf():
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     init[:, : nelec[0]] = init[:, nelec[0] :].copy()
 
     numpy.random.seed(7)
@@ -362,7 +362,7 @@ def test_local_energy_single_det_batch_rhf_packed():
     wfn[:, nelec[0] :] = I[:, occb0]
     trial = SingleDet(wfn, nelec, nmo)
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     init[:, : nelec[0]] = init[:, nelec[0] :].copy()
 
     numpy.random.seed(7)

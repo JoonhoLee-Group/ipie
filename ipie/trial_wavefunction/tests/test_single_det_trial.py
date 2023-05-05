@@ -26,7 +26,7 @@ def test_single_det():
     trial.build()
     comm = MPI.COMM_WORLD
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
-    trial.half_rotate(sys, ham, comm=comm)
+    trial.half_rotate(ham, comm=comm)
     assert trial._rchola.shape == (naux, nbasis*nalpha)
     assert trial._rcholb.shape == (naux, nbasis*nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)

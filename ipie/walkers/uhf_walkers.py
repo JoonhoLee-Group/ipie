@@ -23,24 +23,7 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device
 from ipie.utils.backend import synchronize, qr, qr_mode
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks, ParticleHoleWicksSlow, ParticleHoleNaive, ParticleHoleWicksNonChunked
-from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
-def get_initial_walker(trial: TrialWavefunctionBase)->(int,numpy.ndarray):
-    if isinstance(trial, SingleDet):
-        initial_walker = trial.psi
-        num_dets = 1
-    elif isinstance(trial, ParticleHoleWicks):
-        initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        num_dets = trial.num_dets
-    elif isinstance(trial, ParticleHoleWicksNonChunked):
-        initial_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-        num_dets = trial.num_dets
-    else:
-        raise Exception("Unrecognized trial type in get_initial_walker")
-    return num_dets, initial_walker
 
 class UHFWalkers(BaseWalkers):
     """UHF style walker.
@@ -109,7 +92,7 @@ class UHFWalkers(BaseWalkers):
         self.rhf = False # interfacing with old codes...
 
     def build(self,trial):
-        return
+        self.ovlp = trial.calc_greens_function(self)
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
@@ -239,6 +222,8 @@ class UHFWalkersParticleHole(UHFWalkers):
             shape=(self.nwalkers, trial.nact, trial.nocc_beta),
             dtype=numpy.complex128,
         )
+        self.ovlp = trial.calc_greens_function(self)
+
 
 class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
     """UHF style walker specialized for its use with ParticleHoleNaive trial.
@@ -316,11 +301,4 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
             shape=(self.nwalkers, self.nbasis, self.nbasis),
             dtype=numpy.complex128,
         )
-UHFWalkersTrial = {
-    SingleDet: UHFWalkers,
-    ParticleHoleWicks: UHFWalkersParticleHole,
-    ParticleHoleWicksSlow: UHFWalkersParticleHoleNaive,
-    ParticleHoleWicksNonChunked:UHFWalkersParticleHole,
-    ParticleHoleNaive: UHFWalkersParticleHoleNaive,
-    NOCI: UHFWalkersParticleHoleNaive
-}
+        self.ovlp = trial.calc_greens_function(self)

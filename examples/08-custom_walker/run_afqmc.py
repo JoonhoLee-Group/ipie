@@ -172,7 +172,7 @@ trial = NoisySingleDet(
     noise_level=1e-3,
 )
 trial.build()
-trial.half_rotate(system, ham)
+trial.half_rotate(ham)
 
 np.random.seed(7)
 from ipie.walkers.uhf_walkers import UHFWalkers
