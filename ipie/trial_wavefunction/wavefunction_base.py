@@ -78,7 +78,7 @@ class TrialWavefunctionBase(ABC):
         pass
 
     @abstractmethod
-    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         pass
 
     def chunk(self, handler):

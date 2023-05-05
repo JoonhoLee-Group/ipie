@@ -68,7 +68,7 @@ from ipie.estimators.estimator_base import EstimatorBase
 # Let's define our estimator class
 # For interface consistency we pass several objects around like hamiltonian and
 # wavefunction but these are not required to be used.
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 
 
 class Diagonal1RDM(EstimatorBase):
@@ -94,7 +94,7 @@ class Diagonal1RDM(EstimatorBase):
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
         trial_wavefunction.calc_greens_function(walker_batch)
-        from ipie.estimators.greens_function_batch import get_greens_function
+        from ipie.estimators.greens_function import get_greens_function
 
         numer = np.einsum(
             "w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb
@@ -143,7 +143,7 @@ class Mixed1RDM(EstimatorBase):
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
         trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
-        from ipie.estimators.greens_function_batch import get_greens_function
+        from ipie.estimators.greens_function import get_greens_function
 
         numer = np.array(
             [

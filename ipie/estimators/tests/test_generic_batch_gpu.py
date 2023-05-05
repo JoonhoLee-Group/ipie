@@ -94,7 +94,7 @@ def test_local_energy_single_det_batch():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric[integrals.chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=0
     )
     # Test PH type wavefunction.
@@ -114,7 +114,7 @@ def test_local_energy_single_det_batch():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial)
     
-    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers.build(trial)
 
     prop.cast_to_cupy()

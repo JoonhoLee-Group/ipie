@@ -73,7 +73,7 @@ def test_generic_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
     )
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
@@ -96,7 +96,7 @@ def test_generic_chunked():
     prop.build(ham,trial,mpi_handler=mpi_handler)
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-    walkers = UHFWalkersTrial[type(trial)](init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
+    walkers = UHFWalkersTrial(trial,init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
                                            mpi_handler = mpi_handler)
     walkers.build(trial)
 

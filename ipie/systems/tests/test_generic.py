@@ -37,7 +37,7 @@ def test_real():
     nelec = (4, 3)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     sys = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -54,7 +54,7 @@ def test_complex():
     nelec = (5, 3)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
     sys = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -71,7 +71,7 @@ def test_complex():
 #     nelec = (4, 3)
 #     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
 #     sys = Generic(nelec=nelec)
-#     ham = HamGeneric[chol.dtype](
+#     ham = HamGeneric(
 #         h1e=numpy.array([h1e, h1e]),
 #         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
 #         ecore=enuc,
@@ -98,7 +98,7 @@ def test_read():
         filename, comm=comm, verbose=False
     )
     sys = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](h1e=hcore, chol=chol, ecore=enuc)
+    ham = HamGeneric(h1e=hcore, chol=chol, ecore=enuc)
     assert ham.ecore == pytest.approx(0.4392816555570978)
     assert ham.chol.shape == chol_.shape  # now two are transposed
     assert len(ham.H1.shape) == 3
@@ -135,7 +135,7 @@ def test_shmem():
     #                  verbose=False)
     # print("hcore.shape = ", hcore.shape)
     sys = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](h1e=hcore, chol=chol.copy(), ecore=enuc)
+    ham = HamGeneric(h1e=hcore, chol=chol.copy(), ecore=enuc)
 
     assert ham.ecore == pytest.approx(0.4392816555570978)
     assert ham.chol.shape == chol_.shape  # now two are transposed

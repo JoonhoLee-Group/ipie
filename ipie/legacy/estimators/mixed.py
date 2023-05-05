@@ -11,7 +11,7 @@ import time
 
 import scipy.linalg
 
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.legacy.estimators.greens_function import gab_mod, gab_mod_ovlp

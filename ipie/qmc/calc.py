@@ -136,7 +136,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             verbose=verbosity,
         )
         ndets, initial_walker = get_initial_walker(trial)
-        walkers = UHFWalkersTrial[type(trial)](initial_walker, 
+        walkers = UHFWalkersTrial(trial,initial_walker, 
                                         system.nup, system.ndown, 
                                         hamiltonian.nbasis, qmc.nwalkers_per_task,
                                         mpi_handler = mpi_handler)

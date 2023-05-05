@@ -36,7 +36,7 @@ def test_local_energy_cholesky():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[eri.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -56,7 +56,7 @@ def test_local_energy_cholesky_opt():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[eri.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -79,7 +79,7 @@ def test_local_energy_cholesky_opt_batched():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[eri.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,

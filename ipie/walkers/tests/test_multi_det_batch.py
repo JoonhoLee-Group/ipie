@@ -67,7 +67,7 @@ def test_walker_overlap_nomsd():
     nelec = (system.nup, system.ndown)
     trial = NOCI((coeffs, wfn), nelec, ham.nbasis)
 
-    walkers = UHFWalkersTrial[type(trial)](wfn[0], system.nup, system.ndown, ham.nbasis,
+    walkers = UHFWalkersTrial(trial,wfn[0], system.nup, system.ndown, ham.nbasis,
                                     nwalkers, 25)
     walkers.build(trial)
     walkers.ovlp = trial.calc_overlap(walkers)
@@ -111,7 +111,7 @@ def test_walker_overlap_phmsd():
     nelec = (system.nup, system.ndown)
     trial = ParticleHoleNaive(wfn, nelec, ham.nbasis)
     
-    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
+    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis,
                                     nwalkers, 25)
     walkers.build(trial)
     walkers.ovlp = trial.calc_greens_function(walkers)
@@ -149,7 +149,7 @@ def test_walker_energy():
     nmo = 5
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
@@ -189,17 +189,17 @@ def test_walker_energy():
     # walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
     # walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
 
-    walkers0 = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis,
+    walkers0 = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis,
                                     nwalkers,25)
     walkers0.build(trial_slow)
     walkers0.ovlp = trial_slow.calc_greens_function(walkers0)
 
-    walkers = UHFWalkersTrial[type(trial_slow)](init, system.nup, system.ndown, ham.nbasis,
+    walkers = UHFWalkersTrial(trial_slow,init, system.nup, system.ndown, ham.nbasis,
                                     nwalkers,25)
     walkers.build(trial_slow)
     walkers.ovlp = trial_slow.calc_greens_function(walkers)
 
-    walkers_opt = UHFWalkersTrial[type(trial_opt)](init, system.nup, system.ndown, ham.nbasis,
+    walkers_opt = UHFWalkersTrial(trial_opt,init, system.nup, system.ndown, ham.nbasis,
                                     nwalkers,25)
     walkers_opt.build(trial_opt)
     walkers_opt.ovlp = trial_opt.calc_greens_function(walkers_opt)

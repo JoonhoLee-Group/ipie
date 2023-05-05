@@ -5,7 +5,7 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import get_greens_function
+from ipie.estimators.greens_function import get_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.propagation.generic import GenericContinuous
 from ipie.legacy.propagation.hubbard import (HubbardContinuous,
