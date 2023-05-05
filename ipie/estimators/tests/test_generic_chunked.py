@@ -32,7 +32,7 @@ from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler, get_shared_array
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -78,7 +78,7 @@ def test_generic_chunked():
     )
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
 
     trial.calculate_energy(system, ham)
 

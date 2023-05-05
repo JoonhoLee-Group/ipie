@@ -27,7 +27,7 @@ def test_noci():
     assert trial.num_dets == 10
     comm = MPI.COMM_WORLD
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
-    trial.half_rotate(sys, ham, comm=comm)
+    trial.half_rotate(ham, comm=comm)
     assert trial._rchola.shape == (trial.num_dets, naux, nbasis * nalpha)
     assert trial._rcholb.shape == (trial.num_dets, naux, nbasis * nbeta)
     assert trial._rH1a.shape == (trial.num_dets, nalpha, nbasis)

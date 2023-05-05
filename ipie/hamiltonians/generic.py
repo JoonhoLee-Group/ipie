@@ -33,7 +33,7 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     chol_view = chol.reshape((nbasis, nbasis * nchol))
     # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
     v0 = 0.5 * numpy.dot(
-        chol_view, chol_view.T
+        chol_view, chol_view.T.conj() # conjugate added to account for complex integrals
     )  # einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
     h1e_mod[0, :, :] = h1e[0] - v0
     h1e_mod[1, :, :] = h1e[1] - v0
@@ -47,6 +47,7 @@ class GenericRealChol(GenericBase):
     def __init__(
         self, h1e, chol, ecore=0.0, verbose = False
     ):
+        assert h1e.shape[0] == 2 # assuming each spin component is given. this should be fixed for GHF...?
         super().__init__(h1e, ecore, verbose)
 
         assert chol.dtype == numpy.dtype("float64")
@@ -54,7 +55,6 @@ class GenericRealChol(GenericBase):
         self.chol = chol  # [M^2, nchol]
         self.nchol = self.chol.shape[-1]
         self.nfields = self.nchol
-        print(self.nbasis**2, chol.shape[0])
         assert self.nbasis**2 == chol.shape[0]
 
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
@@ -95,6 +95,7 @@ class GenericComplexChol(GenericBase):
     def __init__(
         self, h1e, chol, ecore=0.0, verbose = False
     ):
+        assert h1e.shape[0] == 2
         super().__init__(h1e, ecore, verbose)
 
         self.chol = numpy.array(chol, dtype=numpy.complex128)  # [M^2, nchol]
@@ -109,18 +110,38 @@ class GenericComplexChol(GenericBase):
         construct_h1e_mod(self.chol, self.H1, h1e_mod)
         self.h1e_mod = h1e_mod
 
+        # We need to store A and B integrals
+        self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
+        self.A = zeros(self.chol.shape, dtype=self.chol.dtype)
+        self.B = zeros(self.chol.shape, dtype=self.chol.dtype)
+
+        for x in range(self.nchol):
+            self.A[:,:,x] = self.chol[:,:,x] + self.chol[:,:,x].T.conj()
+            self.B[:,:,x] = 1.j*(self.chol[:,:,x] - self.chol[:,:,x].T.conj())
+        self.A/=2.0
+        self.B/=2.0
+
+        self.chol = self.chol.reshape((self.nbasis*self.nbasis, self.nchol))
+        self.A = self.A.reshape((self.nbasis*self.nbasis, self.nchol))
+        self.B = self.B.reshape((self.nbasis*self.nbasis, self.nchol))
+        
         if verbose:
-            mem = self.chol.nbytes / (1024.0**3)
+            mem = self.A.nbytes / (1024.0**3) * 3
             print("# Number of orbitals: %d" % self.nbasis)
-            print("# Approximate memory required by Cholesky vectors %f GB" % mem)
+            print("# Approximate memory required by Cholesky + A&B vectors %f GB" % mem)
             print("# Number of Cholesky vectors: %d" % (self.nchol))
             print("# Number of fields: %d" % (self.nchol * 2))
             print("# Finished setting up GenericComplexChol object.")
 
+    def hijkl(self, i, j, k, l): # (ik|jl) somehow physicist notation - terrible!!
+        ik = i * self.nbasis + k
+        lj = l * self.nbasis + j
+        chol_ik = 0.5 * (self.A[ik] + self.B[ik]/1.j)
+        chol_lj = 0.5 * (self.A[lj] + self.B[lj]/1.j)
+        return numpy.dot(chol_ik, chol_lj.conj())
 
 Generic = {numpy.dtype("complex128"): GenericComplexChol, 
            numpy.dtype("float64"): GenericRealChol}
-
 
 from ipie.utils.io import (
     from_qmcpack_dense,

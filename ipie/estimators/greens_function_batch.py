@@ -17,13 +17,7 @@
 #          linusjoonho <linusjoonho@gmail.com>
 #
 
-import numpy
-import scipy.linalg
-
-from ipie.utils.linalg import minor_mask
 from ipie.utils.misc import is_cupy
-from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 from ipie.trial_wavefunction.noci import NOCI

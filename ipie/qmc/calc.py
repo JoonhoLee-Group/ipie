@@ -46,7 +46,7 @@ from ipie.utils.misc import serialise
 from ipie.systems.utils import get_system
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.walkers.uhf_walkers import UHFWalkersTrial, get_initial_walker
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
 from ipie.utils.mpi import MPIHandler
 
 def init_communicator():

@@ -38,7 +38,7 @@ def test_wicks_slow():
     naux = 10 * nbasis
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
-    trial.half_rotate(sys, ham, comm=comm)
+    trial.half_rotate(ham, comm=comm)
     assert trial._rchola.shape == (naux, nbasis * nalpha)
     assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)
@@ -84,7 +84,7 @@ def test_wicks_opt():
     naux = 10 * nbasis
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
-    trial.half_rotate(sys, ham, comm=comm)
+    trial.half_rotate(ham, comm=comm)
     assert trial._rchola.shape == (naux, nbasis * nalpha)
     assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)
@@ -140,7 +140,7 @@ def test_wicks_opt_chunked():
     naux = 10 * nbasis
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     comm = MPI.COMM_WORLD
-    trial.half_rotate(sys, ham, comm=comm)
+    trial.half_rotate(ham, comm=comm)
     assert trial._rchola.shape == (naux, nbasis * nalpha)
     assert trial._rcholb.shape == (naux, nbasis * nbeta)
     assert trial._rH1a.shape == (nalpha, nbasis)

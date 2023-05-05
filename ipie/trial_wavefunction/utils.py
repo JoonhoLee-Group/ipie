@@ -137,7 +137,7 @@ def get_trial_wavefunction(
         print(
             "# Number of determinants in trial wavefunction: {}".format(trial.num_dets)
         )
-    trial.half_rotate(system, hamiltonian, scomm)
+    trial.half_rotate(hamiltonian, scomm)
 
     return trial
 

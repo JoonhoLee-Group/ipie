@@ -17,4 +17,3 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-from .uhf_walkers import UHFWalkers, UHFWalkersTrial

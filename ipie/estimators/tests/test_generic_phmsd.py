@@ -42,7 +42,7 @@ from ipie.propagation.overlap import get_det_matrix_batched
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
     ParticleHoleWicks,
@@ -265,7 +265,7 @@ def test_det_matrix():
         nmo,
     )
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
@@ -339,14 +339,14 @@ def test_phmsd_local_energy():
         nmo,
     )
     trial_slow.build()
-    trial_slow.half_rotate(system, ham)
+    trial_slow.half_rotate(ham)
     trial_test = ParticleHoleWicksNonChunked(
         wfn_2,
         nelec,
         nmo,
     )
     trial_test.build()
-    trial_test.half_rotate(system, ham)
+    trial_test.half_rotate(ham)
     numpy.random.seed(7)
     walkers_wick = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers_wick.build(trial)
@@ -1290,7 +1290,7 @@ def test_phmsd_local_energy_active_space():
         nmo,
     )
     trial_ref.build()
-    trial_ref.half_rotate(system, ham)
+    trial_ref.half_rotate(ham)
 
     trial_test = ParticleHoleWicksNonChunked(
         wfn_2,
@@ -1298,7 +1298,7 @@ def test_phmsd_local_energy_active_space():
         nmo,
     )
     trial_test.build()
-    trial_test.half_rotate(system, ham)
+    trial_test.half_rotate(ham)
     I = numpy.eye(nmo)
     init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
@@ -1381,14 +1381,14 @@ def test_phmsd_local_energy_active_space_polarised():
         nmo,
     )
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial_test = ParticleHoleWicksNonChunked(
         wfn,
         nelec,
         nmo,
     )
     trial_test.build()
-    trial_test.half_rotate(system, ham)
+    trial_test.half_rotate(ham)
     trial_test_chunked = ParticleHoleWicks(
         wfn,
         nelec,
@@ -1396,7 +1396,7 @@ def test_phmsd_local_energy_active_space_polarised():
         num_det_chunks=4,
     )
     trial_test_chunked.build()
-    trial_test_chunked.half_rotate(system, ham)
+    trial_test_chunked.half_rotate(ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
@@ -1507,7 +1507,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         nmo,
     )
     trial.build()
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial_tmp = ParticleHoleWicksNonChunked(
         wfn_2_no_act, nelec, nmo, use_active_space=False
     )
@@ -1519,7 +1519,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         nmo,
     )
     trial_ref.build()
-    trial_ref.half_rotate(system, ham)
+    trial_ref.half_rotate(ham)
     # Hack to ensure cre_ex_a structures are present for testing.
     trial_ref.__dict__.update(trial_tmp.__dict__)
     trial_ref.optimized = False
@@ -1528,7 +1528,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     trial_tmp.build()
     trial_test = ParticleHoleWicks(wfn_2, nelec, nmo, num_det_chunks=10)
     trial_test.build()
-    trial_test.half_rotate(system, ham)
+    trial_test.half_rotate(ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}

@@ -8,12 +8,9 @@ from ipie.propagation.overlap import (
     get_cofactor_matrix_batched,
 )
 from ipie.utils.linalg import minor_mask
-from ipie.utils.misc import is_cupy
-from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
 from ipie.estimators.kernels.cpu import wicks as wk
-from ipie.legacy.estimators.greens_function import gab_mod, gab_spin
+from ipie.legacy.estimators.greens_function import gab_mod
 
 
 

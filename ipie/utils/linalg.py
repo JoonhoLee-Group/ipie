@@ -17,7 +17,6 @@
 #          Joonho Lee
 #
 
-import functools
 import time
 
 import numpy

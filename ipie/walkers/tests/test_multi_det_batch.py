@@ -47,7 +47,7 @@ from ipie.trial_wavefunction.particle_hole import (
 from ipie.utils.linalg import reortho
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
-from ipie.walkers.uhf_walkers import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
 @pytest.mark.unit
@@ -172,17 +172,17 @@ def test_walker_energy():
         nmo,
     )
     trial.calculate_energy(system, ham)
-    trial.half_rotate(system, ham)
+    trial.half_rotate(ham)
     trial_slow = ParticleHoleNaive((ev[:, 0], oa, ob), nelec, nmo)
     trial_slow.calculate_energy(system, ham)
-    trial_slow.half_rotate(system, ham)
+    trial_slow.half_rotate(ham)
     trial_opt = ParticleHoleWicks(
         (ev[:, 0], oa, ob),
         nelec,
         nmo,
     )
     trial_opt.calculate_energy(system, ham)
-    trial_opt.half_rotate(system, ham)
+    trial_opt.half_rotate(ham)
 
     nwalkers = 10
     ndets = len(oa)

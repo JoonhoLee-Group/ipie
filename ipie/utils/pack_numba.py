@@ -16,7 +16,6 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-import numpy
 from numba import jit
 
 

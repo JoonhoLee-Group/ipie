@@ -72,8 +72,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
         # useful variables
         G0a = walkers.G0a[iwalker]
         G0b = walkers.G0b[iwalker]
-        G0Ha = walkers.Ghalfa[iwalker]
-        G0Hb = walkers.Ghalfb[iwalker]
         Q0a = walkers.Q0a[iwalker]
         Q0b = walkers.Q0b[iwalker]
         CIa = walkers.CIa[iwalker]
@@ -632,12 +630,6 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     # useful variables
     G0a = walkers.G0a
     G0b = walkers.G0b
-    G0Ha = walkers.Ghalfa
-    G0Hb = walkers.Ghalfb
-    Q0a = walkers.Q0a
-    Q0b = walkers.Q0b
-    CIa = walkers.CIa
-    CIb = walkers.CIb
 
     Lvo_a = numpy.zeros(
         (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
