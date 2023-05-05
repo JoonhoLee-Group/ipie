@@ -385,47 +385,9 @@ class AFQMC(object):
         twist = system.ktwist.all() is not None
         return continuous or twist
 
-    def get_energy(self, skip=0):
-        """Get mixed estimate for the energy.
-
-        Returns
-        -------
-        (energy, error) : tuple
-            Mixed estimate for the energy and standard error.
-        """
-        filename = self.estimators.h5f_name
-        from ipie.analysis import blocking
-
-        try:
-            eloc = blocking.reblock_local_energy(filename, skip)
-        except IndexError:
-            eloc = None
-        except ValueError:
-            eloc = None
-        return eloc
-
     def setup_timers(self):
         self.tortho = 0
         self.tprop = 0
         self.testim = 0
         self.tpopc = 0
         self.tstep = 0
-
-    def get_one_rdm(self, skip=0):
-        """Get back-propagated estimate for the one RDM.
-
-        Returns
-        -------
-        rdm : :class:`numpy.ndarray`
-            Back propagated estimate for 1RMD.
-        error : :class:`numpy.ndarray`
-            Standard error in the RDM.
-        """
-        from ipie.analysis import blocking
-
-        filename = self.estimators.h5f_name
-        try:
-            bp_rdm, bp_rdm_err = blocking.reblock_rdm(filename)
-        except IndexError:
-            bp_rdm, bp_rdm_err = None, None
-        return (bp_rdm, bp_rdm_err)

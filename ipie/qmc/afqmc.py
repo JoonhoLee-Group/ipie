@@ -38,6 +38,7 @@ from ipie.utils.backend import get_host_memory, synchronize
 
 from ipie.propagation.propagator import Propagator
 
+
 class AFQMC(object):
     """AFQMC driver.
 
@@ -99,16 +100,16 @@ class AFQMC(object):
         hamiltonian=None,
         trial=None,
         walkers=None,
-        propagator = None,
-        verbose: int=0,
-        seed: int =None,
+        propagator=None,
+        verbose: int = 0,
+        seed: int = None,
         nwalkers: int = 100,
         nwalkers_per_task: int = None,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
         timestep: float = 0.005,
         stabilise_freq=5,
-        pop_control_freq=5
+        pop_control_freq=5,
     ):
         if verbose is not None:
             self.verbosity = verbose
@@ -147,8 +148,8 @@ class AFQMC(object):
             "timestep": timestep,
             "nsteps": num_steps_per_block,
             "num_blocks": num_blocks,
-            "pop_control_freq":pop_control_freq,
-            "stabilise_freq":stabilise_freq
+            "pop_control_freq": pop_control_freq,
+            "stabilise_freq": stabilise_freq,
         }
 
         self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
@@ -216,21 +217,27 @@ class AFQMC(object):
             self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
 
         comm.barrier()
-        
+
         # set walkers
         self.walkers = walkers
-        
+
         if propagator is None:
             self.propagator = Propagator[type(self.hamiltonian)](self.qmc.dt)
-            self.propagator.build(self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose)
+            self.propagator.build(
+                self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose
+            )
         else:
             self.propagator = propagator
 
         self.tsetup = time.time() - self._init_time
 
         # Using only default population control
-        self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
-        self.accumulators = WalkerAccumulator(["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps) # lagacy purposes??
+        self.pcontrol = PopController(
+            self.qmc.nwalkers, num_steps_per_block, self.mpi_handler
+        )
+        self.accumulators = WalkerAccumulator(
+            ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
+        )  # lagacy purposes??
 
         est_opts = get_input_value(
             options,
@@ -239,7 +246,7 @@ class AFQMC(object):
             alias=["estimates", "estimator"],
             verbose=self.verbosity > 1,
         )
-        est_opts["stack_size"] = 1 # remove in the future
+        est_opts["stack_size"] = 1  # remove in the future
         self.estimators = EstimatorHandler(
             comm,
             self.system,
@@ -316,7 +323,7 @@ class AFQMC(object):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-            
+
             self.propagator.propagate_walkers(
                 self.walkers,
                 self.hamiltonian,
@@ -381,7 +388,7 @@ class AFQMC(object):
                 self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
-            
+
             # restart write features disabled
             # if self.walkers.write_restart and step % self.walkers.write_freq == 0:
             #     self.walkers.write_walkers_batch(comm)
@@ -505,25 +512,6 @@ class AFQMC(object):
         twist = system.ktwist.all() is not None
         return continuous or twist
 
-    def get_energy(self, skip=0):
-        """Get mixed estimate for the energy.
-
-        Returns
-        -------
-        (energy, error) : tuple
-            Mixed estimate for the energy and standard error.
-        """
-        filename = self.estimators.h5f_name
-        from ipie.analysis import blocking
-
-        try:
-            eloc = blocking.reblock_local_energy(filename, skip)
-        except IndexError:
-            eloc = None
-        except ValueError:
-            eloc = None
-        return eloc
-
     def setup_timers(self):
         self.tortho = 0
         self.tprop = 0
@@ -542,22 +530,3 @@ class AFQMC(object):
         self.tpopc_comm = 0
         self.tpopc_non_comm = 0
         self.tstep = 0
-
-    def get_one_rdm(self, skip=0):
-        """Get back-propagated estimate for the one RDM.
-
-        Returns
-        -------
-        rdm : :class:`numpy.ndarray`
-            Back propagated estimate for 1RMD.
-        error : :class:`numpy.ndarray`
-            Standard error in the RDM.
-        """
-        from ipie.analysis import blocking
-
-        filename = self.estimators.h5f_name
-        try:
-            bp_rdm, bp_rdm_err = blocking.reblock_rdm(filename)
-        except IndexError:
-            bp_rdm, bp_rdm_err = None, None
-        return (bp_rdm, bp_rdm_err)
