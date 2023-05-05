@@ -20,23 +20,9 @@ try:
   import trexio
 except:
   print("TREXIO is not installed. Try pip install trexio.")
-  raise
+  raise ImportError
 
-import time
-from dataclasses import dataclass
-from typing import Tuple, Union
-
-import h5py
 import numpy
-import scipy.linalg
-from pyscf import lib, scf
-
-from ipie.estimators.generic import core_contribution_cholesky
-from ipie.legacy.estimators.generic import local_energy_generic_cholesky
-from ipie.legacy.estimators.greens_function import gab
-from ipie.utils.io import write_hamiltonian, write_wavefunction
-from ipie.utils.misc import dotdict
-
 
 def gen_ipie_from_trexio(
     trexio_filename: str,
