@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +19,6 @@
 #!/usr/bin/env python
 """Run a reblocking analysis on ipie QMC output files."""
 
-import glob
-import json
 import warnings
 
 import h5py
@@ -35,10 +32,15 @@ with warnings.catch_warnings():
 import scipy.stats
 
 from ipie.analysis.autocorr import reblock_by_autocorr
-from ipie.analysis.extraction import (extract_data, extract_mixed_estimates,
-                                      extract_rdm, get_metadata, set_info,
-                                      extract_observable,
-                                      extract_data_from_textfile)
+from ipie.analysis.extraction import (
+    extract_data,
+    extract_mixed_estimates,
+    extract_rdm,
+    get_metadata,
+    set_info,
+    extract_observable,
+    extract_data_from_textfile,
+)
 from ipie.utils.linalg import get_ortho_ao_mod
 from ipie.utils.misc import get_from_dict
 
@@ -154,7 +156,7 @@ def reblock_mixed(groupby, columns, verbose=False):
         except KeyError:
             short = short.drop(columns + ["index"], axis=1)
 
-        (data_len, blocked_data, covariance) = pyblock.pd_utils.reblock(short)
+        (data_len, blocked_data, _) = pyblock.pd_utils.reblock(short)
         reblocked = pd.DataFrame({"ETotal": [0.0]})
         for c in short.columns:
             try:
@@ -213,22 +215,7 @@ def reblock_free_projection(frame):
         return pd.concat(analysed)
 
 
-def reblock_local_energy(filename, skip=0):
-    data = extract_mixed_estimates(filename)
-    results = reblock_mixed(data.apply(numpy.real)[skip:])
-    if results is None:
-        return None
-    else:
-        try:
-            energy = results["ETotal"].values[0]
-            error = results["ETotal_error"].values[0]
-            return (energy, error)
-        except KeyError:
-            return None
-
-
 def average_rdm(files, skip=1, est_type="back_propagated", rdm_type="one_rdm", ix=None):
-
     rdm_series = extract_rdm(files, est_type=est_type, rdm_type=rdm_type, ix=ix)
     rdm_av = rdm_series[skip:].mean(axis=0)
     rdm_err = rdm_series[skip:].std(axis=0, ddof=1) / len(rdm_series) ** 0.5
@@ -237,7 +224,6 @@ def average_rdm(files, skip=1, est_type="back_propagated", rdm_type="one_rdm", i
 
 def average_correlation(gf):
     ni = numpy.diagonal(gf, axis1=2, axis2=3)
-    mg = gf.mean(axis=0)
     hole = 1.0 - numpy.sum(ni, axis=1)
     hole_err = hole.std(axis=0, ddof=1) / len(hole) ** 0.5
     spin = 0.5 * (ni[:, 0, :] - ni[:, 1, :])
@@ -246,7 +232,6 @@ def average_correlation(gf):
 
 
 def average_tau(frames):
-
     data_len = frames.size()
     means = frames.mean()
     err = numpy.sqrt(frames.var())
@@ -286,7 +271,6 @@ def analyse_back_propagation(frames):
     frames[["E", "E1b", "E2b"]] = frames[["E", "E1b", "E2b"]]
     frames = frames.apply(numpy.real)
     frames = frames.groupby(["nbp", "dt"])
-    data_len = frames.size()
     means = frames.mean().reset_index()
     # calculate standard error of the mean for grouped objects. ddof does
     # default to 1 for scipy but it's different elsewhere, so let's be careful.
@@ -305,34 +289,10 @@ def analyse_itcf(itcf):
     return (means, errs)
 
 
-def analyse_simple(files, start_time):
-    data = ipie.analysis.extraction.extract_hdf5_data_sets(files)
-    norm_data = []
-    for (g, f) in zip(data, files):
-        (m, norm, bp, itcf, itcfk, mixed_rdm, bp_rdm) = g
-        dt = m.get("qmc").get("dt")
-        free_projection = m.get("propagators").get("free_projection")
-        step = m.get("qmc").get("nmeasure")
-        read_rs = m.get("psi").get("read_file") is not None
-        nzero = numpy.nonzero(norm["Weight"].values)[0][-1]
-        start = int(start_time / (step * dt)) + 1
-        if read_rs:
-            start = 0
-        if free_projection:
-            reblocked = average_fp(norm[start:nzero])
-        else:
-            reblocked = reblock_mixed(norm[start:nzero].apply(numpy.real))
-            columns = ipie.analysis.extraction.set_info(reblocked, m)
-        norm_data.append(reblocked)
-    return pd.concat(norm_data)
-
-
 def analyse_back_prop(files, start_time):
     full = []
     for f in files:
         md = get_metadata(f)
-        step = get_from_dict(md, ["qmc", "nmeasure"])
-        dt = get_from_dict(md, ["qmc", "dt"])
         tbp = get_from_dict(md, ["estimators", "estimators", "back_prop", "tau_bp"])
         start = min(1, int(start_time / tbp) + 1)
         data = extract_data(f, "back_propagated", "energies")[start:]
@@ -341,9 +301,9 @@ def analyse_back_prop(files, start_time):
         res = pd.merge(
             av, err, left_index=True, right_index=True, suffixes=("", "_error")
         )
-        columns = set_info(res, md)
         full.append(res)
     return pd.concat(full).sort_values("tau_bp")
+
 
 def reblock_minimal(files, start_block=0, verbose=False):
     """Minimal blocking analysis using approximate autocorrelation time.
@@ -356,13 +316,13 @@ def reblock_minimal(files, start_block=0, verbose=False):
     else:
         _files = files
     for f in _files:
-        if '.h5' in f:
+        if ".h5" in f:
             data = extract_observable(f)[start_block:]
         else:
             data = extract_data_from_textfile(f)[start_block:]
         y = data["ETotal"].values
         rb = reblock_by_autocorr(y, verbose=verbose)
-        rb['filename'] = f
+        rb["filename"] = f
         reblocked.append(rb)
     df = pd.concat(reblocked)
     return df
@@ -430,14 +390,14 @@ def analyse_ekt_ipea(filename, ix=None, cutoff=1e-14, screen_factor=1):
     # Spin average
     rdm = rdm[0] + rdm[1]
     rdm = 0.5 * numpy.real(rdm + rdm.conj().T)
-    rdm1_reg, X = get_ortho_ao_mod(rdm, LINDEP_CUTOFF=cutoff)
+    _, X = get_ortho_ao_mod(rdm, LINDEP_CUTOFF=cutoff)
     # 1-hole / IP
     fockT = numpy.dot(X.conj().T, numpy.dot(fock_1h_av, X))
     eip, eip_vec = numpy.linalg.eigh(fockT)
     norb = rdm.shape[-1]
     I = numpy.eye(norb)
     gamma = 2.0 * I - rdm.T
-    gamma_reg, X = get_ortho_ao_mod(gamma, LINDEP_CUTOFF=cutoff)
+    _, X = get_ortho_ao_mod(gamma, LINDEP_CUTOFF=cutoff)
     fockT = numpy.dot(X.conj().T, numpy.dot(fock_1p_av, X))
     eea, eea_vec = numpy.linalg.eigh(fockT)
     return (eip, eip_vec), (eea, eea_vec)
