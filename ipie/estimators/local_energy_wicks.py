@@ -83,7 +83,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
 
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
-        P0 = G0[0] + G0[1]
         Xa = ham.chol.T.dot(
             G0[0].ravel()
         )  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol)
@@ -140,7 +139,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
         cont3 = 0.0 + 0.0j
 
         for jdet in range(1, trial.num_dets):
-
             nex_a = len(trial.cre_a[jdet])
             nex_b = len(trial.cre_b[jdet])
 
@@ -440,7 +438,6 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
 @jit(nopython=True, fastmath=True)
 def build_Laa(Q0a, Q0b, G0a, G0b, chol, Laa, Lbb):
     naux = chol.shape[-1]
-    nbsf = Q0a.shape[1]
     nwalkers = G0a.shape[0]
     Lx = chol.transpose((2, 1, 0)).copy()
     for iw in range(nwalkers):
@@ -494,7 +491,6 @@ def build_contributions12(
     cont2_K = numpy.zeros(nwalkers, dtype=numpy.complex128)
     nact = CI_a.shape[1]
     # assert nact == CI_a.shape[1]
-    Q = numpy.zeros((nact, nbasis), dtype=numpy.complex128)
     # X = numpy.zeros((2,nchol), dtype=numpy.complex128)
     X = numpy.zeros(nchol, dtype=numpy.complex128)
     F = numpy.zeros(nchol, dtype=numpy.complex128)
@@ -507,8 +503,6 @@ def build_contributions12(
         nfrozen_a = nocc_a - nocc_act_a
         # very messy but numba won't let us use lists for the moment
         theta_act_a = theta_a[iw, :, nfrozen_a : nfrozen_a + nact].copy()
-        theta_act_real_a = theta_act_a.real.copy()
-        theta_act_imag_a = theta_act_a.imag.copy()
         theta_occ_a = theta_a[iw].copy()
         theta_occ_real_a = theta_occ_a.real.copy()
         theta_occ_imag_a = theta_occ_a.imag.copy()
@@ -516,8 +510,6 @@ def build_contributions12(
         nocc_act_b = CI_b.shape[2]
         nfrozen_b = nocc_b - nocc_act_b
         theta_act_b = theta_b[iw, :, nfrozen_b : nfrozen_b + nact].copy()
-        theta_act_real_b = theta_act_b.real.copy()
-        theta_act_imag_b = theta_act_b.imag.copy()
         theta_occ_b = theta_b[iw].copy()
         theta_occ_real_b = theta_occ_b.real.copy()
         theta_occ_imag_b = theta_occ_b.imag.copy()
@@ -616,8 +608,6 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     nwalkers = walkers.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
-    nalpha = system.nup
-    nbeta = system.ndown
     Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
     Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
     e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
@@ -657,7 +647,6 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     dets_a_full, dets_b_full = compute_determinants_batched(
         walkers.Ghalfa, walkers.Ghalfb, trial
     )
-    ndets = len(trial.coeffs)
     cphase_a = trial.coeffs.conj() * trial.phase_a
     cphase_b = trial.coeffs.conj() * trial.phase_b
     ovlpa = dets_a_full * trial.phase_a[None, :]
@@ -947,8 +936,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     nwalkers = walkers.nwalkers
     nbasis = ham.nbasis
     nchol = ham.nchol
-    nalpha = system.nup
-    nbeta = system.ndown
     Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
     Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
     e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
@@ -961,12 +948,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     # useful variables
     G0a = walkers.G0a
     G0b = walkers.G0b
-    G0Ha = walkers.Ghalfa
-    G0Hb = walkers.Ghalfb
-    Q0a = walkers.Q0a
-    Q0b = walkers.Q0b
-    CIa = walkers.CIa
-    CIb = walkers.CIb
 
     Lvo_a = numpy.zeros(
         (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
@@ -1008,7 +989,6 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    start = time.time()
     map_alpha = numpy.concatenate(
         [numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a
     )
@@ -1298,10 +1278,6 @@ def fill_same_spin_contribution_batched_contr(
     nwalkers = dets_mat.shape[0]
     ndet_level = dets_mat.shape[1]
     accumulator = numpy.zeros((nwalkers, ndet_level), dtype=numpy.complex128)
-    t_cof = 0.0
-    t_det = 0.0
-    t_slice = 0.0
-    t_eins = 0.0
     for iex in range(nexcit):
         for jex in range(nexcit):
             p = cre[:, iex]
@@ -1404,14 +1380,8 @@ def fill_opp_spin_factors_batched_singles(
 ):
     p = cre[:, 0]
     q = anh[:, 0]
-    start = time.time()
     x = chol_factor[:, q, p]
-    start = time.time()
-    # tmp = numpy.zeros_like(spin_buffer)
-    # tmp_2 = numpy.zeros_like(spin_buffer)
-    # tmp[:,excit_map[1],:] = x
     spin_buffer[:, det_sls] = x
-    # tmp_2[:,excit_map[1],:] = spin_buffer[:,det_sls]
 
 
 # @jit(nopython=True, fastmath=True)
@@ -1587,10 +1557,7 @@ def build_exchange_contributions_opt(
     nocc_act = CI.shape[2]
     nfrozen = nocc - nocc_act
     cont2_Kaa = numpy.zeros(nwalkers, dtype=numpy.complex128)
-    theta_real = theta.real.copy()
-    theta_imag = theta.imag.copy()
     Q = numpy.zeros((nact, nbasis), dtype=numpy.complex128)
-    nextra = nact - nocc
     for iw in range(nwalkers):
         theta_act_real = theta[iw, :, nfrozen : nfrozen + nact].real.copy()
         theta_act_imag = theta[iw, :, nfrozen : nfrozen + nact].imag.copy()

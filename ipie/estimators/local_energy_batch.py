@@ -53,7 +53,7 @@ def local_energy_batch(system, hamiltonian, walkers, trial):
         Total, one-body and two-body energies.
     """
 
-    if isinstance(walkers,UHFWalkers):
+    if isinstance(walkers, UHFWalkers):
         if config.get_option("use_gpu"):
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked_gpu(
@@ -73,16 +73,14 @@ def local_energy_batch(system, hamiltonian, walkers, trial):
                     system, hamiltonian, walkers, trial
                 )
             else:
-                return local_energy_single_det_uhf(
-                    system, hamiltonian, walkers, trial
-                )
+                return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
                 # \TODO switch to this
                 # return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
     else:
-        print("# Warning: local_energy_batch is not production level for multi-det trials.")
-        return local_energy_multi_det_trial_batch(
-            system, hamiltonian, walkers, trial
+        print(
+            "# Warning: local_energy_batch is not production level for multi-det trials."
         )
+        return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
 
 
 def local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial):
@@ -108,9 +106,8 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial):
     """
     energy = []
     ndets = trial.num_dets
-    nwalkers = walkers.nwalkers
     # ndets x nwalkers
-    for iwalker, (w, Ga, Gb, Ghalfa, Ghalfb) in enumerate(
+    for _, (w, Ga, Gb, Ghalfa, Ghalfb) in enumerate(
         zip(
             walkers.det_weights,
             walkers.Gia,
@@ -126,7 +123,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial):
         for idet in range(ndets):
             # construct "local" green's functions for each component of A
             G = [Ga[idet], Gb[idet]]
-            Ghalf = [Ghalfa[idet], Ghalfb[idet]]
+            _ = [Ghalfa[idet], Ghalfb[idet]]
             # return (e1b+e2b+ham.ecore, e1b+ham.ecore, e2b)
             e = list(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
             numer0 += w[idet] * e[0]

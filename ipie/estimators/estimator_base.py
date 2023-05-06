@@ -76,7 +76,7 @@ class EstimatorBase(metaclass=ABCMeta):
     def size(self) -> int:
         """Shape of estimator."""
         size = 0
-        for k, v in self._data.items():
+        for _, v in self._data.items():
             if isinstance(v, np.ndarray):
                 size += np.prod(v.shape)
             else:

@@ -13,7 +13,6 @@ from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.legacy.estimators.greens_function import gab_mod
 
 
-
 def greens_function_multi_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 
@@ -33,7 +32,7 @@ def greens_function_multi_det(walker_batch, trial, build_full=False):
     walker_batch.Gb.fill(0.0)
     tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
     for iw in range(walker_batch.nwalkers):
-        for (ix, detix) in enumerate(trial.psi):
+        for ix, detix in enumerate(trial.psi):
             # construct "local" green's functions for each component of psi_T
             Oup = numpy.dot(walker_batch.phia[iw].T, detix[:, :nup].conj())
             # det(A) = det(A^T)
@@ -98,9 +97,6 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
     tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
     nbasis = walker_batch.Ga.shape[-1]
 
-    nup = walker_batch.nup
-    ndown = walker_batch.ndown
-
     walker_batch.Ga.fill(0.0 + 0.0j)
     walker_batch.Gb.fill(0.0 + 0.0j)
 
@@ -117,8 +113,6 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
         ovlp0 = sign_a * sign_b * numpy.exp(logdet_a + logdet_b)
         walker_batch.det_ovlpas[iw, 0] = sign_a * numpy.exp(logdet_a)
         walker_batch.det_ovlpbs[iw, 0] = sign_b * numpy.exp(logdet_b)
-        ovlpa0 = walker_batch.det_ovlpas[iw, 0]
-        ovlpab = walker_batch.det_ovlpbs[iw, 0]
 
         # G0, G0H = gab_spin(trial.psi0, phi, nup, ndown)
         G0a, G0Ha = gab_mod(trial.psi0a, phia)
@@ -413,8 +407,6 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
-    ndets_a = len(trial.cre_ex_a[1])
-    nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[1].shape[0] == 0:
         pass
     else:
@@ -426,13 +418,10 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
             phases,
             walker_batch.CIa,
         )
-    ndets_b = len(trial.cre_ex_b[1])
     if trial.cre_ex_b[1].shape[0] == 0:
         pass
     else:
         phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
-        ps = trial.cre_ex_b[1][:, 0]
-        qs = trial.anh_ex_b[1][:, 0]
         wk.reduce_CI_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
@@ -571,8 +560,6 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
-    ndets_a = len(trial.cre_ex_a[2])
-    nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[2].shape[0] == 0:
         pass
     else:
@@ -586,7 +573,6 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
             walker_batch.Ghalfa,
             walker_batch.CIa,
         )
-    ndets_b = len(trial.cre_ex_b[1])
     if trial.cre_ex_b[2].shape[0] == 0:
         pass
     else:
@@ -621,8 +607,6 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
-    ndets_a = len(trial.cre_ex_a[3])
-    nwalkers = walker_batch.G0a.shape[0]
     if trial.cre_ex_a[3].shape[0] == 0:
         pass
     else:
@@ -636,7 +620,6 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
             walker_batch.Ghalfa,
             walker_batch.CIa,
         )
-    ndets_b = len(trial.cre_ex_b[3])
     if trial.cre_ex_b[3].shape[0] == 0:
         pass
     else:
@@ -1130,19 +1113,13 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
-    import time
 
-    tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
     nbasis = walker_batch.Ga.shape[-1]
-
-    na = walker_batch.nup
-    nb = walker_batch.ndown
 
     walker_batch.Ga.fill(0.0 + 0.0j)
     walker_batch.Gb.fill(0.0 + 0.0j)
 
     # Build reference Green's functions and overlaps
-    start = time.time()
     # Note abuse of naming convention this is really theta for the reference
     # determinant.
     G0a = numpy.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
@@ -1185,7 +1162,6 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     ovlpa = walker_batch.det_ovlpas
     ovlpb = walker_batch.det_ovlpbs
 
-    start = time.time()
     c_phasea_ovlpb = numpy.einsum(
         "wJ,J->wJ", ovlpb, trial.phase_a * trial.coeffs.conj(), optimize=True
     )
@@ -1204,7 +1180,6 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
             walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
         )
     for iexcit in range(4, trial.max_excite + 1):
-        start = time.time()
         build_CI_nfold_excitation_opt(
             iexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
         )

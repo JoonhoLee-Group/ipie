@@ -16,7 +16,6 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
-    nup = walker_batch.nup
     ndown = walker_batch.ndown
 
     det = []
@@ -73,7 +72,6 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
     ot : float64 / complex128
         Overlap with trial.
     """
-    nup = walker_batch.nup
     ndown = walker_batch.ndown
 
     ovlp_a = xp.einsum(

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +16,14 @@
 #          Joonho Lee <linusjoonho@gmail.com>
 #
 
-import time
 
 import numpy
 from math import ceil
 
-from ipie.estimators.local_energy_sd import (ecoul_kernel_batch_real_rchol_uhf,
-                                             exx_kernel_batch_real_rchol)
+from ipie.estimators.local_energy_sd import (
+    ecoul_kernel_batch_real_rchol_uhf,
+    exx_kernel_batch_real_rchol,
+)
 from ipie.estimators.kernels import exchange_reduction
 
 from ipie.utils.backend import arraylib as xp
@@ -33,6 +33,7 @@ from ipie.utils.backend import synchronize
 # means over MPI processes with information typically residing on different
 # nodes. Green's funtions are sent round-robin and local energy contributions
 # are accumulated.
+
 
 def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial):
     """Compute local energy for walker batch (all walkers at once).
@@ -61,7 +62,6 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
     nalpha = walker_batch.Ghalfa.shape[1]
     nbeta = walker_batch.Ghalfb.shape[1]
     nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
 
     Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta * nbasis)
@@ -96,7 +96,7 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
     exx_recv = exx_send.copy()
     ecoul_recv = ecoul_send.copy()
 
-    for icycle in range(handler.ssize - 1):
+    for _ in range(handler.ssize - 1):
         for isend, sender in enumerate(senders):
             if handler.srank == isend:
                 handler.scomm.Send(Ghalfa_send, dest=receivers[isend], tag=1)
@@ -200,12 +200,16 @@ def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
     exx : :class:`numpy.ndarray`
         exchange contribution for all walkers.
     """
+    nchol = rchola_chunk.shape[0]
+    nalpha = Ghalfa.shape[1]
+    nbasis = Ghalfa.shape[2]
     Txij = xp.einsum("xim,wjm->wxji", rchola_chunk, Ghalfa)
     rchola_chunk = rchola_chunk.reshape(nchol, nalpha * nbasis)
 
     exx = xp.einsum("wxji,wxij->w", Txij, Txij)
     exx *= 0.5
     return exx
+
 
 def exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff):
     nwalkers = Ghalfa.shape[0]
@@ -261,7 +265,6 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     nalpha = walker_batch.Ghalfa.shape[1]
     nbeta = walker_batch.Ghalfb.shape[1]
     nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
 
     Ghalfa = walker_batch.Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = walker_batch.Ghalfb.reshape(nwalkers, nbeta * nbasis)
@@ -277,7 +280,6 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     Ghalfb_recv = xp.zeros_like(Ghalfb)
 
     handler = walker_batch.mpi_handler
-    senders = handler.senders
     receivers = handler.receivers
 
     rchola_chunk = trial._rchola_chunk
@@ -289,9 +291,9 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     mem_needed = 16 * nwalkers * max_nocc * max_nocc * max_nchol / (1024.0**3.0)
     num_chunks = max(1, ceil(mem_needed / max_mem))
     chunk_size = ceil(max_nchol / num_chunks)
-    nchol_chunks = ceil(max_nchol / chunk_size)
-    buff = xp.zeros(shape=(chunk_size, nwalkers * max_nocc * max_nocc),
-            dtype=numpy.complex128)
+    buff = xp.zeros(
+        shape=(chunk_size, nwalkers * max_nocc * max_nocc), dtype=numpy.complex128
+    )
 
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta * nbasis)
@@ -305,12 +307,12 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
     exx_recv = exx_send.copy()
     ecoul_recv = ecoul_send.copy()
- 
+
     srank = handler.srank
 
     sender = numpy.where(receivers == handler.srank)[0]
     scomm = handler.scomm
-    for icycle in range(handler.ssize - 1):
+    for _ in range(handler.ssize - 1):
         synchronize()
         scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
         scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
@@ -336,10 +338,8 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
         Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha, nbasis)
         Ghalfb_recv = Ghalfb_recv.reshape(nwalkers, nbeta, nbasis)
         exx_send = exx_recv.copy()
-        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk,
-                Ghalfa_recv, buff)
-        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rcholb_chunk,
-                Ghalfb_recv, buff)
+        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa_recv, buff)
+        exx_send += exx_kernel_batch_rchol_gpu_low_mem(rcholb_chunk, Ghalfb_recv, buff)
         Ghalfa_send = Ghalfa_recv.copy()
         Ghalfb_send = Ghalfb_recv.copy()
 

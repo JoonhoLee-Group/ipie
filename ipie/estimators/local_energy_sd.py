@@ -77,6 +77,7 @@ def exx_kernel_batch_real_rchol(rchola, Ghalfa_batch):
     exx *= 0.5
     return exx
 
+
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
     """Compute coulomb contribution for real rchol with RHF trial.
@@ -182,9 +183,9 @@ def ecoul_kernel_batch_complex_rchol_rhf(rchola, Ghalfa_batch):
 
 
 @jit(nopython=True, fastmath=True)
-def ecoul_kernel_batch_complex_rchol_uhf(rchola, rcholb, 
-                                         rcholbara, rcholbarb,
-                                         Ghalfa_batch, Ghalfb_batch):
+def ecoul_kernel_batch_complex_rchol_uhf(
+    rchola, rcholb, rcholbara, rcholbarb, Ghalfa_batch, Ghalfb_batch
+):
     # """Compute coulomb contribution for real rchol with UHF trial.
 
     # Parameters
@@ -221,6 +222,7 @@ def ecoul_kernel_batch_complex_rchol_uhf(rchola, rcholb,
     ecoul *= 0.5
     return ecoul
 
+
 @jit(nopython=True, fastmath=True)
 def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
     """Compute exchange contribution for complex rchol.
@@ -240,6 +242,7 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
+    nwalkers = Ghalfa_batch.shape[0]
 
     naux = rchol.shape[0]
     nwalkers = Ghalf_batch.shape[0]
@@ -260,8 +263,14 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
     exx *= 0.5
     return exx
 
+
 @plum.dispatch
-def local_energy_single_det_uhf(system:Generic, hamiltonian:GenericComplexChol, walkers:UHFWalkers, trial:SingleDet):
+def local_energy_single_det_uhf(
+    system: Generic,
+    hamiltonian: GenericComplexChol,
+    walkers: UHFWalkers,
+    trial: SingleDet,
+):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF case.
@@ -310,6 +319,7 @@ def local_energy_single_det_uhf(system:Generic, hamiltonian:GenericComplexChol, 
     energy[:, 2] = e2b
 
     return energy
+
 
 def local_energy_single_det_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
@@ -369,6 +379,7 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walkers, trial):
     nalpha = walkers.Ghalfa.shape[1]
     nbeta = walkers.Ghalfb.shape[1]
     nbasis = walkers.Ghalfa.shape[-1]
+    nwalkers = walkers.Ghalfa.shape[0]
     nchol = hamiltonian.nchol
 
     walkers.Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
@@ -423,7 +434,7 @@ def local_energy_single_det_batch_einsum(system, hamiltonian, walkers, trial):
         # Ta = walkers.Ghalfa @ rmi_a.T
         # Tb = walkers.Ghalfb @ rmi_b.T
 
-        exx += xp.einsum("wij,wji->w", Ta, Ta, optimize=True) + einsum(
+        exx += xp.einsum("wij,wji->w", Ta, Ta, optimize=True) + xp.einsum(
             "wij,wji->w", Tb, Tb, optimize=True
         )
 
@@ -461,7 +472,7 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walkers, trial):
     nwalkers = walkers.Ghalfa.shape[0]
     nalpha = walkers.Ghalfa.shape[1]
     nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
+    hamiltonian.nchol
 
     walkers.Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
 
@@ -530,8 +541,11 @@ def two_body_energy_uhf(trial, walkers):
         ) + exx_kernel_batch_complex_rchol(trial._rcholb, walkers.Ghalfb)
     return ecoul - exx
 
+
 @plum.dispatch
-def local_energy_single_det_uhf(system:Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:SingleDet):
+def local_energy_single_det_uhf(
+    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF case.
@@ -660,9 +674,7 @@ def local_energy_single_det_batch_gpu_old(system, hamiltonian, walkers, trial):
     return energy
 
 
-def local_energy_single_det_batch_gpu(
-    system, hamiltonian, walkers, trial, max_mem=2.0
-):
+def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF GPU case.
