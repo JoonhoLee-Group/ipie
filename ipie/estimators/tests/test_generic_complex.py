@@ -22,9 +22,10 @@ import pytest
 from ipie.estimators.energy import local_energy
 
 from ipie.utils.testing import build_test_case_handlers
-from ipie.systems.generic import Generic 
+from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.misc import dotdict
+
 
 @pytest.mark.unit
 def test_local_energy_single_det():
@@ -42,18 +43,29 @@ def test_local_energy_single_det():
             "num_steps": nsteps,
         }
     )
-    
-    test_handler = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7, complex_integrals=False, complex_trial = False, trial_type="single_det")
+
+    test_handler = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=False,
+        complex_trial=False,
+        trial_type="single_det",
+    )
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
     system = Generic(nelec)
     trial = test_handler.trial
-    
+
     chol = ham.chol
 
     cx_chol = numpy.array(chol, dtype=numpy.complex128)
-    cx_ham = HamGeneric(numpy.array(ham.H1,dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False)
+    cx_ham = HamGeneric(
+        numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
+    )
 
     energy = local_energy(system, ham, walkers, trial)
 

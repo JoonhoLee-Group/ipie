@@ -18,6 +18,7 @@
 
 from ipie.estimators.generic import local_energy_cholesky_opt, local_energy_generic_cholesky
 from ipie.legacy.estimators.ci import get_hmatel
+
 # from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
 # from ipie.hamiltonians.generic import Generic
 
@@ -58,7 +59,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     else:
         return local_energy_generic_cholesky(system, hamiltonian, G)
     # else:
-        # return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
+    # return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
 
 
 def local_energy(system, hamiltonian, walker, trial):

@@ -568,12 +568,10 @@ def local_energy_single_det_uhf(
     e1b += Ghalfb.dot(trial._rH1b.ravel())
     e1b += hamiltonian.ecore
 
-    ecoul = ecoul_kernel_batch_real_rchol_uhf(
-        trial._rchola, trial._rcholb, Ghalfa, Ghalfb
+    ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
+    exx = exx_kernel_batch_real_rchol(trial._rchola, walkers.Ghalfa) + exx_kernel_batch_real_rchol(
+        trial._rcholb, walkers.Ghalfb
     )
-    exx = exx_kernel_batch_real_rchol(
-        trial._rchola, walkers.Ghalfa
-    ) + exx_kernel_batch_real_rchol(trial._rcholb, walkers.Ghalfb)
 
     e2b = ecoul - exx
 
@@ -664,11 +662,7 @@ def local_energy_single_det_batch_gpu_old(system, hamiltonian, walkers, trial):
     return energy
 
 
-<<<<<<< HEAD
 def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
-=======
-def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial, max_mem=2.0):
->>>>>>> 330f296 (Reformat.)
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF GPU case.
