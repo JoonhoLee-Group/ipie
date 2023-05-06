@@ -48,8 +48,9 @@ def write_hamiltonian(
 
 def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
     with h5py.File(filename, "r") as fh5:
-        hcore = numpy.ndarray(fh5["hcore"][:])
-        LXmn = numpy.ndarray(fh5["LXmn"][:])
+        print(fh5["hcore"][:])
+        hcore = numpy.array(fh5["hcore"])
+        LXmn = numpy.array(fh5["LXmn"])
         e0 = float(fh5["e0"][()])
     assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
@@ -549,7 +550,8 @@ def from_qmcpack_sparse(filename):
         nmo = dims[3]
         real_ints = False
         try:
-            hcore = numpy.ndarray(fh5["Hamiltonian/hcore"][:])
+            # pylint: ignore=no-member
+            hcore = fh5["Hamiltonian/hcore"][:]
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.

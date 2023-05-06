@@ -114,13 +114,10 @@ def test_shmem():
     filename = "hamil.test_shmem.h5"
     write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
     filename = "hamil.test_shmem.h5"
-    nup, ndown = nelec
     from ipie.utils.mpi import get_shared_comm
 
     shared_comm = get_shared_comm(comm, verbose=True)
-    hcore, chol, h1e_mod, enuc = get_generic_integrals(
-        filename, comm=get_shared_comm, verbose=False
-    )
+    hcore, chol, _, enuc = get_generic_integrals(filename, comm=shared_comm, verbose=False)
     # system = Generic(h1e=hcore, chol=chol, ecore=enuc,
     #                  h1e_mod=h1e_mod, nelec=nelec,
     #                  verbose=False)

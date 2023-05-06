@@ -55,13 +55,20 @@ def test_estimator_handler():
     naux = 30
     nwalker = 10
     system, ham, walker_batch, trial = gen_random_test_instances(nmo, nocc, naux, nwalker)
-    estim = EnergyEstimator(system=system, ham=ham, trial=trial, options={"filename": "test.txt"})
+    estim = EnergyEstimator(system=system, ham=ham, trial=trial, filename="test.txt")
     estim.print_to_stdout = False
     from mpi4py import MPI
 
     comm = MPI.COMM_WORLD
-    options = {"block_size": 10, "observables": {"energy": {"filename": "test2.txt"}}}
-    handler = EstimatorHandler(comm, system, ham, trial, options=options)
+    handler = EstimatorHandler(
+        comm,
+        system,
+        ham,
+        trial,
+        block_size=10,
+        observables=("energy",),
+        filename="test2.txt",
+    )
     handler["energy1"] = estim
     handler.json_string = ""
     handler.initialize(comm)

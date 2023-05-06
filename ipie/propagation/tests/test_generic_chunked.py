@@ -79,7 +79,7 @@ def test_generic_propagation_chunked():
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
-    mpi_handler = MPIHandler(comm, options={"nmembers": 3}, verbose=(rank == 0))
+    mpi_handler = MPIHandler(comm, nmembers=3, verbose=(rank == 0))
     ham.chunk(mpi_handler)
     trial.chunk(mpi_handler)
 

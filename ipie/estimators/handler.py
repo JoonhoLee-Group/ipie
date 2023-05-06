@@ -71,15 +71,18 @@ class EstimatorHandler(object):
         walker_state=None,
         verbose: bool = False,
         filename: Union[str, None] = None,
+        block_size: int = 1,
         basename: str = "estimates",
         overwrite=True,
-        observables: Tuple[str] = ("energy"),  # TODO: Use factory method!
+        observables: Tuple[str] = ("energy",),  # TODO: Use factory method!
         index: int = 0,
     ):
         if verbose:
             print("# Setting up estimator object.")
         if comm.rank == 0:
             self.basename = basename
+            self.filename = filename
+            self.index = 0
             if self.filename is None:
                 self.filename = f"{self.basename}.{self.index}.h5"
                 while os.path.isfile(self.filename) and not overwrite:
@@ -90,7 +93,7 @@ class EstimatorHandler(object):
                 print(f"# Writing estimator data to {self.filename}")
         else:
             self.filename = None
-        self.buffer_size = config.get_option("buffer_size")
+        self.buffer_size = config.get_option("estimator_buffer_size")
         if walker_state is not None:
             self.num_walker_props = walker_state.size
             self.walker_header = walker_state.names
@@ -101,13 +104,13 @@ class EstimatorHandler(object):
         self._shapes = []
         self._offsets = {}
         self.json_string = "{}"
-        for obs, obs_dict in observables.items():
+        # TODO: Replace this, should be built outside
+        for obs in observables:
             try:
                 est = _predefined_estimators[obs](
                     system=system,
                     ham=hamiltonian,
                     trial=trial,
-                    filename=obs_dict.get("filename"),
                 )
                 self[obs] = est
             except KeyError:

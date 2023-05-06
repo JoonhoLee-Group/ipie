@@ -37,7 +37,7 @@ from ipie.utils.io import (
 def get_trial_wavefunction(
     system,
     hamiltonian,
-    wfn_file: str = "wavefunction.h5",
+    wfn_file: str,
     ndets: int = -1,
     ndets_props: int = 1,
     ndet_chunks: int = 1,
@@ -67,7 +67,7 @@ def get_trial_wavefunction(
     trial : class or None
         Trial wavfunction class.
     """
-    assert ndets_props < ndets
+    assert ndets_props <= ndets
     assert comm is not None
     if comm.rank == 0:
         if verbose:

@@ -589,5 +589,6 @@ def build_driver_test_instance(
         stabilise_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
         verbose=0,
+        filename=options["estimates"]["filename"],
     )
     return afqmc

@@ -39,8 +39,8 @@ class MPIHandler(object):
         self.size = comm.Get_size()
         self.rank = comm.Get_rank()
 
-        self.ngroups = self.size // self.nmembers
         self.nmembers = nmembers
+        self.ngroups = self.size // self.nmembers
 
         if verbose:
             print(f"# MPIHandler detected {self.ngroups} groups with {self.nmembers} members each")

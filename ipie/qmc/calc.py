@@ -112,13 +112,16 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             assert qmc.nwalkers is not None
             qmc.nwalkers_per_task = int(qmc.nwalkers / comm.size)
 
-        mpi_handler = MPIHandler(comm, qmc_opts, verbose=verbosity)
-        system = get_system(sys_opts, verbose=verbosity, comm=comm)
-        # Have to deal with shared comm in the future. I think we will remove this...
+        mpi_handler = MPIHandler(comm, nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
+        system = get_system(
+            sys_opts, verbose=verbosity, comm=comm
+        )  # Have to deal with shared comm in the future. I think we will remove this...
         hamiltonian = get_hamiltonian(system, ham_opts, verbose=verbosity, comm=comm)
+        wfn_file = get_input_value(twf_opt, "filename", default="", alias=["wfn_file"])
         trial = get_trial_wavefunction(
             system,
             hamiltonian,
+            wfn_file,
             comm=comm,
             scomm=comm,
             verbose=verbosity,
@@ -141,9 +144,15 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             mpi_handler=mpi_handler,
         )
         walkers.build(trial)  # any intermediates that require information from trial
+        est_opts = get_input_value(
+            options,
+            "estimators",
+            default={},
+            alias=["estimates"],
+            verbose=verbosity > 1,
+        )
         afqmc = AFQMC(
             comm,
-            options=options,
             system=system,
             hamiltonian=hamiltonian,
             trial=trial,
@@ -157,6 +166,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             stabilise_freq=qmc.nstblz,
             pop_control_freq=qmc.npop_control,
             verbose=verbosity,
+            filename=est_opts.get("filename", "estimates.h5"),
         )
 
         afqmc.pcontrol.method = wlk_opts["population_control"]

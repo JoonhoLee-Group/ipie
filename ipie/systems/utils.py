@@ -38,7 +38,7 @@ def get_system(sys_opts=None, verbose=0, comm=None):
     """
     assert sys_opts is not None
     sys_type = sys_opts.get("name")
-    if sys_type is not None:
+    if sys_type is None or sys_type == "Generic":
         nup, ndown = sys_opts.get("nup"), sys_opts.get("ndown")
         if nup is None or ndown is None:
             if comm.rank == 0:
