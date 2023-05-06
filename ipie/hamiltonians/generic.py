@@ -150,12 +150,6 @@ def Generic(h1e, chol, ecore=0.0, verbose=False):
         return GenericRealChol(h1e, chol, ecore, verbose)
 
 
-Generic = {
-    numpy.dtype("complex128"): GenericComplexChol,
-    numpy.dtype("float64"): GenericRealChol,
-}
-
-
 def read_integrals(integral_file):
     try:
         (h1e, schol_vecs, ecore, _, _, _) = from_qmcpack_sparse(integral_file)
