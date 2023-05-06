@@ -106,7 +106,7 @@ class AFQMC(object):
         timestep: float = 0.005,
         stabilise_freq=5,
         pop_control_freq=5,
-        filename=Union[str, None]=None,
+        filename: Union[str, None] = None,
     ):
         if verbose is not None:
             self.verbosity = verbose
