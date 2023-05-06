@@ -26,7 +26,6 @@ num_elec = nup + ndown
 h1e = results["hcore"]
 chol = results["chol"]
 ecore = results["e0"]
-ecore = 9.18953375861449
 mo_coeff = numpy.eye(h1e.shape[0])
 nbasis = h1e.shape[0]
 nchol = chol.shape[-1]
