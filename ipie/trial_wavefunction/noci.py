@@ -30,19 +30,10 @@ class NOCI(TrialWavefunctionBase):
         # self.G = self.compute_1rdm()
 
     def build(self) -> None:
-        pass
+        ...
 
     def calculate_energy(self, system, hamiltonian):
-        pass
-        # if self.verbose:
-        # print("# Computing trial wavefunction energy.")
-        # start = time.time()
-        # if self.verbose:
-        # print(
-        # "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
-        # % (self.energy.real, self.e1b.real, self.e2b.real)
-        # )
-        # print("# Time to evaluate local energy: {} s".format(time.time() - start))
+        raise NotImplementedError("Please implement!")
 
     def half_rotate(self, hamiltonian, comm=None):
         orbsa = self.psi[: self.num_dets, :, : self.nalpha]
@@ -66,6 +57,6 @@ class NOCI(TrialWavefunctionBase):
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det(walkers, self)
-    
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+
+    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)

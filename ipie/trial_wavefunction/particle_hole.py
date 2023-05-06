@@ -1,7 +1,13 @@
-import numpy as np
-from typing import Tuple
 import time
+from typing import Tuple
 
+import numpy as np
+
+from ipie.estimators.greens_function_multi_det import (
+    greens_function_multi_det,
+    greens_function_multi_det_wicks,
+    greens_function_multi_det_wicks_opt,
+)
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
 from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
@@ -10,13 +16,8 @@ from ipie.propagation.overlap import (
     calc_overlap_multi_det_wicks,
     calc_overlap_multi_det_wicks_opt,
 )
-from ipie.estimators.greens_function_multi_det import (
-    greens_function_multi_det,
-    greens_function_multi_det_wicks,
-    greens_function_multi_det_wicks_opt,
-)
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
 # FDM Clean this up!
 try:
@@ -25,7 +26,6 @@ try:
     _use_wicks_helper = True
 except ImportError:
     _use_wicks_helper = False
-    pass
 
 
 class ParticleHoleWicks(TrialWavefunctionBase):
@@ -439,7 +439,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
 
     def compute_1rdm(self, nbasis):
@@ -565,9 +565,6 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         ]  # one empty list as a member to account for the reference state
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
-        nexcit_a = nalpha
-        nexcit_b = nbeta
         for j in range(1, self.num_dets):
             dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
             djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
