@@ -1,0 +1,70 @@
+[MAIN]
+analyse-fallback-blocks=no
+clear-cache-post-run=no
+ignore=docs
+ignore-paths=ipie/lib,ipie/legacy
+ignore-patterns=(.)*_test\.py,test_(.)*\.py
+limit-inference-results=100
+argument-naming-style=snake_case
+attr-naming-style=snake_case
+class-attribute-naming-style=any
+class-const-naming-style=UPPER_CASE
+class-naming-style=PascalCase
+const-naming-style=UPPER_CASE
+docstring-min-length=100
+function-naming-style=snake_case
+method-naming-style=snake_case
+module-naming-style=snake_case
+max-spelling-suggestions=4
+spelling-ignore-comment-directives=fmt: on,fmt: off,noqa:,noqa,nosec,isort:skip,mypy:
+allow-global-unused-variables=yes
+max-line-length=100
+output-format=colorized
+disable=all
+enable=
+      no-member,
+    # renable once classes are tidied
+;     attribute-defined-outside-init,
+      consider-using-f-string,
+      useless-object-inheritance,
+      unused-variable,
+      line-too-long,
+      trailing-whitespace,
+      assert-on-tuple,
+      bad-indentation,
+      bad-option-value,
+      bad-reversed-sequence,
+      bad-super-call,
+      continue-in-finally,
+      dangerous-default-value,
+      duplicate-argument-name,
+      expression-not-assigned,
+      inconsistent-mro,
+      init-is-generator,
+      lost-exception,
+      mixed-line-endings,
+      no-value-for-parameter,
+      nonexistent-operator,
+      trailing-whitespace,
+      undefined-variable,
+      unexpected-keyword-arg,
+      unused-import,
+      unused-wildcard-import,
+      wildcard-import,
+      wrong-import-order,
+      wrong-import-position,
+      reimported,
+      no-member,
+      import-error,
+      # TODO: Sanitize this.
+      # protected-access,
+      consider-using-generator,
+      simplifiable-if-statement,
+      inconsistent-return-statements,
+      arguments-renamed,
+      arguments-differ,
+      unnecessary-comprehension,
+      unnecessary-pass,
+      no-else-return,
+# https://github.com/pylint-dev/pylint/issues/2178
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$|^\s*(\w*\s*=\s*)?(\"|\').*(\"|\'),?\s*$
