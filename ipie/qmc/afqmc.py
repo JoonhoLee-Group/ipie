@@ -514,6 +514,9 @@ class AFQMC(object):
             Mixed estimate for the energy and standard error.
         """
         filename = self.estimators.h5f_name
+# shouldn't it be fself.estimators.filename here?
+#       filename = self.estimators.filename
+
         from ipie.analysis import blocking
 
         try:
