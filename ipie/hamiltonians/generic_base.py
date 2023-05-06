@@ -13,50 +13,34 @@
 # limitations under the License.
 #
 # Authors: Joonho Lee
-#          
+#
 #
 
-import numpy
-
-array = numpy.array
-zeros = numpy.zeros
-einsum = numpy.einsum
-isrealobj = numpy.isrealobj
+from abc import ABCMeta
+import numpy as np
 
 from ipie.utils.backend import cast_to_device
 
-from abc import ABC
 
-
-class GenericBase(ABC):
+class GenericBase(metaclass=ABCMeta):
     """Base class for ab-initio Hamiltonian.
     Can be created by passing the one and two electron integrals directly.
     This is basically a container for integrals.
     Base class only stores 1-electron integrals and the constant term.
     """
 
-    def __init__(
-        self, h1e, ecore=0.0, verbose = False
-    ):
+    def __init__(self, h1e, ecore=0.0, verbose=False):
         self.verbose = verbose
-
-        # # these all have to be sorted out
-        # self.exact_eri = False
-        # self.sparse = False
-        # self.symmetry = False
-        # self.mixed_precision = False
-        # self.density_diff = False
-
         self.ecore = ecore
-        self.H1 = array(h1e, dtype = h1e.dtype)
+        self.H1 = np.array(h1e, dtype=h1e.dtype)
         self.nbasis = h1e.shape[-1]
+        self.nchol = None
 
     # This function casts relevant member variables into cupy arrays
     # Keeping this specific for the moment as too much logic.
     # A sign it should be split up..
     def cast_to_cupy(self, verbose=False):
-        cast_to_device(self, verbose = verbose)
-
+        cast_to_device(self, verbose=verbose)
 
     def chunk(self, handler, verbose=False):
         self.chunked = True  # Boolean to indicate that chunked cholesky is available
@@ -76,22 +60,18 @@ class GenericBase(ABC):
         self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
         handler.comm.barrier()
 
-        self.chol_packed_chunk = (
-            self.chol_packed_chunk.T.copy()
-        )  # [M^2, chol_chunk]
+        self.chol_packed_chunk = self.chol_packed_chunk.T.copy()  # [M^2, chol_chunk]
 
         tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
 
         assert self.chol_packed.size == tot_size
-        
+
         # distributing chol
         # if handler.comm.rank == 0:
         self.chol = self.chol.T.copy()  # [chol, M^2]
         handler.comm.barrier()
 
-        self.chol_chunk = handler.scatter_group(
-            self.chol
-        )  # distribute over chol
+        self.chol_chunk = handler.scatter_group(self.chol)  # distribute over chol
 
         # if handler.comm.rank == 0:
         self.chol = self.chol.T.copy()  # [M^2, chol]
