@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,6 +57,7 @@ def dot_real_cplx(
 # mapping[orb] is then used to address arrays of dimension nocc * nmo and
 # similar (half rotated Green's functio) and avoid out of bounds errors.
 
+
 @jit(nopython=True, fastmath=True)
 def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from singly excited Slater-Determinants.
@@ -83,7 +83,6 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """
     qs = anh[:, 0] + offset
     ndets = qs.shape[0]
-    nwalkers = G0.shape[0]
     for idet in range(ndets):
         p = mapping[cre[idet, 0]] + offset
         dets[:, idet] = G0[:, p, qs[idet]]
@@ -257,6 +256,7 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
 
 
 # Green's function
+
 
 @jit(nopython=False, fastmath=False)
 def reduce_CI_singles(cre, anh, mapping, phases, CI):
@@ -474,8 +474,6 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
     -------
     None
     """
-    ndets = len(cre)
-    nwalkers = CI.shape[0]
     nexcit = det_mat.shape[-1]
     for iex in range(nexcit):
         p = cre[:, iex]
@@ -491,6 +489,7 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
 
 
 # Energy evaluation
+
 
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(cre, anh, mapping, offset, chol_factor, spin_buffer, det_sls):
@@ -886,8 +885,6 @@ def fill_os_nfold(
     -------
     None
     """
-    nwalkers = cof_mat.shape[0]
-    ndet = cof_mat.shape[1]
     nexcit = det_matrix.shape[-1]
     for iex in range(nexcit):
         ps = cre[:, iex]
@@ -987,8 +984,6 @@ def get_ss_nfold(cre, anh, mapping, dets_mat, cof_mat, chol_fact, buffer, det_sl
     -------
     None
     """
-    nwalkers = dets_mat.shape[0]
-    ndet_level = dets_mat.shape[1]
     nexcit = dets_mat.shape[-1]
     for iex in range(nexcit):
         for jex in range(nexcit):

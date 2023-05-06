@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@
 #
 
 try:
+    # pylint: disable=import-error
     import cupy as cp
     import numba
     from numba import cuda
@@ -44,14 +44,16 @@ def kernel_exchange_reduction_old(T, exx_w):
     shared_array[thread_ix] = 0.0
     for x in range(thread_ix, naux, block_size):
         shared_array[thread_ix] += T[walker, x, a, b] * T[walker, x, b, a]
+    # pylint: disable=no-value-for-parameter
     cuda.syncthreads()
     nreduce = block_size // 2
     indx = nreduce
-    for it in range(0, nreduce):
+    for _ in range(0, nreduce):
         if indx == 0:
             break
         if thread_ix < indx:
             shared_array[thread_ix] += shared_array[thread_ix + indx]
+        # pylint: disable=no-value-for-parameter
         cuda.syncthreads()
         indx = indx // 2
     if thread_ix == 0:
@@ -77,14 +79,16 @@ def kernel_exchange_reduction(T, exx_w):
     shared_array[thread_ix] = 0.0
     for x in range(thread_ix, naux, block_size):
         shared_array[thread_ix] += T[x, a, walker, b] * T[x, b, walker, a]
+    # pylint: disable=no-value-for-parameter
     cuda.syncthreads()
     nreduce = block_size // 2
     indx = nreduce
-    for it in range(0, nreduce):
+    for _ in range(0, nreduce):
         if indx == 0:
             break
         if thread_ix < indx:
             shared_array[thread_ix] += shared_array[thread_ix + indx]
+        # pylint: disable=no-value-for-parameter
         cuda.syncthreads()
         indx = indx // 2
     if thread_ix == 0:
@@ -111,6 +115,7 @@ def exchange_reduction_old(Twxij, exx_walker):
     # do blocks_per_grid dot products + reductions
     # look into optimizations.
     kernel_exchange_reduction_old[blocks_per_grid, _block_size](Twxij, exx_walker)
+    # pylint: disable=no-value-for-parameter
     cp.cuda.stream.get_current_stream().synchronize()
 
 
