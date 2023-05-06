@@ -89,9 +89,7 @@ class EstimatorBase(metaclass=ABCMeta):
         self._shape = shape
 
     @abstractmethod
-    def compute_estimator(
-        self, system, walkers, hamiltonian, trial_wavefunction
-    ) -> np.ndarray:
+    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray:
         ...
 
     @property

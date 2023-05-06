@@ -90,9 +90,7 @@ def local_energy(
     walkers: UHFWalkers,
     trial: ParticleHoleWicks,
 ):
-    return local_energy_multi_det_trial_wicks_batch_opt_chunked(
-        system, hamiltonian, walkers, trial
-    )
+    return local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial)
 
 
 @plum.dispatch
@@ -102,9 +100,7 @@ def local_energy(
     walkers: UHFWalkers,
     trial: ParticleHoleWicksNonChunked,
 ):
-    return local_energy_multi_det_trial_wicks_batch_opt(
-        system, hamiltonian, walkers, trial
-    )
+    return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial)
 
 
 @plum.dispatch
