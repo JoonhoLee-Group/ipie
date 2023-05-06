@@ -58,5 +58,5 @@ class NOCI(TrialWavefunctionBase):
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det(walkers, self)
 
-    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)

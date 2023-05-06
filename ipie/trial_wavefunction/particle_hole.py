@@ -439,7 +439,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
-    def calc_force_bias(self, walkers, hamiltonian, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
 
     def compute_1rdm(self, nbasis):
