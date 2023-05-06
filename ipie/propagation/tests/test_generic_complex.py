@@ -44,14 +44,13 @@ def test_AB_cholesky():
 
     ham = test_handler.hamiltonian 
     chol = ham.chol # M^2 x nchol
-    
     nbasis = ham.nbasis
     nchol = ham.nchol
     
     chol = chol.reshape((nbasis,nbasis,nchol))
 
-    A = 0.5 * (chol + chol.transpose((1,0,2)))
-    B = 1.j * 0.5 * (chol - chol.transpose((1,0,2)))
+    A = 0.5 * (chol + chol.transpose((1,0,2)).conj())
+    B = 1.j * 0.5 * (chol - chol.transpose((1,0,2)).conj())
 
     A = A.reshape((nbasis*nbasis,nchol))
     B = B.reshape((nbasis*nbasis,nchol))

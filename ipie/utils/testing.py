@@ -58,8 +58,22 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
         # (ik|jl) = (ki|lj)*
         eri = eri + eri.transpose(2, 3, 0, 1)
         eri = eri + eri.transpose(3, 2, 1, 0).conj()
+
+        numpy.testing.assert_allclose(eri, eri.transpose(1,0,3,2).conj(), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2,3,0,1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0).conj(), atol=1e-10)
+
     if sym == 8:
         eri = eri + eri.transpose(1, 0, 2, 3)
+
+        numpy.testing.assert_allclose(eri, eri.transpose(1,0,3,2), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2,3,0,1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(1,0,2,3), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2,3,1,0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3,2,0,1), atol=1e-10)
+
     # Construct hermitian matrix M_{ik,lj}.
     eri = eri.transpose((0, 1, 3, 2))
     eri = eri.reshape((nmo * nmo, nmo * nmo))
