@@ -4,11 +4,11 @@ from typing import Tuple
 
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.hamiltonians.generic import Generic, GenericRealChol, GenericComplexChol
 
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
-    hamiltonian: GenericRealChol,
+    hamiltonian: Generic,
     comm: MPI.COMM_WORLD,
     orbsa: np.ndarray,
     orbsb: np.ndarray,
@@ -42,10 +42,11 @@ def half_rotate_generic(
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
     if isinstance(hamiltonian, GenericComplexChol):
+        cholbar = chol.transpose(1,0,2).conj().copy()
         A = hamiltonian.A.reshape((M,M,nchol))
         B = hamiltonian.B.reshape((M,M,nchol))
-        rchola = [get_shared_array(comm, shape_a, integral_type) for i in range(3)]
-        rcholb = [get_shared_array(comm, shape_b, integral_type) for i in range(3)]
+        rchola = [get_shared_array(comm, shape_a, integral_type) for i in range(4)]
+        rcholb = [get_shared_array(comm, shape_b, integral_type) for i in range(4)]
     elif isinstance(hamiltonian, GenericRealChol):
         rchola = [get_shared_array(comm, shape_a, integral_type)]
         rcholb = [get_shared_array(comm, shape_b, integral_type)]
@@ -53,8 +54,8 @@ def half_rotate_generic(
     rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
     rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
 
-    rH1a[:] = np.einsum("Jpi,pq->Jiq", orbsa, hamiltonian.H1[0], optimize=True)
-    rH1b[:] = np.einsum("Jpi,pq->Jiq", orbsb, hamiltonian.H1[0], optimize=True)
+    rH1a[:] = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+    rH1b[:] = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
     if verbose:
         print("# Half-Rotating Cholesky for determinant.")
@@ -83,7 +84,7 @@ def half_rotate_generic(
     nchol_loc = end_n - start_n
     if compute:
         if isinstance(hamiltonian, GenericComplexChol):
-            L = [chol, A, B]
+            L = [chol, cholbar, A, B]
         elif isinstance(hamiltonian, GenericRealChol):
             L = [chol]
         

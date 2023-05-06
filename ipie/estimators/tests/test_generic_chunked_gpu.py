@@ -99,7 +99,7 @@ def test_generic_chunked_gpu():
     prop = PhaselessGenericChunked(time_step=qmc["dt"])
     prop.build(ham,trial,mpi_handler=mpi_handler)
 
-    walkers = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers,
+    walkers = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers,
                                            mpi_handler = mpi_handler)
     walkers.build(trial)
     if not no_gpu:

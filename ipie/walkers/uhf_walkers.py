@@ -65,6 +65,7 @@ class UHFWalkers(BaseWalkers):
             dtype=numpy.complex128,
         )
 
+        # will be built only on request
         self.Ga = numpy.zeros(
             shape=(self.nwalkers, self.nbasis, self.nbasis),
             dtype=numpy.complex128,

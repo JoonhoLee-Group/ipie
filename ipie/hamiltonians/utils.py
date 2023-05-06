@@ -94,7 +94,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         if verbose:
             print("# Time to pack Cholesky vectors: {:.6f}".format(time.time() - start))
 
-        ham = Generic[chol.dtype](
+        ham = Generic(
             h1e=hcore,
             chol=chol,
             ecore=enuc,

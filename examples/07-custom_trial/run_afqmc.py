@@ -150,7 +150,7 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 num_basis = integrals.h1e.shape[0]
 num_chol = integrals.chol.shape[0]
 
-ham = HamGeneric[integrals.chol.dtype](
+ham = HamGeneric(
     np.array([integrals.h1e, integrals.h1e]),
     integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
     integrals.e0,

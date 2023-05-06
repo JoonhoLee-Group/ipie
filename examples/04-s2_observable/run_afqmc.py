@@ -43,7 +43,7 @@ gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0, ortho_ao=False)
 comm = MPI.COMM_WORLD
 from ipie.qmc.calc import build_afqmc_driver
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 
 class S2Mixed(EstimatorBase):
     def __init__(self, ham):

@@ -72,7 +72,7 @@ def test_generic_propagation_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
     )
     trial, _ = build_random_single_det_trial(nelec, nmo)
@@ -90,7 +90,7 @@ def test_generic_propagation_chunked():
     
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
 
-    walker_batch = UHFWalkersTrial[type(trial)](init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
+    walker_batch = UHFWalkersTrial(trial,init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
                                                 mpi_handler=mpi_handler)
     walker_batch.build(trial)
 

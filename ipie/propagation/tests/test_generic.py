@@ -19,7 +19,7 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function_batch import (
+from ipie.estimators.greens_function import (
     greens_function_single_det_batch,
 )
 from ipie.propagation.overlap import calc_overlap_single_det_batch

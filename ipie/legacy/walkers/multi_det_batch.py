@@ -3,7 +3,7 @@ import copy
 import numpy
 import scipy.linalg
 
-from ipie.estimators.greens_function_batch import greens_function_multi_det
+from ipie.estimators.greens_function import greens_function_multi_det
 from ipie.legacy.estimators.local_energy import local_energy_multi_det
 from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import get_numeric_names

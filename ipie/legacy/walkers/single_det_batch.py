@@ -1,7 +1,7 @@
 import numpy
 import scipy.linalg
 
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
     HarmonicOscillator
