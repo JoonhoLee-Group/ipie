@@ -63,8 +63,8 @@ def gen_ipie_from_trexio(
     for d in determinants:
        occa.append( trexio.to_orbital_list(nint, d[:nint]) )
        occb.append( trexio.to_orbital_list(nint, d[nint:]) )
-    occa = numpy.array(occa)
-    occb = numpy.array(occb)
+    occa = numpy.array(occa, dtype=object)
+    occb = numpy.array(occb, dtype=object)
     if verbose:
       print(f"Read determinants")
 
