@@ -16,9 +16,6 @@
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
 #
-
-import numpy
-
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.misc import is_cupy
 

@@ -170,7 +170,7 @@ class PhaselessGeneric(PhaselessBase):
 
         nchol = hamiltonian.nchol
 
-        VHS = self.isqrt_dt * 0.5*(hamiltonian.A.dot(xshifted[:nchol]) + hamiltonian.B.dot(xshifted[nchol:]))
+        VHS = self.isqrt_dt * (hamiltonian.A.dot(xshifted[:nchol]) + hamiltonian.B.dot(xshifted[nchol:]))
         VHS = VHS.T.copy()
         VHS = VHS.reshape(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis)
 

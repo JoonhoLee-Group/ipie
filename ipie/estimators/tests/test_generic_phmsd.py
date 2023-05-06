@@ -60,7 +60,7 @@ def test_greens_function_wicks_opt():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
     )
@@ -87,13 +87,13 @@ def test_greens_function_wicks_opt():
     trial_opt.build()
     numpy.random.seed(7)
 
-    walkers_wick = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_wick = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers_wick.build(trial)
 
-    walkers_slow = UHFWalkersTrial[type(trial_slow)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_slow = UHFWalkersTrial(trial_slow,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers_slow.build(trial_slow)
     
-    walkers_opt = UHFWalkersTrial[type(trial_opt)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_opt = UHFWalkersTrial(trial_opt,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers_opt.build(trial_opt)
 
     options = {"hybrid": True}
@@ -248,7 +248,7 @@ def test_det_matrix():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -272,7 +272,7 @@ def test_det_matrix():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial)
 
-    walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -315,7 +315,7 @@ def test_phmsd_local_energy():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -348,18 +348,18 @@ def test_phmsd_local_energy():
     trial_test.build()
     trial_test.half_rotate(ham)
     numpy.random.seed(7)
-    walkers_wick = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_wick = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walkers_wick.build(trial)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
     
-    walker_batch = UHFWalkersTrial[type(trial_slow)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial_slow,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial_slow)
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
-    walker_batch_test2 = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test2 = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test2.build(trial)
 
     numpy.random.seed(7)
@@ -411,7 +411,7 @@ def test_kernels_energy():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -433,7 +433,7 @@ def test_kernels_energy():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial)
 
-    walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
     numpy.random.seed(7)
     for i in range(nsteps):
@@ -640,7 +640,7 @@ def test_kernels_gf():
     nsteps = 100
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -663,7 +663,7 @@ def test_kernels_gf():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial)
 
-    walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -763,7 +763,7 @@ def test_kernels_gf_active_space():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -821,10 +821,10 @@ def test_kernels_gf_active_space():
     I = numpy.eye(nmo)
     init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
-    walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -961,7 +961,7 @@ def test_kernels_energy_active_space():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -1023,10 +1023,10 @@ def test_kernels_energy_active_space():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial_ref)
 
-    walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -1263,7 +1263,7 @@ def test_phmsd_local_energy_active_space():
     core = [0, 1]
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -1307,10 +1307,10 @@ def test_phmsd_local_energy_active_space():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham,trial_ref)
 
-    walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -1356,7 +1356,7 @@ def test_phmsd_local_energy_active_space_polarised():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -1400,13 +1400,13 @@ def test_phmsd_local_energy_active_space_polarised():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
     
-    walker_batch_test_chunked = UHFWalkersTrial[type(trial_test_chunked)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test_chunked = UHFWalkersTrial(trial_test_chunked,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test_chunked.build(trial_test_chunked)
 
     numpy.random.seed(7)
@@ -1461,7 +1461,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     ncore = 2
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
@@ -1533,13 +1533,13 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial[type(trial)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch.build(trial)
 
-    walker_batch_ref = UHFWalkersTrial[type(trial_ref)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial[type(trial_test)](init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
     walker_batch_test.build(trial_test)
     
     # Naive
@@ -1605,4 +1605,11 @@ def test_phmsd_local_energy_active_space_non_aufbau():
 
 
 if __name__ == "__main__":
-    test_phmsd_local_energy()
+    test_greens_function_wicks_opt()
+    # test_cofactor_matrix()
+    # test_cofactor_matrix_4()
+    # test_det_matrix()
+    # test_phmsd_local_energy()
+    # test_kernels_energy()
+    # test_kernels_gf()
+    # test_kernels_gf_active_space()

@@ -18,9 +18,8 @@
 
 import numpy
 
-from ipie.config import config
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize, to_host
+from ipie.utils.backend import synchronize
 
 
 def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):

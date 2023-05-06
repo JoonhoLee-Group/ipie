@@ -20,9 +20,8 @@
 from ipie.estimators.generic import (local_energy_cholesky_opt,
                                      local_energy_generic_cholesky)
 from ipie.legacy.estimators.ci import get_hmatel
-from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
-
-from ipie.hamiltonians.generic import Generic
+# from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
+# from ipie.hamiltonians.generic import Generic
 
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf):
@@ -49,19 +48,19 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     assert len(G) == 2
 
     # unfortunate interfacial problem for the HH model
-    if type(hamiltonian) == Generic[hamiltonian.chol.dtype]:
-        if Ghalf is not None:
-            return local_energy_cholesky_opt(
-                system,
-                hamiltonian.ecore,
-                Ghalfa=Ghalf[0],
-                Ghalfb=Ghalf[1],
-                trial=trial,
-            )
-        else:
-            return local_energy_generic_cholesky(system, hamiltonian, G)
+    # if type(hamiltonian) == Generic[hamiltonian.chol.dtype]:
+    if Ghalf is not None:
+        return local_energy_cholesky_opt(
+            system,
+            hamiltonian.ecore,
+            Ghalfa=Ghalf[0],
+            Ghalfb=Ghalf[1],
+            trial=trial,
+        )
     else:
-        return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
+        return local_energy_generic_cholesky(system, hamiltonian, G)
+    # else:
+        # return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
 
 
 def local_energy(system, hamiltonian, walker, trial):

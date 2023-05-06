@@ -121,10 +121,12 @@ class SingleDet(TrialWavefunctionBase):
         self._rH1b = rot_1body[1][0]
         self._rchola = rot_chol[0][0][0]
         self._rcholb = rot_chol[1][0][0]
-        self._rAa = rot_chol[0][1][0]
-        self._rAb = rot_chol[1][1][0]
-        self._rBa = rot_chol[0][2][0]
-        self._rBb = rot_chol[1][2][0]
+        self._rcholbara = rot_chol[0][1][0]
+        self._rcholbarb = rot_chol[1][1][0]
+        self._rAa = rot_chol[0][2][0]
+        self._rAb = rot_chol[1][2][0]
+        self._rBa = rot_chol[0][3][0]
+        self._rBb = rot_chol[1][3][0]
         self.half_rotated = True
 
 

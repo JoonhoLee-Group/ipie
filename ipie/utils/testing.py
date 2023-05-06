@@ -257,7 +257,7 @@ def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
     sys = Generic(nelec=(nalpha, nbeta))
     chol = shaped_normal((naux, nmo, nmo), cmplx=cmplx)
     h1e = shaped_normal((nmo, nmo), cmplx=cmplx)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
         # h1e_mod=h1e.copy(),
@@ -276,7 +276,7 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     system = Generic(nelec=(nocc, nocc))
     chol = shaped_normal((naux, nmo, nmo))
     from ipie.hamiltonians import Generic as HamGeneric
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
         ecore=0,
@@ -287,7 +287,7 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
         trial = NOCI(wfn, (nocc, nocc), nmo)
-    walkers = UHFWalkersTrial[type(trial)](wfn[1][0],system.nup,system.ndown,ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial,wfn[1][0],system.nup,system.ndown,ham.nbasis, nwalkers)
     walkers.build(trial)
 
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
@@ -415,7 +415,7 @@ def build_classes_test_case(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
@@ -462,7 +462,7 @@ def build_test_case_handlers_mpi(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
@@ -490,7 +490,7 @@ def build_test_case_handlers_mpi(
     pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
     reconf_freq = get_input_value(options, "reconfiguration_freq", default=50 )
 
-    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler = mpi_handler)
+    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler = mpi_handler)
     walkers.build(trial) # any intermediates that require information from trial
                                         # pop_control_method=pop_control, 
                                         # reconfiguration_frequency=reconf_freq)    
@@ -530,7 +530,7 @@ def build_test_case_handlers(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
@@ -551,7 +551,7 @@ def build_test_case_handlers(
         numpy.random.seed(seed)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers.build(trial) # any intermediates that require information from trial
  
     prop = PhaselessGeneric(time_step=options["dt"])
@@ -587,7 +587,7 @@ def build_driver_test_instance(
         num_basis, num_elec, cplx=complex_integrals
     )
     system = Generic(nelec=num_elec)
-    ham = HamGeneric[chol.dtype](
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
@@ -614,7 +614,7 @@ def build_driver_test_instance(
     nwalkers = qmc.nwalkers
     
     ndets, init = get_initial_walker(trial) # Here we update init...
-    walkers = UHFWalkersTrial[type(trial)](init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers.build(trial) # any intermediates that require information from trial
 
     comm = MPI.COMM_WORLD

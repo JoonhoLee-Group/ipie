@@ -140,8 +140,11 @@ class GenericComplexChol(GenericBase):
         chol_lj = 0.5 * (self.A[lj] + self.B[lj]/1.j)
         return numpy.dot(chol_ik, chol_lj.conj())
 
-Generic = {numpy.dtype("complex128"): GenericComplexChol, 
-           numpy.dtype("float64"): GenericRealChol}
+def Generic (h1e, chol, ecore=0.0, verbose = False):
+    if chol.dtype == numpy.dtype("complex128"):
+        return GenericComplexChol(h1e, chol, ecore, verbose)
+    elif chol.dtype == numpy.dtype("float64"):
+        return GenericRealChol(h1e, chol, ecore, verbose)
 
 from ipie.utils.io import (
     from_qmcpack_dense,
