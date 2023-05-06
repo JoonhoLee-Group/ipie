@@ -19,24 +19,21 @@
 """Driver to perform AFQMC calculation"""
 import json
 import time
+from typing import Union
 import uuid
 
 from ipie.config import config
-
-
+from ipie.estimators.handler import EstimatorHandler
+from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
-from ipie.estimators.handler import EstimatorHandler
-from ipie.walkers.pop_controller import PopController
-from ipie.walkers.base_walkers import WalkerAccumulator
-
-from ipie.utils.io import get_input_value, to_json
-from ipie.utils.misc import get_git_info, print_env_info
-from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
-
-from ipie.propagation.propagator import Propagator
+from ipie.utils.io import to_json
+from ipie.utils.misc import get_git_info, print_env_info
+from ipie.utils.mpi import MPIHandler
+from ipie.walkers.base_walkers import WalkerAccumulator
+from ipie.walkers.pop_controller import PopController
 
 
 class AFQMC(object):
@@ -95,7 +92,6 @@ class AFQMC(object):
     def __init__(
         self,
         comm,
-        options={},
         system=None,
         hamiltonian=None,
         trial=None,
@@ -110,6 +106,7 @@ class AFQMC(object):
         timestep: float = 0.005,
         stabilise_freq=5,
         pop_control_freq=5,
+        filename=Union[str, None]=None,
     ):
         if verbose is not None:
             self.verbosity = verbose
@@ -119,15 +116,9 @@ class AFQMC(object):
         # 1. Environment attributes
         if comm.rank == 0:
             self.uuid = str(uuid.uuid1())
-            get_sha1 = options.get("get_sha1", True)
-            if get_sha1:
-                try:
-                    self.sha1, self.branch, self.local_mods = get_git_info()
-                except:
-                    self.sha1 = "None"
-                    self.branch = "None"
-                    self.local_mods = []
-            else:
+            try:
+                self.sha1, self.branch, self.local_mods = get_git_info()
+            except:
                 self.sha1 = "None"
                 self.branch = "None"
                 self.local_mods = []
@@ -162,7 +153,7 @@ class AFQMC(object):
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
-            props = xp.cuda.runtime.getDeviceProperties(0)
+            _ = xp.cuda.runtime.getDeviceProperties(0)
             xp.cuda.runtime.setDevice(self.shared_comm.rank)
             if comm.rank == 0:
                 if ngpus > comm.size:
@@ -204,7 +195,6 @@ class AFQMC(object):
         else:
             self.qmc.rng_seed = set_rng_seed(seed, comm)
 
-        mem = get_host_memory()
         if comm.rank == 0:
             if self.trial.compute_trial_energy:
                 self.trial.calculate_energy(self.system, self.hamiltonian)
@@ -239,22 +229,14 @@ class AFQMC(object):
             ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
         )  # lagacy purposes??
 
-        est_opts = get_input_value(
-            options,
-            "estimators",
-            default={},
-            alias=["estimates", "estimator"],
-            verbose=self.verbosity > 1,
-        )
-        est_opts["stack_size"] = 1  # remove in the future
         self.estimators = EstimatorHandler(
             comm,
             self.system,
             self.hamiltonian,
             self.trial,
             walker_state=self.accumulators,
-            options=est_opts,
             verbose=(comm.rank == 0 and verbose),
+            filename=filename,
         )
 
         if self.mpi_handler.nmembers > 1:

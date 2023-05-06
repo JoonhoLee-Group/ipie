@@ -83,7 +83,6 @@ def calc_overlap_single_det(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
-    na = walker_batch.nup
     nb = walker_batch.ndown
     ot = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
 
@@ -119,7 +118,6 @@ def calc_overlap_single_det_batch(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
-    nup = walker_batch.nup
     ndown = walker_batch.ndown
     ovlp_a = xp.einsum(
         "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
@@ -234,9 +232,6 @@ def calc_overlap_multi_det_wicks(walker_batch, trial):
     psi0a = trial.psi0a  # reference det
     psi0b = trial.psi0b  # reference det
 
-    na = walker_batch.nup
-    nb = walker_batch.ndown
-
     ovlps = []
     for iw in range(walker_batch.nwalkers):
         phia = walker_batch.phia[iw]
@@ -308,7 +303,6 @@ def get_dets_single_excitation_batched(G0wa, G0wb, trial):
     """
     ndets_a = trial.cre_ex_a[1].shape[0]
     ndets_b = trial.cre_ex_b[1].shape[0]
-    nwalkers = G0wa.shape[0]
     if ndets_a == 0:
         dets_a = None
     else:
@@ -666,8 +660,6 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
 
 
 def compute_determinants_batched(G0a, G0b, trial):
-    na = trial.nelec[0]
-    nb = trial.nelec[1]
     nwalker = G0a.shape[0]
     ndets = len(trial.coeffs)
     dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
@@ -710,12 +702,6 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
     ovlps : float / complex
         Overlap.
     """
-    psi0a = trial.psi0a  # reference det
-    psi0b = trial.psi0b  # reference det
-
-    na = walker_batch.nup
-    nb = walker_batch.ndown
-
     ovlps = []
     ovlp_mats_a = numpy.einsum(
         "wmi,mj->wji", walker_batch.phia, trial.psi0a.conj(), optimize=True
@@ -772,7 +758,7 @@ def calc_overlap_multi_det(walker_batch, trial):
     """
     nup = walker_batch.nup
     for iw in range(walker_batch.nwalkers):
-        for (i, det) in enumerate(trial.psi):
+        for i, det in enumerate(trial.psi):
             Oup = numpy.dot(det[:, :nup].conj().T, walker_batch.phia[iw])
             Odn = numpy.dot(det[:, nup:].conj().T, walker_batch.phib[iw])
             sign_a, logdet_a = numpy.linalg.slogdet(Oup)
@@ -789,7 +775,6 @@ def calc_overlap_multi_det(walker_batch, trial):
 
 ### Legacy overlap functions useful for testing.
 def get_det_matrix_batched(nex, cre, anh, G0, det_matrix):
-
     nwalker = G0.shape[0]
     ndet = cre.shape[0]
 
@@ -817,7 +802,6 @@ def reduce_to_CI_tensor(nwalker, ndet_level, ps, qs, tensor, rhs):
 
 
 def get_cofactor_matrix_batched(nwalker, ndet, nexcit, row, col, det_matrix, cofactor):
-
     if nexcit - 1 <= 0:
         for iw in range(nwalker):
             for idet in range(ndet):
@@ -845,7 +829,6 @@ def get_cofactor_matrix_batched(nwalker, ndet, nexcit, row, col, det_matrix, cof
 def get_cofactor_matrix_4_batched(
     nwalker, ndet, nexcit, row_1, col_1, row_2, col_2, det_matrix, cofactor
 ):
-
     ncols = det_matrix.shape[3]
     if ncols - 2 <= 0:
         for iw in range(nwalker):

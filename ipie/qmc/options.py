@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,6 +98,8 @@ class QMCOpts(object):
         Estimate for mean energy for continuous Hubbard-Stratonovich transformation.
     """
 
+    # pylint: disable=dangerous-default-value
+    # TODO: Remove this class / replace with dataclass
     def __init__(self, inputs={}, verbose=False):
         self.nwalkers = get_input_value(
             inputs, "num_walkers", default=None, alias=["nwalkers"], verbose=verbose
@@ -157,7 +158,7 @@ class QMCOpts(object):
         )
 
     def __str__(self, verbose=0):
-        _str = ''
+        _str = ""
         for k, v in self.__dict__.items():
             _str += f"# {k:<25s} : {v}\n"
         return _str

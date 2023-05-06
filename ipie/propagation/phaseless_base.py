@@ -11,8 +11,11 @@ import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
+
 @plum.dispatch
-def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float
+):
     """Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -28,27 +31,28 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
         Timestep.
     """
     nb = hamiltonian.nbasis
-    shift = 1j * numpy.einsum(
-        "mx,x->m", hamiltonian.chol, mf_shift
-    ).reshape(nb, nb)
+    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
     expH1 = numpy.array(
         [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
     )
     return expH1
 
+
 @plum.dispatch
-def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float
+):
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
-    shift = xp.zeros((nb,nb), dtype=hamiltonian.chol.dtype)
-    shift = 1j * numpy.einsum(
-        "mx,x->m", hamiltonian.A, mf_shift[:nchol]
-    ).reshape(nb, nb)
+    shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
+    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(
+        nb, nb
+    )
 
-    shift += 1j * numpy.einsum(
-        "mx,x->m", hamiltonian.B, mf_shift[nchol:]
-    ).reshape(nb, nb)
+    shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(
+        nb, nb
+    )
 
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
     expH1 = numpy.array(
@@ -56,8 +60,11 @@ def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.
     )
     return expH1
 
+
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
+def construct_mean_field_shift(
+    hamiltonian: GenericRealChol, trial: TrialWavefunctionBase
+):
     """Compute mean field shift.
 
     .. math::
@@ -72,8 +79,11 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     mf_shift = 1.0j * tmp_real - tmp_imag
     return mf_shift
 
+
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase):
+def construct_mean_field_shift(
+    hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase
+):
     """Compute mean field shift.
 
     .. math::
@@ -83,18 +93,15 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWave
     """
     # hamiltonian.chol [X, M^2]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    
+
     nchol = hamiltonian.nchol
     nfields = hamiltonian.nfields
 
     mf_shift = numpy.zeros(nfields, dtype=hamiltonian.chol.dtype)
-    mf_shift[:nchol] = 1j * numpy.dot(
-        hamiltonian.A.T, Gcharge.ravel()
-    )
-    mf_shift[nchol:] = 1j * numpy.dot(
-        hamiltonian.B.T, Gcharge.ravel()
-    )
+    mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, Gcharge.ravel())
+    mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
     return mf_shift
+
 
 class PhaselessBase(ContinuousBase):
     """A base class for generic continuous HS transform AFQMC propagators."""
@@ -104,13 +111,15 @@ class PhaselessBase(ContinuousBase):
         self.sqrt_dt = self.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
 
-        self.nfb_trig = 0 # number of force bias triggered
-        self.nhe_trig = 0 # number of hybrid enerby bound triggered
-        self.ebound = (2.0 / self.dt) ** 0.5 # energy bound range
+        self.nfb_trig = 0  # number of force bias triggered
+        self.nhe_trig = 0  # number of hybrid enerby bound triggered
+        self.ebound = (2.0 / self.dt) ** 0.5  # energy bound range
         self.fbbound = 1.0
         self.mpi_handler = None
 
-    def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
+    def build(
+        self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False
+    ):
         # dt/2 one-body propagator
         start = time.time()
         self.mf_shift = construct_mean_field_shift(hamiltonian, trial)
@@ -125,43 +134,34 @@ class PhaselessBase(ContinuousBase):
 
         # # Allocate force bias (we don't need to do this here - it will be allocated when it is needed)
         self.vbias = None
-        # self.vbias = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), 
+        # self.vbias = numpy.zeros((walkers.nwalkers, hamiltonian.nfields),
         #                         dtype=numpy.complex128)
 
     def propagate_walkers_one_body(self, walkers):
         start_time = time.time()
-        walkers.phia = kinetic_spin_real_batch(
-            walkers.phia, self.expH1[0]
-        )
+        walkers.phia = kinetic_spin_real_batch(walkers.phia, self.expH1[0])
         if walkers.ndown > 0 and not walkers.rhf:
-            walkers.phib = kinetic_spin_real_batch(
-                walkers.phib, self.expH1[1]
-            )
+            walkers.phib = kinetic_spin_real_batch(walkers.phib, self.expH1[1])
         synchronize()
         self.timer.tgemm += time.time() - start_time
-        pass
 
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         # optimal force bias
         xbar = xp.zeros((walkers.nwalkers, hamiltonian.nfields))
 
         start_time = time.time()
-        self.vbias = trial.calc_force_bias(
-            hamiltonian, walkers, walkers.mpi_handler
-        )
-        xbar = -self.sqrt_dt * (
-            1j * self.vbias - self.mf_shift
-        )
+        self.vbias = trial.calc_force_bias(hamiltonian, walkers, walkers.mpi_handler)
+        xbar = -self.sqrt_dt * (1j * self.vbias - self.mf_shift)
         synchronize()
         self.timer.tfbias += time.time() - start_time
 
         # force bias bounding
-        xbar = self.apply_bound_force_bias(xbar,self.fbbound)
+        xbar = self.apply_bound_force_bias(xbar, self.fbbound)
 
         # Normally distrubted auxiliary fields.
-        xi = xp.random.normal(
-            0.0, 1.0, hamiltonian.nfields * walkers.nwalkers
-        ).reshape(walkers.nwalkers, hamiltonian.nfields)
+        xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walkers.nwalkers).reshape(
+            walkers.nwalkers, hamiltonian.nfields
+        )
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
@@ -175,9 +175,7 @@ class PhaselessBase(ContinuousBase):
 
         return (cmf, cfb)
 
-    def propagate_walkers(
-        self, walkers, hamiltonian, trial, eshift
-    ):
+    def propagate_walkers(self, walkers, hamiltonian, trial, eshift):
         synchronize()
         start_time = time.time()
         ovlp = trial.calc_greens_function(walkers)
@@ -189,9 +187,7 @@ class PhaselessBase(ContinuousBase):
         self.propagate_walkers_one_body(walkers)
 
         # 2.b Apply two-body
-        (cmf, cfb) = self.propagate_walkers_two_body(
-            walkers, hamiltonian, trial
-        )
+        (cmf, cfb) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers)
@@ -203,19 +199,11 @@ class PhaselessBase(ContinuousBase):
         self.timer.tovlp += time.time() - start_time
 
         start_time = time.time()
-        self.update_weight(
-            walkers,
-            ovlp, ovlp_new,
-            cfb, cmf, eshift)
+        self.update_weight(walkers, ovlp, ovlp_new, cfb, cmf, eshift)
         synchronize()
         self.timer.tupdate += time.time() - start_time
 
-    def update_weight(
-        self,
-        walkers,
-        ovlp, ovlp_new,
-        cfb, cmf, eshift
-    ):
+    def update_weight(self, walkers, ovlp, ovlp_new, cfb, cmf, eshift):
         ovlp_ratio = ovlp_new / ovlp
         hybrid_energy = -(xp.log(ovlp_ratio) + cfb + cmf) / self.dt
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
@@ -229,11 +217,13 @@ class PhaselessBase(ContinuousBase):
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         cosine_fac = xp.cos(dtheta)
 
-        xp.clip(cosine_fac, a_min=0.0, a_max=None, out=cosine_fac)  # in-place clipping (cosine projection)
+        xp.clip(
+            cosine_fac, a_min=0.0, a_max=None, out=cosine_fac
+        )  # in-place clipping (cosine projection)
         walkers.weight = walkers.weight * magn * cosine_fac
         walkers.ovlp = ovlp_new
-    
-    def apply_bound_force_bias(self, xbar, max_bound = 1.0):
+
+    def apply_bound_force_bias(self, xbar, max_bound=1.0):
         absxbar = xp.abs(xbar)
         idx_to_rescale = absxbar > max_bound
         nonzeros = absxbar > 1e-13
@@ -243,9 +233,7 @@ class PhaselessBase(ContinuousBase):
         self.nfb_trig += xp.sum(idx_to_rescale)
         return xbar
 
-    def apply_bound_hybrid(
-        self, ehyb, eshift
-    ):  # shift is a number but ehyb is not
+    def apply_bound_hybrid(self, ehyb, eshift):  # shift is a number but ehyb is not
         # For initial steps until first estimator communication eshift will be
         # zero and hybrid energy can be incorrect. So just avoid capping for
         # first block until reasonable estimate of eshift can be computed.
