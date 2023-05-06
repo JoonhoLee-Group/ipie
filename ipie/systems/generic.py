@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,22 +16,10 @@
 #          Joonho Lee
 #
 
-import ast
-import sys
-import time
-
-import h5py
 import numpy
-import scipy.linalg
-from scipy.sparse import csr_matrix
-
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
-from ipie.utils.linalg import modified_cholesky
-from ipie.utils.mpi import get_shared_array, have_shared_mem
 
 
-class Generic(object):
+class Generic:
     """Generic system class
 
     This class should contain information that is system specific and not related to the hamiltonian
