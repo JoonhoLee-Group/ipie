@@ -20,9 +20,7 @@ import numpy
 import pytest
 
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (
-    build_test_case_handlers,
-)
+from ipie.utils.testing import build_test_case_handlers
 from ipie.hamiltonians.generic import GenericComplexChol
 
 @pytest.mark.unit

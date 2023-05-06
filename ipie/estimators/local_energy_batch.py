@@ -22,7 +22,7 @@ from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch_gpu,
     local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf_batch,
+    local_energy_single_det_uhf,
 )
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
@@ -33,7 +33,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 
 # TODO: should pass hamiltonian here and make it work for all possible types
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...
-def local_energy_batch(system, hamiltonian, walker_batch, trial):
+def local_energy_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Parameters
@@ -42,7 +42,7 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
-    walker_batch : WalkerBatch
+    walkers : Walkers object
         Walkers object.
     trial : trial object
         Trial wavefunctioni.
@@ -53,39 +53,39 @@ def local_energy_batch(system, hamiltonian, walker_batch, trial):
         Total, one-body and two-body energies.
     """
 
-    if isinstance(walker_batch,UHFWalkers):
+    if isinstance(walkers,UHFWalkers):
         if config.get_option("use_gpu"):
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked_gpu(
-                    system, hamiltonian, walker_batch, trial
+                    system, hamiltonian, walkers, trial
                 )
             else:
                 return local_energy_single_det_batch_gpu(
-                    system, hamiltonian, walker_batch, trial
+                    system, hamiltonian, walkers, trial
                 )
-        elif walker_batch.rhf:
+        elif walkers.rhf:
             return local_energy_single_det_rhf_batch(
-                system, hamiltonian, walker_batch, trial
+                system, hamiltonian, walkers, trial
             )
         else:
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked(
-                    system, hamiltonian, walker_batch, trial
+                    system, hamiltonian, walkers, trial
                 )
             else:
-                return local_energy_single_det_uhf_batch(
-                    system, hamiltonian, walker_batch, trial
+                return local_energy_single_det_uhf(
+                    system, hamiltonian, walkers, trial
                 )
                 # \TODO switch to this
-                # return local_energy_single_det_uhf_batch(system, hamiltonian, walker_batch, trial)
+                # return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
     else:
         print("# Warning: local_energy_batch is not production level for multi-det trials.")
         return local_energy_multi_det_trial_batch(
-            system, hamiltonian, walker_batch, trial
+            system, hamiltonian, walkers, trial
         )
 
 
-def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial):
+def local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once) with MSD.
 
     Naive O(Ndet) algorithm, no optimizations.
@@ -96,7 +96,7 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
         System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
-    walker_batch : WalkerBatch
+    walkers : Walkers object
         Walkers object.
     trial : trial object
         Trial wavefunctioni.
@@ -108,15 +108,15 @@ def local_energy_multi_det_trial_batch(system, hamiltonian, walker_batch, trial)
     """
     energy = []
     ndets = trial.num_dets
-    nwalkers = walker_batch.nwalkers
+    nwalkers = walkers.nwalkers
     # ndets x nwalkers
     for iwalker, (w, Ga, Gb, Ghalfa, Ghalfb) in enumerate(
         zip(
-            walker_batch.det_weights,
-            walker_batch.Gia,
-            walker_batch.Gib,
-            walker_batch.Gihalfa,
-            walker_batch.Gihalfb,
+            walkers.det_weights,
+            walkers.Gia,
+            walkers.Gib,
+            walkers.Gihalfa,
+            walkers.Gihalfb,
         )
     ):
         denom = 0.0 + 0.0j
