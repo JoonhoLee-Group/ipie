@@ -79,10 +79,7 @@ class GenericRealChol(GenericBase):
             mem_packed = self.chol_packed.nbytes / (1024.0**3)
             print("# Number of orbitals: %d" % self.nbasis)
             print("# Approximate memory required by Cholesky vectors %f GB" % mem)
-            print(
-                "# Approximate memory required by packed Cholesky vectors %f GB"
-                % mem_packed
-            )
+            print("# Approximate memory required by packed Cholesky vectors %f GB" % mem_packed)
             print("# Approximate memory required total %f GB" % (mem_packed + mem))
             print("# Number of Cholesky vectors: %d" % (self.nchol))
             print("# Number of fields: %d" % (self.nchol))

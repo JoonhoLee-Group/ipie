@@ -14,11 +14,15 @@ import scipy.linalg
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.legacy.estimators.greens_function import gab, gab_multi_ghf
 from ipie.legacy.propagation.generic import (
-    back_propagate_generic, construct_propagator_matrix_generic)
-from ipie.legacy.propagation.hubbard import (back_propagate_single,
-                                             back_propagate_single_ghf,
-                                             construct_propagator_matrix,
-                                             construct_propagator_matrix_ghf)
+    back_propagate_generic,
+    construct_propagator_matrix_generic,
+)
+from ipie.legacy.propagation.hubbard import (
+    back_propagate_single,
+    back_propagate_single_ghf,
+    construct_propagator_matrix,
+    construct_propagator_matrix_ghf,
+)
 from ipie.legacy.propagation.operations import propagate_single
 from ipie.utils.linalg import reortho
 
@@ -142,13 +146,9 @@ class ITCF(object):
             else:
                 shape = (qmc.nsteps // (self.nmax), self.nmax + 1, 2, 2, len(self.mode))
             spgfs = h5f.create_group("single_particle_greens_function")
-            self.rspace_unit = H5EstimatorHelper(
-                spgfs, "real_space", shape, self.spgf.dtype
-            )
+            self.rspace_unit = H5EstimatorHelper(spgfs, "real_space", shape, self.spgf.dtype)
             if self.kspace:
-                self.kspace_unit = H5EstimatorHelper(
-                    spgfs, "k_space", shape, self.spgf.dtype
-                )
+                self.kspace_unit = H5EstimatorHelper(spgfs, "k_space", shape, self.spgf.dtype)
 
     def update(self, system, qmc, trial, psi, step, free_projection=False):
         """Update estimators
@@ -191,9 +191,7 @@ class ITCF(object):
         nup = system.nup
         M = system.nbasis
         if self.restore_weights:
-            self.denom = sum(
-                w.weight * w.stack.wfac[0] / w.stack.wfac[1] for w in psi.walkers
-            )
+            self.denom = sum(w.weight * w.stack.wfac[0] / w.stack.wfac[1] for w in psi.walkers)
         else:
             self.denom = sum(w.weight for w in psi.walkers)
         for ix, w in enumerate(psi.walkers):
@@ -202,12 +200,8 @@ class ITCF(object):
             # Note we use the first nmax fields for estimating the ITCF.
             # configs = w.field_configs.get_superblock()[0]
             phi_left = trial.psi.copy()
-            self.back_propagate_single(
-                phi_left, w.stack, system, self.nstblz, self.BT2, self.dt
-            )
-            (Ggr, Gls) = self.initial_greens_function(
-                phi_left, w.phi_right, trial, nup, w.weights
-            )
+            self.back_propagate_single(phi_left, w.stack, system, self.nstblz, self.BT2, self.dt)
+            (Ggr, Gls) = self.initial_greens_function(phi_left, w.phi_right, trial, nup, w.weights)
             # 2. Calculate G(n,n). This is the equal time Green's function at
             # the step where we began saving auxilary fields (constructed with
             # psi_left back propagated along this path.)
@@ -249,9 +243,7 @@ class ITCF(object):
         nup = system.nup
         M = system.nbasis
         if self.restore_weights:
-            self.denom = sum(
-                w.weight * w.stack.wfac[0] / w.stack.wfac[1] for w in psi.walkers
-            )
+            self.denom = sum(w.weight * w.stack.wfac[0] / w.stack.wfac[1] for w in psi.walkers)
         else:
             self.denom = sum(w.weight for w in psi.walkers)
         for ix, w in enumerate(psi.walkers):

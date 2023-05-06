@@ -100,9 +100,7 @@ def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
     nwalkers = Ghalfa_batch.shape[0]
     Ghalfa_batch_real = Ghalfa_batch.real.copy()
     Ghalfa_batch_imag = Ghalfa_batch.imag.copy()
-    X = rchola.dot(Ghalfa_batch_real.T) + 1.0j * rchola.dot(
-        Ghalfa_batch_imag.T
-    )  # naux x nwalkers
+    X = rchola.dot(Ghalfa_batch_real.T) + 1.0j * rchola.dot(Ghalfa_batch_imag.T)  # naux x nwalkers
     ecoul = zeros(nwalkers, dtype=numpy.complex128)
     X = X.T.copy()
     for iw in range(nwalkers):
@@ -139,12 +137,8 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
     Ghalfa_batch_imag = Ghalfa_batch.imag.copy()
     Ghalfb_batch_real = Ghalfb_batch.real.copy()
     Ghalfb_batch_imag = Ghalfb_batch.imag.copy()
-    X = rchola.dot(Ghalfa_batch_real.T) + 1.0j * rchola.dot(
-        Ghalfa_batch_imag.T
-    )  # naux x nwalkers
-    X += rcholb.dot(Ghalfb_batch_real.T) + 1.0j * rcholb.dot(
-        Ghalfb_batch_imag.T
-    )  # naux x nwalkers
+    X = rchola.dot(Ghalfa_batch_real.T) + 1.0j * rchola.dot(Ghalfa_batch_imag.T)  # naux x nwalkers
+    X += rcholb.dot(Ghalfb_batch_real.T) + 1.0j * rcholb.dot(Ghalfb_batch_imag.T)  # naux x nwalkers
     ecoul = zeros(nwalkers, dtype=numpy.complex128)
     X = X.T.copy()
     for iw in range(nwalkers):
@@ -526,16 +520,12 @@ def two_body_energy_uhf(trial, walkers):
     Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = walkers.Ghalfb.reshape(nwalkers, nbeta * nbasis)
     if xp.isrealobj(trial._rchola):
-        ecoul = ecoul_kernel_batch_real_rchol_uhf(
-            trial._rchola, trial._rcholb, Ghalfa, Ghalfb
-        )
+        ecoul = ecoul_kernel_batch_real_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
         exx = exx_kernel_batch_real_rchol(
             trial._rchola, walkers.Ghalfa
         ) + exx_kernel_batch_real_rchol(trial._rcholb, walkers.Ghalfb)
     else:
-        ecoul = ecoul_kernel_batch_complex_rchol_uhf(
-            trial._rchola, trial._rcholb, Ghalfa, Ghalfb
-        )
+        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
         exx = exx_kernel_batch_complex_rchol(
             trial._rchola, walkers.Ghalfa
         ) + exx_kernel_batch_complex_rchol(trial._rcholb, walkers.Ghalfb)
@@ -674,7 +664,11 @@ def local_energy_single_det_batch_gpu_old(system, hamiltonian, walkers, trial):
     return energy
 
 
+<<<<<<< HEAD
 def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
+=======
+def local_energy_single_det_batch_gpu(system, hamiltonian, walker_batch, trial, max_mem=2.0):
+>>>>>>> 330f296 (Reformat.)
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF GPU case.
@@ -710,11 +704,7 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
     Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = walkers.Ghalfb.reshape(nwalkers, nbeta * nbasis)
 
-    e1b = (
-        Ghalfa.dot(trial._rH1a.ravel())
-        + Ghalfb.dot(trial._rH1b.ravel())
-        + hamiltonian.ecore
-    )
+    e1b = Ghalfa.dot(trial._rH1a.ravel()) + Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
 
     if xp.isrealobj(trial._rchola):
         Xa = trial._rchola.dot(Ghalfa.real.T) + 1.0j * trial._rchola.dot(
@@ -738,9 +728,7 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
     nchol_chunks = ceil(nchol / chunk_size)
 
     # Buffer for large intermediate tensor
-    buff = xp.zeros(
-        shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128
-    )
+    buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128)
     nchol_chunk_size = chunk_size
     nchol_left = nchol
     exx = xp.zeros(nwalkers, dtype=xp.complex128)

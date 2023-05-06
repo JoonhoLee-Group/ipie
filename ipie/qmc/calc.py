@@ -69,9 +69,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         alias=["model"],
         verbose=verbosity > 1,
     )
-    ham_opts = get_input_value(
-        options, "hamiltonian", default={}, verbose=verbosity > 1
-    )
+    ham_opts = get_input_value(options, "hamiltonian", default={}, verbose=verbosity > 1)
     # backward compatibility with previous code (to be removed)
     for item in sys_opts.items():
         if item[0].lower() == "name" and "name" in ham_opts.keys():

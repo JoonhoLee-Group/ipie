@@ -167,10 +167,7 @@ class AFQMC(object):
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
                 print("# WARNING: Not enough walkers for selected core count.")
-                print(
-                    "# There must be at least one walker per core set in the "
-                    "input file."
-                )
+                print("# There must be at least one walker per core set in the " "input file.")
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
@@ -336,9 +333,7 @@ class AFQMC(object):
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators.estimators["mixed"].get_shift(
-                    self.propagators.hybrid
-                )
+                eshift = self.estimators.estimators["mixed"].get_shift(self.propagators.hybrid)
             else:
                 eshift += self.estimators.estimators["mixed"].get_shift() - eshift
             self.tstep += time.time() - start_step
@@ -354,11 +349,7 @@ class AFQMC(object):
         if self.root:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
-                print(
-                    "# Running time : {:.6f} seconds".format(
-                        (time.time() - self._init_time)
-                    )
-                )
+                print("# Running time : {:.6f} seconds".format((time.time() - self._init_time)))
                 print("# Timing breakdown (per processor, per block/step):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
                 nsteps = max(self.qmc.nsteps, 1)

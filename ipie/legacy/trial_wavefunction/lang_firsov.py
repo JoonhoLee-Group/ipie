@@ -10,14 +10,12 @@ from scipy.optimize import minimize
 
 from ipie.legacy.estimators.ci import simple_fci, simple_fci_bose_fermi
 from ipie.legacy.estimators.greens_function import gab_spin
-from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
-                                            local_energy_hubbard_holstein)
+from ipie.legacy.estimators.hubbard import local_energy_hubbard, local_energy_hubbard_holstein
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.systems.hubbard_holstein import HubbardHolstein
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
-    HarmonicOscillator
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from ipie.utils.io import read_fortran_complex_numbers
 from ipie.utils.linalg import diagonalise_sorted, reortho
 
@@ -59,9 +57,7 @@ def hessian(x, nbasis, nup, ndown, T, U, g, m, w0, c0, restricted, relax_gamma):
     return H
 
 
-def objective_function(
-    x, nbasis, nup, ndown, T, U, g, m, w0, c0, restricted, relax_gamma
-):
+def objective_function(x, nbasis, nup, ndown, T, U, g, m, w0, c0, restricted, relax_gamma):
     nbasis = int(round(nbasis))
     nup = int(round(nup))
     ndown = int(round(ndown))
@@ -88,14 +84,10 @@ def objective_function(
     theta_b = np.zeros((nbsf, nbsf), dtype=np.float64)
 
     theta_a = jax.ops.index_update(theta_a, jax.ops.index[nocca:nbsf, :nocca], daia)
-    theta_a = jax.ops.index_update(
-        theta_a, jax.ops.index[:nocca, nocca:nbsf], -np.transpose(daia)
-    )
+    theta_a = jax.ops.index_update(theta_a, jax.ops.index[:nocca, nocca:nbsf], -np.transpose(daia))
 
     theta_b = jax.ops.index_update(theta_b, jax.ops.index[noccb:nbsf, :noccb], daib)
-    theta_b = jax.ops.index_update(
-        theta_b, jax.ops.index[:noccb, noccb:nbsf], -np.transpose(daib)
-    )
+    theta_b = jax.ops.index_update(theta_b, jax.ops.index[:noccb, noccb:nbsf], -np.transpose(daib))
 
     Ua = np.eye(nbsf, dtype=np.float64)
     tmp = np.eye(nbsf, dtype=np.float64)
@@ -134,9 +126,7 @@ def objective_function(
     Eeph += np.sum((gamma**2 * m * w0**2 / 2.0 - g * gamma * sqrttwomw) * ni)
 
     Eee = np.sum(
-        (U * np.ones(nbsf) + gamma**2 * m * w0**2 - 2.0 * g * gamma * sqrttwomw)
-        * nia
-        * nib
+        (U * np.ones(nbsf) + gamma**2 * m * w0**2 - 2.0 * g * gamma * sqrttwomw) * nia * nib
     )
 
     alpha = gamma * numpy.sqrt(m * w0 / 2.0)
@@ -198,7 +188,7 @@ class LangFirsov(object):
                 ups = []
                 downs = []
                 # deal with potential inconsistency in ghf format...
-                for (i, c) in enumerate(tmp.T):
+                for i, c in enumerate(tmp.T):
                     if all(abs(c[: system.nbasis]) > 1e-10):
                         ups.append(i)
                     else:
@@ -222,9 +212,7 @@ class LangFirsov(object):
                 self.virt = numpy.zeros((system.nbasis, nvira + nvirb))
 
                 self.virt[:, :nvira] = self.eigv_up[:, nocca : nocca + nvira]
-                self.virt[:, nvira : nvira + nvirb] = self.eigv_dn[
-                    :, noccb : noccb + nvirb
-                ]
+                self.virt[:, nvira : nvira + nvirb] = self.eigv_dn[:, noccb : noccb + nvirb]
 
         gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T
         if system.ndown > 0:
@@ -245,9 +233,7 @@ class LangFirsov(object):
         self.eigs.sort()
 
         self.gamma = (
-            system.g
-            * numpy.sqrt(2.0 / (system.m * system.w0**3))
-            * numpy.ones(system.nbasis)
+            system.g * numpy.sqrt(2.0 / (system.m * system.w0**3)) * numpy.ones(system.nbasis)
         )
         print("# Initial gamma = {}".format(self.gamma))
         self.run_variational(system)
@@ -417,7 +403,6 @@ class LangFirsov(object):
 
     #   Compute D_{jj}
     def compute_Dvec(self, walker):
-
         phi0 = self.shift.copy()
         nbsf = walker.X.shape[0]
         D = numpy.zeros(nbsf)
@@ -440,7 +425,6 @@ class LangFirsov(object):
 
     #   Compute \sum_i \partial_i D_{jj} = A_{jj}
     def compute_dDvec(self, walker):
-
         phi0 = self.shift.copy()
         nbsf = walker.X.shape[0]
         dD = numpy.zeros(nbsf)
@@ -462,7 +446,6 @@ class LangFirsov(object):
 
     #   Compute \sum_i \partial_i^2 D_{jj} = A_{jj}
     def compute_d2Dvec(self, walker):
-
         phi0 = self.shift.copy()
         nbsf = walker.X.shape[0]
         d2D = numpy.zeros(nbsf)
@@ -486,7 +469,6 @@ class LangFirsov(object):
 
     #   Compute  <\psi_T | \partial_i D | \psi> / <\psi_T| D | \psi>
     def gradient(self, walker):
-
         psi0 = self.psi.copy()
 
         nbsf = walker.X.shape[0]
@@ -530,7 +512,6 @@ class LangFirsov(object):
 
     #   Compute  <\psi_T | \partial_i^2 D | \psi> / <\psi_T| D | \psi>
     def laplacian(self, walker):
-
         psi0 = self.psi.copy()
 
         psi0a = psi0[:, : self.nocca]
@@ -604,9 +585,7 @@ class LangFirsov(object):
         const = numpy.exp(-(alpha**2) / 2.0)
         const_mat = numpy.einsum("i,j->ij", const, const)
 
-        Ekin = numpy.sum(
-            const_mat * system.T[0] * self.G[0] + const_mat * system.T[1] * self.G[1]
-        )
+        Ekin = numpy.sum(const_mat * system.T[0] * self.G[0] + const_mat * system.T[1] * self.G[1])
 
         self.energy = Eph + Eeph + Eee + Ekin
         print("# Eee, Ekin, Eph, Eeph = {}, {}, {}, {}".format(Eee, Ekin, Eph, Eeph))

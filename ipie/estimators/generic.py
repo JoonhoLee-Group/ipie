@@ -324,13 +324,9 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     ecoul += 2 * xp.dot(Xa, Xb)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
-        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
 
     synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy

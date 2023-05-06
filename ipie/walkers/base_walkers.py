@@ -106,9 +106,7 @@ class BaseWalkers(metaclass=ABCMeta):
             print(f"# nwalkers = {self.nwalkers}")
 
         self.weight = numpy.array(
-            [
-                1.0 for iw in range(self.nwalkers)
-            ]  # TODO: allow for arbitrary initial weights
+            [1.0 for iw in range(self.nwalkers)]  # TODO: allow for arbitrary initial weights
         )
         self.unscaled_weight = self.weight.copy()
         self.phase = numpy.array([1.0 + 0.0j for iw in range(self.nwalkers)])

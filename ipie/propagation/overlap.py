@@ -55,12 +55,7 @@ def get_calc_overlap(trial):
     ):
         # calc_overlap = calc_overlap_multi_det
         calc_overlap = calc_overlap_multi_det_wicks
-    elif (
-        trial.name == "MultiSlater"
-        and trial.ndets > 1
-        and trial.wicks
-        and trial.optimized
-    ):
+    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks and trial.optimized:
         calc_overlap = calc_overlap_multi_det_wicks_opt
     else:
         calc_overlap = None
@@ -94,9 +89,7 @@ def calc_overlap_single_det(walker_batch, trial):
             Obeta = xp.dot(trial.psi0b.conj().T, walker_batch.phib[iw])
             sign_b, logdet_b = xp.linalg.slogdet(Obeta)
 
-        ot[iw] = (
-            sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
-        )
+        ot[iw] = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
 
     synchronize()
 
@@ -119,15 +112,11 @@ def calc_overlap_single_det_batch(walker_batch, trial):
         Overlap.
     """
     ndown = walker_batch.ndown
-    ovlp_a = xp.einsum(
-        "wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True
-    )
+    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
     if ndown > 0 and not walker_batch.rhf:
-        ovlp_b = xp.einsum(
-            "wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True
-        )
+        ovlp_b = xp.einsum("wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
     elif ndown > 0 and walker_batch.rhf:
@@ -478,31 +467,27 @@ def get_dets_nfold_excitation_batched(nexcit, G0wa, G0wb, trial):
     if ndets_a == 0:
         dets_a = None
     else:
-        det_mat = numpy.zeros(
-            (nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128
-        )
+        det_mat = numpy.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
         ps = trial.cre_ex_a[nexcit]
         qs = trial.anh_ex_a[nexcit]
         psqs = numpy.array([list(itertools.product(p, q)) for (p, q) in zip(ps, qs)])
         _shape = (nwalkers, ndets_a, nexcit, nexcit)
-        det_mat[:, :, indices[0], indices[1]] = G0wa[
-            :, psqs[:, :, 0], psqs[:, :, 1]
-        ].reshape(_shape)
+        det_mat[:, :, indices[0], indices[1]] = G0wa[:, psqs[:, :, 0], psqs[:, :, 1]].reshape(
+            _shape
+        )
         dets_a = numpy.linalg.det(det_mat)
     ndets_b = len(trial.cre_ex_b[nexcit])
     if ndets_b == 0:
         dets_b = None
     else:
-        det_mat = numpy.zeros(
-            (nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128
-        )
+        det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
         ps = trial.cre_ex_b[nexcit]
         qs = trial.anh_ex_b[nexcit]
         psqs = numpy.array([list(itertools.product(p, q)) for (p, q) in zip(ps, qs)])
         _shape = (nwalkers, ndets_b, nexcit, nexcit)
-        det_mat[:, :, indices[0], indices[1]] = G0wb[
-            :, psqs[:, :, 0], psqs[:, :, 1]
-        ].reshape(_shape)
+        det_mat[:, :, indices[0], indices[1]] = G0wb[:, psqs[:, :, 0], psqs[:, :, 1]].reshape(
+            _shape
+        )
         dets_b = numpy.linalg.det(det_mat)
     return dets_a, dets_b
 
@@ -703,23 +688,15 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
         Overlap.
     """
     ovlps = []
-    ovlp_mats_a = numpy.einsum(
-        "wmi,mj->wji", walker_batch.phia, trial.psi0a.conj(), optimize=True
-    )
+    ovlp_mats_a = numpy.einsum("wmi,mj->wji", walker_batch.phia, trial.psi0a.conj(), optimize=True)
     signs_a, logdets_a = numpy.linalg.slogdet(ovlp_mats_a)
-    ovlp_mats_b = numpy.einsum(
-        "wmi,mj->wji", walker_batch.phib, trial.psi0b.conj(), optimize=True
-    )
+    ovlp_mats_b = numpy.einsum("wmi,mj->wji", walker_batch.phib, trial.psi0b.conj(), optimize=True)
     signs_b, logdets_b = numpy.linalg.slogdet(ovlp_mats_b)
     ovlps0 = signs_a * signs_b * numpy.exp(logdets_a + logdets_b)
     inv_ovlps_a = numpy.linalg.inv(ovlp_mats_a)
-    theta_a = numpy.einsum(
-        "wmi,wij->wjm", walker_batch.phia, inv_ovlps_a, optimize=True
-    )
+    theta_a = numpy.einsum("wmi,wij->wjm", walker_batch.phia, inv_ovlps_a, optimize=True)
     inv_ovlps_b = numpy.linalg.inv(ovlp_mats_b)
-    theta_b = numpy.einsum(
-        "wmi,wij->wjm", walker_batch.phib, inv_ovlps_b, optimize=True
-    )
+    theta_b = numpy.einsum("wmi,wij->wjm", walker_batch.phib, inv_ovlps_b, optimize=True)
     # Use low level excitation optimizations
     ovlps = numpy.array(ovlps, dtype=numpy.complex128)
     dets_a_full, dets_b_full = compute_determinants_batched(theta_a, theta_b, trial)
@@ -796,9 +773,7 @@ def reduce_to_CI_tensor(nwalker, ndet_level, ps, qs, tensor, rhs):
     for iw in range(nwalker):
         for idet in range(ndet_level):
             # += not supported in cython for complex types.
-            tensor[iw, ps[idet], qs[idet]] = (
-                tensor[iw, ps[idet], qs[idet]] + rhs[iw, idet]
-            )
+            tensor[iw, ps[idet], qs[idet]] = tensor[iw, ps[idet], qs[idet]] + rhs[iw, idet]
 
 
 def get_cofactor_matrix_batched(nwalker, ndet, nexcit, row, col, det_matrix, cofactor):
@@ -821,9 +796,7 @@ def get_cofactor_matrix_batched(nwalker, ndet, nexcit, row, col, det_matrix, cof
                         jshift = 1
                     if j == nexcit - 1 and col == nexcit - 1:
                         continue
-                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[
-                        iw, idet, i, j
-                    ]
+                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[iw, idet, i, j]
 
 
 def get_cofactor_matrix_4_batched(

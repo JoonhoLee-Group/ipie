@@ -116,9 +116,7 @@ def truncated_combinations(iterable, r, count):
         yield tuple(pool[i] for i in indices)
 
 
-def get_random_phmsd(
-    nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True
-):
+def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
     ob = [c for c in itertools.combinations(orbs, ndown)]
@@ -171,9 +169,7 @@ def _gen_det_selection(d0, vir, occ, dist, nel):
     return dets
 
 
-def get_random_phmsd_opt(
-    nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True
-):
+def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True):
     if cmplx_coeffs:
         coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
     else:
@@ -287,7 +283,14 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
         trial = NOCI(wfn, (nocc, nocc), nmo)
-    walkers = UHFWalkersTrial(trial, wfn[1][0], system.nup, system.ndown, ham.nbasis, nwalkers,)
+    walkers = UHFWalkersTrial(
+        trial,
+        wfn[1][0],
+        system.nup,
+        system.ndown,
+        ham.nbasis,
+        nwalkers,
+    )
     walkers.build(trial)
 
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
@@ -446,9 +449,13 @@ def build_test_case_handlers_mpi(
     )
     reconf_freq = get_input_value(options, "reconfiguration_freq", default=50)
 
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler = mpi_handler)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+    )
     walkers.build(trial)
-    pcontrol = PopController(nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq)
+    pcontrol = PopController(
+        nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq
+    )
     trial.calc_greens_function(walkers)
     for _ in range(options.num_steps):
         if two_body_only:
@@ -501,9 +508,9 @@ def build_test_case_handlers(
         numpy.random.seed(seed)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial) # any intermediates that require information from trial
- 
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial)  # any intermediates that require information from trial
+
     prop = PhaselessGeneric(time_step=options["dt"])
     prop.build(ham, trial)
 
@@ -561,15 +568,14 @@ def build_driver_test_instance(
     qmc.nwalkers = qmc.nwalkers_per_task
 
     nwalkers = qmc.nwalkers
-    
-    ndets, init = get_initial_walker(trial) # Here we update init...
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial) # any intermediates that require information from trial
+
+    _, init = get_initial_walker(trial)  # Here we update init...
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial)  # any intermediates that require information from trial
 
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(
         comm=comm,
-        options=options,
         system=system,
         hamiltonian=ham,
         trial=trial,
@@ -582,6 +588,6 @@ def build_driver_test_instance(
         timestep=qmc.dt,
         stabilise_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
-        verbose=0,t 
+        verbose=0,
     )
     return afqmc

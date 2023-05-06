@@ -121,9 +121,7 @@ def test_fft_kpq(nalpha):
 
     import scipy.signal
 
-    fq_conv_sc = numpy.flip(
-        scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel()
-    )
+    fq_conv_sc = numpy.flip(scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel())
 
     import matplotlib.pyplot as pl
 
@@ -198,9 +196,7 @@ def test_fft_kmq(nalpha):
 
     import scipy.signal
 
-    fq_conv_sc = numpy.flip(
-        scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel()
-    )
+    fq_conv_sc = numpy.flip(scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel())
 
     # for i in range(qmesh[0]):
     #     target = fq_conv[i]

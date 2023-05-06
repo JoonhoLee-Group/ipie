@@ -108,9 +108,7 @@ def is_h5file(obj):
 
 def is_class(obj):
     cond = hasattr(obj, "__class__") and (
-        ("__dict__") in dir(obj)
-        and not isinstance(obj, types.FunctionType)
-        and not is_h5file(obj)
+        ("__dict__") in dir(obj) and not isinstance(obj, types.FunctionType) and not is_h5file(obj)
     )
 
     return cond
@@ -356,25 +354,15 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
                     # info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
                     #                                    'path': ' '.join(lib_dir)}
                     version_string = (
-                        cuda_version[:2]
-                        + "."
-                        + cuda_version[2:4]
-                        + "."
-                        + cuda_version[4]
+                        cuda_version[:2] + "." + cuda_version[2:4] + "." + cuda_version[4]
                     )
                     print("# - CUDA compute capability: {:s}".format(cuda_compute))
                     print("# - CUDA version: {}".format(version_string))
                     print("# - GPU Type: {:s}".format(str(cu_info["name"])[1:]))
                     print(
-                        "# - GPU Mem: {:.3f} GB".format(
-                            cu_info["totalGlobalMem"] / (1024**3.0)
-                        )
+                        "# - GPU Mem: {:.3f} GB".format(cu_info["totalGlobalMem"] / (1024**3.0))
                     )
-                    print(
-                        "# - Number of GPUs: {:d}".format(
-                            l.cuda.runtime.getDeviceCount()
-                        )
-                    )
+                    print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
                 except:
                     print("# cupy import error")
         except (ModuleNotFoundError, ImportError):

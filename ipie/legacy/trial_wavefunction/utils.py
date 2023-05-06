@@ -50,18 +50,13 @@ def get_trial_wavefunction(
                 coeff = read[0]
                 ndets = len(coeff[abs(coeff) > thresh])
                 if verbose:
-                    print(
-                        "# Discarding determinants with weight "
-                        "  below {}.".format(thresh)
-                    )
+                    print("# Discarding determinants with weight " "  below {}.".format(thresh))
             else:
                 ndets = options.get("ndets", None)
                 if ndets is None:
                     ndets = len(read[0])
             if verbose:
-                print(
-                    "# Number of determinants in trial wavefunction: {}".format(ndets)
-                )
+                print("# Number of determinants in trial wavefunction: {}".format(ndets))
             if ndets is not None:
                 wfn = []
                 # Wavefunction is a tuple, immutable so have to iterate through
@@ -81,9 +76,7 @@ def get_trial_wavefunction(
             wfn[0, :, :na] = I[:, :na]
             wfn[0, :, na:] = I[:, :nb]
             wfn = (coeffs, wfn)
-        trial = MultiSlater(
-            system, hamiltonian, wfn, init=psi0, options=options, verbose=verbose
-        )
+        trial = MultiSlater(system, hamiltonian, wfn, init=psi0, options=options, verbose=verbose)
         if system.name == "Generic":
             if trial.ndets == 1 or trial.ortho_expansion:
                 trial.half_rotate(system, hamiltonian, scomm)
@@ -94,9 +87,7 @@ def get_trial_wavefunction(
             if comm.rank == 0:
                 if verbose:
                     print("# Recomputing trial wavefunction ci coeffs.")
-                coeffs = trial.recompute_ci_coeffs(
-                    system.nup, system.ndown, hamiltonian
-                )
+                coeffs = trial.recompute_ci_coeffs(system.nup, system.ndown, hamiltonian)
             else:
                 coeffs = None
             coeffs = comm.bcast(coeffs, root=0)

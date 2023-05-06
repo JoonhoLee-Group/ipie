@@ -30,7 +30,6 @@ class Hirsch(object):
     """
 
     def __init__(self, hamiltonian, trial, qmc, options={}, verbose=False):
-
         if verbose:
             print("# Parsing discrete propagator input options.")
             print("# Using discrete Hubbard--Stratonovich transformation.")
@@ -481,9 +480,7 @@ class HubbardContinuousSpin(object):
         # \sum_gamma v_MF^{gamma} v^{\gamma}
         I = numpy.eye(system.nbasis)
         vi1b = system.U**0.5 * numpy.diag(self.mf_shift)
-        H1 = (
-            system.H1 + 0.5 * system.U * numpy.array([I, I]) - numpy.array([vi1b, vi1b])
-        )
+        H1 = system.H1 + 0.5 * system.U * numpy.array([I, I]) - numpy.array([vi1b, vi1b])
         self.BH1 = numpy.array(
             [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
         )
@@ -503,9 +500,7 @@ class HubbardContinuousSpin(object):
         # B_V(x-\bar{x}) = e^{\sqrt{dt}*(x-\bar{x})\hat{v}_i}
         # v_i = sqrt(U)(n_{iu} - n_{id})
         # return numpy.array([numpy.eye(system.nbasis), numpy.eye(system.nbasis)])
-        return numpy.array(
-            [numpy.diag(-self.ut_fac * shifted), numpy.diag(self.ut_fac * shifted)]
-        )
+        return numpy.array([numpy.diag(-self.ut_fac * shifted), numpy.diag(self.ut_fac * shifted)])
 
 
 def calculate_overlap_ratio_multi_ghf(walker, delta, trial, i):
@@ -523,7 +518,7 @@ def calculate_overlap_ratio_multi_ghf(walker, delta, trial, i):
         Basis index.
     """
     nbasis = trial.psi.shape[1] // 2
-    for (idx, G) in enumerate(walker.Gi):
+    for idx, G in enumerate(walker.Gi):
         guu = G[i, i]
         gdd = G[i + nbasis, i + nbasis]
         gud = G[i, i + nbasis]
@@ -552,16 +547,13 @@ def calculate_overlap_ratio_multi_det(walker, delta, trial, i):
     i : int
         Basis index.
     """
-    for (idx, G) in enumerate(walker.Gi):
+    for idx, G in enumerate(walker.Gi):
         walker.R[idx, 0, 0] = 1 + delta[0][0] * G[0][i, i]
         walker.R[idx, 0, 1] = 1 + delta[0][1] * G[1][i, i]
         walker.R[idx, 1, 0] = 1 + delta[1][0] * G[0][i, i]
         walker.R[idx, 1, 1] = 1 + delta[1][1] * G[1][i, i]
     spin_prod = numpy.einsum("ikj,ji->ikj", walker.R, walker.ots)
-    R = (
-        numpy.einsum("i,ij->j", trial.coeffs, spin_prod[:, :, 0] * spin_prod[:, :, 1])
-        / walker.ot
-    )
+    R = numpy.einsum("i,ij->j", trial.coeffs, spin_prod[:, :, 0] * spin_prod[:, :, 1]) / walker.ot
     return 0.5 * numpy.array([R[0], R[1]])
 
 
@@ -696,7 +688,7 @@ def back_propagate(phi, configs, system, nstblz, BT2, dt, store=False):
 
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs.get_block()[0][::-1]):
+    for i, c in enumerate(configs.get_block()[0][::-1]):
         B = construct_propagator_matrix(system, BT2, c, dt, conjt=True)
         phi[:, :nup] = B[0].dot(phi[:, :nup])
         phi[:, nup:] = B[1].dot(phi[:, nup:])
@@ -735,11 +727,11 @@ def back_propagate_ghf(system, psi, trial, nstblz, BT2, dt):
         MultiGHFWalker({}, system, trial, index=w, weights="ones", wfn0="GHF")
         for w in range(len(psi))
     ]
-    for (iw, w) in enumerate(psi):
+    for iw, w in enumerate(psi):
         # propagators should be applied in reverse order
-        for (i, c) in enumerate(w.field_configs.get_block()[0][::-1]):
+        for i, c in enumerate(w.field_configs.get_block()[0][::-1]):
             B = construct_propagator_matrix_ghf(system, BT2, c, conjt=True)
-            for (idet, psi_i) in enumerate(psi_bp[iw].phi):
+            for idet, psi_i in enumerate(psi_bp[iw].phi):
                 # propagate each component of multi-determinant expansion
                 psi_bp[iw].phi[idet] = B.dot(psi_bp[iw].phi[idet])
                 if i != 0 and i % nstblz == 0:
@@ -777,7 +769,7 @@ def back_propagate_single(phi_in, configs, weights, system, nstblz, BT2, store=F
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs[::-1]):
+    for i, c in enumerate(configs[::-1]):
         B = construct_propagator_matrix(system, BT2, c, conjt=True)
         phi_in[:, :nup] = B[0].dot(phi_in[:, :nup])
         phi_in[:, nup:] = B[1].dot(phi_in[:, nup:])
@@ -818,9 +810,9 @@ def back_propagate_single_ghf(phi, configs, weights, system, nstblz, BT2, store=
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs[::-1]):
+    for i, c in enumerate(configs[::-1]):
         B = construct_propagator_matrix_ghf(system, BT2, c, conjt=True)
-        for (idet, psi_i) in enumerate(phi):
+        for idet, psi_i in enumerate(phi):
             # propagate each component of multi-determinant expansion
             phi[idet] = B.dot(phi[idet])
             if i != 0 and i % nstblz == 0:
@@ -850,9 +842,7 @@ def kinetic_kspace(phi, system, btk):
     s = system
     # Transform psi to kspace by fft-ing its columns.
     tup = fft_wavefunction(phi[:, : s.nup], s.nx, s.ny, s.nup, phi[:, : s.nup].shape)
-    tdown = fft_wavefunction(
-        phi[:, s.nup :], s.nx, s.ny, s.ndown, phi[:, s.nup :].shape
-    )
+    tdown = fft_wavefunction(phi[:, s.nup :], s.nx, s.ny, s.ndown, phi[:, s.nup :].shape)
     # Kinetic enery operator is diagonal in momentum space.
     # Note that multiplying by diagonal btk in this way is faster than using
     # einsum and way faster than using dot using an actual diagonal matrix.

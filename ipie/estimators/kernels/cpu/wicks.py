@@ -412,9 +412,7 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 
 
 @jit(nopython=True, fastmath=True)
-def _reduce_nfold_cofactor_contribution(
-    ps, qs, mapping, sign, phases, cofactor_matrix, CI
-):
+def _reduce_nfold_cofactor_contribution(ps, qs, mapping, sign, phases, cofactor_matrix, CI):
     """Reduction to CI intermediate from cofactor contributions.
 
     Parameters
@@ -483,9 +481,7 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
             # CPU may be better to squash building and reduction.
             build_cofactor_matrix(iex, jex, det_mat, cof_mat)
             sign = (-1 + 0.0j) ** (iex + jex)
-            _reduce_nfold_cofactor_contribution(
-                p, q, mapping, sign, phases, cof_mat, CI
-            )
+            _reduce_nfold_cofactor_contribution(p, q, mapping, sign, phases, cof_mat, CI)
 
 
 # Energy evaluation
@@ -567,18 +563,10 @@ def fill_os_doubles(cre, anh, mapping, offset, G0, chol_factor, spin_buffer, det
             ro = cre[idet, 1] + offset
             so = anh[idet, 1] + offset
             spin_buffer[iw, start + idet, :] = (
-                dot_real_cplx(
-                    chol_factor[iw, q, p, :], G0_real[ro, so], G0_imag[ro, so]
-                )
-                - dot_real_cplx(
-                    chol_factor[iw, s, p, :], G0_real[ro, qo], G0_imag[ro, qo]
-                )
-                - dot_real_cplx(
-                    chol_factor[iw, q, r, :], G0_real[po, so], G0_imag[po, so]
-                )
-                + dot_real_cplx(
-                    chol_factor[iw, s, r, :], G0_real[po, qo], G0_imag[po, qo]
-                )
+                dot_real_cplx(chol_factor[iw, q, p, :], G0_real[ro, so], G0_imag[ro, so])
+                - dot_real_cplx(chol_factor[iw, s, p, :], G0_real[ro, qo], G0_imag[ro, qo])
+                - dot_real_cplx(chol_factor[iw, q, r, :], G0_real[po, so], G0_imag[po, so])
+                + dot_real_cplx(chol_factor[iw, s, r, :], G0_real[po, qo], G0_imag[po, qo])
             )
 
 
@@ -697,12 +685,8 @@ def get_ss_doubles(cre, anh, mapping, chol_fact, buffer, det_sls):
             q = anh[idet, 0]
             r = mapping[cre[idet, 1]]
             s = anh[idet, 1]
-            buffer[iw, start + idet] += (
-                numpy.dot(chol_fact[iw, q, p], chol_fact[iw, s, r]) + 0j
-            )
-            buffer[iw, start + idet] -= (
-                numpy.dot(chol_fact[iw, q, r], chol_fact[iw, s, p]) + 0j
-            )
+            buffer[iw, start + idet] += numpy.dot(chol_fact[iw, q, p], chol_fact[iw, s, r]) + 0j
+            buffer[iw, start + idet] -= numpy.dot(chol_fact[iw, q, r], chol_fact[iw, s, p]) + 0j
 
 
 @jit(nopython=True, fastmath=True)
@@ -746,9 +730,7 @@ def build_cofactor_matrix(row, col, det_matrix, cofactor):
                         jshift = 1
                     if j == nexcit - 1 and col == nexcit - 1:
                         continue
-                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[
-                        iw, idet, i, j
-                    ]
+                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[iw, idet, i, j]
 
 
 @jit(nopython=True, fastmath=True)
@@ -813,9 +795,7 @@ def build_cofactor_matrix_4(row_1, col_1, row_2, col_2, det_matrix, cofactor):
 
 
 @jit(nopython=True, fastmath=True)
-def reduce_os_spin_factor(
-    ps, qs, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls
-):
+def reduce_os_spin_factor(ps, qs, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls):
     """Reduce opposite spin (os) contributions into spin_buffer.
 
     Parameters
@@ -857,9 +837,7 @@ def reduce_os_spin_factor(
 
 
 @jit(nopython=True, fastmath=True)
-def fill_os_nfold(
-    cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls
-):
+def fill_os_nfold(cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls):
     """Fill opposite spin (os) n-fold contributions into spin_buffer.
 
     Parameters

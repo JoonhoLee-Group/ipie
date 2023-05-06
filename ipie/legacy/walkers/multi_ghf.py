@@ -26,9 +26,7 @@ class MultiGHFWalker(object):
         Initial wavefunction.
     """
 
-    def __init__(
-        self, walker_opts, system, trial, index=0, weights="zeros", wfn0="init"
-    ):
+    def __init__(self, walker_opts, system, trial, index=0, weights="zeros", wfn0="init"):
         self.weight = walker_opts.get("weight", 1)
         self.alive = 1
         # Initialise to a particular free electron slater determinant rather
@@ -42,9 +40,7 @@ class MultiGHFWalker(object):
                 orbs = read_fortran_complex_numbers(trial.read_init)
                 self.phi = orbs.reshape((2 * system.nbasis, system.ne), order="F")
             else:
-                self.phi = numpy.zeros(
-                    shape=(2 * system.nbasis, system.ne), dtype=trial.psi.dtype
-                )
+                self.phi = numpy.zeros(shape=(2 * system.nbasis, system.ne), dtype=trial.psi.dtype)
                 tmp = FreeElectron(system, trial.psi.dtype == complex, {})
                 self.phi[: system.nbasis, : system.nup] = tmp.psi[:, : system.nup]
                 self.phi[system.nbasis :, system.nup :] = tmp.psi[:, system.nup :]
@@ -52,9 +48,7 @@ class MultiGHFWalker(object):
             self.phi = copy.deepcopy(trial.psi)
         # This stores an array of overlap matrices with the various elements of
         # the trial wavefunction.
-        self.inv_ovlp = numpy.zeros(
-            shape=(trial.ndets, system.ne, system.ne), dtype=self.phi.dtype
-        )
+        self.inv_ovlp = numpy.zeros(shape=(trial.ndets, system.ne, system.ne), dtype=self.phi.dtype)
         if weights == "zeros":
             self.weights = numpy.zeros(trial.ndets, dtype=trial.psi.dtype)
         else:
@@ -71,9 +65,7 @@ class MultiGHFWalker(object):
         self.R = numpy.zeros(shape=(trial.ndets, 2), dtype=self.phi.dtype)
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
-        self.G = numpy.zeros(
-            shape=(2 * system.nbasis, 2 * system.nbasis), dtype=self.phi.dtype
-        )
+        self.G = numpy.zeros(shape=(2 * system.nbasis, 2 * system.nbasis), dtype=self.phi.dtype)
         self.ots = numpy.zeros(trial.ndets, dtype=self.phi.dtype)
         self.le_oratio = 1.0
         # Contains overlaps of the current walker with the trial wavefunction.
@@ -100,7 +92,7 @@ class MultiGHFWalker(object):
             Trial wavefunction.
         """
         nup = self.nup
-        for (indx, t) in enumerate(trial):
+        for indx, t in enumerate(trial):
             self.inv_ovlp[indx, :, :] = scipy.linalg.inv((t.conj()).T.dot(self.phi))
 
     def calc_otrial(self, trial):
@@ -118,7 +110,7 @@ class MultiGHFWalker(object):
         """
         # The trial wavefunctions coefficients should be complex conjugated
         # on initialisation!
-        for (ix, inv) in enumerate(self.inv_ovlp):
+        for ix, inv in enumerate(self.inv_ovlp):
             self.ots[ix] = 1.0 / scipy.linalg.det(inv)
             self.weights[ix] = trial.coeffs[ix] * self.ots[ix]
         return sum(self.weights)
@@ -182,7 +174,7 @@ class MultiGHFWalker(object):
             Trial wavefunction object.
         """
         nup = self.nup
-        for (ix, t) in enumerate(trial.psi):
+        for ix, t in enumerate(trial.psi):
             # construct "local" green's functions for each component of psi_T
             self.Gi[ix, :, :] = (self.phi.dot(self.inv_ovlp[ix]).dot(t.conj().T)).T
         denom = sum(self.weights)
@@ -203,7 +195,7 @@ class MultiGHFWalker(object):
             Basis index.
         """
         nup = self.nup
-        for (indx, t) in enumerate(trial.psi):
+        for indx, t in enumerate(trial.psi):
             self.inv_ovlp[indx, :, :] = scipy.linalg.inv((t.conj()).T.dot(self.phi))
 
     def local_energy(self, system, two_rdm=None):

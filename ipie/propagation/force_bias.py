@@ -61,9 +61,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
     # Cholesky vectors. [M^2, nchol]
     # Why are there so many transposes here?
     if numpy.isrealobj(hamiltonian.chol):
-        vbias_batch = numpy.empty(
-            (hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128
-        )
+        vbias_batch = numpy.empty((hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128)
         vbias_batch.real = hamiltonian.chol.T.dot(Ga.T.real + Gb.T.real)
         vbias_batch.imag = hamiltonian.chol.T.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
@@ -99,14 +97,10 @@ def construct_force_bias_batch_single_det(
         Force bias.
     """
     if walkers.rhf:
-        Ghalfa = walkers.Ghalfa.reshape(
-            walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-        )
+        Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
         vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
         vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
-        vbias_batch = xp.empty(
-            (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
-        )
+        vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
         synchronize()
@@ -114,21 +108,11 @@ def construct_force_bias_batch_single_det(
         return vbias_batch
 
     else:
-        Ghalfa = walkers.Ghalfa.reshape(
-            walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-        )
-        Ghalfb = walkers.Ghalfb.reshape(
-            walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-        )
-        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(
-            Ghalfb.T.real
-        )
-        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(
-            Ghalfb.T.imag
-        )
-        vbias_batch = xp.empty(
-            (walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype
-        )
+        Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+        Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
+        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
+        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+        vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
         synchronize()
@@ -160,9 +144,7 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
     assert xp.isrealobj(trial._rchola)
 
     Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
-    Ghalfb = walkers.Ghalfb.reshape(
-        walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-    )
+    Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
 
     chol_idxs_chunk = hamiltonian.chol_idxs_chunk
 

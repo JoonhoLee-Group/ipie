@@ -84,9 +84,7 @@ class UHFWalkers(BaseWalkers):
 
         self.buff_names += ["phia", "phib"]
 
-        self.buff_size = round(
-            self.set_buff_size_single_walker() / float(self.nwalkers)
-        )
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
         self.rhf = False  # interfacing with old codes...
@@ -265,15 +263,9 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of
         # the trial wavefunction.
-        self.det_weights = numpy.zeros(
-            (self.nwalkers, self.num_dets), dtype=numpy.complex128
-        )
-        self.det_ovlpas = numpy.zeros(
-            (self.nwalkers, self.num_dets), dtype=numpy.complex128
-        )
-        self.det_ovlpbs = numpy.zeros(
-            (self.nwalkers, self.num_dets), dtype=numpy.complex128
-        )
+        self.det_weights = numpy.zeros((self.nwalkers, self.num_dets), dtype=numpy.complex128)
+        self.det_ovlpas = numpy.zeros((self.nwalkers, self.num_dets), dtype=numpy.complex128)
+        self.det_ovlpbs = numpy.zeros((self.nwalkers, self.num_dets), dtype=numpy.complex128)
 
         self.Gia = numpy.zeros(
             shape=(

@@ -149,9 +149,7 @@ def get_buffer(walkers, iw):
         data = walkers.__dict__[d]
         if data is None:
             continue
-        assert (
-            data.size % walkers.nwalkers == 0
-        )  # Only walker-specific data is being communicated
+        assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], (ndarray)):
             buff[s : s + data[iw].size] = array(data[iw].ravel())
             s += data[iw].size
@@ -160,9 +158,7 @@ def get_buffer(walkers, iw):
                 if isinstance(l, (ndarray)):
                     buff[s : s + l.size] = array(l.ravel())
                     s += l.size
-                elif isinstance(
-                    l, (int, float, complex, numpy.float64, numpy.complex128)
-                ):
+                elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
                     buff[s : s + 1] = l
                     s += 1
         else:
@@ -192,9 +188,7 @@ def set_buffer(walkers, iw, buff):
         data = walkers.__dict__[d]
         if data is None:
             continue
-        assert (
-            data.size % walkers.nwalkers == 0
-        )  # Only walker-specific data is being communicated
+        assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], ndarray):
             walkers.__dict__[d][iw] = array(
                 buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
@@ -374,9 +368,7 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
         glob_inf[
             :, 1
-        ] = (
-            glob_inf_1.ravel()
-        )  # all initialized to 1 when it becomes 2 then it will be "branched"
+        ] = glob_inf_1.ravel()  # all initialized to 1 when it becomes 2 then it will be "branched"
         glob_inf[
             :, 2
         ] = (
@@ -485,9 +477,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     walker_len = local_buffer[0].shape[0]
     global_buffer = None
     if comm.rank == 0:
-        global_buffer = numpy.zeros(
-            (comm.size, nwalkers, walker_len), dtype=numpy.complex128
-        )
+        global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
     timer.add_non_communication()
 
     timer.start_time()
@@ -498,9 +488,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     new_global_buffer = None
     timer.start_time()
     if comm.rank == 0:
-        new_global_buffer = numpy.zeros(
-            (comm.size, nwalkers, walker_len), dtype=numpy.complex128
-        )
+        new_global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
         cumulative_weights = numpy.cumsum(abs(global_buffer[:, :, 0]))
         total_weight = cumulative_weights[-1]
         new_average_weight = total_weight / nwalkers / comm.size

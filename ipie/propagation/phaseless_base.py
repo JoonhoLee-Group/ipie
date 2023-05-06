@@ -13,9 +13,7 @@ from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 
 @plum.dispatch
-def construct_one_body_propagator(
-    hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float
-):
+def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
     """Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -40,19 +38,13 @@ def construct_one_body_propagator(
 
 
 @plum.dispatch
-def construct_one_body_propagator(
-    hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float
-):
+def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
     shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
-    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(
-        nb, nb
-    )
+    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(nb, nb)
 
-    shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(
-        nb, nb
-    )
+    shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(nb, nb)
 
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
     expH1 = numpy.array(
@@ -62,9 +54,7 @@ def construct_one_body_propagator(
 
 
 @plum.dispatch
-def construct_mean_field_shift(
-    hamiltonian: GenericRealChol, trial: TrialWavefunctionBase
-):
+def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
     """Compute mean field shift.
 
     .. math::
@@ -81,9 +71,7 @@ def construct_mean_field_shift(
 
 
 @plum.dispatch
-def construct_mean_field_shift(
-    hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase
-):
+def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase):
     """Compute mean field shift.
 
     .. math::
@@ -117,9 +105,7 @@ class PhaselessBase(ContinuousBase):
         self.fbbound = 1.0
         self.mpi_handler = None
 
-    def build(
-        self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False
-    ):
+    def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         # dt/2 one-body propagator
         start = time.time()
         self.mf_shift = construct_mean_field_shift(hamiltonian, trial)

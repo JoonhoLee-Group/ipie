@@ -50,9 +50,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
                 print("# Error: integrals not specfied.")
                 sys.exit()
         start = time.time()
-        hcore, chol, _, enuc = get_generic_integrals(
-            filename, comm=comm, verbose=verbose
-        )
+        hcore, chol, _, enuc = get_generic_integrals(filename, comm=comm, verbose=verbose)
         if verbose:
             print("# Time to read integrals: {:.6f}".format(time.time() - start))
 

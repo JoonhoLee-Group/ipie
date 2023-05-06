@@ -42,7 +42,7 @@ class FreeElectron(object):
                 ups = []
                 downs = []
                 # deal with potential inconsistency in ghf format...
-                for (i, c) in enumerate(tmp.T):
+                for i, c in enumerate(tmp.T):
                     if all(abs(c[: system.nbasis]) > 1e-10):
                         ups.append(i)
                     else:

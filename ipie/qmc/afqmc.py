@@ -159,9 +159,7 @@ class AFQMC(object):
                 if ngpus > comm.size:
                     print(
                         "# There are unused GPUs ({} MPI tasks but {} GPUs). "
-                        " Check if this is really what you wanted.".format(
-                            comm.size, ngpus
-                        )
+                        " Check if this is really what you wanted.".format(comm.size, ngpus)
                     )
 
         if self.qmc.nwalkers is None:
@@ -174,18 +172,13 @@ class AFQMC(object):
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(
-            self.qmc.nwalkers / comm.size
-        )  # This should be gone in the future
+        self.qmc.nwalkers = int(self.qmc.nwalkers / comm.size)  # This should be gone in the future
         assert self.qmc.nwalkers == self.qmc.nwalkers_per_task
         # Total number of walkers.
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
                 print("# WARNING: Not enough walkers for selected core count.")
-                print(
-                    "# There must be at least one walker per core set in the "
-                    "input file."
-                )
+                print("# There must be at least one walker per core set in the " "input file.")
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
@@ -222,9 +215,7 @@ class AFQMC(object):
         self.tsetup = time.time() - self._init_time
 
         # Using only default population control
-        self.pcontrol = PopController(
-            self.qmc.nwalkers, num_steps_per_block, self.mpi_handler
-        )
+        self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
         self.accumulators = WalkerAccumulator(
             ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
         )  # lagacy purposes??
@@ -364,9 +355,7 @@ class AFQMC(object):
                     self.trial,
                     self.walkers,
                 )
-                self.estimators.print_block(
-                    comm, step // self.qmc.nsteps, self.accumulators
-                )
+                self.estimators.print_block(comm, step // self.qmc.nsteps, self.accumulators)
                 self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
@@ -397,14 +386,8 @@ class AFQMC(object):
         if self.root:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
-                print(
-                    "# Running time : {:.6f} seconds".format(
-                        (time.time() - self._init_time)
-                    )
-                )
-                print(
-                    "# Timing breakdown (per call, total calls per block, total blocks):"
-                )
+                print("# Running time : {:.6f} seconds".format((time.time() - self._init_time)))
+                print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
                 print(
                     "# - Block: {:.6f} s / block for {} total blocks".format(

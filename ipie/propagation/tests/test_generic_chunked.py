@@ -21,7 +21,7 @@ import pytest
 from mpi4py import MPI
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.phaseless_generic import PhaselessGenericChunked,PhaselessGeneric
+from ipie.propagation.phaseless_generic import PhaselessGenericChunked, PhaselessGeneric
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
@@ -72,9 +72,7 @@ def test_generic_propagation_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
-    )
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
     trial, _ = build_random_single_det_trial(nelec, nmo)
     trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
@@ -86,12 +84,13 @@ def test_generic_propagation_chunked():
     trial.chunk(mpi_handler)
 
     prop = PhaselessGenericChunked(qmc["dt"])
-    prop.build(ham,trial, mpi_handler=mpi_handler)
-    
+    prop.build(ham, trial, mpi_handler=mpi_handler)
+
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
 
-    walker_batch = UHFWalkersTrial(trial,init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
-                                                mpi_handler=mpi_handler)
+    walker_batch = UHFWalkersTrial(
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+    )
     walker_batch.build(trial)
 
     for i in range(nsteps):
@@ -108,10 +107,11 @@ def test_generic_propagation_chunked():
         walker_batch.nwalkers, ham.nchol
     )
     VHS_chunked = prop.construct_VHS(
-        ham, xshifted.T.copy(), 
+        ham,
+        xshifted.T.copy(),
     )
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
     VHS = prop.construct_VHS(ham, xshifted.T.copy())
     assert numpy.allclose(VHS, VHS_chunked)
 

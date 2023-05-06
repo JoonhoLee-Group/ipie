@@ -77,18 +77,9 @@ def test_pair_branch_batch():
             legacy_data.walker_handler.walkers[iw].weight,
         )
 
-    assert (
-        pytest.approx(batched_data.walkers.weight[0])
-        == 0.2571750688329709
-    )
-    assert (
-        pytest.approx(batched_data.walkers.weight[1])
-        == 1.0843219322894988
-    )
-    assert (
-        pytest.approx(batched_data.walkers.weight[2])
-        == 0.8338283613093604
-    )
+    assert pytest.approx(batched_data.walkers.weight[0]) == 0.2571750688329709
+    assert pytest.approx(batched_data.walkers.weight[1]) == 1.0843219322894988
+    assert pytest.approx(batched_data.walkers.weight[2]) == 0.8338283613093604
     assert (
         pytest.approx(batched_data.walkers.phia[9][0, 0])
         == -0.0005573508035052743 + 0.12432250308987346j
@@ -196,10 +187,8 @@ def test_stochastic_reconfiguration_batch():
     )
 
     assert pytest.approx(batched_data.walkers.weight[0]) == 1.0
-    assert (
-        pytest.approx(batched_data.walkers.phia[0][0, 0])
-        == 0.0305067 + 0.01438442j
-    )
+    assert pytest.approx(batched_data.walkers.phia[0][0, 0]) == 0.0305067 + 0.01438442j
+
 
 if __name__ == "__main__":
     test_pair_branch_batch()

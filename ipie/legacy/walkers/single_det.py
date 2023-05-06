@@ -2,16 +2,13 @@ import numpy
 import scipy.linalg
 
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import \
-    HarmonicOscillator
+from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from ipie.legacy.walkers.stack import FieldConfig
 from ipie.legacy.walkers.walker import Walker
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
 
 # from ipie.estimators.mixed import local_energy, local_energy_hh
-
-
 
 
 class SingleDetWalker(Walker):
@@ -94,9 +91,7 @@ class SingleDetWalker(Walker):
 
         self.Ghalf = [
             numpy.zeros(shape=(system.nup, hamiltonian.nbasis), dtype=numpy.complex128),
-            numpy.zeros(
-                shape=(system.ndown, hamiltonian.nbasis), dtype=numpy.complex128
-            ),
+            numpy.zeros(shape=(system.ndown, hamiltonian.nbasis), dtype=numpy.complex128),
         ]
         self.greens_function(trial)
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
@@ -112,9 +107,7 @@ class SingleDetWalker(Walker):
         nup = self.nup
         ndown = self.ndown
 
-        self.inv_ovlp[0] = scipy.linalg.inv(
-            (trial.psi[:, :nup].conj()).T.dot(self.phi[:, :nup])
-        )
+        self.inv_ovlp[0] = scipy.linalg.inv((trial.psi[:, :nup].conj()).T.dot(self.phi[:, :nup]))
 
         self.inv_ovlp[1] = numpy.zeros(self.inv_ovlp[0].shape)
         if ndown > 0:
@@ -139,12 +132,8 @@ class SingleDetWalker(Walker):
         nup = self.nup
         ndown = self.ndown
 
-        self.inv_ovlp[0] = sherman_morrison(
-            self.inv_ovlp[0], trial.psi[i, :nup].conj(), vtup
-        )
-        self.inv_ovlp[1] = sherman_morrison(
-            self.inv_ovlp[1], trial.psi[i, nup:].conj(), vtdown
-        )
+        self.inv_ovlp[0] = sherman_morrison(self.inv_ovlp[0], trial.psi[i, :nup].conj(), vtup)
+        self.inv_ovlp[1] = sherman_morrison(self.inv_ovlp[1], trial.psi[i, nup:].conj(), vtdown)
 
     def calc_otrial(self, trial):
         """Caculate overlap with trial wavefunction.
@@ -169,9 +158,7 @@ class SingleDetWalker(Walker):
         ot = 1.0 / det
 
         if self.phi_boson is not None:
-            boson_trial = HarmonicOscillator(
-                m=trial.m, w=trial.w0, order=0, shift=trial.shift
-            )
+            boson_trial = HarmonicOscillator(m=trial.m, w=trial.w0, order=0, shift=trial.shift)
             self.phi_boson = boson_trial.value(self.X)
             ot *= self.phi_boson
 
@@ -201,9 +188,7 @@ class SingleDetWalker(Walker):
         ot = sign_a * sign_b * numpy.exp(logdet_a + logdet_b - self.log_shift)
 
         if self.phi_boson is not None:
-            boson_trial = HarmonicOscillator(
-                m=trial.m, w=trial.w0, order=0, shift=trial.shift
-            )
+            boson_trial = HarmonicOscillator(m=trial.m, w=trial.w0, order=0, shift=trial.shift)
             self.phi_boson = boson_trial.value(self.X)
             ot *= self.phi_boson
 
@@ -236,9 +221,7 @@ class SingleDetWalker(Walker):
         (self.phi[:, :nup], Rup) = scipy.linalg.qr(self.phi[:, :nup], mode="economic")
         Rdown = numpy.zeros(Rup.shape)
         if ndown > 0:
-            (self.phi[:, nup:], Rdn) = scipy.linalg.qr(
-                self.phi[:, nup:], mode="economic"
-            )
+            (self.phi[:, nup:], Rdn) = scipy.linalg.qr(self.phi[:, nup:], mode="economic")
         # TODO: FDM This isn't really necessary, the absolute value of the
         # weight is used for population control so this shouldn't matter.
         # I think this is a legacy thing.
@@ -283,17 +266,13 @@ class SingleDetWalker(Walker):
         (buff, Rup) = scipy.linalg.qr(buff, mode="economic")
         Rdown = numpy.zeros(Rup.shape)
         if ndown > 0:
-            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(
-                self.phi[:, nup:], mode="economic"
-            )
+            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(self.phi[:, nup:], mode="economic")
         signs_up = numpy.diag(numpy.sign(numpy.diag(Rup)))
         if ndown > 0:
             signs_down = numpy.diag(numpy.sign(numpy.diag(Rdown)))
         buff = buff.dot(signs_up)
         self.phi[:, : self.ia[0]] = numpy.copy(buff[:, : self.ia[0]])
-        self.phi[:, self.ia[0] : self.nup - 1] = numpy.copy(
-            buff[:, self.ia[0] + 1 : self.nup]
-        )
+        self.phi[:, self.ia[0] : self.nup - 1] = numpy.copy(buff[:, self.ia[0] + 1 : self.nup])
         self.phi[:, self.nup - 1] = numpy.copy(buff[:, -1])
         if ndown > 0:
             self.phi[:, nup:] = self.phi[:, nup:].dot(signs_down)

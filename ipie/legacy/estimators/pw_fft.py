@@ -1,6 +1,5 @@
 try:
-    from ipie.legacy.estimators.ueg_kernels import \
-        exchange_greens_function_per_qvec
+    from ipie.legacy.estimators.ueg_kernels import exchange_greens_function_per_qvec
 except ImportError:
     pass
 
@@ -147,9 +146,7 @@ def local_energy_pw_fft_no_cython(system, G, Ghalf, two_rdm=None):
 
     CTdagger = numpy.array(
         [
-            numpy.array(
-                system.trial[:, 0 : system.nup], dtype=numpy.complex128
-            ).T.conj(),
+            numpy.array(system.trial[:, 0 : system.nup], dtype=numpy.complex128).T.conj(),
             numpy.array(system.trial[:, system.nup :], dtype=numpy.complex128).T.conj(),
         ]
     )
@@ -202,7 +199,6 @@ def local_energy_pw_fft_no_cython(system, G, Ghalf, two_rdm=None):
 
     for s in [0, 1]:
         for i, j in itertools.product(range(nocc[s]), range(nocc[s])):
-
             ###################################
             Gh_i = numpy.flip(Ghalf[s][i, :])
             CTdagger_j = CTdagger[s][j, :]
@@ -297,9 +293,7 @@ def unit_test():
         pr = cProfile.Profile()
         pr.enable()
 
-        etot, ekin, epot = local_energy_pw_fft(
-            system, G=G, Ghalf=Ghalf, trial=system.trial
-        )
+        etot, ekin, epot = local_energy_pw_fft(system, G=G, Ghalf=Ghalf, trial=system.trial)
         pr.disable()
         pr.print_stats(sort="tottime")
         print("ERHF = {}, {}, {}".format(etot, ekin, epot))

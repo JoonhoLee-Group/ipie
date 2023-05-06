@@ -55,9 +55,7 @@ class Estimators(object):
         True if calculating imaginary time correlation functions (ITCFs).
     """
 
-    def __init__(
-        self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False
-    ):
+    def __init__(self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False):
         if verbose:
             print("# Setting up estimator object.")
         if root:
@@ -101,10 +99,7 @@ class Estimators(object):
             self.nbp = self.estimators["back_prop"].nmax
             if verbose:
                 print("# Performing back propagation.")
-                print(
-                    "# Total number of back propagation steps: "
-                    "{:d}.".format(self.nprop_tot)
-                )
+                print("# Total number of back propagation steps: " "{:d}.".format(self.nprop_tot))
         else:
             self.nprop_tot = None
             self.nbp = None
@@ -150,9 +145,7 @@ class Estimators(object):
             Number of steps between measurements.
         """
         for k, e in self.estimators.items():
-            e.print_step(
-                comm, nprocs, step, nsteps=nsteps, free_projection=free_projection
-            )
+            e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
     def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators

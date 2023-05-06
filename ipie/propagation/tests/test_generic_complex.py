@@ -23,6 +23,7 @@ from ipie.utils.misc import dotdict
 from ipie.utils.testing import build_test_case_handlers
 from ipie.hamiltonians.generic import GenericComplexChol
 
+
 @pytest.mark.unit
 def test_AB_cholesky():
     numpy.random.seed(7)
@@ -39,6 +40,7 @@ def test_AB_cholesky():
             "num_steps": nsteps,
         }
     )
+<<<<<<< HEAD
     
     test_handler = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7, complex_integrals=True, complex_trial = True, trial_type="single_det")
 
@@ -241,3 +243,25 @@ if __name__ == "__main__":
     test_vhs_complex_vs_real()
     test_vfb_complex()
     test_vfb_complex_vs_real()
+=======
+
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det",
+    )
+    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * batched_data.hamiltonian.nfields).reshape(
+        batched_data.hamiltonian.nfields, nwalkers
+    )
+
+    vhs_batch = batched_data.propagator.construct_VHS(batched_data.hamiltonian, xshifted)
+
+
+if __name__ == "__main__":
+    test_vhs()
+>>>>>>> 330f296 (Reformat.)

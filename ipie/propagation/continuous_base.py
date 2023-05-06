@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
 
+
 class PropagatorTimer(object):
     def __init__(self):
         self.tfbias = 0.0
@@ -8,6 +9,7 @@ class PropagatorTimer(object):
         self.tgf = 0.0
         self.tvhs = 0.0
         self.tgemm = 0.0
+
 
 class ContinuousBase(ABC):
     """A base class for continuous HS transform AFQMC propagators."""
@@ -23,9 +25,7 @@ class ContinuousBase(ABC):
         pass
 
     @abstractmethod
-    def propagate_walkers(
-        self, walkers, hamiltonian, trial, eshift
-    ):
+    def propagate_walkers(self, walkers, hamiltonian, trial, eshift):
         pass
 
     @abstractmethod

@@ -73,9 +73,7 @@ def test_generic_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc
-    )
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(ham)
@@ -93,11 +91,12 @@ def test_generic_chunked():
     trial.chunk(mpi_handler)
 
     prop = PhaselessGenericChunked(time_step=qmc["dt"])
-    prop.build(ham,trial,mpi_handler=mpi_handler)
+    prop.build(ham, trial, mpi_handler=mpi_handler)
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
-    walkers = UHFWalkersTrial(trial,init_walker,system.nup,system.ndown,ham.nbasis,nwalkers,
-                                           mpi_handler = mpi_handler)
+    walkers = UHFWalkersTrial(
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+    )
     walkers.build(trial)
 
     for i in range(nsteps):
@@ -106,9 +105,7 @@ def test_generic_chunked():
 
     energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
-    energies_chunked = local_energy_single_det_uhf_batch_chunked(
-        system, ham, walkers, trial
-    )
+    energies_chunked = local_energy_single_det_uhf_batch_chunked(system, ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_chunked)
 

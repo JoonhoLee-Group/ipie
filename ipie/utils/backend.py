@@ -102,6 +102,4 @@ def cast_to_device(self, verbose=False):
     used_bytes, total_bytes = get_device_memory()
     used_gb, total_gb = used_bytes / 1024**3.0, total_bytes / 1024**3.0
     if verbose:
-        print(
-            f"# {self.__class__.__name__}: using {used_gb} GB out of {total_gb} GB memory on GPU"
-        )
+        print(f"# {self.__class__.__name__}: using {used_gb} GB out of {total_gb} GB memory on GPU")

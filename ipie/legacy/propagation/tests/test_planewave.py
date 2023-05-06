@@ -17,9 +17,7 @@ def test_pw():
     system = UEG(options=options)
     ham = HamUEG(system, options=options)
     occ = numpy.eye(ham.nbasis)[:, : system.nup]
-    wfn = numpy.zeros(
-        (1, ham.nbasis, system.nup + system.ndown), dtype=numpy.complex128
-    )
+    wfn = numpy.zeros((1, ham.nbasis, system.nup + system.ndown), dtype=numpy.complex128)
     wfn[0, :, : system.nup] = occ
     wfn[0, :, system.nup :] = occ
     coeffs = numpy.array([1 + 0j])

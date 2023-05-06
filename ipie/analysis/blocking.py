@@ -52,9 +52,7 @@ def average_single(frame, delete=True, multi_sym=False):
         short = frame
     means = short.mean()
     err = short.aggregate(lambda x: scipy.stats.sem(x, ddof=1))
-    averaged = means.merge(
-        err, left_index=True, right_index=True, suffixes=("", "_error")
-    )
+    averaged = means.merge(err, left_index=True, right_index=True, suffixes=("", "_error"))
     columns = [c for c in averaged.columns.values if "_error" not in c]
     columns = [[c, c + "_error"] for c in columns]
     columns = [item for sublist in columns for item in sublist]
@@ -117,11 +115,7 @@ def average_fp(frame):
     re_nume = real.ENumer_error.values
     re_dene = real.EDenom_error.values
     # Ignoring the fact that the mean includes complex components.
-    cov_nd = (
-        real_df.groupby("Iteration")
-        .apply(lambda x: x["ENumer"].cov(x["EDenom"]))
-        .values
-    )
+    cov_nd = real_df.groupby("Iteration").apply(lambda x: x["ENumer"].cov(x["EDenom"])).values
     nsamp = len(re_nume)
     results["E_error"] = (
         numpy.abs(results.E)
@@ -168,10 +162,7 @@ def reblock_mixed(groupby, columns, verbose=False):
                 reblocked[c + "_nsamp"] = data_len.values[ix]
             except KeyError:
                 if verbose:
-                    print(
-                        "Reblocking of {:4} failed. Insufficient "
-                        "statistics.".format(c)
-                    )
+                    print("Reblocking of {:4} failed. Insufficient " "statistics.".format(c))
         for i, v in enumerate(group):
             reblocked[columns[i]] = v
         analysed.append(reblocked)
@@ -204,9 +195,7 @@ def reblock_free_projection(frame):
                 reblocked[c] = rb["mean"].values
                 reblocked[c + "_error"] = rb["standard error"].values
             except KeyError:
-                print(
-                    "Reblocking of {:4} failed. Insufficient " "statistics.".format(c)
-                )
+                print("Reblocking of {:4} failed. Insufficient " "statistics.".format(c))
     analysed.append(reblocked)
 
     if len(analysed) == 0:
@@ -298,9 +287,7 @@ def analyse_back_prop(files, start_time):
         data = extract_data(f, "back_propagated", "energies")[start:]
         av = data.mean().to_frame().T
         err = (data.std() / len(data) ** 0.5).to_frame().T
-        res = pd.merge(
-            av, err, left_index=True, right_index=True, suffixes=("", "_error")
-        )
+        res = pd.merge(av, err, left_index=True, right_index=True, suffixes=("", "_error"))
         full.append(res)
     return pd.concat(full).sort_values("tau_bp")
 
@@ -370,9 +357,7 @@ def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=
         with h5py.File(outfile, "w") as fh5:
             fh5["metadata"] = numpy.array(mds).astype("S")
             try:
-                fh5["basic/estimates"] = basic_av.drop(
-                    "integrals", axis=1
-                ).values.astype(float)
+                fh5["basic/estimates"] = basic_av.drop("integrals", axis=1).values.astype(float)
             except KeyError:
                 pass
             fh5["basic/headers"] = numpy.array(basic_av.columns.values).astype("S")

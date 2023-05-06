@@ -3,17 +3,13 @@ import scipy.linalg
 
 from ipie.legacy.estimators.fock import fock_matrix
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.thermal import (entropy, greens_function,
-                                            one_rdm_stable, particle_number)
-from ipie.legacy.trial_density_matrices.chem_pot import (
-    compute_rho, find_chemical_potential)
+from ipie.legacy.estimators.thermal import entropy, greens_function, one_rdm_stable, particle_number
+from ipie.legacy.trial_density_matrices.chem_pot import compute_rho, find_chemical_potential
 from ipie.legacy.trial_density_matrices.onebody import OneBody
 
 
 class MeanField(OneBody):
-    def __init__(
-        self, system, hamiltonian, beta, dt, options={}, H1=None, verbose=False
-    ):
+    def __init__(self, system, hamiltonian, beta, dt, options={}, H1=None, verbose=False):
         OneBody.__init__(
             self, system, hamiltonian, beta, dt, options=options, H1=H1, verbose=verbose
         )
@@ -37,9 +33,7 @@ class MeanField(OneBody):
                 scipy.linalg.inv(self.dmat[1], check_finite=False),
             ]
         )
-        self.G = numpy.array(
-            [greens_function(self.dmat[0]), greens_function(self.dmat[1])]
-        )
+        self.G = numpy.array([greens_function(self.dmat[0]), greens_function(self.dmat[1])])
         self.nav = particle_number(self.P).real
 
     def thermal_hartree_fock(self, system, beta):
@@ -52,9 +46,7 @@ class MeanField(OneBody):
             if self.verbose:
                 print("# Macro iteration: {}".format(it))
             HMF = self.scf(system, beta, mu_old, P)
-            rho = numpy.array(
-                [scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])]
-            )
+            rho = numpy.array([scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
                     system,
@@ -72,11 +64,7 @@ class MeanField(OneBody):
             P = one_rdm_stable(rho_mu, self.num_bins)
             dmu = abs(mu - mu_old)
             if self.verbose:
-                print(
-                    "# New mu: {:13.8e} Old mu: {:13.8e} Dmu: {:13.8e}".format(
-                        mu, mu_old, dmu
-                    )
-                )
+                print("# New mu: {:13.8e} Old mu: {:13.8e} Dmu: {:13.8e}".format(mu, mu_old, dmu))
             if dmu < self.deps:
                 break
             mu_old = mu
@@ -104,9 +92,7 @@ class MeanField(OneBody):
                     scipy.linalg.expm(-dt * (HMF[1] - muN)),
                 ]
             )
-            Pnew = (1 - self.alpha) * one_rdm_stable(
-                rho, self.num_bins
-            ) + self.alpha * Pold
+            Pnew = (1 - self.alpha) * one_rdm_stable(rho, self.num_bins) + self.alpha * Pold
             change = numpy.linalg.norm(Pnew - Pold)
             if change < self.deps:
                 break

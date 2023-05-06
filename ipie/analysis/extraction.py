@@ -30,9 +30,7 @@ def extract_hdf5_data(filename, block_idx=1):
     with h5py.File(filename, "r") as fh5:
         keys = fh5[f"block_size_{block_idx}/data/"].keys()
         shape_keys = fh5[f"block_size_{block_idx}/shape/"].keys()
-        data = numpy.concatenate(
-            [fh5[f"block_size_{block_idx}/data/{d}"][:].real for d in keys]
-        )
+        data = numpy.concatenate([fh5[f"block_size_{block_idx}/data/{d}"][:].real for d in keys])
         for k in shape_keys:
             shapes[k] = {
                 "names": fh5[f"block_size_{block_idx}/names/{k}"][()],
@@ -44,9 +42,7 @@ def extract_hdf5_data(filename, block_idx=1):
                 "walker_header": fh5[f"block_size_{block_idx}/walker_prop_header"][()],
             }
         size_keys = fh5[f"block_size_{block_idx}/max_block"].keys()
-        max_block = sum(
-            fh5[f"block_size_{block_idx}/max_block/{d}"][()] for d in size_keys
-        )
+        max_block = sum(fh5[f"block_size_{block_idx}/max_block/{d}"][()] for d in size_keys)
 
     return data[: max_block + 1], shapes
 
@@ -128,15 +124,11 @@ def extract_bp_estimates(filename, skip=0):
 
 def extract_rdm(filename, est_type="back_propagated", rdm_type="one_rdm", ix=None):
     if ix is None:
-        splits = get_param(
-            filename, ["estimators", "estimators", "back_prop", "splits"]
-        )
+        splits = get_param(filename, ["estimators", "estimators", "back_prop", "splits"])
         ix = splits[0][-1]
     if est_type == "back_propagated":
         denom = extract_data(filename, est_type, "denominator_{}".format(ix), raw=True)
-        one_rdm = extract_data(
-            filename, est_type, rdm_type + "_{}".format(ix), raw=True
-        )
+        one_rdm = extract_data(filename, est_type, rdm_type + "_{}".format(ix), raw=True)
     else:
         one_rdm = extract_data(filename, est_type, rdm_type, raw=True)
         denom = None

@@ -85,9 +85,7 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
 
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta * nbasis)
-    ecoul_send = ecoul_kernel_batch_real_rchol_uhf(
-        rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb
-    )
+    ecoul_send = ecoul_kernel_batch_real_rchol_uhf(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha, nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta, nbasis)
     exx_send = exx_kernel_batch_real_rchol(rchola_chunk, Ghalfa)
@@ -291,15 +289,11 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
     mem_needed = 16 * nwalkers * max_nocc * max_nocc * max_nchol / (1024.0**3.0)
     num_chunks = max(1, ceil(mem_needed / max_mem))
     chunk_size = ceil(max_nchol / num_chunks)
-    buff = xp.zeros(
-        shape=(chunk_size, nwalkers * max_nocc * max_nocc), dtype=numpy.complex128
-    )
+    buff = xp.zeros(shape=(chunk_size, nwalkers * max_nocc * max_nocc), dtype=numpy.complex128)
 
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha * nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta * nbasis)
-    ecoul_send = ecoul_kernel_batch_rchol_uhf_gpu(
-        rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb
-    )
+    ecoul_send = ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
     Ghalfa = Ghalfa.reshape(nwalkers, nalpha, nbasis)
     Ghalfb = Ghalfb.reshape(nwalkers, nbeta, nbasis)
     exx_send = exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff)

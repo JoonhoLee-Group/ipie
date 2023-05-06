@@ -63,6 +63,4 @@ def delta_nav(dm, nav):
 
 
 def compute_rho(rho, mu, beta, sign=1):
-    return numpy.einsum(
-        "ijk,k->ijk", rho, numpy.exp(sign * beta * mu * numpy.ones(rho.shape[-1]))
-    )
+    return numpy.einsum("ijk,k->ijk", rho, numpy.exp(sign * beta * mu * numpy.ones(rho.shape[-1])))

@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,23 +88,17 @@ def test_read():
 
     chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
     filename = "hamil.test_read.h5"
-    write_qmcpack_dense(
-        h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False
-    )
+    write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
     nup, ndown = nelec
     comm = None
-    hcore, chol, h1e_mod, enuc = get_generic_integrals(
-        filename, comm=comm, verbose=False
-    )
+    hcore, chol, h1e_mod, enuc = get_generic_integrals(filename, comm=comm, verbose=False)
     sys = Generic(nelec=nelec)
     ham = HamGeneric(h1e=hcore, chol=chol, ecore=enuc)
     assert ham.ecore == pytest.approx(0.4392816555570978)
     assert ham.chol.shape == chol_.shape  # now two are transposed
     assert len(ham.H1.shape) == 3
     assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(
-        0.0
-    )  # now two are transposed
+    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
 
 
 @pytest.mark.unit
@@ -119,9 +112,7 @@ def test_shmem():
 
     chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
     filename = "hamil.test_shmem.h5"
-    write_qmcpack_dense(
-        h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False
-    )
+    write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
     filename = "hamil.test_shmem.h5"
     nup, ndown = nelec
     from ipie.utils.mpi import get_shared_comm
@@ -141,9 +132,7 @@ def test_shmem():
     assert ham.chol.shape == chol_.shape  # now two are transposed
     assert len(ham.H1.shape) == 3
     assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(
-        0.0
-    )  # now two are transposed
+    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
 
 
 def teardown_module():

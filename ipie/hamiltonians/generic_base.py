@@ -52,9 +52,7 @@ class GenericBase(metaclass=ABCMeta):
         self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
         handler.comm.barrier()
 
-        self.chol_packed_chunk = handler.scatter_group(
-            self.chol_packed
-        )  # distribute over chol
+        self.chol_packed_chunk = handler.scatter_group(self.chol_packed)  # distribute over chol
 
         # if handler.srank == 0:
         self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]

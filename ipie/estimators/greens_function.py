@@ -23,7 +23,10 @@ from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.single_det import SingleDet
 
-from ipie.estimators.greens_function_single_det import greens_function_single_det_batch, greens_function_single_det
+from ipie.estimators.greens_function_single_det import (
+    greens_function_single_det_batch,
+    greens_function_single_det,
+)
 from ipie.estimators.greens_function_multi_det import greens_function_multi_det
 from ipie.estimators.greens_function_multi_det import greens_function_multi_det_wicks_opt
 
@@ -48,16 +51,16 @@ def get_greens_function(trial):
         Propagator object.
     """
 
-    if isinstance(trial,SingleDet):
+    if isinstance(trial, SingleDet):
         if is_cupy(
             trial.psi
         ):  # if even one array is a cupy array we should assume the rest is done with cupy
             compute_greens_function = greens_function_single_det_batch
         else:
             compute_greens_function = greens_function_single_det
-    elif isinstance(trial,NOCI):
+    elif isinstance(trial, NOCI):
         compute_greens_function = greens_function_multi_det
-    elif isinstance(trial,ParticleHoleWicks):
+    elif isinstance(trial, ParticleHoleWicks):
         compute_greens_function = greens_function_multi_det_wicks_opt
     else:
         compute_greens_function = None

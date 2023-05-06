@@ -43,9 +43,7 @@ class MPIHandler(object):
         self.nmembers = nmembers
 
         if verbose:
-            print(
-                f"# MPIHandler detected {self.ngroups} groups with {self.nmembers} members each"
-            )
+            print(f"# MPIHandler detected {self.ngroups} groups with {self.nmembers} members each")
 
         try:
             assert self.size == self.nmembers * self.ngroups
@@ -71,15 +69,11 @@ class MPIHandler(object):
             if isinstance(array[0], int):
                 my_array = numpy.zeros(split_sizes[self.srank], dtype=numpy.int64)
                 tmp = numpy.array(array)
-                self.scomm.Scatterv(
-                    [tmp, split_sizes, displacements, MPI.INT64_T], my_array, root
-                )
+                self.scomm.Scatterv([tmp, split_sizes, displacements, MPI.INT64_T], my_array, root)
         elif isinstance(array, numpy.ndarray):
             if len(array.shape) == 2:
                 ncols = array.shape[1]
-                my_array = numpy.zeros(
-                    (split_sizes[self.srank], ncols), dtype=array.dtype
-                )
+                my_array = numpy.zeros((split_sizes[self.srank], ncols), dtype=array.dtype)
                 self.scomm.Scatterv(
                     [array, split_sizes * ncols, displacements * ncols, MPI.DOUBLE],
                     my_array,

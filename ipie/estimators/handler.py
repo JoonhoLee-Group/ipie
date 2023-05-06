@@ -174,9 +174,7 @@ class EstimatorHandler(object):
                     fh5[f"block_size_1/size/{k}"] = o.size
                     fh5[f"block_size_1/scalar/{k}"] = int(o.scalar_estimator)
                     fh5[f"block_size_1/names/{k}"] = " ".join(name for name in o.names)
-                    fh5[
-                        f"block_size_1/offset/{k}"
-                    ] = self.num_walker_props + self.get_offset(k)
+                    fh5[f"block_size_1/offset/{k}"] = self.num_walker_props + self.get_offset(k)
         if comm.rank == 0:
             print(header)
 

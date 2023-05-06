@@ -83,12 +83,8 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
 
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
-        Xa = ham.chol.T.dot(
-            G0[0].ravel()
-        )  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol)
-        Xb = ham.chol.T.dot(
-            G0[1].ravel()
-        )  # numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol)
+        Xa = ham.chol.T.dot(G0[0].ravel())  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol)
+        Xb = ham.chol.T.dot(G0[1].ravel())  # numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol)
 
         LXa = numpy.einsum("mx,x->m", ham.chol, Xa, optimize=True)
         LXb = numpy.einsum("mx,x->m", ham.chol, Xb, optimize=True)
@@ -161,27 +157,17 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
             for iex in range(nex_a):
                 det_a[iex, iex] = G0a[trial.cre_a[jdet][iex], trial.anh_a[jdet][iex]]
                 for jex in range(iex + 1, nex_a):
-                    det_a[iex, jex] = G0a[
-                        trial.cre_a[jdet][iex], trial.anh_a[jdet][jex]
-                    ]
-                    det_a[jex, iex] = G0a[
-                        trial.cre_a[jdet][jex], trial.anh_a[jdet][iex]
-                    ]
+                    det_a[iex, jex] = G0a[trial.cre_a[jdet][iex], trial.anh_a[jdet][jex]]
+                    det_a[jex, iex] = G0a[trial.cre_a[jdet][jex], trial.anh_a[jdet][iex]]
             for iex in range(nex_b):
                 det_b[iex, iex] = G0b[trial.cre_b[jdet][iex], trial.anh_b[jdet][iex]]
                 for jex in range(iex + 1, nex_b):
-                    det_b[iex, jex] = G0b[
-                        trial.cre_b[jdet][iex], trial.anh_b[jdet][jex]
-                    ]
-                    det_b[jex, iex] = G0b[
-                        trial.cre_b[jdet][jex], trial.anh_b[jdet][iex]
-                    ]
+                    det_b[iex, jex] = G0b[trial.cre_b[jdet][iex], trial.anh_b[jdet][jex]]
+                    det_b[jex, iex] = G0b[trial.cre_b[jdet][jex], trial.anh_b[jdet][iex]]
 
             cphasea = trial.coeffs[jdet].conj() * trial.phase_a[jdet]
             cphaseb = trial.coeffs[jdet].conj() * trial.phase_b[jdet]
-            cphaseab = (
-                trial.coeffs[jdet].conj() * trial.phase_a[jdet] * trial.phase_b[jdet]
-            )
+            cphaseab = trial.coeffs[jdet].conj() * trial.phase_a[jdet] * trial.phase_b[jdet]
 
             if nex_a > 0 and nex_b > 0:  # 2-leg opposite spin block
                 if nex_a == 1 and nex_b == 1:
@@ -333,32 +319,24 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
                     cont3 += cphaseab * numpy.dot(Lbb[u, t], Laa[w, v]) * cofactor[8]
 
                 else:
-                    cofactor_a = numpy.zeros(
-                        (nex_a - 1, nex_a - 1), dtype=numpy.complex128
-                    )
-                    cofactor_b = numpy.zeros(
-                        (nex_b - 1, nex_b - 1), dtype=numpy.complex128
-                    )
+                    cofactor_a = numpy.zeros((nex_a - 1, nex_a - 1), dtype=numpy.complex128)
+                    cofactor_b = numpy.zeros((nex_b - 1, nex_b - 1), dtype=numpy.complex128)
                     for iex in range(nex_a):
                         for jex in range(nex_a):
                             p = trial.cre_a[jdet][iex]
                             q = trial.anh_a[jdet][jex]
                             cofactor_a[:, :] = minor_mask(det_a, iex, jex)
-                            det_cofactor_a = (-1) ** (iex + jex) * numpy.linalg.det(
-                                cofactor_a
-                            )
+                            det_cofactor_a = (-1) ** (iex + jex) * numpy.linalg.det(cofactor_a)
                             for kex in range(nex_b):
                                 for lex in range(nex_b):
                                     r = trial.cre_b[jdet][kex]
                                     s = trial.anh_b[jdet][lex]
                                     cofactor_b[:, :] = minor_mask(det_b, kex, lex)
-                                    det_cofactor_b = (-1) ** (
-                                        kex + lex
-                                    ) * numpy.linalg.det(cofactor_b)
-                                    const = cphaseab * det_cofactor_a * det_cofactor_b
-                                    cont3 += (
-                                        numpy.dot(Laa[q, p, :], Lbb[s, r, :]) * const
+                                    det_cofactor_b = (-1) ** (kex + lex) * numpy.linalg.det(
+                                        cofactor_b
                                     )
+                                    const = cphaseab * det_cofactor_a * det_cofactor_b
+                                    cont3 += numpy.dot(Laa[q, p, :], Lbb[s, r, :]) * const
 
             if nex_a == 2:  # 4-leg same spin block aaaa
                 p = trial.cre_a[jdet][0]
@@ -367,8 +345,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
                 s = trial.anh_a[jdet][1]
                 const = cphasea * ovlpb
                 cont3 += (
-                    numpy.dot(Laa[q, p, :], Laa[s, r, :])
-                    - numpy.dot(Laa[q, r, :], Laa[s, p, :])
+                    numpy.dot(Laa[q, p, :], Laa[s, r, :]) - numpy.dot(Laa[q, r, :], Laa[s, p, :])
                 ) * const
             elif nex_a > 2:
                 cofactor = numpy.zeros((nex_a - 2, nex_a - 2), dtype=numpy.complex128)
@@ -381,9 +358,9 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
                                 r = trial.cre_a[jdet][kex]
                                 s = trial.anh_a[jdet][lex]
                                 cofactor[:, :] = minor_mask4(det_a, iex, jex, kex, lex)
-                                det_cofactor = (-1) ** (
-                                    kex + lex + iex + jex
-                                ) * numpy.linalg.det(cofactor)
+                                det_cofactor = (-1) ** (kex + lex + iex + jex) * numpy.linalg.det(
+                                    cofactor
+                                )
                                 const = cphasea * det_cofactor * ovlpb
                                 cont3 += (
                                     numpy.dot(Laa[q, p, :], Laa[s, r, :])
@@ -397,8 +374,7 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
                 s = trial.anh_b[jdet][1]
                 const = cphaseb * ovlpa
                 cont3 += (
-                    numpy.dot(Lbb[q, p, :], Lbb[s, r, :])
-                    - numpy.dot(Lbb[q, r, :], Lbb[s, p, :])
+                    numpy.dot(Lbb[q, p, :], Lbb[s, r, :]) - numpy.dot(Lbb[q, r, :], Lbb[s, p, :])
                 ) * const
 
             elif nex_b > 2:
@@ -412,9 +388,9 @@ def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
                                 r = trial.cre_b[jdet][kex]
                                 s = trial.anh_b[jdet][lex]
                                 cofactor[:, :] = minor_mask4(det_b, iex, jex, kex, lex)
-                                det_cofactor = (-1) ** (
-                                    kex + lex + iex + jex
-                                ) * numpy.linalg.det(cofactor)
+                                det_cofactor = (-1) ** (kex + lex + iex + jex) * numpy.linalg.det(
+                                    cofactor
+                                )
                                 const = cphaseb * det_cofactor * ovlpa
                                 cont3 += (
                                     numpy.dot(Lbb[q, p, :], Lbb[s, r, :])
@@ -575,9 +551,7 @@ def build_contributions12(
     return cont1_J + cont1_K, cont2_J + cont2_K
 
 
-def local_energy_multi_det_trial_wicks_batch_opt_chunked(
-    system, ham, walkers, trial, max_mem=2.0
-):
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -621,12 +595,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     G0a = walkers.G0a
     G0b = walkers.G0b
 
-    Lvo_a = numpy.zeros(
-        (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-    )
-    Lvo_b = numpy.zeros(
-        (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
-    )
+    Lvo_a = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
+    Lvo_b = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128)
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
@@ -644,9 +614,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     Laa = Lvo_a.transpose((0, 2, 3, 1)).copy()
     Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
-    dets_a_full, dets_b_full = compute_determinants_batched(
-        walkers.Ghalfa, walkers.Ghalfb, trial
-    )
+    dets_a_full, dets_b_full = compute_determinants_batched(walkers.Ghalfa, walkers.Ghalfb, trial)
     cphase_a = trial.coeffs.conj() * trial.phase_a
     cphase_b = trial.coeffs.conj() * trial.phase_b
     ovlpa = dets_a_full * trial.phase_a[None, :]
@@ -668,12 +636,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
         ]
     )
     det_sizes_b = max(
-        max(
-            [
-                len(trial.cre_ex_b_chunk[ichunk][i]) * i * i
-                for i in range(1, trial.max_excite + 1)
-            ]
-        )
+        max([len(trial.cre_ex_b_chunk[ichunk][i]) * i * i for i in range(1, trial.max_excite + 1)])
         for ichunk in range(trial.num_det_chunks)
     )
     max_size = max(det_sizes_a, det_sizes_b)
@@ -682,12 +645,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     for ichunk in range(trial.num_det_chunks):
         ndets_chunk = trial.ndets_per_chunk[ichunk]
-        alpha_os_buffer = numpy.zeros(
-            (nwalkers, ndets_chunk, nchol), dtype=numpy.complex128
-        )
-        beta_os_buffer = numpy.zeros(
-            (nwalkers, ndets_chunk, nchol), dtype=numpy.complex128
-        )
+        alpha_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        beta_os_buffer = numpy.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
         alpha_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
         beta_ss_buffer = numpy.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
         for iexcit in range(1, trial.max_excite + 1):
@@ -774,9 +733,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                             trial.anh_ex_a_chunk[ichunk][iexcit],
                             trial.occ_map_a,
                             det_mat_a,
-                            cofactor_matrix_a[
-                                :, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)
-                            ],
+                            cofactor_matrix_a[:, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)],
                             Laa,
                             alpha_ss_buffer,
                             trial.slices_alpha_chunk[ichunk][iexcit],
@@ -857,9 +814,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
                         trial.anh_ex_b_chunk[ichunk][iexcit],
                         trial.occ_map_b,
                         det_mat_b,
-                        cofactor_matrix_b[
-                            :, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)
-                        ],
+                        cofactor_matrix_b[:, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)],
                         Lbb,
                         beta_ss_buffer,
                         trial.slices_beta_chunk[ichunk][iexcit],
@@ -902,9 +857,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(
     return walker_energies
 
 
-def local_energy_multi_det_trial_wicks_batch_opt(
-    system, ham, walkers, trial, max_mem=2.0
-):
+def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -949,12 +902,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     G0a = walkers.G0a
     G0b = walkers.G0b
 
-    Lvo_a = numpy.zeros(
-        (nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128
-    )
-    Lvo_b = numpy.zeros(
-        (nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128
-    )
+    Lvo_a = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_alpha), dtype=numpy.complex128)
+    Lvo_b = numpy.zeros((nwalkers, nchol, trial.nact, trial.nocc_beta), dtype=numpy.complex128)
     cont1, cont2 = build_contributions12(
         trial._rchola,
         trial._rcholb,
@@ -972,9 +921,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     Laa = Lvo_a.transpose((0, 2, 3, 1)).copy()
     Lbb = Lvo_b.transpose((0, 2, 3, 1)).copy()
 
-    dets_a_full, dets_b_full = compute_determinants_batched(
-        walkers.Ghalfa, walkers.Ghalfb, trial
-    )
+    dets_a_full, dets_b_full = compute_determinants_batched(walkers.Ghalfa, walkers.Ghalfb, trial)
     ndets = len(trial.coeffs)
     cphase_a = trial.coeffs.conj() * trial.phase_a
     cphase_b = trial.coeffs.conj() * trial.phase_b
@@ -989,18 +936,10 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     beta_os_buffer = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     alpha_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     beta_ss_buffer = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    map_alpha = numpy.concatenate(
-        [numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a
-    )
-    map_beta = numpy.concatenate(
-        [numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b
-    )
-    det_sizes_a = max(
-        [len(trial.cre_ex_a[i]) * i * i for i in range(1, trial.max_excite + 1)]
-    )
-    det_sizes_b = max(
-        [len(trial.cre_ex_b[i]) * i * i for i in range(1, trial.max_excite + 1)]
-    )
+    map_alpha = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_a)
+    map_beta = numpy.concatenate([numpy.array([0], dtype=numpy.int32)] + trial.excit_map_b)
+    det_sizes_a = max([len(trial.cre_ex_a[i]) * i * i for i in range(1, trial.max_excite + 1)])
+    det_sizes_b = max([len(trial.cre_ex_b[i]) * i * i for i in range(1, trial.max_excite + 1)])
     max_size = max(det_sizes_a, det_sizes_b)
     det_mat_buffer = numpy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
     for iexcit in range(1, trial.max_excite + 1):
@@ -1009,9 +948,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(
         nelem_det = int(numpy.prod(det_size))
         det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
         cof_size = (nwalkers, ndets_a, max(iexcit - 1, 1), max(iexcit - 1, 1))
-        cofactor_matrix_a = det_mat_buffer[
-            nelem_det : nelem_det + numpy.prod(cof_size)
-        ].reshape(cof_size)
+        cofactor_matrix_a = det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_size)].reshape(
+            cof_size
+        )
         _start = time.time()
         if ndets_a > 0:
             wk.build_det_matrix(
@@ -1087,9 +1026,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
                         trial.anh_ex_a[iexcit],
                         trial.occ_map_a,
                         det_mat_a,
-                        cofactor_matrix_a[
-                            :, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)
-                        ],
+                        cofactor_matrix_a[:, :, : max(iexcit - 2, 1), : max(iexcit - 2, 1)],
                         Laa,
                         alpha_ss_buffer,
                         trial.slices_alpha[iexcit],
@@ -1099,9 +1036,9 @@ def local_energy_multi_det_trial_wicks_batch_opt(
         nelem_det = int(numpy.prod(det_size))
         det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
         cof_size = (nwalkers, ndets_b, max(iexcit - 1, 1), max(iexcit - 1, 1))
-        cofactor_matrix_b = det_mat_buffer[
-            nelem_det : nelem_det + numpy.prod(cof_size)
-        ].reshape(cof_size)
+        cofactor_matrix_b = det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_size)].reshape(
+            cof_size
+        )
         if ndets_b > 0:
             wk.build_det_matrix(
                 trial.cre_ex_b[iexcit],
@@ -1184,9 +1121,7 @@ def local_energy_multi_det_trial_wicks_batch_opt(
     bufferba[:, map_beta, :] = beta_os_buffer[:, :, :]
     bufferbb[:, map_beta] = beta_ss_buffer[:, :]
     bufferaa[:, map_alpha] = alpha_ss_buffer[:, :]
-    energy_os = numpy.einsum(
-        "wJx,wJx,J->w", bufferab, bufferba, cphase_ab, optimize=True
-    )
+    energy_os = numpy.einsum("wJx,wJx,J->w", bufferab, bufferba, cphase_ab, optimize=True)
     energy_ss = numpy.einsum("wJ,wJ->w", bufferaa, c_phasea_ovlpb, optimize=True)
     energy_ss += numpy.einsum("wJ,wJ->w", bufferbb, c_phaseb_ovlpa, optimize=True)
 
@@ -1204,17 +1139,12 @@ def local_energy_multi_det_trial_wicks_batch_opt(
 # kernels were jitte with numba for better performance.
 
 
-def get_same_spin_double_contribution_batched(
-    cre, anh, buffer, excit_map, chol_fact, det_sls
-):
+def get_same_spin_double_contribution_batched(cre, anh, buffer, excit_map, chol_fact, det_sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
     s = anh[:, 1]
-    contribution = (
-        chol_fact[:, q, p] * chol_fact[:, s, r]
-        - chol_fact[:, q, r] * chol_fact[:, s, p]
-    )
+    contribution = chol_fact[:, q, p] * chol_fact[:, s, r] - chol_fact[:, q, r] * chol_fact[:, s, p]
     buffer[:, det_sls] = contribution
 
 
@@ -1305,12 +1235,8 @@ def fill_same_spin_contribution_batched_contr(
                     # Nw*Nd
                     chol_b = chol_fact[:, s, r]
                     chol_d = chol_fact[:, s, p]
-                    contribution = numpy.einsum(
-                        "wJx,wJx->wJ", chol_a, chol_b, optimize=True
-                    )
-                    contribution -= numpy.einsum(
-                        "wJx,wJx->wJ", chol_c, chol_d, optimize=True
-                    )
+                    contribution = numpy.einsum("wJx,wJx->wJ", chol_a, chol_b, optimize=True)
+                    contribution -= numpy.einsum("wJx,wJx->wJ", chol_c, chol_d, optimize=True)
                     # contribution = numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,p], chol_fact[:,s,r], optimize=True)
                     # contribution -= numpy.einsum('wJx,wJx->wJ', chol_fact[:,q,r], chol_fact[:,s,p], optimize=True)
                     # contribution *= det_cofactor
@@ -1359,9 +1285,7 @@ def fill_opp_spin_factors_batched_chol(
 ):
     nwalkers = cofactor_matrix.shape[0]
     ndet_level = cofactor_matrix.shape[1]
-    accumulator = numpy.zeros(
-        (nwalkers, ndet_level, chol_factor.shape[-1]), dtype=numpy.complex128
-    )
+    accumulator = numpy.zeros((nwalkers, ndet_level, chol_factor.shape[-1]), dtype=numpy.complex128)
     for iex in range(nexcit):
         ps = cre[:, iex]
         for jex in range(nexcit):
@@ -1375,9 +1299,7 @@ def fill_opp_spin_factors_batched_chol(
     spin_buffer[:, det_sls] = accumulator
 
 
-def fill_opp_spin_factors_batched_singles(
-    cre, anh, excit_map, chol_factor, spin_buffer, det_sls
-):
+def fill_opp_spin_factors_batched_singles(cre, anh, excit_map, chol_factor, spin_buffer, det_sls):
     p = cre[:, 0]
     q = anh[:, 0]
     x = chol_factor[:, q, p]
@@ -1400,9 +1322,7 @@ def fill_opp_spin_factors_batched_singles(
 # spin_buffer[:,start+idet] = chol_factor[:, qs[idet], ps[idet]]
 
 
-def fill_opp_spin_factors_batched_doubles(
-    cre, anh, excit_map, G0, chol_factor, spin_buffer, sls
-):
+def fill_opp_spin_factors_batched_doubles(cre, anh, excit_map, G0, chol_factor, spin_buffer, sls):
     p = cre[:, 0]
     q = anh[:, 0]
     r = cre[:, 1]
@@ -1459,33 +1379,15 @@ def fill_opp_spin_factors_batched_triples(
     s = anh[:, 1]
     t = cre[:, 2]
     u = anh[:, 2]
-    accumulator = chol_factor[:, q, p] * (
-        G0[:, r, s] * G0[:, t, u] - G0[:, r, u] * G0[:, t, s]
-    )
-    accumulator -= chol_factor[:, s, p] * (
-        G0[:, r, q] * G0[:, t, u] - G0[:, r, u] * G0[:, t, q]
-    )
-    accumulator += chol_factor[:, u, p] * (
-        G0[:, r, q] * G0[:, t, s] - G0[:, r, s] * G0[:, t, q]
-    )
-    accumulator -= chol_factor[:, q, r] * (
-        G0[:, p, s] * G0[:, t, u] - G0[:, t, s] * G0[:, p, u]
-    )
-    accumulator += chol_factor[:, s, r] * (
-        G0[:, p, q] * G0[:, t, u] - G0[:, t, q] * G0[:, p, u]
-    )
-    accumulator -= chol_factor[:, u, r] * (
-        G0[:, p, q] * G0[:, t, s] - G0[:, t, q] * G0[:, p, s]
-    )
-    accumulator += chol_factor[:, q, t] * (
-        G0[:, p, s] * G0[:, r, u] - G0[:, r, s] * G0[:, p, u]
-    )
-    accumulator -= chol_factor[:, s, t] * (
-        G0[:, p, q] * G0[:, r, u] - G0[:, r, q] * G0[:, p, u]
-    )
-    accumulator += chol_factor[:, u, t] * (
-        G0[:, p, q] * G0[:, r, s] - G0[:, r, q] * G0[:, p, s]
-    )
+    accumulator = chol_factor[:, q, p] * (G0[:, r, s] * G0[:, t, u] - G0[:, r, u] * G0[:, t, s])
+    accumulator -= chol_factor[:, s, p] * (G0[:, r, q] * G0[:, t, u] - G0[:, r, u] * G0[:, t, q])
+    accumulator += chol_factor[:, u, p] * (G0[:, r, q] * G0[:, t, s] - G0[:, r, s] * G0[:, t, q])
+    accumulator -= chol_factor[:, q, r] * (G0[:, p, s] * G0[:, t, u] - G0[:, t, s] * G0[:, p, u])
+    accumulator += chol_factor[:, s, r] * (G0[:, p, q] * G0[:, t, u] - G0[:, t, q] * G0[:, p, u])
+    accumulator -= chol_factor[:, u, r] * (G0[:, p, q] * G0[:, t, s] - G0[:, t, q] * G0[:, p, s])
+    accumulator += chol_factor[:, q, t] * (G0[:, p, s] * G0[:, r, u] - G0[:, r, s] * G0[:, p, u])
+    accumulator -= chol_factor[:, s, t] * (G0[:, p, q] * G0[:, r, u] - G0[:, r, q] * G0[:, p, u])
+    accumulator += chol_factor[:, u, t] * (G0[:, p, q] * G0[:, r, s] - G0[:, r, q] * G0[:, p, s])
     spin_buffer[:, det_sls] = accumulator
 
 
@@ -1568,13 +1470,13 @@ def build_exchange_contributions_opt(
             # T = rchol[b,q] theta_{a,q}
             # index a gets contracted with CI tensor later so only need the
             # occupied orbitals in the active space not the full set of occupied.
-            T = numpy.dot(
-                theta_occ_real, rchol[x].reshape((nocc, nbasis)).T
-            ) + 1j * numpy.dot(theta_occ_imag, rchol[x].reshape((nocc, nbasis)).T)
+            T = numpy.dot(theta_occ_real, rchol[x].reshape((nocc, nbasis)).T) + 1j * numpy.dot(
+                theta_occ_imag, rchol[x].reshape((nocc, nbasis)).T
+            )
             # Ttilde[t,r] = theta_{c,t} rchol[c,r]
-            Ttilde = numpy.dot(
-                theta_act_real.T, rchol[x].reshape((nocc, nbasis))
-            ) + 1j * numpy.dot(theta_act_imag.T, rchol[x].reshape((nocc, nbasis)))
+            Ttilde = numpy.dot(theta_act_real.T, rchol[x].reshape((nocc, nbasis))) + 1j * numpy.dot(
+                theta_act_imag.T, rchol[x].reshape((nocc, nbasis))
+            )
             Q = rchol_act[x].reshape((nact, nbasis)) - Ttilde
             A = numpy.dot(Q.T, CI[iw])  # Q_tr I_ta -> A_{ra}
             B = numpy.dot(theta[iw], A)  # theta_{br} A_{ra} -> C_{ba}

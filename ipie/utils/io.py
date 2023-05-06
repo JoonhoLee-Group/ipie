@@ -34,17 +34,11 @@ def write_hamiltonian(
     e0: float,
     filename: str = "hamiltonian.h5",
 ) -> None:
-    assert (
-        len(hcore.shape) == 2
-    ), "Incorrect shape for hcore, expected 2-dimensional array"
+    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
     naux = LXmn.size // (nmo * nmo)
-    assert (
-        len(LXmn.shape) == 3
-    ), "Incorrect shape for LXmn, expected 3-dimensional array"
-    message = (
-        f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
-    )
+    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
     assert LXmn.shape[0] == naux, message
     with h5py.File(filename, "w") as fh5:
         fh5["hcore"] = hcore
@@ -57,17 +51,11 @@ def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float
         hcore = numpy.ndarray(fh5["hcore"][:])
         LXmn = numpy.ndarray(fh5["LXmn"][:])
         e0 = float(fh5["e0"][()])
-    assert (
-        len(hcore.shape) == 2
-    ), "Incorrect shape for hcore, expected 2-dimensional array"
+    assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
     naux = LXmn.size // (nmo * nmo)
-    assert (
-        len(LXmn.shape) == 3
-    ), "Incorrect shape for LXmn, expected 3-dimensional array"
-    message = (
-        f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
-    )
+    assert len(LXmn.shape) == 3, "Incorrect shape for LXmn, expected 3-dimensional array"
+    message = f"Incorrect first dimension for LXmn: found {LXmn.shape[0]} expected {naux}"
     assert LXmn.shape[0] == naux, message
     return hcore, LXmn, e0
 
@@ -152,9 +140,7 @@ def write_particle_hole_wavefunction(
         fh5["occ_beta"] = wfn[2]
 
 
-def write_noci_wavefunction(
-    wfn: tuple, filename: str, phi0: Union[None, list] = None
-) -> None:
+def write_noci_wavefunction(wfn: tuple, filename: str, phi0: Union[None, list] = None) -> None:
     assert len(wfn) == 2, "Expected (ci, psi)."
     assert isinstance(wfn[1], list)
     assert len(wfn[1][0].shape) == 3, "Expected psi.shape = (ndet, nmo, nocca)"
@@ -257,9 +243,7 @@ def write_json_input_file(
 
 def to_json(afqmc):
     json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
-    json_string = json.dumps(
-        serialise(afqmc, verbose=afqmc.verbosity), sort_keys=False, indent=4
-    )
+    json_string = json.dumps(serialise(afqmc, verbose=afqmc.verbosity), sort_keys=False, indent=4)
     return json_string
 
 
@@ -569,9 +553,7 @@ def from_qmcpack_sparse(filename):
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = (
-                numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
-            )
+            hcore = numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
             idx = numpy.ndarray(fh5["Hamiltonian/H1_indx"][:])
             row_ix = idx[::2]
             col_ix = idx[1::2]
@@ -608,9 +590,7 @@ def from_qmcpack_sparse(filename):
             s += bs
         nalpha = dims[4]
         nbeta = dims[5]
-        chol_vecs = scipy.sparse.csr_matrix(
-            (vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol)
-        )
+        chol_vecs = scipy.sparse.csr_matrix((vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol))
         return (hcore, chol_vecs, enuc, int(nmo), int(nalpha), int(nbeta))
 
 
@@ -633,15 +613,9 @@ def write_qmcpack_dense(
             fh5["Hamiltonian/hcore"] = numpy.real(hcore)
             fh5["Hamiltonian/DenseFactorized/L"] = numpy.real(chol)
         else:
-            fh5["Hamiltonian/hcore"] = to_qmcpack_complex(
-                hcore.astype(numpy.complex128)
-            )
-            fh5["Hamiltonian/DenseFactorized/L"] = to_qmcpack_complex(
-                chol.astype(numpy.complex128)
-            )
-        fh5["Hamiltonian/dims"] = numpy.array(
-            [0, 0, 0, nmo, nelec[0], nelec[1], 0, chol.shape[-1]]
-        )
+            fh5["Hamiltonian/hcore"] = to_qmcpack_complex(hcore.astype(numpy.complex128))
+            fh5["Hamiltonian/DenseFactorized/L"] = to_qmcpack_complex(chol.astype(numpy.complex128))
+        fh5["Hamiltonian/dims"] = numpy.array([0, 0, 0, nmo, nelec[0], nelec[1], 0, chol.shape[-1]])
         if ortho is not None:
             fh5["Hamiltonian/X"] = ortho
 
@@ -675,14 +649,9 @@ def write_qmcpack_sparse(
         nnz = len(vals)
         mem = (8 if real_chol else 16) * nnz / (1024.0**3)
         if verbose:
-            print(
-                " # Total number of non-zero elements in sparse cholesky ERI"
-                " tensor: %d" % nnz
-            )
+            print(" # Total number of non-zero elements in sparse cholesky ERI" " tensor: %d" % nnz)
             nelem = chol.shape[0] * chol.shape[1]
-            print(
-                " # Sparsity of ERI Cholesky tensor: " "%f" % (1 - float(nnz) / nelem)
-            )
+            print(" # Sparsity of ERI Cholesky tensor: " "%f" % (1 - float(nnz) / nelem))
             print(" # Total memory required for ERI tensor: %13.8e GB" % (mem))
         fh5["Hamiltonian/Factorized/block_sizes"] = numpy.array([nnz])
         fh5["Hamiltonian/Factorized/index_0"] = numpy.array(ix)

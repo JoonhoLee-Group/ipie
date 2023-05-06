@@ -40,9 +40,7 @@ def local_energy_hubbard_holstein_momentum(ham, G, P, Lap, Ghalf=None):
 
     rho = G[0].diagonal() + G[1].diagonal()
 
-    e_eph = (
-        ham.gamma_lf**2 * ham.w0 / 2.0 - ham.g * ham.gamma_lf * sqrttwomw
-    ) * numpy.sum(rho)
+    e_eph = (ham.gamma_lf**2 * ham.w0 / 2.0 - ham.g * ham.gamma_lf * sqrttwomw) * numpy.sum(rho)
 
     etot = ke + pe + pe_ph + ke_ph + e_eph
 
