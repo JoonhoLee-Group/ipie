@@ -2,7 +2,6 @@ import numpy
 import scipy.linalg
 
 from ipie.utils.linalg import minor_mask
-from ipie.utils.misc import is_cupy
 
 
 # Later we will add walker kinds as an input too
