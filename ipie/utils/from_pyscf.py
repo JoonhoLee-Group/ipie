@@ -44,7 +44,6 @@ def gen_ipie_input_from_pyscf_chk(
     linear_dep_thresh: float = 1e-8,
     num_frozen_core: int = 0,
 ) -> None:
-
     if mcscf:
         scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
     else:
@@ -147,10 +146,8 @@ def generate_wavefunction_from_mo_coeff(
         rohf = True
     else:
         rohf = False
-    nalpha, nbeta = nelec
     nmo = X.shape[1] - num_frozen_core
     if ortho_ao:
-        norb = X.shape[1]
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
@@ -215,8 +212,6 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     if verbose:
         print(" # Time to orthogonalise: %f" % (time.time() - start))
     enuc = mol.energy_nuc()
-    # Step 3. (Optionally) freeze core / virtuals.
-    nelec = mol.nelec
 
     return h1e, chol_vecs.reshape((-1, nbasis, nbasis)), enuc
 
@@ -304,7 +299,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
     for i in range(0, mol.nbas):
         shls = (i, i + 1, 0, mol.nbas, i, i + 1, 0, mol.nbas)
         buf = mol.intor("int2e_sph", shls_slice=shls)
-        di, dk, dj, dl = buf.shape
+        di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
     nu = numpy.argmax(diag)
@@ -432,7 +427,7 @@ def chunked_cholesky_outcore(
     for i in range(0, mol.nbas):
         shls = (i, i + 1, 0, mol.nbas, i, i + 1, 0, mol.nbas)
         buf = mol.intor("int2e_sph", shls_slice=shls)
-        di, dk, dj, dl = buf.shape
+        di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
     nu = numpy.argmax(diag)
@@ -649,7 +644,6 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
 
 def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     mol = mf.mol
-    ecore = mf.energy_nuc()
     hcore = mf.get_hcore()
     if ortho_ao:
         s1e = mf.mol.intor("int1e_ovlp_sph")
@@ -669,7 +663,7 @@ def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
     mol = scf_data["mol"]
     hcore = scf_data["hcore"]
     if ortho_ao:
-        oao = scf_data["X"]
+        raise ValueError("ortho_ao isn't used")
     else:
         X = scf_data["mo_coeff"]
         if len(X.shape) == 3:

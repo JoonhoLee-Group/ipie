@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,11 +35,13 @@ def is_cupy(obj):
     cond = "cupy" in t
     return cond
 
+
 def to_numpy(obj):
     t = str(type(obj))
     cond = "cupy" in t
     if cond:
         import cupy
+
         return cupy.asnumpy(obj)
     else:
         return obj
@@ -65,18 +66,22 @@ def get_git_info():
     under_git = True
     try:
         src = os.path.dirname(__file__) + "/../../"
-        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src,
-                                       stderr=subprocess.DEVNULL).strip()
+        sha1 = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=src, stderr=subprocess.DEVNULL
+        ).strip()
         suffix = subprocess.check_output(
             ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
-        local_mods = subprocess.check_output(
-            ["git", "status", "--porcelain", "./ipie"], cwd=src
-        ).strip().decode('utf-8').split()
+        local_mods = (
+            subprocess.check_output(["git", "status", "--porcelain", "./ipie"], cwd=src)
+            .strip()
+            .decode("utf-8")
+            .split()
+        )
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         under_git = False
     except Exception as error:
         suffix = False
@@ -112,7 +117,6 @@ def is_class(obj):
 
 
 def serialise(obj, verbose=0):
-
     obj_dict = {}
     if isinstance(obj, dict):
         items = obj.items()
@@ -292,18 +296,18 @@ def get_node_mem():
 
 
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
-
     import ipie
+
     print("# ipie version: {:s}".format(ipie.__version__))
     if sha1 is not None:
         print("# Git hash: {:s}.".format(sha1))
         print("# Git branch: {:s}.".format(branch))
-    if len(local_mods)  > 0:
+    if len(local_mods) > 0:
         print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
-            if prefix == 'M':
+            if prefix == "M":
                 print("# Modified : {:s}".format(file))
-            elif prefix == '??':
+            elif prefix == "??":
                 print("# Untracked : {:s}".format(file))
     print("# Calculation uuid: {:s}.".format(uuid))
     mem = get_node_mem()

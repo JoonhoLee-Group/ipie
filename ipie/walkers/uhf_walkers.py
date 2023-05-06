@@ -36,11 +36,13 @@ class UHFWalkers(BaseWalkers):
 
     def __init__(
         self,
-        initial_walker:numpy.ndarray,
-        nup:int, ndown:int, nbasis:int,
-        nwalkers:int,
+        initial_walker: numpy.ndarray,
+        nup: int,
+        ndown: int,
+        nbasis: int,
+        nwalkers: int,
         mpi_handler=None,
-        verbose:bool=False
+        verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
         self.nup = nup
@@ -48,10 +50,7 @@ class UHFWalkers(BaseWalkers):
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
 
-        super().__init__(
-            nwalkers,
-            verbose=verbose
-        )
+        super().__init__(nwalkers, verbose=verbose)
 
         # should completely deprecate these
         self.field_configs = None
@@ -90,9 +89,9 @@ class UHFWalkers(BaseWalkers):
         )
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
-        self.rhf = False # interfacing with old codes...
+        self.rhf = False  # interfacing with old codes...
 
-    def build(self,trial):
+    def build(self, trial):
         self.ovlp = trial.calc_greens_function(self)
 
     # This function casts relevant member variables into cupy arrays
@@ -105,10 +104,8 @@ class UHFWalkers(BaseWalkers):
         parameters
         ----------
         """
-        if config.get_option('use_gpu'):
+        if config.get_option("use_gpu"):
             return self.reortho_batched()
-        complex128 = numpy.complex128
-        nup = self.nup
         ndown = self.ndown
         detR = []
         for iw in range(self.nwalkers):
@@ -148,14 +145,14 @@ class UHFWalkers(BaseWalkers):
         parameters
         ----------
         """
-        assert config.get_option('use_gpu')
+        assert config.get_option("use_gpu")
         (self.phia, Rup) = qr(self.phia, mode=qr_mode)
-        Rup_diag = xp.einsum("wii->wi",Rup)
+        Rup_diag = xp.einsum("wii->wi", Rup)
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
 
         if self.ndown > 0:
             (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
-            Rdn_diag = xp.einsum("wii->wi",Rdn)
+            Rdn_diag = xp.einsum("wii->wi", Rdn)
             log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
 
         self.detR = xp.exp(log_det - self.detR_shift)
@@ -164,6 +161,7 @@ class UHFWalkers(BaseWalkers):
         synchronize()
 
         return self.detR
+
 
 class UHFWalkersParticleHole(UHFWalkers):
     """UHF style walker specialized for its use with ParticleHole trial.
@@ -179,22 +177,26 @@ class UHFWalkersParticleHole(UHFWalkers):
     def __init__(
         self,
         initial_walker,
-        nup, ndown, nbasis,
+        nup,
+        ndown,
+        nbasis,
         nwalkers,
         mpi_handler=None,
-        verbose=False
+        verbose=False,
     ):
         super().__init__(
             initial_walker,
-            nup, ndown, nbasis,
+            nup,
+            ndown,
+            nbasis,
             nwalkers,
             mpi_handler=mpi_handler,
-            verbose=verbose
+            verbose=verbose,
         )
         if verbose:
             print(
                 "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(
-                    self.ot.real
+                    self.ovlp.real
                 )
             )
         self.G0a = numpy.zeros(
@@ -213,7 +215,8 @@ class UHFWalkersParticleHole(UHFWalkers):
             shape=(self.nwalkers, self.nbasis, self.nbasis),
             dtype=numpy.complex128,
         )  # reference 1-GF
-    def build(self,trial):
+
+    def build(self, trial):
         self.num_dets = trial.num_dets
         self.CIa = numpy.zeros(
             shape=(self.nwalkers, trial.nact, trial.nocc_alpha),
@@ -240,20 +243,24 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
     def __init__(
         self,
         initial_walker,
-        nup, ndown, nbasis,
+        nup,
+        ndown,
+        nbasis,
         nwalkers,
         mpi_handler=None,
-        verbose=False
+        verbose=False,
     ):
         super().__init__(
             initial_walker,
-            nup, ndown, nbasis,
+            nup,
+            ndown,
+            nbasis,
             nwalkers,
             mpi_handler=mpi_handler,
-            verbose=verbose
+            verbose=verbose,
         )
 
-    def build(self,trial):
+    def build(self, trial):
         self.num_dets = trial.num_dets
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of

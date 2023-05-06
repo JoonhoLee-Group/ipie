@@ -18,19 +18,13 @@
 
 import ast
 import json
-import os
-from typing import Tuple, Union
 import sys
+from typing import Tuple, Union
 
 import h5py
 import numpy
 import scipy.sparse
 
-from ipie.utils.linalg import (
-    modified_cholesky,
-    molecular_orbitals_rhf,
-    molecular_orbitals_uhf,
-)
 from ipie.utils.misc import merge_dicts, serialise
 
 
@@ -60,8 +54,8 @@ def write_hamiltonian(
 
 def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
     with h5py.File(filename, "r") as fh5:
-        hcore = fh5["hcore"][:]
-        LXmn = fh5["LXmn"][:]
+        hcore = numpy.ndarray(fh5["hcore"][:])
+        LXmn = numpy.ndarray(fh5["LXmn"][:])
         e0 = float(fh5["e0"][()])
     assert (
         len(hcore.shape) == 2
@@ -165,7 +159,6 @@ def write_noci_wavefunction(
     assert isinstance(wfn[1], list)
     assert len(wfn[1][0].shape) == 3, "Expected psi.shape = (ndet, nmo, nocca)"
     assert len(wfn[1][1].shape) == 3, "Expected psi.shape = (ndet, nmo, noccb)"
-    ndet = len(wfn[0])
     with h5py.File(filename, "w") as fh5:
         fh5["ci_coeffs"] = wfn[0]
         fh5["psi_T_alpha"] = wfn[1][0]
@@ -192,7 +185,7 @@ def read_noci_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
     with h5py.File(filename, "r") as fh5:
         ci_coeffs = fh5["ci_coeffs"][:]
         ndets = len(ci_coeffs)
-        for idet in range(ndets):
+        for _ in range(ndets):
             psia = fh5[f"psi_T_alpha"][:]
             psib = fh5[f"psi_T_beta"][:]
     return (ci_coeffs, [psia, psib]), None
@@ -225,6 +218,7 @@ def format_fixed_width_cmplx(floats):
     return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)
 
 
+# TODO: Mark for deletion
 def write_json_input_file(
     input_filename: str,
     hamil_filename: str,
@@ -234,6 +228,7 @@ def write_json_input_file(
     timestep: float = 0.005,
     num_blocks: float = 10,
     estimates_filename: str = "estimates.0.h5",
+    # pylint: disable=dangerous-default-value
     options: dict = {},
 ):
     na, nb = nelec
@@ -444,7 +439,7 @@ def write_nomsd(fh5, wfn, uhf, nelec, thresh=1e-8, init=None):
     thresh : float
         Threshold for writing wavefunction elements.
     """
-    nalpha, nbeta = nelec
+    nalpha, _ = nelec
     wfn[abs(wfn) < thresh] = 0.0
     if len(wfn.shape) == 2:
         nmo = wfn.shape[0]
@@ -549,8 +544,6 @@ def from_qmcpack_dense(filename):
         enuc = fh5["Hamiltonian/Energies"][:][0]
         dims = fh5["Hamiltonian/dims"][:]
         nmo = dims[3]
-        nchol = dims[-1]
-        real_ints = False
         try:
             hcore = fh5["Hamiltonian/hcore"][:]
             hcore = from_qmcpack_complex(hcore, (nmo, nmo))
@@ -560,7 +553,6 @@ def from_qmcpack_dense(filename):
             # Real format.
             hcore = fh5["Hamiltonian/hcore"][:]
             chol = fh5["Hamiltonian/DenseFactorized/L"][:]
-            real_ints = True
         nalpha = dims[4]
         nbeta = dims[5]
         return (hcore, chol, enuc, int(nmo), int(nalpha), int(nbeta))
@@ -573,12 +565,14 @@ def from_qmcpack_sparse(filename):
         nmo = dims[3]
         real_ints = False
         try:
-            hcore = fh5["Hamiltonian/hcore"][:]
+            hcore = numpy.ndarray(fh5["Hamiltonian/hcore"][:])
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = fh5["Hamiltonian/H1"][:].view(numpy.complex128).ravel()
-            idx = fh5["Hamiltonian/H1_indx"][:]
+            hcore = (
+                numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
+            )
+            idx = numpy.ndarray(fh5["Hamiltonian/H1_indx"][:])
             row_ix = idx[::2]
             col_ix = idx[1::2]
             hcore = scipy.sparse.csr_matrix((hcore, (row_ix, col_ix))).toarray()
@@ -587,7 +581,6 @@ def from_qmcpack_sparse(filename):
             # Real format.
             hcore = fh5["Hamiltonian/hcore"][:]
             real_ints = True
-        chunks = dims[2]
         block_sizes = fh5["Hamiltonian/Factorized/block_sizes"][:]
         nchol = dims[7]
         nval = sum(block_sizes)
@@ -599,16 +592,16 @@ def from_qmcpack_sparse(filename):
         col_ix = numpy.zeros(nval, dtype=numpy.int32)
         s = 0
         for ic, bs in enumerate(block_sizes):
-            ixs = fh5["Hamiltonian/Factorized/index_%i" % ic][:]
+            ixs = numpy.ndarray(fh5["Hamiltonian/Factorized/index_%i" % ic][:])
             row_ix[s : s + bs] = ixs[::2]
             col_ix[s : s + bs] = ixs[1::2]
             if real_ints:
                 vals[s : s + bs] = numpy.real(
-                    fh5["Hamiltonian/Factorized/vals_%i" % ic][:]
+                    numpy.ndarray(fh5["Hamiltonian/Factorized/vals_%i" % ic][:])
                 ).ravel()
             else:
                 vals[s : s + bs] = (
-                    fh5["Hamiltonian/Factorized/vals_%i" % ic][:]
+                    numpy.ndarray(fh5["Hamiltonian/Factorized/vals_%i" % ic][:])
                     .view(numpy.complex128)
                     .ravel()
                 )

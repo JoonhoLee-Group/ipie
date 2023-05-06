@@ -4,7 +4,8 @@ from mpi4py import MPI
 
 from ipie.utils.misc import is_cupy
 
-class PopControllerTimer(object):
+
+class PopControllerTimer:
     def __init__(self):
         self.start_time_const = 0.0
         self.communication_time = 0.0
@@ -27,7 +28,8 @@ class PopControllerTimer(object):
     def add_send_time(self):
         self.send_time += time.time() - self.start_time_const
 
-class PopController(object):
+
+class PopController:
     def __init__(
         self,
         num_walkers_local,
@@ -37,26 +39,17 @@ class PopController(object):
         min_weight=0.1,
         max_weight=4,
         reconfiguration_freq=50,
-        verbose=False):
-
+        verbose=False,
+    ):
         self.verbose = verbose
 
         self.num_walkers_local = num_walkers_local
         self.num_steps = num_steps
         self.mpi_handler = mpi_handler
-        
+
         self.method = pop_control_method
         if verbose:
-            print(
-                "# Using {} population control " "algorithm.".format(self.method)
-            )
-            mem = float(self.walker_buffer.nbytes) / (1024.0**3)
-            print("# Buffer size for communication: {:13.8e} GB".format(mem))
-            if mem > 2.0:
-                # TODO: FDM FIX THIS
-                print(
-                    " # Warning: Walker buffer size > 2GB. May run into MPI" "issues."
-                )
+            print(f"# Using {self.method} population control " "algorithm.")
 
         self.min_weight = min_weight
         self.max_weight = max_weight
@@ -76,7 +69,6 @@ class PopController(object):
         self.total_weight = self.ntot_walkers
 
         self.timer = PopControllerTimer()
-
 
     def pop_control(self, walkers, comm):
         if is_cupy(walkers.weight):
@@ -110,9 +102,9 @@ class PopController(object):
         scale = total_weight / self.target_weight
         if total_weight < 1e-8:
             if comm.rank == 0:
-                print("# Warning: Total weight is {:13.8e}: ".format(total_weight))
+                print(f"# Warning: Total weight is {total_weight:13.8e}")
                 print("# Something is seriously wrong.")
-            sys.exit()
+            raise ValueError
         self.total_weight = total_weight
         # Todo: Just standardise information we want to send between routines.
         walkers.unscaled_weight = walkers.weight
@@ -131,6 +123,7 @@ class PopController(object):
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
+
 
 def get_buffer(walkers, iw):
     """Get iw-th walker buffer for MPI communication
@@ -176,6 +169,7 @@ def get_buffer(walkers, iw):
             buff[s : s + 1] = array(data[iw])
             s += 1
     return buff
+
 
 def set_buffer(walkers, iw, buff):
     """Set walker buffer following MPI communication
@@ -225,6 +219,7 @@ def set_buffer(walkers, iw, buff):
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
 
+
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
     """Apply the comb method of population control / branching.
 
@@ -247,10 +242,7 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
         total_weight = sum(weights)
         cprobs = numpy.cumsum(weights)
         r = numpy.random.random()
-        comb = [
-            (i + r) * (total_weight / target_weight)
-            for i in range(target_weight)
-        ]
+        comb = [(i + r) * (total_weight / target_weight) for i in range(target_weight)]
         iw = 0
         ic = 0
         while ic < len(comb):
@@ -275,7 +267,6 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
     kill = numpy.where(parent_ix == 0)[0]
     clone = numpy.where(parent_ix > 1)[0]
     reqs = []
-    walker_buffers = []
     # First initiate non-blocking sends of walkers.
     timer.add_non_communication()
     timer.start_time()
@@ -291,9 +282,7 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             # with accessing walker data during send. Might not be
             # necessary.
             dest_proc = k // walkers.nwalkers
-            # with h5py.File('before_{}.h5'.format(comm.rank), 'a') as fh5:
-            # fh5['walker_{}_{}_{}'.format(c,k,dest_proc)] = walkers.walkers[clone_pos].get_buffer()
-            buff = get_buffer(walkers,clone_pos)
+            buff = get_buffer(walkers, clone_pos)
             timer.add_non_communication()
             timer.start_time()
             reqs.append(comm.Isend(buff, dest=dest_proc, tag=i))
@@ -314,7 +303,7 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             # fh5['walk_{}'.format(k)] = walkers.walker_buffer.copy()
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers,kill_pos, walkers.walker_buffer)
+            set_buffer(walkers, kill_pos, walkers.walker_buffer)
             timer.add_non_communication()
             # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
             # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = walkers.walkers[kill_pos].get_buffer()
@@ -334,6 +323,7 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
     timer.start_time()
     walkers.weight.fill(1.0)
     timer.add_non_communication()
+
 
 def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer()):
     if is_cupy(walkers.weight):
@@ -356,53 +346,53 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
     glob_inf_2 = None
     glob_inf_3 = None
     if comm.rank == 0:
-        glob_inf_0 = numpy.empty(
-            [comm.size, walkers.nwalkers], dtype=numpy.float64
-        )
-        glob_inf_1 = numpy.empty(
-            [comm.size, walkers.nwalkers], dtype=numpy.int64
-        )
+        glob_inf_0 = numpy.empty([comm.size, walkers.nwalkers], dtype=numpy.float64)
+        glob_inf_1 = numpy.empty([comm.size, walkers.nwalkers], dtype=numpy.int64)
         glob_inf_1.fill(1)
         glob_inf_2 = numpy.array(
-            [
-                [r for i in range(walkers.nwalkers)]
-                for r in range(comm.size)
-            ],
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
             dtype=numpy.int64,
         )
         glob_inf_3 = numpy.array(
-            [
-                [r for i in range(walkers.nwalkers)]
-                for r in range(comm.size)
-            ],
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
             dtype=numpy.int64,
         )
 
     timer.add_non_communication()
 
     timer.start_time()
-    comm.Gather(walker_info_0, glob_inf_0, root=0) # gather |w_i| from all processors (comm.size x nwalkers)
+    comm.Gather(
+        walker_info_0, glob_inf_0, root=0
+    )  # gather |w_i| from all processors (comm.size x nwalkers)
     timer.add_communication()
 
     # Want same random number seed used on all processors
     timer.start_time()
     if comm.rank == 0:
         # Rescale weights.
-        glob_inf = numpy.zeros(
-            (walkers.nwalkers * comm.size, 4), dtype=numpy.float64
-        )
-        glob_inf[:, 0] = glob_inf_0.ravel() # contains walker |w_i|
-        glob_inf[:, 1] = glob_inf_1.ravel() # all initialized to 1 when it becomes 2 then it will be "branched"
-        glob_inf[:, 2] = glob_inf_2.ravel() # contain processor+walker indices (initial) (i.e., where walkers live)
-        glob_inf[:, 3] = glob_inf_3.ravel() # contain processor+walker indices (final) (i.e., where walkers live)
-        total_weight = sum(w[0] for w in glob_inf)
+        glob_inf = numpy.zeros((walkers.nwalkers * comm.size, 4), dtype=numpy.float64)
+        glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
+        glob_inf[
+            :, 1
+        ] = (
+            glob_inf_1.ravel()
+        )  # all initialized to 1 when it becomes 2 then it will be "branched"
+        glob_inf[
+            :, 2
+        ] = (
+            glob_inf_2.ravel()
+        )  # contain processor+walker indices (initial) (i.e., where walkers live)
+        glob_inf[
+            :, 3
+        ] = (
+            glob_inf_3.ravel()
+        )  # contain processor+walker indices (final) (i.e., where walkers live)
         sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
         isort = numpy.argsort(sort, kind="mergesort")
         glob_inf = glob_inf[sort]
         s = 0
         e = len(glob_inf) - 1
         tags = []
-        isend = 0
         # go through walkers pair-wise
         while s < e:
             if glob_inf[s][0] < min_weight or glob_inf[e][0] > max_weight:
@@ -441,7 +431,6 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
     else:
         data = None
         glob_inf = None
-        total_weight = 0
     timer.add_non_communication()
     timer.start_time()
 
@@ -451,7 +440,6 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
 
     timer.add_communication()
     # Keep total weight saved for capping purposes.
-    walker_buffers = []
     reqs = []
     for iw, walker in enumerate(data):
         if walker[1] > 1:
@@ -472,12 +460,13 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
             comm.Recv(walkers.walker_buffer, source=int(round(walker[3])), tag=tag)
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers,iw, walkers.walker_buffer)
+            set_buffer(walkers, iw, walkers.walker_buffer)
             timer.add_non_communication()
     timer.start_time()
     for r in reqs:
         r.wait()
     timer.add_communication()
+
 
 def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     if is_cupy(walkers.weight):
@@ -492,9 +481,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     # gather all walker information on the root
     timer.start_time()
     nwalkers = walkers.nwalkers
-    local_buffer = array(
-        [get_buffer(walkers,i) for i in range(nwalkers)]
-    )
+    local_buffer = array([get_buffer(walkers, i) for i in range(nwalkers)])
     walker_len = local_buffer[0].shape[0]
     global_buffer = None
     if comm.rank == 0:

@@ -1,23 +1,23 @@
 import copy
 from dataclasses import dataclass
-import numpy as np
 from typing import Tuple, Union
 
-from ipie.legacy.qmc.afqmc import AFQMC
+import numpy as np
+
+from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
+from ipie.legacy.hamiltonians._generic import Generic as HamGeneric
 from ipie.legacy.propagation.continuous import Continuous as LegacyContinuous
-from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.legacy.qmc.afqmc import AFQMC
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.handler import Walkers
-from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-
+from ipie.legacy.walkers.single_det import SingleDetWalker
+from ipie.systems.generic import Generic
+from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
     generate_hamiltonian,
     get_random_nomsd,
     get_random_phmsd_opt,
 )
-from ipie.utils.misc import dotdict
-from ipie.legacy.hamiltonians._generic import Generic as HamGeneric
-from ipie.systems.generic import Generic
 
 
 def build_legacy_test_case(
@@ -42,7 +42,7 @@ def build_legacy_test_case(
     prop = LegacyContinuous(system, ham_legacy, trial, qmc, options=options)
 
     walkers = [SingleDetWalker(system, ham_legacy, trial) for iw in range(num_walkers)]
-    for i in range(num_steps):
+    for _ in range(num_steps):
         for walker in walkers:
             prop.propagate_walker(walker, system, ham_legacy, trial, 0.0)
             _ = walker.reortho(trial)  # reorthogonalizing to stablize
@@ -54,7 +54,7 @@ def get_legacy_walker_energies(system, ham, trial, walkers):
     etots = []
     e1s = []
     e2s = []
-    for iw, walker in enumerate(walkers):
+    for _, walker in enumerate(walkers):
         e = local_energy_generic_cholesky_opt(
             system,
             ham,
@@ -90,14 +90,13 @@ def build_legacy_test_case_handlers_mpi(
     seed: Union[int, None] = None,
     rhf_trial: bool = False,
     two_body_only: bool = False,
+    # pylint: disable=dangerous-default-value
     options={},
 ):
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
     system = Generic(nelec=num_elec)
     ham_legacy = HamGeneric(
         h1e=np.array([h1e, h1e]),
@@ -146,7 +145,7 @@ def build_legacy_test_case_handlers_mpi(
         verbose=False,
         comm=mpi_handler.comm,
     )
-    for i in range(options.num_steps):
+    for _ in range(options.num_steps):
         for walker in handler.walkers:
             if two_body_only:
                 prop.two_body_propagator(walker, system, ham_legacy, trial)
@@ -169,14 +168,13 @@ def build_legacy_test_case_handlers(
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
     two_body_only: bool = False,
+    # pylint: disable=dangerous-default-value
     options={},
 ):
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
     system = Generic(nelec=num_elec)
     ham_legacy = HamGeneric(
         h1e=np.array([h1e, h1e]),
@@ -224,7 +222,7 @@ def build_legacy_test_case_handlers(
         options,
         verbose=False,
     )
-    for i in range(options.num_steps):
+    for _ in range(options.num_steps):
         for walker in handler.walkers:
             if two_body_only:
                 prop.two_body_propagator(walker, system, ham_legacy, trial)
@@ -246,14 +244,13 @@ def build_legacy_driver_instance(
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
     density_diff: bool = False,
+    # pylint: disable=dangerous-default-value
     options={},
 ):
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
     system = Generic(nelec=num_elec)
     ham_legacy = HamGeneric(
         h1e=np.array([h1e, h1e]),

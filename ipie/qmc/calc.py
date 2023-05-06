@@ -121,10 +121,16 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         trial = get_trial_wavefunction(
             system,
             hamiltonian,
-            options=twf_opt,
             comm=comm,
             scomm=comm,
             verbose=verbosity,
+            ndets=get_input_value(twf_opt, "ndets", default=1, alias=["num_dets"]),
+            ndets_props=get_input_value(
+                twf_opt, "ndets_props", default=1, alias=["num_dets_props"]
+            ),
+            ndet_chunks=get_input_value(
+                twf_opt, "ndet_chunks", default=1, alias=["num_det_chunks"]
+            ),
         )
         _, initial_walker = get_initial_walker(trial)
         walkers = UHFWalkersTrial(

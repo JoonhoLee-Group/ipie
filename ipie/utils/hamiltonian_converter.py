@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@
 #          Joonho Lee
 #
 
+import ast
 import sys
 
 import h5py
@@ -213,17 +213,17 @@ def read_qmcpack_sparse(filename, get_chol=True):
         real_ints = False
         enuc = fh5["Hamiltonian/Energies"][:][0]
         dims = fh5["Hamiltonian/dims"][:]
-        chunks = dims[2]
         nmo = dims[3]
         nalpha = dims[4]
         nbeta = dims[5]
-        nchol = dims[7]
         try:
-            hcore = fh5["Hamiltonian/hcore"][:]
+            hcore = numpy.ndarray(fh5["Hamiltonian/hcore"][:])
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = fh5["Hamiltonian/H1"][:].view(numpy.complex128).ravel()
+            hcore = (
+                numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
+            )
             idx = fh5["Hamiltonian/H1_indx"][:]
             row_ix = idx[::2]
             col_ix = idx[1::2]
@@ -437,7 +437,6 @@ def read_qmcpack_cholesky_kpoint(filename, get_chol=True):
             nmo = nmo_pk[i]
             hcore.append(hk.view(numpy.complex128).reshape(nmo, nmo))
         chol_vecs = []
-        nmo_max = max(nmo_pk)
     if get_chol:
         for i in range(0, nkp):
             chol_vecs.append(get_kpoint_chol(filename, nchol_pk, minus_k, i))
@@ -461,11 +460,9 @@ def get_kpoint_chol(filename, nchol_pk, minus_k, i):
     with h5py.File(filename, "r") as fh5:
         try:
             Lk = fh5["Hamiltonian/KPFactorized/L{}".format(i)][:]
-            nchol = nchol_pk[i]
             Lk = Lk.view(numpy.complex128)[:, :, 0]
         except KeyError:
             Lk = fh5["Hamiltonian/KPFactorized/L{}".format(minus_k[i])][:]
-            nchol = nchol_pk[minus_k[i]]
             Lk = Lk.view(numpy.complex128).conj()[:, :, 0]
     return Lk
 
@@ -489,7 +486,6 @@ def read_qmcpack_dense(filename):
     """
     with h5py.File(filename, "r") as fh5:
         enuc = fh5["Hamiltonian/Energies"][:][0]
-        dims = fh5["Hamiltonian/dims"][:]
         hcore = fh5["Hamiltonian/hcore"][:]
         chol = fh5["Hamiltonian/DenseFactorized/L"][:]
 
@@ -605,7 +601,7 @@ def write_fcidump_kpoint(
 
 
 def sparse_to_dense(sparse_file, dense_file, real_chol=False):
-    hcore, chol, enuc, nmo, nelec = read_qmcpack_sparse(sparse_file, get_chol=False)
+    hcore, _, enuc, nmo, _ = read_qmcpack_sparse(sparse_file, get_chol=False)
     with h5py.File(dense_file, "w") as fh5:
         fh5["Hamiltonian/Energies"] = numpy.array([enuc, 0])
         with h5py.File(sparse_file, "r") as sph5:
@@ -624,8 +620,7 @@ def sparse_to_dense(sparse_file, dense_file, real_chol=False):
             chol_dset = fh5.create_dataset(
                 "Hamiltonian/DenseFactorized/L", shape, dtype=numpy.float64
             )
-            s = 0
-            for ic, bs in enumerate(block_sizes):
+            for ic, _ in enumerate(block_sizes):
                 ixs, vchunk = get_chunk(sph5, ic, False)
                 row_ix, col_ix = ixs[::2], ixs[1::2]
                 sort = numpy.argsort(row_ix)
