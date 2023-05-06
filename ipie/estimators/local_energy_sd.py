@@ -236,7 +236,7 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
-    nwalkers = Ghalfa_batch.shape[0]
+    nwalkers = Ghalf_batch.shape[0]
 
     naux = rchol.shape[0]
     nwalkers = Ghalf_batch.shape[0]
@@ -482,7 +482,7 @@ def local_energy_single_det_rhf_batch(system, hamiltonian, walkers, trial):
     if xp.isrealobj(trial._rchola):
         exx = 2.0 * exx_kernel_batch_real_rchol(trial._rchola, walkers.Ghalfa)
     else:
-        exx = 2.0 * exx_kernel_batch_complex_rchol(trial._rchola, walkers.Ghalfa)
+        exx = 2.0 * exx_kernel_batch_complex_rchol(trial._rchola, trial._rcholbar, walkers.Ghalfa)
 
     e2b = ecoul - exx
 
@@ -525,10 +525,23 @@ def two_body_energy_uhf(trial, walkers):
             trial._rchola, walkers.Ghalfa
         ) + exx_kernel_batch_real_rchol(trial._rcholb, walkers.Ghalfb)
     else:
-        ecoul = ecoul_kernel_batch_complex_rchol_uhf(trial._rchola, trial._rcholb, Ghalfa, Ghalfb)
+        ecoul = ecoul_kernel_batch_complex_rchol_uhf(
+            trial._rchola,
+            trial._rcholb,
+            trial._rcholbara,
+            trial.rcholbarb,
+            Ghalfa,
+            Ghalfb,
+        )
         exx = exx_kernel_batch_complex_rchol(
-            trial._rchola, walkers.Ghalfa
-        ) + exx_kernel_batch_complex_rchol(trial._rcholb, walkers.Ghalfb)
+            trial._rchola,
+            trial.rcholbara,
+            walkers.Ghalfa,
+        ) + exx_kernel_batch_complex_rchol(
+            trial._rcholb,
+            trial._rcholbarb,
+            walkers.Ghalfb,
+        )
     return ecoul - exx
 
 

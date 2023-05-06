@@ -24,6 +24,8 @@ from typing import Tuple, Union
 import h5py
 import numpy
 import scipy.linalg
+
+# pylint: disable=import-error
 from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky

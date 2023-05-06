@@ -27,6 +27,7 @@ import pandas as pd
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
+    # pylint: disable: import-error
     import pyblock
 
 import scipy.stats
