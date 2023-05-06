@@ -10,8 +10,8 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 
 print("Hartree-Fock energy: -76.0267720534593")
 print("CI energy          : -76.1665620477625")
-#trexio_filename = "h2o_dz.h5"
-trexio_filename = "h2o_dz.trexio"
+trexio_filename = "h2o_dz.h5"
+#trexio_filename = "h2o_dz.trexio"
 
 results = gen_ipie_from_trexio(trexio_filename)
 
@@ -53,8 +53,8 @@ nelec = (nocca,noccb)
 system = Generic(nelec=nelec)
 
 # 3. Build trial wavefunction
-# ndets = len(coeff)
-ndets = 10
+ndets = len(coeff)
+#ndets = 10
 
 coeff = coeff[:ndets]
 occa = numpy.zeros((ndets, len(occa_list[0])),dtype=numpy.int64)
