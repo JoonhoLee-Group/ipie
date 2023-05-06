@@ -31,6 +31,14 @@ jobs:
       run: |
         # HACK FOR LEGACY CODE!
         export BUILD_LEGACY_IPIE=1; python -m pip install -e .
+    - name: pylint
+      run: |
+        pip install pylint 
+        pylint -s no --disable=R,C ipie/
+    - name: format
+      run: |
+        pip install black
+        black --check ipie
     - name: Test with pytest
       run: |
         pip install pytest
