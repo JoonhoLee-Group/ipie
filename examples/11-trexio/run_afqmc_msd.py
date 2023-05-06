@@ -8,7 +8,10 @@ from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 
 
-trexio_filename = "h2o_dz.h5"
+print("Hartree-Fock energy: -76.0267720534593")
+print("CI energy          : -76.1665620477625")
+#trexio_filename = "h2o_dz.h5"
+trexio_filename = "h2o_dz.trexio"
 
 results = gen_ipie_from_trexio(trexio_filename)
 
