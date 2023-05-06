@@ -550,8 +550,8 @@ def from_qmcpack_sparse(filename):
         nmo = dims[3]
         real_ints = False
         try:
-            # pylint: ignore=no-member
             hcore = fh5["Hamiltonian/hcore"][:]
+            # pylint: disable=no-member
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.

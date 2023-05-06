@@ -2,7 +2,7 @@ import time
 import numpy
 from mpi4py import MPI
 
-from ipie.utils.misc import is_cupy
+from ipie.utils.backend import arraylib as xp
 
 
 class PopControllerTimer:
@@ -71,17 +71,10 @@ class PopController:
         self.timer = PopControllerTimer()
 
     def pop_control(self, walkers, comm):
-        if is_cupy(walkers.weight):
-            import cupy
-
-            array = cupy.asnumpy
-        else:
-            array = numpy.array
-
         self.timer.start_time()
         if self.ntot_walkers == 1:
             return
-        weights = numpy.abs(array(walkers.weight))
+        weights = numpy.abs(xp.array(walkers.weight))
         global_weights = numpy.empty(len(weights) * comm.size)
         self.timer.add_non_communication()
         self.timer.start_time()
@@ -134,15 +127,6 @@ def get_buffer(walkers, iw):
     buff : dict
         Relevant walker information for population control.
     """
-    if is_cupy(walkers.weight):
-        import cupy
-
-        ndarray = cupy.ndarray
-        array = cupy.asnumpy
-    else:
-        ndarray = numpy.ndarray
-        array = numpy.array
-
     s = 0
     buff = numpy.zeros(walkers.buff_size, dtype=numpy.complex128)
     for d in walkers.buff_names:
@@ -150,19 +134,19 @@ def get_buffer(walkers, iw):
         if data is None:
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
-        if isinstance(data[iw], (ndarray)):
-            buff[s : s + data[iw].size] = array(data[iw].ravel())
+        if isinstance(data[iw], (xp.ndarray)):
+            buff[s : s + data[iw].size] = xp.array(data[iw].ravel())
             s += data[iw].size
         elif isinstance(data[iw], list):  # when data is list
             for l in data[iw]:
-                if isinstance(l, (ndarray)):
-                    buff[s : s + l.size] = array(l.ravel())
+                if isinstance(l, (xp.ndarray)):
+                    buff[s : s + l.size] = xp.array(l.ravel())
                     s += l.size
                 elif isinstance(l, (int, float, complex, numpy.float64, numpy.complex128)):
                     buff[s : s + 1] = l
                     s += 1
         else:
-            buff[s : s + 1] = array(data[iw])
+            buff[s : s + 1] = xp.array(data[iw])
             s += 1
     return buff
 
@@ -174,30 +158,21 @@ def set_buffer(walkers, iw, buff):
     buff : dict
         Relevant walker information for population control.
     """
-    if is_cupy(walkers.weight):
-        import cupy
-
-        ndarray = cupy.ndarray
-        array = cupy.asarray
-    else:
-        ndarray = numpy.ndarray
-        array = numpy.asarray
-
     s = 0
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
         if data is None:
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
-        if isinstance(data[iw], ndarray):
-            walkers.__dict__[d][iw] = array(
+        if isinstance(data[iw], xp.ndarray):
+            walkers.__dict__[d][iw] = xp.array(
                 buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
             )
             s += data[iw].size
         elif isinstance(data[iw], list):
             for ix, l in enumerate(data[iw]):
-                if isinstance(l, (ndarray)):
-                    walkers.__dict__[d][iw][ix] = array(
+                if isinstance(l, (xp.ndarray)):
+                    walkers.__dict__[d][iw][ix] = xp.array(
                         buff[s : s + l.size].reshape(l.shape).copy()
                     )
                     s += l.size
@@ -320,17 +295,8 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
 
 
 def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer()):
-    if is_cupy(walkers.weight):
-        import cupy
-
-        abs = cupy.abs
-        array = cupy.asnumpy
-    else:
-        abs = numpy.abs
-        array = numpy.array
-
     timer.start_time()
-    walker_info_0 = array(abs(walkers.weight))
+    walker_info_0 = xp.array(xp.abs(walkers.weight))
     timer.add_non_communication()
 
     timer.start_time()
@@ -461,19 +427,10 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
 
 
 def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
-    if is_cupy(walkers.weight):
-        import cupy
-
-        abs = cupy.abs
-        array = cupy.asnumpy
-    else:
-        abs = numpy.abs
-        array = numpy.array
-
     # gather all walker information on the root
     timer.start_time()
     nwalkers = walkers.nwalkers
-    local_buffer = array([get_buffer(walkers, i) for i in range(nwalkers)])
+    local_buffer = xp.array([get_buffer(walkers, i) for i in range(nwalkers)])
     walker_len = local_buffer[0].shape[0]
     global_buffer = None
     if comm.rank == 0:
