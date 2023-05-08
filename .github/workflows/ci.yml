@@ -68,7 +68,7 @@ jobs:
       run: |
         pip install pytest-mpi
         mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
-        ./tools/run_examples.sh
+        python dev/run_tests.py --examples
     - name: Codecov
       uses: codecov/codecov-action@v3.1.1
 
