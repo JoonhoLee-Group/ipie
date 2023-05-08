@@ -67,4 +67,5 @@ enable=
       unnecessary-pass,
       no-else-return,
 # https://github.com/pylint-dev/pylint/issues/2178
+# ignore urls
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$|^\s*(\w*\s*=\s*)?(\"|\').*(\"|\'),?\s*$
