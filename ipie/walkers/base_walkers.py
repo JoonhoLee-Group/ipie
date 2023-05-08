@@ -18,22 +18,18 @@
 #
 
 import cmath
-import sys
 import time
+from abc import ABCMeta, abstractmethod
 
-from abc import abstractmethod, ABC
 import h5py
 import numpy
-from mpi4py import MPI
-
-from ipie.utils.io import format_fixed_width_floats
-from ipie.utils.misc import is_cupy
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import to_host
+from ipie.utils.io import format_fixed_width_floats
 
 
-class WalkerAccumulator(object):
+class WalkerAccumulator:
     """Small class to handle passing around walker state."""
 
     def __init__(self, names, nsteps):
@@ -86,7 +82,8 @@ class WalkerAccumulator(object):
     def to_text(self, vals):
         return format_fixed_width_floats(vals.real)
 
-class BaseWalkers (ABC):
+
+class BaseWalkers(metaclass=ABCMeta):
     """Container for groups of walkers which make up a wavefunction.
 
     Parameters
@@ -98,16 +95,18 @@ class BaseWalkers (ABC):
     """
 
     def __init__(
-        self, nwalkers, verbose=False,
+        self,
+        nwalkers,
+        verbose=False,
     ):
         self.nwalkers = nwalkers
 
         if verbose:
             print("# Setting up BaseWalkers.")
-            print("# nwalkers = {}".format(self.nwalkers))
+            print(f"# nwalkers = {self.nwalkers}")
 
         self.weight = numpy.array(
-            [1.0 for iw in range(self.nwalkers)] # TODO: allow for arbitrary initial weights
+            [1.0 for iw in range(self.nwalkers)]  # TODO: allow for arbitrary initial weights
         )
         self.unscaled_weight = self.weight.copy()
         self.phase = numpy.array([1.0 + 0.0j for iw in range(self.nwalkers)])
@@ -137,7 +136,9 @@ class BaseWalkers (ABC):
         ]
         self.buff_size = None
         self.walker_buffer = None
-        
+        self.write_file = None
+        self.read_file = None
+
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
 
@@ -192,22 +193,22 @@ class BaseWalkers (ABC):
         self.weight = buff[0 : self.nwalkers]
         self.phase = buff[self.nwalkers : self.nwalkers * 2]
         self.ovlp = buff[self.nwalkers * 2 : self.nwalkers * 3]
-        self.phi = buff[self.nwalkers * 3 :].reshape(
-            self.phi.shape
-        )
+        self.phi = buff[self.nwalkers * 3 :].reshape(self.phi.shape)
 
     def write_walkers_batch(self, comm):
         start = time.time()
+        assert self.write_file is not None
+        raise NotImplementedError("This is not tested. Please implement.")
         with h5py.File(self.write_file, "r+", driver="mpio", comm=comm) as fh5:
             # for (i,w) in enumerate(self.walkers):
             # ix = i + self.nwalkers*comm.rank
-            buff = self.get_write_buffer()
             fh5["walker_%d" % comm.rank][:] = self.get_write_buffer()
         if comm.rank == 0:
             print(" # Writing walkers to file.")
             print(" # Time to write restart: {:13.8e} s".format(time.time() - start))
 
     def read_walkers_batch(self, comm):
+        assert self.write_file is not None
         with h5py.File(self.read_file, "r") as fh5:
             try:
                 self.set_walkers_from_buffer(fh5["walker_%d" % comm.rank][:])
@@ -219,5 +220,5 @@ class BaseWalkers (ABC):
         pass
 
     @abstractmethod
-    def reortho_batched(self): # gpu version
+    def reortho_batched(self):  # gpu version
         pass

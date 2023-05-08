@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,7 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
@@ -24,8 +23,8 @@ from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import to_host
 
-class EstimatorBase(ABC):
 
+class EstimatorBase(metaclass=ABCMeta):
     def __init__(self):
         self._ascii_filename = None
         self._print_to_stdout = False
@@ -60,8 +59,8 @@ class EstimatorBase(ABC):
         """Text file for output"""
         self._ascii_filename = name
         if self._ascii_filename is not None:
-            with open(self._ascii_filename, 'w') as f:
-                f.write(self.header_to_text + '\n')
+            with open(self._ascii_filename, "w") as f:
+                f.write(self.header_to_text + "\n")
 
     @property
     def write_frequency(self) -> str:
@@ -77,7 +76,7 @@ class EstimatorBase(ABC):
     def size(self) -> int:
         """Shape of estimator."""
         size = 0
-        for k, v in self._data.items():
+        for _, v in self._data.items():
             if isinstance(v, np.ndarray):
                 size += np.prod(v.shape)
             else:
@@ -90,8 +89,8 @@ class EstimatorBase(ABC):
         self._shape = shape
 
     @abstractmethod
-    def compute_estimator(self, walker_batch, trial_wavefunction) -> np.ndarray:
-        pass
+    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray:
+        ...
 
     @property
     def names(self):
@@ -114,12 +113,12 @@ class EstimatorBase(ABC):
             assert len(vals) == len(self.names)
             return format_fixed_width_floats(vals.real)
         else:
-            return ''
+            return ""
 
     def to_ascii_file(self, vals: str) -> None:
         if self.ascii_filename is not None:
-            with open(self._ascii_filename, 'a') as f:
-                f.write(vals + '\n')
+            with open(self._ascii_filename, "a") as f:
+                f.write(vals + "\n")
 
     def __getitem__(self, name):
         data = self._data.get(name)
@@ -144,4 +143,4 @@ class EstimatorBase(ABC):
                 self._data[k] = 0.0j
 
     def post_reduce_hook(self, data) -> None:
-        pass
+        ...

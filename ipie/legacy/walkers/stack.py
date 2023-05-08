@@ -143,7 +143,6 @@ class PropagatorStack:
         lowrank=True,
         thresh=1e-6,
     ):
-
         self.time_slice = 0
         self.stack_size = stack_size
         self.ntime_slices = ntime_slices
@@ -317,14 +316,10 @@ class PropagatorStack:
 
         if self.diagonal_trial:
             self.left[self.block, 0] = numpy.diag(
-                numpy.multiply(
-                    self.left[self.block, 0].diagonal(), self.BTinv[0].diagonal()
-                )
+                numpy.multiply(self.left[self.block, 0].diagonal(), self.BTinv[0].diagonal())
             )
             self.left[self.block, 1] = numpy.diag(
-                numpy.multiply(
-                    self.left[self.block, 1].diagonal(), self.BTinv[1].diagonal()
-                )
+                numpy.multiply(self.left[self.block, 1].diagonal(), self.BTinv[1].diagonal())
             )
         else:
             self.left[self.block, 0] = self.left[self.block, 0].dot(self.BTinv[0])
@@ -341,17 +336,11 @@ class PropagatorStack:
                 "ii,ij->ij", self.left[self.block, 1], self.right[self.block, 1]
             )
         else:
-            self.stack[self.block, 0] = self.left[self.block, 0].dot(
-                self.right[self.block, 0]
-            )
-            self.stack[self.block, 1] = self.left[self.block, 1].dot(
-                self.right[self.block, 1]
-            )
+            self.stack[self.block, 0] = self.left[self.block, 0].dot(self.right[self.block, 0])
+            self.stack[self.block, 1] = self.left[self.block, 1].dot(self.right[self.block, 1])
 
         self.time_slice = self.time_slice + 1  # Count the time slice
-        self.block = (
-            self.time_slice // self.stack_size
-        )  # move to the next block if necessary
+        self.block = self.time_slice // self.stack_size  # move to the next block if necessary
         self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack
 
     def update_low_rank(self, B):
@@ -366,9 +355,7 @@ class PropagatorStack:
         mR = B.shape[-1]  # initial mR
         mL = B.shape[-1]  # initial mR
         mT = B.shape[-1]  # initial mR
-        next_block = (
-            self.time_slice + 1
-        ) // self.stack_size  # move to the next block if necessary
+        next_block = (self.time_slice + 1) // self.stack_size  # move to the next block if necessary
         # print("next_block", next_block)
         # print("self.block", self.block)
         if next_block > self.block:  # Do QR and update here?
@@ -380,12 +367,8 @@ class PropagatorStack:
                 self.Qr[s][:, :mR] = B[s].dot(self.Qr[s][:, :mR])  # N x mR
                 self.Qr[s][:, mR:] = 0.0
 
-                Ccr = numpy.einsum(
-                    "ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR]
-                )  # N x mR
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Ccr, pivoting=True, check_finite=False
-                )
+                Ccr = numpy.einsum("ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR])  # N x mR
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
                 Dlcr = Rlcr[:mR, :mR].diagonal()  # mR
 
                 self.Dr[s][:mR] = Dlcr
@@ -393,9 +376,7 @@ class PropagatorStack:
                 self.Qr[s] = Qlcr
 
                 Dinv = 1.0 / Dlcr  # mR
-                tmp = numpy.einsum(
-                    "i,ij->ij", Dinv[:mR], Rlcr[:mR, :mR]
-                )  # mR, mR x mR -> mR x mR
+                tmp = numpy.einsum("i,ij->ij", Dinv[:mR], Rlcr[:mR, :mR])  # mR, mR x mR -> mR x mR
                 tmp[:, Plcr] = tmp[:, range(mR)]
                 Tlcr = numpy.dot(tmp, self.Tr[s][:mR, :])  # mR x N
 
@@ -454,9 +435,9 @@ class PropagatorStack:
                 self.theta[s][:, :] = 0.0
                 self.theta[s][:mT, :] = Qlcr_pad[:, :mT].dot(numpy.diag(Dlcr[:mT])).T
                 # self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.CT[s][:,:mT].dot(self.theta[s][:mT,:])
-                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][
-                    :mT, :
-                ].T.dot(self.CT[s][:, :mT].T.conj())
+                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][:mT, :].T.dot(
+                    self.CT[s][:, :mT].T.conj()
+                )
                 # self.CT[s][:,:mT] = self.CT[s][:,:mT].conj()
 
                 # print("# mL, mR, mT = {}, {}, {}".format(mL, mR, mT))
@@ -470,12 +451,8 @@ class PropagatorStack:
                 self.Qr[s][:, :mR] = B[s].dot(self.Qr[s][:, :mR])  # N x mR
                 self.Qr[s][:, mR:] = 0.0
 
-                Ccr = numpy.einsum(
-                    "ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR]
-                )  # N x mR
-                Clcr = numpy.einsum(
-                    "i,ij->ij", self.Dl[s][:mL], Ccr[:mL, :mR]
-                )  # mL x mR
+                Ccr = numpy.einsum("ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR])  # N x mR
+                Clcr = numpy.einsum("i,ij->ij", self.Dl[s][:mL], Ccr[:mL, :mR])  # mL x mR
 
                 (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
                     Clcr, pivoting=True, check_finite=False
@@ -527,9 +504,9 @@ class PropagatorStack:
                 self.theta[s][:, :] = 0.0
                 self.theta[s][:mT, :] = Qlcr_pad[:, :mT].dot(numpy.diag(Dlcr[:mT])).T
                 # self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.CT[s][:,:mT].dot(self.theta[s][:mT,:])
-                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][
-                    :mT, :
-                ].T.dot(self.CT[s][:, :mT].T.conj())
+                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][:mT, :].T.dot(
+                    self.CT[s][:, :mT].T.conj()
+                )
 
             # self.CT = numpy.zeros(shape=(2, nbasis, nbasis),dtype=dtype)
             # self.theta = numpy.zeros(shape=(2, nbasis, nbasis),dtype=dtype)
@@ -538,7 +515,5 @@ class PropagatorStack:
         # print("ovlp = {}".format(self.ovlp))
         self.mT = mT
         self.time_slice = self.time_slice + 1  # Count the time slice
-        self.block = (
-            self.time_slice // self.stack_size
-        )  # move to the next block if necessary
+        self.block = self.time_slice // self.stack_size  # move to the next block if necessary
         self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack

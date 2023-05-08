@@ -57,10 +57,7 @@ _test_dirs = [
     "benzene_cc-pvdz_batched",  # disabling
     "benzene_cc-pvdz_chunked",
 ]
-_tests = [
-    (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
-    for d in _test_dirs
-]
+_tests = [(_data_dir + d + "/input.json", _data_dir + d + "/reference.json") for d in _test_dirs]
 _legacy_test_dirs = [
     "4x4_hubbard_discrete",
     "neon_cc-pvdz_rhf",
@@ -69,8 +66,7 @@ _legacy_test_dirs = [
     "ueg_ecut2.5_rs2.0_ne14",
 ]
 _legacy_tests = [
-    (_data_dir + d + "/input.json", _data_dir + d + "/reference.json")
-    for d in _legacy_test_dirs
+    (_data_dir + d + "/input.json", _data_dir + d + "/reference.json") for d in _legacy_test_dirs
 ]
 
 
@@ -91,9 +87,7 @@ def run_test_system(input_file, benchmark_file, legacy_job=False):
     if input_dict["system"].get("integrals") is not None:
         input_dict["system"]["integrals"] = input_file[:-10] + "afqmc.h5"
         input_dict["trial"]["filename"] = input_file[:-10] + "afqmc.h5"
-    elif ("hamiltonian" in input_dict) and (
-        input_dict["hamiltonian"].get("integrals") is not None
-    ):
+    elif ("hamiltonian" in input_dict) and (input_dict["hamiltonian"].get("integrals") is not None):
         input_dict["hamiltonian"]["integrals"] = input_file[:-10] + "afqmc.h5"
         input_dict["trial"]["filename"] = input_file[:-10] + "afqmc.h5"
     input_dict["estimators"]["filename"] = output_file

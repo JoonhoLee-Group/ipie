@@ -12,8 +12,12 @@ import time
 
 import scipy.linalg
 
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
+from ipie.utils.io import (
+    from_qmcpack_dense,
+    from_qmcpack_sparse,
+    write_qmcpack_dense,
+    write_qmcpack_sparse,
+)
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
@@ -104,7 +108,6 @@ class Generic(object):
             self.chol_packed = None  # [M*(M+1)/2, nchol] if used
             self.sym_idx = None
 
-
         if self.exact_eri:
             if self.verbose:
                 print("# exact_eri is true for local energy")
@@ -112,9 +115,7 @@ class Generic(object):
         if self.pno:
             if self.verbose:
                 print(
-                    "# pno is true for local energy with a threshold of {}".format(
-                        self.thresh_pno
-                    )
+                    "# pno is true for local energy with a threshold of {}".format(self.thresh_pno)
                 )
             self.ij_list_aa = []
             self.ij_list_bb = []
@@ -136,9 +137,7 @@ class Generic(object):
             self.nsamples = nsamples
             if self.verbose:
                 print(
-                    "# stochastic_ri is true for local energy with {} samples".format(
-                        self.nsamples
-                    )
+                    "# stochastic_ri is true for local energy with {} samples".format(self.nsamples)
                 )
                 print("# control_variate = {}".format(self.control_variate))
 
@@ -234,9 +233,7 @@ class Generic(object):
 
 def read_integrals(integral_file):
     try:
-        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(
-            integral_file
-        )
+        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(integral_file)
         chol_vecs = schol_vecs.toarray()
     except KeyError:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_dense(integral_file)

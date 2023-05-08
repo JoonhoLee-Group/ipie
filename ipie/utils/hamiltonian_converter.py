@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@
 #          Joonho Lee
 #
 
+import ast
 import sys
 
 import h5py
@@ -120,13 +120,11 @@ def read_fcidump(filename, symmetry=8, verbose=True):
     if symmetry == 8:
         if numpy.any(numpy.abs(h1e.imag)) > 1e-18:
             print(
-                "# Found complex numbers in one-body Hamiltonian but 8-fold"
-                " symmetry specified."
+                "# Found complex numbers in one-body Hamiltonian but 8-fold" " symmetry specified."
             )
         if numpy.any(numpy.abs(h2e.imag)) > 1e-18:
             print(
-                "# Found complex numbers in two-body Hamiltonian but 8-fold"
-                " symmetry specified."
+                "# Found complex numbers in two-body Hamiltonian but 8-fold" " symmetry specified."
             )
     nalpha = (nelec + ms2) // 2
     nbeta = nalpha - ms2
@@ -213,17 +211,15 @@ def read_qmcpack_sparse(filename, get_chol=True):
         real_ints = False
         enuc = fh5["Hamiltonian/Energies"][:][0]
         dims = fh5["Hamiltonian/dims"][:]
-        chunks = dims[2]
         nmo = dims[3]
         nalpha = dims[4]
         nbeta = dims[5]
-        nchol = dims[7]
         try:
-            hcore = fh5["Hamiltonian/hcore"][:]
+            hcore = numpy.ndarray(fh5["Hamiltonian/hcore"][:])
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = fh5["Hamiltonian/H1"][:].view(numpy.complex128).ravel()
+            hcore = numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
             idx = fh5["Hamiltonian/H1_indx"][:]
             row_ix = idx[::2]
             col_ix = idx[1::2]
@@ -261,9 +257,7 @@ def read_cholesky(filename, full=True, ichunk=None, real_ints=False):
                 col_ix[s : s + bs] = ixs[1::2]
                 vals[s : s + bs] = vchunk
                 s += bs
-            chol_vecs = scipy.sparse.csr_matrix(
-                (vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol)
-            )
+            chol_vecs = scipy.sparse.csr_matrix((vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol))
             return chol_vecs
         else:
             return get_chunk(fh5, ichunk, real_ints)
@@ -274,11 +268,7 @@ def get_chunk(fh5, ichunk, real_ints):
     if real_ints:
         vals = fh5["Hamiltonian/Factorized/vals_%i" % ichunk][:].ravel()
     else:
-        vals = (
-            fh5["Hamiltonian/Factorized/vals_%i" % ichunk][:]
-            .view(numpy.complex128)
-            .ravel()
-        )
+        vals = fh5["Hamiltonian/Factorized/vals_%i" % ichunk][:].view(numpy.complex128).ravel()
     return ixs, vals
 
 
@@ -330,9 +320,7 @@ def fmt_integral(intg, i, k, j, l, cplx, paren=False):
     return out
 
 
-def write_fcidump(
-    filename, hcore, chol, enuc, nmo, nelec, tol=1e-8, sym=1, cplx=True, paren=False
-):
+def write_fcidump(filename, hcore, chol, enuc, nmo, nelec, tol=1e-8, sym=1, cplx=True, paren=False):
     """Write FCIDUMP based from Cholesky factorised integrals.
 
     Parameters
@@ -361,10 +349,7 @@ def write_fcidump(
     """
     header = fcidump_header(sum(nelec), nmo, nelec[0] - nelec[1])
     if cplx and sym > 4:
-        print(
-            "Warning: Requested 8-fold permutational "
-            "symmetry with complex integrals."
-        )
+        print("Warning: Requested 8-fold permutational " "symmetry with complex integrals.")
         cplx = False
 
     with open(filename, "w") as f:
@@ -381,9 +366,7 @@ def write_fcidump(
                                 if abs(eris[i, k, l, j].imag > 1e-12):
                                     print("# Found complex integrals with cplx==False.")
                                     sys.exit()
-                            out = fmt_integral(
-                                eris[i, k, l, j], i, k, j, l, cplx, paren=paren
-                            )
+                            out = fmt_integral(eris[i, k, l, j], i, k, j, l, cplx, paren=paren)
                             f.write(out)
         for i in range(0, nmo):
             for j in range(0, i + 1):
@@ -437,7 +420,6 @@ def read_qmcpack_cholesky_kpoint(filename, get_chol=True):
             nmo = nmo_pk[i]
             hcore.append(hk.view(numpy.complex128).reshape(nmo, nmo))
         chol_vecs = []
-        nmo_max = max(nmo_pk)
     if get_chol:
         for i in range(0, nkp):
             chol_vecs.append(get_kpoint_chol(filename, nchol_pk, minus_k, i))
@@ -461,11 +443,9 @@ def get_kpoint_chol(filename, nchol_pk, minus_k, i):
     with h5py.File(filename, "r") as fh5:
         try:
             Lk = fh5["Hamiltonian/KPFactorized/L{}".format(i)][:]
-            nchol = nchol_pk[i]
             Lk = Lk.view(numpy.complex128)[:, :, 0]
         except KeyError:
             Lk = fh5["Hamiltonian/KPFactorized/L{}".format(minus_k[i])][:]
-            nchol = nchol_pk[minus_k[i]]
             Lk = Lk.view(numpy.complex128).conj()[:, :, 0]
     return Lk
 
@@ -489,7 +469,6 @@ def read_qmcpack_dense(filename):
     """
     with h5py.File(filename, "r") as fh5:
         enuc = fh5["Hamiltonian/Energies"][:][0]
-        dims = fh5["Hamiltonian/dims"][:]
         hcore = fh5["Hamiltonian/hcore"][:]
         chol = fh5["Hamiltonian/DenseFactorized/L"][:]
 
@@ -605,7 +584,7 @@ def write_fcidump_kpoint(
 
 
 def sparse_to_dense(sparse_file, dense_file, real_chol=False):
-    hcore, chol, enuc, nmo, nelec = read_qmcpack_sparse(sparse_file, get_chol=False)
+    hcore, _, enuc, nmo, _ = read_qmcpack_sparse(sparse_file, get_chol=False)
     with h5py.File(dense_file, "w") as fh5:
         fh5["Hamiltonian/Energies"] = numpy.array([enuc, 0])
         with h5py.File(sparse_file, "r") as sph5:
@@ -616,16 +595,13 @@ def sparse_to_dense(sparse_file, dense_file, real_chol=False):
                 fh5["Hamiltonian/hcore"] = hcore.real
                 shape = (nmo * nmo, nchol)
             else:
-                fh5["Hamiltonian/hcore"] = to_qmcpack_complex(
-                    hcore.astype(numpy.complex128)
-                )
+                fh5["Hamiltonian/hcore"] = to_qmcpack_complex(hcore.astype(numpy.complex128))
                 shape = (nmo * nmo, nchol, 2)
             fh5["Hamiltonian/dims"] = dims
             chol_dset = fh5.create_dataset(
                 "Hamiltonian/DenseFactorized/L", shape, dtype=numpy.float64
             )
-            s = 0
-            for ic, bs in enumerate(block_sizes):
+            for ic, _ in enumerate(block_sizes):
                 ixs, vchunk = get_chunk(sph5, ic, False)
                 row_ix, col_ix = ixs[::2], ixs[1::2]
                 sort = numpy.argsort(row_ix)

@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 from typing import Tuple, Union
 
 import numpy as np
@@ -11,7 +11,7 @@ _wfn_type = Union[
 ]
 
 
-class TrialWavefunctionBase(ABC):
+class TrialWavefunctionBase(metaclass=ABCMeta):
     """Base class for trialwavefunction types.
 
     Developer should decouple building wavefunction state and construction.
@@ -41,8 +41,8 @@ class TrialWavefunctionBase(ABC):
         cast_to_device(self, self.verbose)
 
     @abstractmethod
-    def build() -> None:
-        pass
+    def build(self) -> None:
+        ...
 
     @property
     def num_dets(self) -> int:
@@ -66,16 +66,16 @@ class TrialWavefunctionBase(ABC):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate() -> None:
-        pass
+    def half_rotate(self, hamiltonian) -> None:
+        ...
 
     @abstractmethod
     def calc_overlap(self, walkers) -> np.ndarray:
-        pass
+        ...
 
     @abstractmethod
     def calc_greens_function(self, walkers) -> np.ndarray:
-        pass
+        ...
 
     @abstractmethod
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:

@@ -52,9 +52,7 @@ def get_driver(options, comm):
     batched = get_input_value(qmc_opts, "batched", default=True)  # ,
     # verbose=verbosity)
     if beta is not None:
-        afqmc = ThermalAFQMC(
-            comm, options=options, parallel=comm.size > 1, verbose=verbosity
-        )
+        afqmc = ThermalAFQMC(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
     else:
         if comm.rank == 0:
             print("# Non-batched AFQMC driver is used")
@@ -164,12 +162,13 @@ def setup_parallel(options, comm=None, verbose=False):
     walker_opts = options.get("walkers", {"weight": 1})
     estimator_opts["stack_size"] = walker_opts.get("stack_size", 1)
     afqmc.estimators = EstimatorHandler(
-            comm,
-            afqmc.system,
-            afqmc.hamiltonian,
-            afqmc.trial,
-            options=estimator_opts,
-            verbose=(comm.rank == 0 and verbose))
+        comm,
+        afqmc.system,
+        afqmc.hamiltonian,
+        afqmc.trial,
+        options=estimator_opts,
+        verbose=(comm.rank == 0 and verbose),
+    )
     afqmc.psi = Walkers(
         walker_opts,
         afqmc.system,

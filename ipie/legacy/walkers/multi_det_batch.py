@@ -67,15 +67,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of
         # the trial wavefunction.
-        self.det_weights = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
-        self.det_ovlpas = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
-        self.det_ovlpbs = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
+        self.det_weights = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
+        self.det_ovlpas = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
+        self.det_ovlpbs = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
 
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
@@ -87,9 +81,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         self.le_oratio = 1.0
         if verbose:
             print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(
-                    self.ot.real
-                )
+                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(self.ot.real)
             )
 
         # Green's functions for various elements of the trial wavefunction.

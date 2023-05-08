@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,14 +35,17 @@ def is_cupy(obj):
     cond = "cupy" in t
     return cond
 
+
 def to_numpy(obj):
     t = str(type(obj))
     cond = "cupy" in t
     if cond:
+        # pylint: disable=import-error
         import cupy
+
         return cupy.asnumpy(obj)
     else:
-        return obj
+        return
 
 
 def get_git_info():
@@ -65,18 +67,22 @@ def get_git_info():
     under_git = True
     try:
         src = os.path.dirname(__file__) + "/../../"
-        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src,
-                                       stderr=subprocess.DEVNULL).strip()
+        sha1 = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=src, stderr=subprocess.DEVNULL
+        ).strip()
         suffix = subprocess.check_output(
             ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
-        local_mods = subprocess.check_output(
-            ["git", "status", "--porcelain", "./ipie"], cwd=src
-        ).strip().decode('utf-8').split()
+        local_mods = (
+            subprocess.check_output(["git", "status", "--porcelain", "./ipie"], cwd=src)
+            .strip()
+            .decode("utf-8")
+            .split()
+        )
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         under_git = False
     except Exception as error:
         suffix = False
@@ -103,16 +109,13 @@ def is_h5file(obj):
 
 def is_class(obj):
     cond = hasattr(obj, "__class__") and (
-        ("__dict__") in dir(obj)
-        and not isinstance(obj, types.FunctionType)
-        and not is_h5file(obj)
+        ("__dict__") in dir(obj) and not isinstance(obj, types.FunctionType) and not is_h5file(obj)
     )
 
     return cond
 
 
 def serialise(obj, verbose=0):
-
     obj_dict = {}
     if isinstance(obj, dict):
         items = obj.items()
@@ -292,18 +295,18 @@ def get_node_mem():
 
 
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
-
     import ipie
+
     print("# ipie version: {:s}".format(ipie.__version__))
     if sha1 is not None:
         print("# Git hash: {:s}.".format(sha1))
         print("# Git branch: {:s}.".format(branch))
-    if len(local_mods)  > 0:
+    if len(local_mods) > 0:
         print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
-            if prefix == 'M':
+            if prefix == "M":
                 print("# Modified : {:s}".format(file))
-            elif prefix == '??':
+            elif prefix == "??":
                 print("# Untracked : {:s}".format(file))
     print("# Calculation uuid: {:s}.".format(uuid))
     mem = get_node_mem()
@@ -352,25 +355,15 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
                     # info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
                     #                                    'path': ' '.join(lib_dir)}
                     version_string = (
-                        cuda_version[:2]
-                        + "."
-                        + cuda_version[2:4]
-                        + "."
-                        + cuda_version[4]
+                        cuda_version[:2] + "." + cuda_version[2:4] + "." + cuda_version[4]
                     )
                     print("# - CUDA compute capability: {:s}".format(cuda_compute))
                     print("# - CUDA version: {}".format(version_string))
                     print("# - GPU Type: {:s}".format(str(cu_info["name"])[1:]))
                     print(
-                        "# - GPU Mem: {:.3f} GB".format(
-                            cu_info["totalGlobalMem"] / (1024**3.0)
-                        )
+                        "# - GPU Mem: {:.3f} GB".format(cu_info["totalGlobalMem"] / (1024**3.0))
                     )
-                    print(
-                        "# - Number of GPUs: {:d}".format(
-                            l.cuda.runtime.getDeviceCount()
-                        )
-                    )
+                    print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
                 except:
                     print("# cupy import error")
         except (ModuleNotFoundError, ImportError):

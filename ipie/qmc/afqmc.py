@@ -19,24 +19,22 @@
 """Driver to perform AFQMC calculation"""
 import json
 import time
+from typing import Union
 import uuid
 
 from ipie.config import config
-
-
+from ipie.estimators.handler import EstimatorHandler
+from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
-from ipie.estimators.handler import EstimatorHandler
-from ipie.walkers.pop_controller import PopController
-from ipie.walkers.base_walkers import WalkerAccumulator
-
-from ipie.utils.io import get_input_value, to_json
-from ipie.utils.misc import get_git_info, print_env_info
-from ipie.utils.mpi import MPIHandler
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
+from ipie.utils.io import to_json
+from ipie.utils.misc import get_git_info, print_env_info
+from ipie.utils.mpi import MPIHandler
+from ipie.walkers.base_walkers import WalkerAccumulator
+from ipie.walkers.pop_controller import PopController
 
-from ipie.propagation.propagator import Propagator
 
 class AFQMC(object):
     """AFQMC driver.
@@ -94,21 +92,21 @@ class AFQMC(object):
     def __init__(
         self,
         comm,
-        options={},
         system=None,
         hamiltonian=None,
         trial=None,
         walkers=None,
-        propagator = None,
-        verbose: int=0,
-        seed: int =None,
+        propagator=None,
+        verbose: int = 0,
+        seed: int = None,
         nwalkers: int = 100,
         nwalkers_per_task: int = None,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
         timestep: float = 0.005,
         stabilise_freq=5,
-        pop_control_freq=5
+        pop_control_freq=5,
+        filename: Union[str, None] = None,
     ):
         if verbose is not None:
             self.verbosity = verbose
@@ -118,15 +116,9 @@ class AFQMC(object):
         # 1. Environment attributes
         if comm.rank == 0:
             self.uuid = str(uuid.uuid1())
-            get_sha1 = options.get("get_sha1", True)
-            if get_sha1:
-                try:
-                    self.sha1, self.branch, self.local_mods = get_git_info()
-                except:
-                    self.sha1 = "None"
-                    self.branch = "None"
-                    self.local_mods = []
-            else:
+            try:
+                self.sha1, self.branch, self.local_mods = get_git_info()
+            except:
                 self.sha1 = "None"
                 self.branch = "None"
                 self.local_mods = []
@@ -147,11 +139,11 @@ class AFQMC(object):
             "timestep": timestep,
             "nsteps": num_steps_per_block,
             "num_blocks": num_blocks,
-            "pop_control_freq":pop_control_freq,
-            "stabilise_freq":stabilise_freq
+            "pop_control_freq": pop_control_freq,
+            "stabilise_freq": stabilise_freq,
         }
 
-        self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
+        self.mpi_handler = MPIHandler(comm, nmembers=1, verbose=verbose)
         self.shared_comm = self.mpi_handler.shared_comm
         # 2. Calculation objects.
         self.system = system
@@ -161,15 +153,13 @@ class AFQMC(object):
         self.qmc = QMCOpts(qmc_opt, verbose=verbose)
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
-            props = xp.cuda.runtime.getDeviceProperties(0)
+            _ = xp.cuda.runtime.getDeviceProperties(0)
             xp.cuda.runtime.setDevice(self.shared_comm.rank)
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
                         "# There are unused GPUs ({} MPI tasks but {} GPUs). "
-                        " Check if this is really what you wanted.".format(
-                            comm.size, ngpus
-                        )
+                        " Check if this is really what you wanted.".format(comm.size, ngpus)
                     )
 
         if self.qmc.nwalkers is None:
@@ -182,18 +172,13 @@ class AFQMC(object):
         # Reset number of walkers so they are evenly distributed across
         # cores/ranks.
         # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(
-            self.qmc.nwalkers / comm.size
-        )  # This should be gone in the future
+        self.qmc.nwalkers = int(self.qmc.nwalkers / comm.size)  # This should be gone in the future
         assert self.qmc.nwalkers == self.qmc.nwalkers_per_task
         # Total number of walkers.
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
                 print("# WARNING: Not enough walkers for selected core count.")
-                print(
-                    "# There must be at least one walker per core set in the "
-                    "input file."
-                )
+                print("# There must be at least one walker per core set in the " "input file.")
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
@@ -203,7 +188,6 @@ class AFQMC(object):
         else:
             self.qmc.rng_seed = set_rng_seed(seed, comm)
 
-        mem = get_host_memory()
         if comm.rank == 0:
             if self.trial.compute_trial_energy:
                 self.trial.calculate_energy(self.system, self.hamiltonian)
@@ -216,13 +200,15 @@ class AFQMC(object):
             self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
 
         comm.barrier()
-        
+
         # set walkers
         self.walkers = walkers
-        
+
         if propagator is None:
             self.propagator = Propagator[type(self.hamiltonian)](self.qmc.dt)
-            self.propagator.build(self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose)
+            self.propagator.build(
+                self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose
+            )
         else:
             self.propagator = propagator
 
@@ -230,24 +216,18 @@ class AFQMC(object):
 
         # Using only default population control
         self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
-        self.accumulators = WalkerAccumulator(["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps) # lagacy purposes??
+        self.accumulators = WalkerAccumulator(
+            ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
+        )  # lagacy purposes??
 
-        est_opts = get_input_value(
-            options,
-            "estimators",
-            default={},
-            alias=["estimates", "estimator"],
-            verbose=self.verbosity > 1,
-        )
-        est_opts["stack_size"] = 1 # remove in the future
         self.estimators = EstimatorHandler(
             comm,
             self.system,
             self.hamiltonian,
             self.trial,
             walker_state=self.accumulators,
-            options=est_opts,
             verbose=(comm.rank == 0 and verbose),
+            filename=filename,
         )
 
         if self.mpi_handler.nmembers > 1:
@@ -316,7 +296,7 @@ class AFQMC(object):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-            
+
             self.propagator.propagate_walkers(
                 self.walkers,
                 self.hamiltonian,
@@ -375,13 +355,11 @@ class AFQMC(object):
                     self.trial,
                     self.walkers,
                 )
-                self.estimators.print_block(
-                    comm, step // self.qmc.nsteps, self.accumulators
-                )
+                self.estimators.print_block(comm, step // self.qmc.nsteps, self.accumulators)
                 self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
-            
+
             # restart write features disabled
             # if self.walkers.write_restart and step % self.walkers.write_freq == 0:
             #     self.walkers.write_walkers_batch(comm)
@@ -408,14 +386,8 @@ class AFQMC(object):
         if self.root:
             if verbose:
                 print("# End Time: {:s}".format(time.asctime()))
-                print(
-                    "# Running time : {:.6f} seconds".format(
-                        (time.time() - self._init_time)
-                    )
-                )
-                print(
-                    "# Timing breakdown (per call, total calls per block, total blocks):"
-                )
+                print("# Running time : {:.6f} seconds".format((time.time() - self._init_time)))
+                print("# Timing breakdown (per call, total calls per block, total blocks):")
                 print("# - Setup: {:.6f} s".format(self.tsetup))
                 print(
                     "# - Block: {:.6f} s / block for {} total blocks".format(
@@ -505,25 +477,6 @@ class AFQMC(object):
         twist = system.ktwist.all() is not None
         return continuous or twist
 
-    def get_energy(self, skip=0):
-        """Get mixed estimate for the energy.
-
-        Returns
-        -------
-        (energy, error) : tuple
-            Mixed estimate for the energy and standard error.
-        """
-        filename = self.estimators.h5f_name
-        from ipie.analysis import blocking
-
-        try:
-            eloc = blocking.reblock_local_energy(filename, skip)
-        except IndexError:
-            eloc = None
-        except ValueError:
-            eloc = None
-        return eloc
-
     def setup_timers(self):
         self.tortho = 0
         self.tprop = 0
@@ -542,22 +495,3 @@ class AFQMC(object):
         self.tpopc_comm = 0
         self.tpopc_non_comm = 0
         self.tstep = 0
-
-    def get_one_rdm(self, skip=0):
-        """Get back-propagated estimate for the one RDM.
-
-        Returns
-        -------
-        rdm : :class:`numpy.ndarray`
-            Back propagated estimate for 1RMD.
-        error : :class:`numpy.ndarray`
-            Standard error in the RDM.
-        """
-        from ipie.analysis import blocking
-
-        filename = self.estimators.h5f_name
-        try:
-            bp_rdm, bp_rdm_err = blocking.reblock_rdm(filename)
-        except IndexError:
-            bp_rdm, bp_rdm_err = None, None
-        return (bp_rdm, bp_rdm_err)

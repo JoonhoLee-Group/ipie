@@ -81,9 +81,7 @@ class UEG(object):
         # self.kfac = 2*math.pi/self.L
         self.kfac = 2 * math.pi / self.L
         # Fermi Wavevector (infinite system).
-        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (
-            1 / 3.0
-        )
+        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (1 / 3.0)
         # Fermi energy (inifinite systems).
         self.ef = 0.5 * self.kf**2
         if verbose:

@@ -12,16 +12,16 @@ from ipie.legacy.estimators.ueg_kernels import (
 
 def exchange_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gprod, G):
     for iq in range(nq):
-        for (idxkpq, i) in zip(kpq[iq], kpq_i[iq]):
-            for (idxpmq, j) in zip(pmq[iq], pmq_i[iq]):
+        for idxkpq, i in zip(kpq[iq], kpq_i[iq]):
+            for idxpmq, j in zip(pmq[iq], pmq_i[iq]):
                 Gprod[iq] += G[j, idxkpq] * G[i, idxpmq]
 
 
 def coulomb_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gkpq, Gpmq, G):
     for iq in range(nq):
-        for (idxkpq, i) in zip(kpq[iq], kpq_i[iq]):
+        for idxkpq, i in zip(kpq[iq], kpq_i[iq]):
             Gkpq[iq] += G[i, idxkpq]
-        for (idxpmq, i) in zip(pmq[iq], pmq_i[iq]):
+        for idxpmq, i in zip(pmq[iq], pmq_i[iq]):
             Gpmq[iq] += G[i, idxpmq]
 
 
@@ -88,34 +88,29 @@ def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None):
 
 # JHLFML
 def build_J(system, Gpmq, Gkpq):
-
     J = [
         numpy.zeros((system.nbasis, system.nbasis), dtype=numpy.complex128),
         numpy.zeros((system.nbasis, system.nbasis), dtype=numpy.complex128),
     ]
 
-    for (iq, q) in enumerate(system.qvecs):
+    for iq, q in enumerate(system.qvecs):
         for idxi, i in enumerate(system.basis):
             for idxj, j in enumerate(system.basis):
                 jpq = j + q
                 idxjpq = system.lookup_basis(jpq)
                 if (idxjpq is not None) and (idxjpq == idxi):
                     J[0][idxj, idxi] += (
-                        (1.0 / (2.0 * system.vol))
-                        * system.vqvec[iq]
-                        * (Gkpq[0][iq] + Gkpq[1][iq])
+                        (1.0 / (2.0 * system.vol)) * system.vqvec[iq] * (Gkpq[0][iq] + Gkpq[1][iq])
                     )
 
-    for (iq, q) in enumerate(system.qvecs):
+    for iq, q in enumerate(system.qvecs):
         for idxi, i in enumerate(system.basis):
             for idxj, j in enumerate(system.basis):
                 jpq = j - q
                 idxjmq = system.lookup_basis(jpq)
                 if (idxjmq is not None) and (idxjmq == idxi):
                     J[0][idxj, idxi] += (
-                        (1.0 / (2.0 * system.vol))
-                        * system.vqvec[iq]
-                        * (Gpmq[0][iq] + Gpmq[1][iq])
+                        (1.0 / (2.0 * system.vol)) * system.vqvec[iq] * (Gpmq[0][iq] + Gpmq[1][iq])
                     )
 
     J[1] = J[0]
@@ -127,20 +122,16 @@ def build_K(system, G):
     K = numpy.zeros((2, system.nbasis, system.nbasis), dtype=numpy.complex128)
     for s in [0, 1]:
         for iq in range(len(system.vqvec)):
-            for (idxjmq, idxj) in zip(system.ipmq_pmq[iq], system.ipmq_i[iq]):
-                for (idxkpq, idxk) in zip(system.ikpq_kpq[iq], system.ikpq_i[iq]):
+            for idxjmq, idxj in zip(system.ipmq_pmq[iq], system.ipmq_i[iq]):
+                for idxkpq, idxk in zip(system.ikpq_kpq[iq], system.ikpq_i[iq]):
                     K[s, idxj, idxkpq] += (
-                        -(1.0 / (2.0 * system.vol))
-                        * system.vqvec[iq]
-                        * G[s][idxjmq, idxk]
+                        -(1.0 / (2.0 * system.vol)) * system.vqvec[iq] * G[s][idxjmq, idxk]
                     )
         for iq in range(len(system.vqvec)):
-            for (idxjpq, idxj) in zip(system.ikpq_kpq[iq], system.ikpq_i[iq]):
-                for (idxpmq, idxp) in zip(system.ipmq_pmq[iq], system.ipmq_i[iq]):
+            for idxjpq, idxj in zip(system.ikpq_kpq[iq], system.ikpq_i[iq]):
+                for idxpmq, idxp in zip(system.ipmq_pmq[iq], system.ipmq_i[iq]):
                     K[s, idxj, idxpmq] += (
-                        -(1.0 / (2.0 * system.vol))
-                        * system.vqvec[iq]
-                        * G[s][idxjpq, idxp]
+                        -(1.0 / (2.0 * system.vol)) * system.vqvec[iq] * G[s][idxjpq, idxp]
                     )
     return K
 

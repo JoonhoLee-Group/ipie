@@ -1,7 +1,13 @@
-import numpy as np
-from typing import Tuple
 import time
+from typing import Tuple
 
+import numpy as np
+
+from ipie.estimators.greens_function_multi_det import (
+    greens_function_multi_det,
+    greens_function_multi_det_wicks,
+    greens_function_multi_det_wicks_opt,
+)
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
 from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
@@ -10,13 +16,8 @@ from ipie.propagation.overlap import (
     calc_overlap_multi_det_wicks,
     calc_overlap_multi_det_wicks_opt,
 )
-from ipie.estimators.greens_function_multi_det import (
-    greens_function_multi_det,
-    greens_function_multi_det_wicks,
-    greens_function_multi_det_wicks_opt,
-)
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
 # FDM Clean this up!
 try:
@@ -25,7 +26,6 @@ try:
     _use_wicks_helper = True
 except ImportError:
     _use_wicks_helper = False
-    pass
 
 
 class ParticleHoleWicks(TrialWavefunctionBase):
@@ -211,12 +211,8 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
                 djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
 
-                anh_a = list(
-                    set(dja) - set(d0a)
-                )  # annihilation to right, creation to left
-                cre_a = list(
-                    set(d0a) - set(dja)
-                )  # creation to right, annhilation to left
+                anh_a = list(set(dja) - set(d0a))  # annihilation to right, creation to left
+                cre_a = list(set(d0a) - set(dja))  # creation to right, annhilation to left
 
                 anh_b = list(set(djb) - set(d0b))
                 cre_b = list(set(d0b) - set(djb))
@@ -255,8 +251,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 break
 
         self.ndets_per_chunk = [
-            sum(len(ex) for ex in cre_ex_a_chunk[ichunk])
-            for ichunk in range(num_chunks)
+            sum(len(ex) for ex in cre_ex_a_chunk[ichunk]) for ichunk in range(num_chunks)
         ]
         assert sum(self.ndets_per_chunk) == self.num_dets - 1
         self.ndet_a = [
@@ -267,12 +262,8 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             sum([len(cre_ex_b_chunk[ichunk][iex]) for ichunk in range(num_chunks)])
             for iex in range(max_excit)
         ]
-        self.max_excite_a = max(
-            -1 if nd == 0 else i for i, nd in enumerate(self.ndet_a)
-        )
-        self.max_excite_b = max(
-            -1 if nd == 0 else i for i, nd in enumerate(self.ndet_b)
-        )
+        self.max_excite_a = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_a))
+        self.max_excite_b = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_b))
         self.max_excite = max(self.max_excite_a, self.max_excite_b)
         self.cre_ex_a_chunk = [
             [np.array(ex, dtype=np.int32) for ex in cre_ex_a_chunk[ichunk]]
@@ -297,12 +288,10 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         # trial.coeffs[slice[1]] will yield something sensible.
         # Note this is the **inverse** mapping from the non chunked case
         self.excit_map_a_chunk = [
-            np.argsort(np.concatenate(excit_map_a_chunk[ichunk]))
-            for ichunk in range(num_chunks)
+            np.argsort(np.concatenate(excit_map_a_chunk[ichunk])) for ichunk in range(num_chunks)
         ]
         self.excit_map_b_chunk = [
-            np.argsort(np.concatenate(excit_map_b_chunk[ichunk]))
-            for ichunk in range(num_chunks)
+            np.argsort(np.concatenate(excit_map_b_chunk[ichunk])) for ichunk in range(num_chunks)
         ]
 
         self.slices_alpha_chunk, self.slices_beta_chunk = self.build_slices_chunked()
@@ -410,9 +399,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
     def build_one_rdm(self):
         if self.verbose:
             print("# Computing 1-RDM of the trial wfn for mean-field shift.")
-            print(
-                f"# Using first {self.num_dets_for_props} determinants for evaluation."
-            )
+            print(f"# Using first {self.num_dets_for_props} determinants for evaluation.")
         start = time.time()
         if _use_wicks_helper:
             if self.verbose:
@@ -481,12 +468,8 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                     ii, si = map_orb(from_orb[0], nbasis)
                     aa, sa = map_orb(to_orb[0], nbasis)
                     if si == sa:
-                        P[si][aa, ii] += (
-                            self.coeffs[jdet].conj() * self.coeffs[idet] * phase
-                        )
-                        P[si][ii, aa] += (
-                            self.coeffs[jdet] * self.coeffs[idet].conj() * phase
-                        )
+                        P[si][aa, ii] += self.coeffs[jdet].conj() * self.coeffs[idet] * phase
+                        P[si][ii, aa] += self.coeffs[jdet] * self.coeffs[idet].conj() * phase
         P[0] /= denom
         P[1] /= denom
 
@@ -535,9 +518,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         num_dets_for_props: int = 100,
         num_dets_for_trial: int = -1,
     ) -> None:
-        super().__init__(
-            wavefunction, num_elec, num_basis, verbose=verbose, use_active_space=False
-        )
+        super().__init__(wavefunction, num_elec, num_basis, verbose=verbose, use_active_space=False)
         self.optimized = False
         self.build()
 
@@ -551,23 +532,12 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         if self.verbose:
             print(f"# Reference alpha determinant: {d0a}")
             print(f"# Reference beta determinant: {d0b}")
-        self.cre_a = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.anh_a = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.cre_b = [
-            []
-        ]  # one empty list as a member to account for the reference state
-        self.anh_b = [
-            []
-        ]  # one empty list as a member to account for the reference state
+        self.cre_a = [[]]  # one empty list as a member to account for the reference state
+        self.anh_a = [[]]  # one empty list as a member to account for the reference state
+        self.cre_b = [[]]  # one empty list as a member to account for the reference state
+        self.anh_b = [[]]  # one empty list as a member to account for the reference state
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
-        nexcit_a = nalpha
-        nexcit_b = nbeta
         for j in range(1, self.num_dets):
             dja = self.occa[j][self.occ_orb_alpha] - self.nfrozen
             djb = self.occb[j][self.occ_orb_beta] - self.nfrozen
@@ -624,9 +594,7 @@ class ParticleHoleNaive(ParticleHoleWicks):
         self,
     ):
         self.optimized = False
-        self.psi = np.zeros(
-            (self.num_dets, self.nbasis, sum(self.nelec)), dtype=np.complex128
-        )
+        self.psi = np.zeros((self.num_dets, self.nbasis, sum(self.nelec)), dtype=np.complex128)
         I = np.eye(self.nbasis, dtype=np.complex128)
         nup = self.nelec[0]
         for idet, (occa, occb) in enumerate(zip(self.occa, self.occb)):

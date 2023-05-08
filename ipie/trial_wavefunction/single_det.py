@@ -1,30 +1,28 @@
-import numpy as np
 import time
 
-from ipie.config import config
-from ipie.utils.backend import arraylib as xp
+import mpi4py.MPI
+import numpy as np
+import plum
 
+from ipie.config import config
 from ipie.estimators.generic import half_rotated_cholesky_jk
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
     greens_function_single_det_batch,
 )
 from ipie.estimators.utils import gab_spin
-from ipie.propagation.overlap import (
-    calc_overlap_single_det_batch,
-)
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.propagation.force_bias import (
-    construct_force_bias_batch_single_det_chunked,
     construct_force_bias_batch_single_det,
+    construct_force_bias_batch_single_det_chunked,
 )
-from ipie.utils.mpi import MPIHandler
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from ipie.walkers.uhf_walkers import UHFWalkers
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.propagation.overlap import calc_overlap_single_det_batch
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.mpi import MPIHandler
+from ipie.walkers.uhf_walkers import UHFWalkers
 
-import plum
-import mpi4py.MPI
 
 class SingleDet(TrialWavefunctionBase):
     def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
@@ -80,7 +78,11 @@ class SingleDet(TrialWavefunctionBase):
             print("# Time to evaluate local energy: {} s".format(time.time() - start))
 
     @plum.dispatch
-    def half_rotate(self: "SingleDet", hamiltonian:GenericRealChol, comm:mpi4py.MPI.Intracomm =None):
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: GenericRealChol,
+        comm: mpi4py.MPI.Intracomm = None,
+    ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
@@ -102,7 +104,11 @@ class SingleDet(TrialWavefunctionBase):
         self.half_rotated = True
 
     @plum.dispatch
-    def half_rotate(self: "SingleDet", hamiltonian:GenericComplexChol, comm:mpi4py.MPI.Intracomm =None):
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: GenericComplexChol,
+        comm: mpi4py.MPI.Intracomm = None,
+    ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
@@ -129,7 +135,6 @@ class SingleDet(TrialWavefunctionBase):
         self._rBb = rot_chol[1][3][0]
         self.half_rotated = True
 
-
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_single_det_batch(walkers, self)
 
@@ -140,7 +145,12 @@ class SingleDet(TrialWavefunctionBase):
             return greens_function_single_det(walkers, self, build_full=build_full)
 
     @plum.dispatch
-    def calc_force_bias(self, hamiltonian:GenericRealChol, walkers:UHFWalkers, mpi_handler: MPIHandler=None) -> np.ndarray:
+    def calc_force_bias(
+        self,
+        hamiltonian: GenericRealChol,
+        walkers: UHFWalkers,
+        mpi_handler: MPIHandler = None,
+    ) -> np.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler
@@ -149,17 +159,18 @@ class SingleDet(TrialWavefunctionBase):
             return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
 
     @plum.dispatch
-    def calc_force_bias(self, hamiltonian:GenericComplexChol, walkers:UHFWalkers, mpi_handler: MPIHandler=None) -> np.ndarray:
+    def calc_force_bias(
+        self,
+        hamiltonian: GenericComplexChol,
+        walkers: UHFWalkers,
+        mpi_handler: MPIHandler = None,
+    ) -> np.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
-        Ghalfa = walkers.Ghalfa.reshape(
-            walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-        )
-        Ghalfb = walkers.Ghalfb.reshape(
-            walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-        )
+        Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+        Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
         vbias = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
-        vbias[:hamiltonian.nchol,:] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
-        vbias[hamiltonian.nchol:,:] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
+        vbias[: hamiltonian.nchol, :] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
+        vbias[hamiltonian.nchol :, :] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
         vbias = vbias.T.copy()
         return vbias
 

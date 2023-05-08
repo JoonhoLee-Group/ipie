@@ -7,8 +7,7 @@ import numpy
 import scipy.sparse.linalg
 from scipy.linalg import sqrtm
 
-from ipie.legacy.estimators.thermal import (inverse_greens_function_qr,
-                                            one_rdm_from_G)
+from ipie.legacy.estimators.thermal import inverse_greens_function_qr, one_rdm_from_G
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import exponentiate_matrix
@@ -17,9 +16,7 @@ from ipie.utils.linalg import exponentiate_matrix
 class PlaneWave(object):
     """PlaneWave class"""
 
-    def __init__(
-        self, system, hamiltonian, trial, qmc, options={}, verbose=False, lowrank=False
-    ):
+    def __init__(self, system, hamiltonian, trial, qmc, options={}, verbose=False, lowrank=False):
         self.verbose = verbose
         if verbose:
             print("# Parsing plane wave propagator input options.")
@@ -157,12 +154,10 @@ class PlaneWave(object):
         force bias : numpy array
             -sqrt(dt) * vbias
         """
-        for (i, qi) in enumerate(hamiltonian.qvecs):
+        for i, qi in enumerate(hamiltonian.qvecs):
             (iA, iB) = self.two_body_potentials(hamiltonian, i)
             # Deal with spin more gracefully
-            self.vbias[i] = (
-                iA.dot(G[0]).diagonal().sum() + iA.dot(G[1]).diagonal().sum()
-            )
+            self.vbias[i] = iA.dot(G[0]).diagonal().sum() + iA.dot(G[1]).diagonal().sum()
             self.vbias[i + self.num_vplus] = (
                 iB.dot(G[0]).diagonal().sum() + iB.dot(G[1]).diagonal().sum()
             )
@@ -181,11 +176,9 @@ class PlaneWave(object):
         VHS : numpy array
             the HS potential
         """
-        VHS = numpy.zeros(
-            (hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
-        )
+        VHS = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
 
-        for (i, qi) in enumerate(hamiltonian.qvecs):
+        for i, qi in enumerate(hamiltonian.qvecs):
             (iA, iB) = self.two_body_potentials(hamiltonian, i)
             VHS = VHS + (xshifted[i] * iA).todense()
             VHS = VHS + (xshifted[i + self.num_vplus] * iB).todense()
@@ -204,9 +197,7 @@ class PlaneWave(object):
         VHS : numpy array
             the HS potential
         """
-        VHS = numpy.zeros(
-            (hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
-        )
+        VHS = numpy.zeros((hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
         VHS = (
             hamiltonian.iA * xshifted[: self.num_vplus]
             + hamiltonian.iB * xshifted[self.num_vplus :]
@@ -228,12 +219,8 @@ class PlaneWave(object):
             -sqrt(dt) * vbias
         """
         Gvec = G.reshape(2, hamiltonian.nbasis * hamiltonian.nbasis)
-        self.vbias[: self.num_vplus] = (
-            Gvec[0].T * hamiltonian.iA + Gvec[1].T * hamiltonian.iA
-        )
-        self.vbias[self.num_vplus :] = (
-            Gvec[0].T * hamiltonian.iB + Gvec[1].T * hamiltonian.iB
-        )
+        self.vbias[: self.num_vplus] = Gvec[0].T * hamiltonian.iA + Gvec[1].T * hamiltonian.iA
+        self.vbias[self.num_vplus :] = Gvec[0].T * hamiltonian.iB + Gvec[1].T * hamiltonian.iB
         return -self.sqrt_dt * self.vbias
 
     def propagate_greens_function(self, walker, B, Binv):
@@ -384,14 +371,10 @@ class PlaneWave(object):
         else:
             # Compute determinant ratio det(1+A')/det(1+A).
             # 1. Current walker's green's function.
-            G = walker.greens_function(
-                None, slice_ix=walker.stack.ntime_slices, inplace=False
-            )
+            G = walker.greens_function(None, slice_ix=walker.stack.ntime_slices, inplace=False)
             # 2. Compute updated green's function.
             walker.stack.update_new(B)
-            walker.greens_function(
-                None, slice_ix=walker.stack.ntime_slices, inplace=True
-            )
+            walker.greens_function(None, slice_ix=walker.stack.ntime_slices, inplace=True)
 
         # 3. Compute det(G/G')
         M0 = numpy.array(
@@ -419,9 +402,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_free_low_rank(
-        self, system, walker, trial, eshift=0, force_bias=False
-    ):
+    def propagate_walker_free_low_rank(self, system, walker, trial, eshift=0, force_bias=False):
         """Free projection propagator
         Parameters
         ----------
@@ -491,9 +472,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless_full_rank(
-        self, hamiltonian, walker, trial, eshift=0
-    ):
+    def propagate_walker_phaseless_full_rank(self, hamiltonian, walker, trial, eshift=0):
         # """Phaseless propagator
         # Parameters
         # ----------
@@ -715,9 +694,7 @@ def unit_test():
                 inv_sort_basis[idx] = i
 
             mT = walker.stack.mT
-            Ctrial = numpy.zeros(
-                (system.nbasis, walker.stack.mT * 2), dtype=numpy.complex128
-            )
+            Ctrial = numpy.zeros((system.nbasis, walker.stack.mT * 2), dtype=numpy.complex128)
             Ctrial[:, :mT] = walker.stack.CT[0][:, :mT]
             Ctrial[:, mT:] = walker.stack.CT[1][:, :mT]
 
@@ -731,11 +708,7 @@ def unit_test():
             Theta[:, :, :] = Theta[:, :, inv_sort_basis]
             Ctrial = Ctrial[inv_sort_basis, :]
 
-            print(
-                "E = {}".format(
-                    local_energy_pw_fft(system, G=P, Ghalf=Theta, trial=Ctrial)
-                )
-            )
+            print("E = {}".format(local_energy_pw_fft(system, G=P, Ghalf=Theta, trial=Ctrial)))
         else:
             P = one_rdm_from_G(walker.G)
             print(numpy.diag(walker.G[0].real))

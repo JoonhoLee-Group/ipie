@@ -41,9 +41,7 @@ class GenericContinuous(object):
         start = time.time()
         if trial.ndets > 1:
             self.optimised = False
-            self.mf_shift = self.construct_mean_field_shift_multi_det(
-                hamiltonian, trial
-            )
+            self.mf_shift = self.construct_mean_field_shift_multi_det(hamiltonian, trial)
         else:
             self.mf_shift = self.construct_mean_field_shift(hamiltonian, trial)
 
@@ -117,8 +115,7 @@ class GenericContinuous(object):
         else:
             nb = hamiltonian.nbasis
             mf_shift = [
-                trial.contract_one_body(Vpq.reshape(nb, nb))
-                for Vpq in hamiltonian.chol_vecs.T
+                trial.contract_one_body(Vpq.reshape(nb, nb)) for Vpq in hamiltonian.chol_vecs.T
             ]
             mf_shift = 1j * numpy.array(mf_shift)
         return mf_shift
@@ -140,9 +137,7 @@ class GenericContinuous(object):
         """
         nb = hamiltonian.nbasis
         # shift = 1j*hamiltonian.chol_vecs.dot(self.mf_shift).reshape(nb,nb)
-        shift = 1j * numpy.einsum(
-            "mx,x->m", hamiltonian.chol_vecs, self.mf_shift
-        ).reshape(nb, nb)
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol_vecs, self.mf_shift).reshape(nb, nb)
         H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
         self.BH1 = numpy.array(
             [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
@@ -205,9 +200,9 @@ class GenericContinuous(object):
     def construct_VHS_slow(self, hamiltonian, shifted):
         # VHS_{ik} = \sum_{n} v_{(ik),n} (x-xbar)_n
         nb = hamiltonian.nbasis
-        return self.isqrt_dt * numpy.einsum(
-            "mx,x->m", hamiltonian.chol_vecs, shifted
-        ).reshape(nb, nb)
+        return self.isqrt_dt * numpy.einsum("mx,x->m", hamiltonian.chol_vecs, shifted).reshape(
+            nb, nb
+        )
 
     def construct_VHS_fast(self, hamiltonian, xshifted):
         """Construct the one body potential from the HS transformation
@@ -256,15 +251,13 @@ class GenericContinuous(object):
             isrealobj = numpy.isrealobj
 
         if isrealobj(hamiltonian.chol_vecs):
-            VHS = hamiltonian.chol_vecs.dot(
-                xshifted.real
-            ) + 1.0j * hamiltonian.chol_vecs.dot(xshifted.imag)
+            VHS = hamiltonian.chol_vecs.dot(xshifted.real) + 1.0j * hamiltonian.chol_vecs.dot(
+                xshifted.imag
+            )
         else:
             VHS = hamiltonian.chol_vecs.dot(xshifted)
         # (nb, nb, nw) -> (nw, nb, nb)
-        VHS = VHS.T.reshape(
-            self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis
-        ).copy()
+        VHS = VHS.T.reshape(self.nwalkers, hamiltonian.nbasis, hamiltonian.nbasis).copy()
 
         if is_cupy(
             hamiltonian.chol_vecs
@@ -349,9 +342,7 @@ def construct_propagator_matrix_generic(hamiltonian, BT2, config, dt, conjt=Fals
 # return psi_bp
 
 
-def back_propagate_generic(
-    phi, configs, system, hamiltonian, nstblz, BT2, dt, store=False
-):
+def back_propagate_generic(phi, configs, system, hamiltonian, nstblz, BT2, dt, store=False):
     r"""Perform back propagation for RHF/UHF style wavefunction.
 
     For use with generic system hamiltonian.
@@ -378,7 +369,7 @@ def back_propagate_generic(
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs.get_block()[0][::-1]):
+    for i, c in enumerate(configs.get_block()[0][::-1]):
         B = construct_propagator_matrix_generic(hamiltonian, BT2, c, dt, False)
         phi[:, :nup] = numpy.dot(B[0].conj().T, phi[:, :nup])
         phi[:, nup:] = numpy.dot(B[1].conj().T, phi[:, nup:])
@@ -393,14 +384,11 @@ def back_propagate_generic(
 
 def back_propagate_generic_bmat(system, psi, trial, nstblz):
     r"""Perform back propagation for RHF/UHF style wavefunction."""
-    psi_bp = [
-        SingleDetWalker({}, system, hamiltonian, trial, index=w)
-        for w in range(len(psi))
-    ]
+    psi_bp = [SingleDetWalker({}, system, hamiltonian, trial, index=w) for w in range(len(psi))]
     nup = system.nup
-    for (iw, w) in enumerate(psi):
+    for iw, w in enumerate(psi):
         # propagators should be applied in reverse order
-        for (i, B) in enumerate(w.stack.stack[::-1]):
+        for i, B in enumerate(w.stack.stack[::-1]):
             # could make this system specific to reduce need for multiple
             # routines.
             psi_bp[iw].phi[:, :nup] = numpy.dot(B[0].conj().T, psi_bp[iw].phi[:, :nup])

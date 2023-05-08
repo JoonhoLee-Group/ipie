@@ -23,8 +23,7 @@ class HarmonicOscillator(object):
     # -------------------------
     def value(self, X):  # X : lattice configuration
         result = numpy.prod(
-            self.norm
-            * numpy.exp(-(self.m * self.w / 2.0) * (X - self.xavg) * (X - self.xavg))
+            self.norm * numpy.exp(-(self.m * self.w / 2.0) * (X - self.xavg) * (X - self.xavg))
         )
         return result
 
@@ -38,14 +37,12 @@ class HarmonicOscillator(object):
     def laplacian(self, X):  # laplacian / value
         # lap = self.w * self.w * (X-self.xavg) * (X-self.xavg) * self.value(X) - self.w * self.value(X)
         lap = (
-            self.m * self.m * self.w * self.w * (X - self.xavg) * (X - self.xavg)
-            - self.w * self.m
+            self.m * self.m * self.w * self.w * (X - self.xavg) * (X - self.xavg) - self.w * self.m
         )
         return lap
 
     # -------------------------
     def local_energy(self, X):
-
         nsites = X.shape[0]
 
         ke = -0.5 * numpy.sum(self.laplacian(X)) / self.m
@@ -68,9 +65,7 @@ class HarmonicOscillatorMomentum(object):
     def value(self, P):  # P : lattice momentum
         result = numpy.prod(
             self.norm
-            * numpy.exp(
-                -(1.0 / (2.0 * self.m * self.w)) * (P - self.pavg) * (P - self.pavg)
-            )
+            * numpy.exp(-(1.0 / (2.0 * self.m * self.w)) * (P - self.pavg) * (P - self.pavg))
         )
         return result
 
@@ -88,7 +83,6 @@ class HarmonicOscillatorMomentum(object):
 
     # -------------------------
     def local_energy(self, P):
-
         nsites = P.shape[0]
 
         ke = (1.0 / (2.0 * self.m)) * numpy.sum(P * P)

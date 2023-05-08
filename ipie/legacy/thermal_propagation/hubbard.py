@@ -10,7 +10,6 @@ from ipie.legacy.estimators.thermal import one_rdm_from_G
 
 class ThermalDiscrete(object):
     def __init__(self, ham, trial, qmc, options={}, verbose=False, lowrank=False):
-
         if verbose:
             print("# Parsing discrete propagator input options.")
             print("# Using continuous Hubbar--Stratonovich transformations.")
@@ -54,9 +53,7 @@ class ThermalDiscrete(object):
         if abs(self.dmu) > 1e-16:
             self._mu = trial.mu
             if verbose:
-                print(
-                    "# Chemical potential shift (mu_T-mu): {}".format(-sign * self.dmu)
-                )
+                print("# Chemical potential shift (mu_T-mu): {}".format(-sign * self.dmu))
         else:
             self._mu = ham.mu
         self.delta = self.auxf - 1
@@ -112,8 +109,7 @@ class ThermalDiscrete(object):
             gbar[i] += 1
             denom = 1 + (1 - g[i]) * self.delta[xi, spin]
             walker.G[spin] = (
-                walker.G[spin]
-                - self.delta[xi, spin] * numpy.einsum("i,j->ij", g, gbar) / denom
+                walker.G[spin] - self.delta[xi, spin] * numpy.einsum("i,j->ij", g, gbar) / denom
             )
 
     def propagate_greens_function(self, walker):
@@ -170,9 +166,7 @@ class ThermalDiscrete(object):
             wfac *= self.aux_wfac[xi]
             # Compute determinant ratio det(1+A')/det(1+A).
             # 1. Current walker's green's function.
-        G = walker.greens_function(
-            None, slice_ix=walker.stack.ntime_slices, inplace=False
-        )
+        G = walker.greens_function(None, slice_ix=walker.stack.ntime_slices, inplace=False)
         # 2. Compute updated green's function.
         walker.stack.update_new(B)
         walker.greens_function(None, slice_ix=walker.stack.ntime_slices, inplace=True)

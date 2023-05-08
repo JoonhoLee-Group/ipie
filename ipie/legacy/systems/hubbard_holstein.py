@@ -102,11 +102,7 @@ class HubbardHolstein(object):
             print("# nx, ny = {},{}".format(self.nx, self.ny))
             print("# nbasis = {}".format(self.nbasis))
             print("# t, U = {}, {}".format(self.t, self.U))
-            print(
-                "# m, w0, g, lambda = {}, {}, {}, {}".format(
-                    self.m, self.w0, self.g, self.lmbda
-                )
-            )
+            print("# m, w0, g, lambda = {}, {}, {}, {}".format(self.m, self.w0, self.g, self.lmbda))
 
         self.lang_firsov = inputs.get("lang_firsov", False)
         self.gamma_lf = 0.0
@@ -180,9 +176,7 @@ class HubbardHolstein(object):
                 if abs(integral) > 1e-8:
                     if self.T.dtype == complex:
                         fmt = "({: 10.8e}, {: 10.8e}) {:>3d} {:>3d} {:>3d} {:>3d}\n"
-                        line = fmt.format(
-                            integral.real, integral.imag, i + 1, j + 1, 0, 0
-                        )
+                        line = fmt.format(integral.real, integral.imag, i + 1, j + 1, 0, 0)
                     else:
                         fmt = "{: 10.8e} {:>3d} {:>3d} {:>3d} {:>3d}\n"
                         line = fmt.format(integral, i + 1, j + 1, 0, 0)
@@ -216,7 +210,7 @@ class HubbardHolstein(object):
 
 def transform_matrix(nbasis, kpoints, kc, nx, ny):
     U = numpy.zeros(shape=(nbasis, nbasis), dtype=complex)
-    for (i, k_i) in enumerate(kpoints):
+    for i, k_i in enumerate(kpoints):
         for j in range(0, nbasis):
             r_j = decode_basis(nx, ny, j)
             U[i, j] = numpy.exp(1j * numpy.dot(kc * k_i, r_j))

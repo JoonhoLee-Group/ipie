@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
+from mpi4py import MPI
 
 from ipie.utils.io import get_input_value
 from ipie.qmc.afqmc import AFQMC
@@ -42,7 +43,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicksSlow,
 )
 
-from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric, PhaselessGenericChunked
+from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -59,20 +60,20 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
         eri = eri + eri.transpose(2, 3, 0, 1)
         eri = eri + eri.transpose(3, 2, 1, 0).conj()
 
-        numpy.testing.assert_allclose(eri, eri.transpose(1,0,3,2).conj(), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(2,3,0,1), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0).conj(), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 3, 2).conj(), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 0, 1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0).conj(), atol=1e-10)
 
     if sym == 8:
         eri = eri + eri.transpose(1, 0, 2, 3)
 
-        numpy.testing.assert_allclose(eri, eri.transpose(1,0,3,2), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(2,3,0,1), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(3,2,1,0), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(1,0,2,3), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(2,3,1,0), atol=1e-10)
-        numpy.testing.assert_allclose(eri, eri.transpose(3,2,0,1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 3, 2), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 0, 1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 2, 3), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 0, 1), atol=1e-10)
 
     # Construct hermitian matrix M_{ik,lj}.
     eri = eri.transpose((0, 1, 3, 2))
@@ -82,8 +83,8 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
     chol = modified_cholesky(eri, tol=tol, verbose=False, cmax=30)
     chol = chol.reshape((-1, nmo, nmo))
     enuc = numpy.random.rand()
-    eri = eri.reshape((nmo , nmo, nmo , nmo))
-    eri = eri.transpose((0, 1, 3, 2)) # putting it back to the right order for 4-index
+    eri = eri.reshape((nmo, nmo, nmo, nmo))
+    eri = eri.transpose((0, 1, 3, 2))  # putting it back to the right order for 4-index
     return h1e, chol, enuc, eri
 
 
@@ -131,9 +132,7 @@ def truncated_combinations(iterable, r, count):
         yield tuple(pool[i] for i in indices)
 
 
-def get_random_phmsd(
-    nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True
-):
+def get_random_phmsd(nup, ndown, nbasis, ndet=10, init=False, shuffle=False, cmplx=True):
     orbs = numpy.arange(nbasis)
     oa = [c for c in itertools.combinations(orbs, nup)]
     ob = [c for c in itertools.combinations(orbs, ndown)]
@@ -186,9 +185,7 @@ def _gen_det_selection(d0, vir, occ, dist, nel):
     return dets
 
 
-def get_random_phmsd_opt(
-    nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True
-):
+def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmplx_coeffs=True):
     if cmplx_coeffs:
         coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
     else:
@@ -262,7 +259,7 @@ def shaped_normal(shape, cmplx=False):
         arr_r = numpy.random.normal(size=size)
         arr_i = numpy.random.normal(size=size)
         arr = arr_r + 1j * arr_i
-        arr = numpy.array(arr,dtype=numpy.complex128)
+        arr = numpy.array(arr, dtype=numpy.complex128)
     else:
         arr = numpy.random.normal(size=size)
         arr = numpy.array(arr, dtype=numpy.float64)
@@ -291,7 +288,6 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
 
     system = Generic(nelec=(nocc, nocc))
     chol = shaped_normal((naux, nmo, nmo))
-    from ipie.hamiltonians import Generic as HamGeneric
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
@@ -303,7 +299,14 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         trial = SingleDet(wfn[1][0], (nocc, nocc), nmo)
     else:
         trial = NOCI(wfn, (nocc, nocc), nmo)
-    walkers = UHFWalkersTrial(trial,wfn[1][0],system.nup,system.ndown,ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial,
+        wfn[1][0],
+        system.nup,
+        system.ndown,
+        ham.nbasis,
+        nwalkers,
+    )
     walkers.build(trial)
 
     Ghalfa = shaped_normal((nwalkers, nocc, nmo), cmplx=True)
@@ -365,7 +368,7 @@ def build_random_single_det_trial(
     complex_trial: bool = False,
     rhf_trial: bool = False,
 ):
-    coeffs, wfn, init = get_random_nomsd(
+    _, wfn, init = get_random_nomsd(
         num_elec[0], num_elec[1], num_basis, ndet=1, cplx=complex_trial, init=True
     )
     if rhf_trial:
@@ -412,51 +415,6 @@ class TestData:
     hamiltonian: HamGeneric
     propagator: PhaselessBase
 
-def build_classes_test_case(
-    num_elec: Tuple[int, int],
-    num_basis: int,
-    mpi_handler: MPIHandler,
-    num_dets=1,
-    trial_type="phmsd",
-    wfn_type="opt",
-    complex_integrals: bool = False,
-    complex_trial: bool = False,
-    seed: Union[int, None] = None,
-    rhf_trial: bool = False,
-    options={},
-):
-    if seed is not None:
-        numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
-    system = Generic(nelec=num_elec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, num_basis**2)).T.copy(),
-        ecore=0,
-        options={"symmetry": False},
-    )
-    trial, init = build_random_trial(
-        num_elec,
-        num_basis,
-        num_dets=num_dets,
-        wfn_type=wfn_type,
-        trial_type=trial_type,
-        complex_trial=complex_trial,
-        rhf_trial=rhf_trial,
-    )
-    trial.half_rotate(ham)
-    trial.calculate_energy(system, ham)
-    options["ntot_walkers"] = options.nwalkers * mpi_handler.comm.size
-    # necessary for backwards compatabilty with tests
-    if seed is not None:
-        numpy.random.seed(seed)
-    prop = PhaselessGeneric(time_step=options["dt"])
-    prop.build(ham, trial)
-
-    return system, ham, trial, init, prop
-
 
 def build_test_case_handlers_mpi(
     num_elec: Tuple[int, int],
@@ -470,13 +428,11 @@ def build_test_case_handlers_mpi(
     seed: Union[int, None] = None,
     rhf_trial: bool = False,
     two_body_only: bool = False,
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
@@ -503,29 +459,30 @@ def build_test_case_handlers_mpi(
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
     nsteps = get_input_value(options, "nsteps", default=25, alias=["num_steps"])
-    pop_control = get_input_value(options, "population_control", default="pair_branch", alias=["pop_control"])
-    reconf_freq = get_input_value(options, "reconfiguration_freq", default=50 )
+    pop_control = get_input_value(
+        options, "population_control", default="pair_branch", alias=["pop_control"]
+    )
+    reconf_freq = get_input_value(options, "reconfiguration_freq", default=50)
 
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler = mpi_handler)
-    walkers.build(trial) # any intermediates that require information from trial
-                                        # pop_control_method=pop_control, 
-                                        # reconfiguration_frequency=reconf_freq)    
-    pcontrol = PopController(nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+    )
+    walkers.build(trial)
+    pcontrol = PopController(
+        nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq
+    )
     trial.calc_greens_function(walkers)
-    for i in range(options.num_steps):
+    for _ in range(options.num_steps):
         if two_body_only:
-            prop.propagate_walkers_two_body(
-                walkers, ham, trial
-            )
+            prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
-            prop.propagate_walkers(
-                walkers, ham, trial, trial.energy
-            )
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
         walkers.reortho()
         pcontrol.pop_control(walkers, mpi_handler.comm)
         trial.calc_greens_function(walkers)
 
     return TestData(trial, walkers, ham, prop)
+
 
 def build_test_case_handlers(
     num_elec: Tuple[int, int],
@@ -539,15 +496,15 @@ def build_test_case_handlers(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     choltol: float = 1e-3,
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)
     sym = 8
     if complex_integrals:
         sym = 4
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol = choltol
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
     )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
@@ -572,14 +529,14 @@ def build_test_case_handlers(
         numpy.random.seed(seed)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial) # any intermediates that require information from trial
- 
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial)  # any intermediates that require information from trial
+
     prop = PhaselessGeneric(time_step=options["dt"])
     prop.build(ham, trial)
- 
+
     trial.calc_greens_function(walkers)
-    for i in range(options.num_steps):
+    for _ in range(options.num_steps):
         if two_body_only:
             prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
@@ -588,6 +545,7 @@ def build_test_case_handlers(
         trial.calc_greens_function(walkers)
 
     return TestData(trial, walkers, ham, prop)
+
 
 def build_driver_test_instance(
     num_elec: Tuple[int, int],
@@ -600,13 +558,11 @@ def build_driver_test_instance(
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
     density_diff=False,
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, enuc, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals
-    )
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
@@ -626,34 +582,33 @@ def build_driver_test_instance(
     )
     trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
-    from mpi4py import MPI
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers_per_task
 
     nwalkers = qmc.nwalkers
-    
-    ndets, init = get_initial_walker(trial) # Here we update init...
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial) # any intermediates that require information from trial
+
+    _, init = get_initial_walker(trial)  # Here we update init...
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial)  # any intermediates that require information from trial
 
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(
         comm=comm,
-        options=options,
         system=system,
         hamiltonian=ham,
         trial=trial,
         walkers=walkers,
-        seed=qmc.rng_seed, 
+        seed=qmc.rng_seed,
         nwalkers=qmc.nwalkers,
         nwalkers_per_task=qmc.nwalkers_per_task,
-        num_steps_per_block=qmc.nsteps, 
-        num_blocks=qmc.nblocks, 
+        num_steps_per_block=qmc.nsteps,
+        num_blocks=qmc.nblocks,
         timestep=qmc.dt,
         stabilise_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
-        verbose=0
+        verbose=0,
+        filename=options["estimates"]["filename"],
     )
     return afqmc

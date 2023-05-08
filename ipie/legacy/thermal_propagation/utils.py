@@ -5,9 +5,7 @@ from ipie.legacy.thermal_propagation.hubbard import ThermalDiscrete
 from ipie.legacy.thermal_propagation.planewave import PlaneWave
 
 
-def get_propagator(
-    options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False
-):
+def get_propagator(options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False):
     """Wrapper to select propagator class.
 
     Parameters

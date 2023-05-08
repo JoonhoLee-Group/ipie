@@ -73,12 +73,8 @@ class PlaneWave(object):
         """
         G = walker.G
         Gvec = G.reshape(2, hamiltonian.nbasis * hamiltonian.nbasis)
-        self.vbias[: self.num_vplus] = (
-            Gvec[0].T * hamiltonian.iA + Gvec[1].T * hamiltonian.iA
-        )
-        self.vbias[self.num_vplus :] = (
-            Gvec[0].T * hamiltonian.iB + Gvec[1].T * hamiltonian.iB
-        )
+        self.vbias[: self.num_vplus] = Gvec[0].T * hamiltonian.iA + Gvec[1].T * hamiltonian.iA
+        self.vbias[self.num_vplus :] = Gvec[0].T * hamiltonian.iB + Gvec[1].T * hamiltonian.iB
         # print(-self.sqrt_dt*self.vbias)
         # sys.exit()
         return -self.sqrt_dt * self.vbias
@@ -149,9 +145,7 @@ def construct_propagator_matrix_planewave(hamiltonian, BT2, config, dt):
     return numpy.array([Bup, Bdown])
 
 
-def back_propagate_planewave(
-    phi, stack, system, hamiltonian, nstblz, BT2, dt, store=False
-):
+def back_propagate_planewave(phi, stack, system, hamiltonian, nstblz, BT2, dt, store=False):
     r"""Perform back propagation for RHF/UHF style wavefunction.
 
     For use with generic system hamiltonian.
@@ -178,7 +172,7 @@ def back_propagate_planewave(
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(stack.get_block()[0][::-1]):
+    for i, c in enumerate(stack.get_block()[0][::-1]):
         B = construct_propagator_matrix_planewave(hamiltonian, BT2, c, dt)
         phi[:, :nup] = numpy.dot(B[0].conj().T, phi[:, :nup])
         phi[:, nup:] = numpy.dot(B[1].conj().T, phi[:, nup:])

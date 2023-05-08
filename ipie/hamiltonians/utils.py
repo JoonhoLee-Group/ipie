@@ -43,16 +43,14 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     ham : object
         Hamiltonian class.
     """
-    if isinstance(system,SysGeneric):
+    if isinstance(system, SysGeneric):
         filename = ham_opts.get("integrals", None)
         if filename is None:
             if comm.rank == 0:
                 print("# Error: integrals not specfied.")
                 sys.exit()
         start = time.time()
-        hcore, chol, h1e_mod, enuc = get_generic_integrals(
-            filename, comm=comm, verbose=verbose
-        )
+        hcore, chol, _, enuc = get_generic_integrals(filename, comm=comm, verbose=verbose)
         if verbose:
             print("# Time to read integrals: {:.6f}".format(time.time() - start))
 

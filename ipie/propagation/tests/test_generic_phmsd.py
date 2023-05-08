@@ -92,9 +92,7 @@ def test_phmsd_force_bias_batch():
         walker_batch,
         batched_data.trial,
     )  # construct_force_bias_batch(batched_data.hamiltonian, walker_batch, trial)
-    fb = -prop.sqrt_dt * (
-        1j * prop.vbias - prop.mf_shift
-    )
+    fb = -prop.sqrt_dt * (1j * prop.vbias - prop.mf_shift)
 
     # prop.propagator.vbias = construct_force_bias_batch_single_det(batched_data.hamiltonian, walker_batch, trial) #construct_force_bias_batch(batched_data.hamiltonian, walker_batch, trial)
     # fb_half = - prop.propagator.sqrt_dt * (1j*prop.propagator.vbias-prop.propagator.mf_shift)
@@ -214,9 +212,7 @@ def test_phmsd_overlap_batch():
 
     ovlps0 = [w.calc_overlap(legacy_data.trial) for w in walkers]
     ovlps = calc_overlap_multi_det_wicks(walker_batch, batched_data.trial)
-    ovlps_opt = calc_overlap_multi_det_wicks_opt(
-        walker_batch_opt, batched_data_opt.trial
-    )
+    ovlps_opt = calc_overlap_multi_det_wicks_opt(walker_batch_opt, batched_data_opt.trial)
     for iw in range(nwalkers):
         assert numpy.allclose(ovlps[iw], walker_batch.ovlp[iw])
         assert numpy.allclose(ovlps0[iw], walker_batch.ovlp[iw])

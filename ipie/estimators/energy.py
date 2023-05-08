@@ -20,7 +20,6 @@ from ipie.estimators.local_energy_batch import (
     local_energy_batch,
     local_energy_multi_det_trial_batch,
 )
-from ipie.utils.io import get_input_value
 from ipie.utils.backend import arraylib as xp
 
 from ipie.trial_wavefunction.particle_hole import (
@@ -37,13 +36,7 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_batch_gpu,
-    local_energy_single_det_rhf_batch,
     local_energy_single_det_uhf,
-)
-from ipie.estimators.local_energy_sd_chunked import (
-    local_energy_single_det_uhf_batch_chunked,
-    local_energy_single_det_uhf_batch_chunked_gpu,
 )
 
 from ipie.systems.generic import Generic
@@ -62,38 +55,72 @@ _dispatcher = {
     SingleDet: local_energy_batch,
 }
 
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:SingleDet):
+def local_energy(
+    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+):
     return local_energy_batch(system, hamiltonian, walkers, trial)
+
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericComplexChol, walkers:UHFWalkers, trial:SingleDet):
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericComplexChol,
+    walkers: UHFWalkers,
+    trial: SingleDet,
+):
     return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
+
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:ParticleHoleNaive):
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericRealChol,
+    walkers: UHFWalkers,
+    trial: ParticleHoleNaive,
+):
     return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
+
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:ParticleHoleWicks):
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericRealChol,
+    walkers: UHFWalkers,
+    trial: ParticleHoleWicks,
+):
     return local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial)
+
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:ParticleHoleWicksNonChunked):
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericRealChol,
+    walkers: UHFWalkers,
+    trial: ParticleHoleWicksNonChunked,
+):
     return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial)
+
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian:GenericRealChol, walkers:UHFWalkers, trial:ParticleHoleWicksSlow):
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericRealChol,
+    walkers: UHFWalkers,
+    trial: ParticleHoleWicksSlow,
+):
     return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial)
 
 
 class EnergyEstimator(EstimatorBase):
     def __init__(
         self,
-        comm=None,
-        qmc=None,
         system=None,
         ham=None,
         trial=None,
-        verbose=False,
-        options={},
+        filename=None,
     ):
-
         assert system is not None
         assert ham is not None
         assert trial is not None
@@ -110,16 +137,12 @@ class EnergyEstimator(EstimatorBase):
         self._shape = (len(self.names),)
         self._data_index = {k: i for i, k in enumerate(list(self._data.keys()))}
         self.print_to_stdout = True
-        self.ascii_filename = get_input_value(options, "filename", default=None)
+        self.ascii_filename = filename
 
-    def compute_estimator(
-        self, system, walkers, hamiltonian, trial, istep=1
-    ):
+    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
-        energy = local_energy(
-            system, hamiltonian, walkers, trial
-        )
+        energy = local_energy(system, hamiltonian, walkers, trial)
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
@@ -133,12 +156,12 @@ class EnergyEstimator(EstimatorBase):
             raise RuntimeError(f"Unknown estimator {name}")
         return index
 
-    def post_reduce_hook(self, reduced_data):
+    def post_reduce_hook(self, data):
         ix_proj = self._data_index["ETotal"]
         ix_nume = self._data_index["ENumer"]
         ix_deno = self._data_index["EDenom"]
-        reduced_data[ix_proj] = reduced_data[ix_nume] / reduced_data[ix_deno]
+        data[ix_proj] = data[ix_nume] / data[ix_deno]
         ix_nume = self._data_index["E1Body"]
-        reduced_data[ix_nume] = reduced_data[ix_nume] / reduced_data[ix_deno]
+        data[ix_nume] = data[ix_nume] / data[ix_deno]
         ix_nume = self._data_index["E2Body"]
-        reduced_data[ix_nume] = reduced_data[ix_nume] / reduced_data[ix_deno]
+        data[ix_nume] = data[ix_nume] / data[ix_deno]

@@ -112,19 +112,17 @@ class Generic(object):
         else:
             self.chol_packed = None  # [M*(M+1)/2, nchol] if used
             self.sym_idx = None
-        
+
         # unncessary booleans for legacy compatibility
-        self.control_variate=False
-        self.stochastic_ri=False
+        self.control_variate = False
+        self.stochastic_ri = False
         self.pno = False
 
         if self.mixed_precision:
             if not self.density_diff:
                 self.density_diff = True
                 if self.verbose:
-                    print(
-                        "# density_diff is switched on for more stable mixed precision"
-                    )
+                    print("# density_diff is switched on for more stable mixed precision")
             if self.symmetry:
                 self.chol_packed = self.chol_packed.astype(numpy.float32)
             else:
@@ -136,9 +134,7 @@ class Generic(object):
 
         if self.density_diff:
             if self.verbose:
-                print(
-                    "# density_diff is used for the force bias and the local energy evaluation"
-                )
+                print("# density_diff is used for the force bias and the local energy evaluation")
 
         if self.mixed_precision:
             if self.verbose:
@@ -205,17 +201,13 @@ class Generic(object):
             self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
             handler.comm.barrier()
 
-            self.chol_packed_chunk = handler.scatter_group(
-                self.chol_packed
-            )  # distribute over chol
+            self.chol_packed_chunk = handler.scatter_group(self.chol_packed)  # distribute over chol
 
             # if handler.srank == 0:
             self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
             handler.comm.barrier()
 
-            self.chol_packed_chunk = (
-                self.chol_packed_chunk.T.copy()
-            )  # [M^2, chol_chunk]
+            self.chol_packed_chunk = self.chol_packed_chunk.T.copy()  # [M^2, chol_chunk]
 
             tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
 
@@ -225,9 +217,7 @@ class Generic(object):
             self.chol_vecs = self.chol_vecs.T.copy()  # [chol, M^2]
             handler.comm.barrier()
 
-            self.chol_vecs_chunk = handler.scatter_group(
-                self.chol_vecs
-            )  # distribute over chol
+            self.chol_vecs_chunk = handler.scatter_group(self.chol_vecs)  # distribute over chol
 
             # if handler.comm.rank == 0:
             self.chol_vecs = self.chol_vecs.T.copy()  # [M^2, chol]
@@ -297,9 +287,7 @@ class Generic(object):
 
 def read_integrals(integral_file):
     try:
-        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(
-            integral_file
-        )
+        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(integral_file)
         chol_vecs = schol_vecs.toarray()
         return h1e, chol_vecs, ecore
     except KeyError:

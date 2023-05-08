@@ -196,11 +196,7 @@ def one_rdm_stable(BT, num_slices):
 
         # Then G = T^{-1} C^{-1} Db Q^{-1}
         # Q is unitary.
-        G.append(
-            numpy.dot(
-                numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
-            )
-        )
+        G.append(numpy.dot(numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)))
     return one_rdm_from_G(numpy.array(G))
 
 

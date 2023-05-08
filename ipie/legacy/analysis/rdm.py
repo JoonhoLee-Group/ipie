@@ -11,9 +11,7 @@ def analyse_split(A, Ps):
     return mean, err
 
 
-def analyse_one_body(
-    filename, one_body, est_type="back_propagated", rdm_type="one_rdm", skip=1
-):
+def analyse_one_body(filename, one_body, est_type="back_propagated", rdm_type="one_rdm", skip=1):
     """Contract one-body operator with QMC rdm and estimate errors."""
     if len(one_body.shape) == 3:
         spin_dep = True
@@ -27,7 +25,5 @@ def analyse_one_body(
         res.append(analyse_split(one_body, rdm))
 
     es, errs = zip(*res)
-    data = pd.DataFrame(
-        {"tau": numpy.array(splits) * dt, "OneBody": es, "OneBody_error": errs}
-    )
+    data = pd.DataFrame({"tau": numpy.array(splits) * dt, "OneBody": es, "OneBody_error": errs})
     return data

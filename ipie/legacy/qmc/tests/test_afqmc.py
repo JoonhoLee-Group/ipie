@@ -54,9 +54,7 @@ def test_constructor():
     ham = HamUEG(system, model)
     trial = HartreeFock(system, ham, {})
     comm = MPI.COMM_WORLD
-    afqmc = AFQMC(
-        comm=comm, options=options, system=system, hamiltonian=ham, trial=trial
-    )
+    afqmc = AFQMC(comm=comm, options=options, system=system, hamiltonian=ham, trial=trial)
     afqmc.finalise(verbose=0)
     assert afqmc.trial.energy.real == pytest.approx(1.7796083856572522)
 

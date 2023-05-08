@@ -26,8 +26,7 @@ from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt,
 )
-from ipie.estimators.local_energy_batch import (
-    local_energy_multi_det_trial_batch)
+from ipie.estimators.local_energy_batch import local_energy_multi_det_trial_batch
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
@@ -67,10 +66,10 @@ def test_walker_overlap_nomsd():
     nelec = (system.nup, system.ndown)
     trial = NOCI((coeffs, wfn), nelec, ham.nbasis)
 
-    walkers = UHFWalkersTrial(trial,wfn[0], system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, 25)
+    walkers = UHFWalkersTrial(trial, wfn[0], system.nup, system.ndown, ham.nbasis, nwalkers, 25)
     walkers.build(trial)
     walkers.ovlp = trial.calc_overlap(walkers)
+
     def calc_ovlp(a, b):
         return numpy.linalg.det(numpy.dot(a.conj().T, b))
 
@@ -80,9 +79,7 @@ def test_walker_overlap_nomsd():
     pb = trial.psi[0, :, na:]
     for iw in range(nwalkers):
         for i, d in enumerate(trial.psi):
-            ovlp[iw] += (
-                coeffs[i].conj() * calc_ovlp(d[:, :na], pa) * calc_ovlp(d[:, na:], pb)
-            )
+            ovlp[iw] += coeffs[i].conj() * calc_ovlp(d[:, :na], pa) * calc_ovlp(d[:, na:], pb)
     assert ovlp.real == pytest.approx(walkers.ovlp.real)
     assert ovlp.imag == pytest.approx(walkers.ovlp.imag)
 
@@ -110,9 +107,8 @@ def test_walker_overlap_phmsd():
     init = (a + 1j * b).reshape((ham.nbasis, system.nup + system.ndown))
     nelec = (system.nup, system.ndown)
     trial = ParticleHoleNaive(wfn, nelec, ham.nbasis)
-    
-    walkers = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers, 25)
+
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, 25)
     walkers.build(trial)
     walkers.ovlp = trial.calc_greens_function(walkers)
 
@@ -189,21 +185,19 @@ def test_walker_energy():
     # walker = MultiDetTrialWalkerBatch(system, ham, trial_slow, nwalkers, init)
     # walker_opt = MultiDetTrialWalkerBatch(system, ham, trial_opt, nwalkers, init)
 
-    walkers0 = UHFWalkersTrial(trial,init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers,25)
+    walkers0 = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, 25)
     walkers0.build(trial_slow)
     walkers0.ovlp = trial_slow.calc_greens_function(walkers0)
 
-    walkers = UHFWalkersTrial(trial_slow,init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers,25)
+    walkers = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers, 25)
     walkers.build(trial_slow)
     walkers.ovlp = trial_slow.calc_greens_function(walkers)
 
-    walkers_opt = UHFWalkersTrial(trial_opt,init, system.nup, system.ndown, ham.nbasis,
-                                    nwalkers,25)
+    walkers_opt = UHFWalkersTrial(
+        trial_opt, init, system.nup, system.ndown, ham.nbasis, nwalkers, 25
+    )
     walkers_opt.build(trial_opt)
     walkers_opt.ovlp = trial_opt.calc_greens_function(walkers_opt)
-
 
     nume = 0
     deno = 0
@@ -231,9 +225,7 @@ def test_walker_energy():
         walkers_opt, trial_opt
     )  # compute green's function using Wick's theorem
     e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walkers0, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(
-        system, ham, walkers_opt, trial_opt
-    )
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walkers_opt, trial_opt)
     greens_function_multi_det(walkers, trial_slow)
     e_simple = local_energy_multi_det_trial_batch(system, ham, walkers, trial_slow)
 

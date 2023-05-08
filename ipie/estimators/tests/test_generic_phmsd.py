@@ -51,6 +51,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
 )
 
+
 @pytest.mark.unit
 def test_greens_function_wicks_opt():
     numpy.random.seed(7)
@@ -65,9 +66,7 @@ def test_greens_function_wicks_opt():
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=3000, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
@@ -87,26 +86,26 @@ def test_greens_function_wicks_opt():
     trial_opt.build()
     numpy.random.seed(7)
 
-    walkers_wick = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers_wick.build(trial)
 
-    walkers_slow = UHFWalkersTrial(trial_slow,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_slow = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers_slow.build(trial_slow)
-    
-    walkers_opt = UHFWalkersTrial(trial_opt,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+
+    walkers_opt = UHFWalkersTrial(trial_opt, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers_opt.build(trial_opt)
 
     options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
     for i in range(nsteps):
         prop.propagate_walkers(walkers_wick, ham, trial, 0)
         walkers_wick.reortho()
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_opt)
+    prop.build(ham, trial_opt)
     for i in range(nsteps):
         prop.propagate_walkers(walkers_opt, ham, trial_opt, 0)
         walkers_opt.reortho()
@@ -144,9 +143,7 @@ def test_cofactor_matrix():
     nexcit = 7
     nwalkers = 10
     ndets_b = 11
-    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(
-        numpy.complex128
-    )
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
     cofactor_matrix = numpy.zeros(
         (nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128
     )
@@ -154,9 +151,7 @@ def test_cofactor_matrix():
     jex = 6
     from ipie.utils.linalg import minor_mask
 
-    get_cofactor_matrix_batched(
-        nwalkers, ndets_b, nexcit, iex, jex, det_mat, cofactor_matrix
-    )
+    get_cofactor_matrix_batched(nwalkers, ndets_b, nexcit, iex, jex, det_mat, cofactor_matrix)
     for iw in range(nwalkers):
         for jdet in range(ndets_b):
             assert numpy.allclose(
@@ -183,9 +178,7 @@ def test_cofactor_matrix_4():
     nexcit = 3
     nwalkers = 1
     ndets_b = 1
-    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(
-        numpy.complex128
-    )
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
     cofactor_matrix = numpy.zeros(
         (nwalkers, ndets_b, nexcit - 2, nexcit - 2), dtype=numpy.complex128
     )
@@ -205,9 +198,7 @@ def test_cofactor_matrix_4():
     nexcit = 6
     nwalkers = 4
     ndets_b = 10
-    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(
-        numpy.complex128
-    )
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
     cofactor_matrix = numpy.zeros(
         (nwalkers, ndets_b, nexcit - 2, nexcit - 2), dtype=numpy.complex128
     )
@@ -224,9 +215,7 @@ def test_cofactor_matrix_4():
                     assert numpy.allclose(cofactor_matrix[iw, jdet], ref)
 
     # test numba
-    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(
-        numpy.complex128
-    )
+    det_mat = numpy.random.random((nwalkers, ndets_b, nexcit, nexcit)).astype(numpy.complex128)
     cofactor_matrix = numpy.zeros(
         (nwalkers, ndets_b, nexcit - 2, nexcit - 2), dtype=numpy.complex128
     )
@@ -254,9 +243,7 @@ def test_det_matrix():
         ecore=0,
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=3000, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
     trial = ParticleHoleWicksNonChunked(
@@ -270,9 +257,9 @@ def test_det_matrix():
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -348,23 +335,27 @@ def test_phmsd_local_energy():
     trial_test.build()
     trial_test.half_rotate(ham)
     numpy.random.seed(7)
-    walkers_wick = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers_wick.build(trial)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
-    
-    walker_batch = UHFWalkersTrial(trial_slow,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+
+    walker_batch = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial_slow)
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
-    walker_batch_test2 = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test2 = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test2.build(trial)
 
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_slow)
+    prop.build(ham, trial_slow)
 
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch, ham, trial_slow, 0)
@@ -390,9 +381,7 @@ def test_phmsd_local_energy():
     assert numpy.allclose(walker_batch_test.det_ovlpas, walker_batch_test2.det_ovlpas)
     assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_test2.det_ovlpbs)
     e_simple = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
-    e_wicks = local_energy_multi_det_trial_wicks_batch(
-        system, ham, walker_batch_test2, trial
-    )
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_test2, trial)
     e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(
         system, ham, walker_batch_test, trial_test
     )
@@ -416,9 +405,7 @@ def test_kernels_energy():
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
     )
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=5000, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
     trial = ParticleHoleWicksNonChunked(
@@ -431,9 +418,9 @@ def test_kernels_energy():
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial)
     numpy.random.seed(7)
     for i in range(nsteps):
@@ -548,12 +535,8 @@ def test_kernels_energy():
     assert numpy.allclose(ref, test)
     iexcit = 4
     ndets_level = len(trial.cre_ex_b[iexcit])
-    det_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128
-    )
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    det_mat = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.build_det_matrix(
         trial.cre_ex_b[iexcit],
         trial.anh_ex_b[iexcit],
@@ -588,12 +571,8 @@ def test_kernels_energy():
         slices_beta[iexcit],
     )
     assert numpy.allclose(ref, test)
-    det_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128
-    )
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 2, iexcit - 2), dtype=numpy.complex128
-    )
+    det_mat = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 2, iexcit - 2), dtype=numpy.complex128)
     get_det_matrix_batched(
         iexcit,
         trial.cre_ex_b[iexcit],
@@ -646,9 +625,7 @@ def test_kernels_gf():
         ecore=0,
         # options={"symmetry": False},
     )
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=5000, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
     trial = ParticleHoleWicksNonChunked(
@@ -661,9 +638,9 @@ def test_kernels_gf():
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -745,9 +722,7 @@ def test_kernels_gf():
     refb = walker_batch.CIb.copy()
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
-    build_CI_nfold_excitation_opt(
-        4, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
-    )
+    build_CI_nfold_excitation_opt(4, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     assert numpy.allclose(refa, walker_batch.CIa)
     assert numpy.allclose(refb, walker_batch.CIb)
 
@@ -772,12 +747,8 @@ def test_kernels_gf_active_space():
     wfn, init_act = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
     core = [0, 1]
-    with_core_a = [
-        numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa
-    ]
-    with_core_b = [
-        numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb
-    ]
+    with_core_a = [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    with_core_b = [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
     wfn_no_act = (
         ci[::50],
         with_core_a[::50],
@@ -795,9 +766,7 @@ def test_kernels_gf_active_space():
     trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
     trial_ref.optimized = False
     trial_ref.build()
-    trial_tmp = ParticleHoleWicksNonChunked(
-        wfn_no_act, nelec, nmo, use_active_space=False
-    )
+    trial_tmp = ParticleHoleWicksNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # need cre_ex_a arrays for non-active space variant
     trial_ref.__dict__.update(trial_tmp.__dict__)
@@ -816,15 +785,19 @@ def test_kernels_gf_active_space():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_ref)
+    prop.build(ham, trial_ref)
 
     I = numpy.eye(nmo)
     init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
-    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -882,12 +855,8 @@ def test_kernels_gf_active_space():
         method(walker_batch_test, trial_test, c_phasea_ovlpb, c_phaseb_ovlpa)
         CIa_full = numpy.zeros_like(refa)
         CIb_full = numpy.zeros_like(refb)
-        CIa_full[
-            :, trial_test.act_orb_alpha, trial_test.occ_orb_alpha
-        ] = walker_batch_test.CIa
-        CIb_full[
-            :, trial_test.act_orb_beta, trial_test.occ_orb_beta
-        ] = walker_batch_test.CIb
+        CIa_full[:, trial_test.act_orb_alpha, trial_test.occ_orb_alpha] = walker_batch_test.CIa
+        CIb_full[:, trial_test.act_orb_beta, trial_test.occ_orb_beta] = walker_batch_test.CIb
         assert numpy.allclose(refa, CIa_full)
         assert numpy.allclose(refb, CIb_full)
     walker_batch_test.Q0a = numpy.eye(nmo)[None, :] - walker_batch_test.G0a.copy()
@@ -927,12 +896,8 @@ def test_kernels_gf_active_space():
         )
         CIa_full = numpy.zeros_like(refa)
         CIb_full = numpy.zeros_like(refb)
-        CIa_full[
-            :, trial_test.act_orb_alpha, trial_test.occ_orb_alpha
-        ] = walker_batch_test.CIa
-        CIb_full[
-            :, trial_test.act_orb_beta, trial_test.occ_orb_beta
-        ] = walker_batch_test.CIb
+        CIa_full[:, trial_test.act_orb_alpha, trial_test.occ_orb_alpha] = walker_batch_test.CIa
+        CIb_full[:, trial_test.act_orb_beta, trial_test.occ_orb_beta] = walker_batch_test.CIb
         assert numpy.allclose(refa, CIa_full)
         assert numpy.allclose(refb, CIb_full)
     contract_CI(
@@ -970,12 +935,8 @@ def test_kernels_energy_active_space():
     wfn, init = get_random_phmsd(7, 7, nact, ndet=5000, init=True)
     ci, occa, occb = wfn
     core = [0, 1]
-    with_core_a = [
-        numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa
-    ]
-    with_core_b = [
-        numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb
-    ]
+    with_core_a = [numpy.array(core + [orb + 2 for orb in oa], dtype=numpy.int32) for oa in occa]
+    with_core_b = [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
     wfn_2 = (
         ci[::50],
         occa[::50],
@@ -998,9 +959,7 @@ def test_kernels_energy_active_space():
     trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
     trial_ref.optimized = False
     trial_ref.build()
-    trial_tmp = ParticleHoleWicksNonChunked(
-        wfn_no_act, nelec, nmo, use_active_space=False
-    )
+    trial_tmp = ParticleHoleWicksNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # need cre_ex_a arrays for non-active space variant
     trial_ref.__dict__.update(trial_tmp.__dict__)
@@ -1021,12 +980,16 @@ def test_kernels_energy_active_space():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_ref)
+    prop.build(ham, trial_ref)
 
-    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -1159,15 +1122,9 @@ def test_kernels_energy_active_space():
     assert numpy.allclose(ref, test)
     iexcit = 4
     ndets_level = len(trial_ref.cre_ex_b[iexcit])
-    det_mat_ref = numpy.zeros(
-        (nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128
-    )
-    det_mat_test = numpy.zeros(
-        (nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128
-    )
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    det_mat_ref = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    det_mat_test = numpy.zeros((nwalkers, ndets_level, iexcit, iexcit), dtype=numpy.complex128)
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.build_det_matrix(
         trial_ref.cre_ex_b[iexcit],
         trial_ref.anh_ex_b[iexcit],
@@ -1189,9 +1146,7 @@ def test_kernels_energy_active_space():
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     from ipie.estimators.local_energy_wicks import fill_opp_spin_factors_batched_chol
 
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.fill_os_nfold(
         trial_ref.cre_ex_b[iexcit],
         trial_ref.anh_ex_b[iexcit],
@@ -1202,9 +1157,7 @@ def test_kernels_energy_active_space():
         ref,
         slices_beta[iexcit],
     )
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.fill_os_nfold(
         trial_test.cre_ex_b[iexcit],
         trial_test.anh_ex_b[iexcit],
@@ -1222,9 +1175,7 @@ def test_kernels_energy_active_space():
         fill_same_spin_contribution_batched_contr,
     )
 
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.get_ss_nfold(
         trial_ref.cre_ex_b[iexcit],
         trial_ref.anh_ex_b[iexcit],
@@ -1235,9 +1186,7 @@ def test_kernels_energy_active_space():
         ref,
         slices_beta[iexcit],
     )
-    cof_mat = numpy.zeros(
-        (nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128
-    )
+    cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.get_ss_nfold(
         trial_test.cre_ex_b[iexcit],
         trial_test.anh_ex_b[iexcit],
@@ -1305,12 +1254,16 @@ def test_phmsd_local_energy_active_space():
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_ref)
+    prop.build(ham, trial_ref)
 
-    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
 
     numpy.random.seed(7)
@@ -1335,9 +1288,7 @@ def test_phmsd_local_energy_active_space():
     # assert numpy.allclose(walker_batch_test.CIa, walker_batch_ref.CIa)
     # assert numpy.allclose(walker_batch_test.CIb, walker_batch_ref.CIb)
     assert trial_ref.nfrozen != trial_test.nfrozen
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch(
-        system, ham, walker_batch_ref, trial_ref
-    )
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_ref, trial_ref)
     e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
         system, ham, walker_batch_test, trial_test
     )
@@ -1400,35 +1351,37 @@ def test_phmsd_local_energy_active_space_polarised():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial)
 
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
-    
-    walker_batch_test_chunked = UHFWalkersTrial(trial_test_chunked,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+
+    walker_batch_test_chunked = UHFWalkersTrial(
+        trial_test_chunked, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test_chunked.build(trial_test_chunked)
 
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
 
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_test)
+    prop.build(ham, trial_test)
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch_test, ham, trial_test, 0)
         walker_batch_test.reortho()
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_test_chunked)
+    prop.build(ham, trial_test_chunked)
     for i in range(nsteps):
-        prop.propagate_walkers(
-         walker_batch_test_chunked, ham, trial_test_chunked, 0
-        )
+        prop.propagate_walkers(walker_batch_test_chunked, ham, trial_test_chunked, 0)
         walker_batch_test_chunked.reortho()
 
     greens_function_multi_det(walker_batch, trial, build_full=True)
@@ -1469,9 +1422,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     )
     from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
-    wfn, init = get_random_phmsd_opt(
-        7, 7, nact, ndet=100, init=True, cmplx_coeffs=False
-    )
+    wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True, cmplx_coeffs=False)
     init = shaped_normal((nmo, system.ne))
     ci, occa, occb = wfn
     tmp = occa[0]
@@ -1508,9 +1459,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     )
     trial.build()
     trial.half_rotate(ham)
-    trial_tmp = ParticleHoleWicksNonChunked(
-        wfn_2_no_act, nelec, nmo, use_active_space=False
-    )
+    trial_tmp = ParticleHoleWicksNonChunked(wfn_2_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # Original implementation
     trial_ref = ParticleHoleWicksSlow(
@@ -1533,19 +1482,23 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walker_batch.build(trial)
 
-    walker_batch_ref = UHFWalkersTrial(trial_ref,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_ref = UHFWalkersTrial(
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_ref.build(trial_ref)
 
-    walker_batch_test = UHFWalkersTrial(trial_test,init,system.nup,system.ndown,ham.nbasis,nwalkers)
+    walker_batch_test = UHFWalkersTrial(
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+    )
     walker_batch_test.build(trial_test)
-    
+
     # Naive
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_ref)
+    prop.build(ham, trial_ref)
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch_ref, ham, trial_ref, 0)
         walker_batch_ref.reortho()
@@ -1553,7 +1506,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     # No optimization
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial)
+    prop.build(ham, trial)
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch, ham, trial, 0)
         walker_batch.reortho()
@@ -1561,7 +1514,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     # chunked
     numpy.random.seed(7)
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham,trial_test)
+    prop.build(ham, trial_test)
     for i in range(nsteps):
         prop.propagate_walkers(walker_batch_test, ham, trial_test, 0)
         walker_batch_test.reortho()
@@ -1589,9 +1542,7 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     assert numpy.allclose(walker_batch_test.det_ovlpbs, walker_batch_ref.det_ovlpbs)
     assert trial_ref.nfrozen != trial_test.nfrozen
     e_wicks = local_energy_multi_det_trial_batch(system, ham, walker_batch, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch(
-        system, ham, walker_batch_ref, trial_ref
-    )
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch(system, ham, walker_batch_ref, trial_ref)
     e_wicks_opt_act = local_energy_multi_det_trial_wicks_batch_opt(
         system, ham, walker_batch_test, trial_test
     )

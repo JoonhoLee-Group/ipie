@@ -3,13 +3,13 @@ import time
 import numpy
 import scipy.linalg
 
-from ipie.legacy.estimators.ci import (get_hmatel, get_one_body_matel,
-                                       get_perm, map_orb)
-from ipie.legacy.estimators.greens_function import (gab, gab_mod, gab_mod_ovlp,
-                                                    gab_spin)
-from ipie.legacy.estimators.local_energy import (local_energy,
-                                                 variational_energy,
-                                                 variational_energy_ortho_det)
+from ipie.legacy.estimators.ci import get_hmatel, get_one_body_matel, get_perm, map_orb
+from ipie.legacy.estimators.greens_function import gab, gab_mod, gab_mod_ovlp, gab_spin
+from ipie.legacy.estimators.local_energy import (
+    local_energy,
+    variational_energy,
+    variational_energy_ortho_det,
+)
 from ipie.utils.io import get_input_value, write_qmcpack_wfn
 from ipie.utils.mpi import get_shared_array
 
@@ -89,16 +89,12 @@ class MultiSlater(object):
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
             print("# Trial wavefunction shape: {}".format(self.psi.shape))
 
-        self.ndets = get_input_value(
-            options, "ndets", default=len(self.coeffs), verbose=verbose
-        )
+        self.ndets = get_input_value(options, "ndets", default=len(self.coeffs), verbose=verbose)
         # if self.verbose:
         # print("# Setting ndets: {}".format(self.ndets))
 
         if self.ndets == 1:
-            self.G, self.Ghalf = gab_spin(
-                self.psi[0], self.psi[0], system.nup, system.ndown
-            )
+            self.G, self.Ghalf = gab_spin(self.psi[0], self.psi[0], system.nup, system.ndown)
             self.G = numpy.array(self.G, dtype=numpy.complex128)
             self.Ghalf = [
                 numpy.array(self.Ghalf[0], dtype=numpy.complex128),
@@ -113,10 +109,7 @@ class MultiSlater(object):
             self.init = init
         else:
             if verbose:
-                print(
-                    "# Setting initial wavefunction as first determinant in"
-                    " expansion."
-                )
+                print("# Setting initial wavefunction as first determinant in" " expansion.")
             if len(self.psi.shape) == 3:
                 self.init = self.psi[0].copy()
             else:
@@ -126,9 +119,7 @@ class MultiSlater(object):
         self.use_wicks_helper = get_input_value(
             options, "use_wicks_helper", default=False, verbose=verbose
         )
-        self.optimized = get_input_value(
-            options, "optimized", default=False, verbose=verbose
-        )
+        self.optimized = get_input_value(options, "optimized", default=False, verbose=verbose)
         if self.wicks:  # this is for Wick's theorem
             # if True: # this is for Wick's theorem
             if verbose:
@@ -143,18 +134,10 @@ class MultiSlater(object):
                 print("# Setting additional member variables for Wick's theorem")
             d0a = self.occa[0]
             d0b = self.occb[0]
-            self.cre_a = [
-                []
-            ]  # one empty list as a member to account for the reference state
-            self.anh_a = [
-                []
-            ]  # one empty list as a member to account for the reference state
-            self.cre_b = [
-                []
-            ]  # one empty list as a member to account for the reference state
-            self.anh_b = [
-                []
-            ]  # one empty list as a member to account for the reference state
+            self.cre_a = [[]]  # one empty list as a member to account for the reference state
+            self.anh_a = [[]]  # one empty list as a member to account for the reference state
+            self.cre_b = [[]]  # one empty list as a member to account for the reference state
+            self.anh_b = [[]]  # one empty list as a member to account for the reference state
             self.phase_a = numpy.ones(self.ndets)  # 1.0 is for the reference state
             self.phase_b = numpy.ones(self.ndets)  # 1.0 is for the reference state
             nexcit_a = system.nup
@@ -173,12 +156,8 @@ class MultiSlater(object):
                 dja = self.occa[j]
                 djb = self.occb[j]
 
-                anh_a = list(
-                    set(dja) - set(d0a)
-                )  # annihilation to right, creation to left
-                cre_a = list(
-                    set(d0a) - set(dja)
-                )  # creation to right, annhilation to left
+                anh_a = list(set(dja) - set(d0a))  # annihilation to right, creation to left
+                cre_a = list(set(d0a) - set(dja))  # creation to right, annhilation to left
 
                 anh_b = list(set(djb) - set(d0b))
                 cre_b = list(set(d0b) - set(djb))
@@ -219,23 +198,15 @@ class MultiSlater(object):
 
             self.ndet_a = [len(ex) for ex in cre_ex_a]
             self.ndet_b = [len(ex) for ex in cre_ex_b]
-            self.max_excite_a = max(
-                -1 if nd == 0 else i for i, nd in enumerate(self.ndet_a)
-            )
-            self.max_excite_b = max(
-                -1 if nd == 0 else i for i, nd in enumerate(self.ndet_b)
-            )
+            self.max_excite_a = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_a))
+            self.max_excite_b = max(-1 if nd == 0 else i for i, nd in enumerate(self.ndet_b))
             self.max_excite = max(self.max_excite_a, self.max_excite_b)
             self.cre_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_a]
             self.cre_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in cre_ex_b]
             self.anh_ex_a = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_a]
             self.anh_ex_b = [numpy.array(ex, dtype=numpy.int32) for ex in anh_ex_b]
-            self.excit_map_a = [
-                numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a
-            ]
-            self.excit_map_b = [
-                numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b
-            ]
+            self.excit_map_a = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_a]
+            self.excit_map_b = [numpy.array(ex, dtype=numpy.int32) for ex in excit_map_b]
         self.compute_opdm = options.get("compute_opdm", True)
         if self.ortho_expansion and self.compute_opdm:  # this is for phmsd
             if verbose:
@@ -339,9 +310,7 @@ class MultiSlater(object):
                 system, hamiltonian, self.spin_occs, self.coeffs
             )
         else:
-            (self.energy, self.e1b, self.e2b) = variational_energy(
-                system, hamiltonian, self
-            )
+            (self.energy, self.e1b, self.e2b) = variational_energy(system, hamiltonian, self)
         if self.verbose:
             print(
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
@@ -398,9 +367,7 @@ class MultiSlater(object):
                                 rchol = self.rchol(i)
                             else:
                                 rchol = None
-                            H[i, j] = (
-                                ovlp * local_energy(ham, G, Ghalf=Ghalf, rchol=rchol)[0]
-                            )
+                            H[i, j] = ovlp * local_energy(ham, G, Ghalf=Ghalf, rchol=rchol)[0]
                             S[i, j] = ovlp
                             H[j, i] = numpy.conjugate(H[i, j])
                             S[j, i] = numpy.conjugate(S[i, j])
@@ -439,12 +406,8 @@ class MultiSlater(object):
                     ii, si = map_orb(from_orb[0], nbasis)
                     aa, sa = map_orb(to_orb[0], nbasis)
                     if si == sa:
-                        P[si][aa, ii] += (
-                            self.coeffs[jdet].conj() * self.coeffs[idet] * phase
-                        )
-                        P[si][ii, aa] += (
-                            self.coeffs[jdet] * self.coeffs[idet].conj() * phase
-                        )
+                        P[si][aa, ii] += self.coeffs[jdet].conj() * self.coeffs[idet] * phase
+                        P[si][ii, aa] += self.coeffs[jdet] * self.coeffs[idet].conj() * phase
         P[0] /= denom
         P[1] /= denom
 
@@ -661,10 +624,7 @@ class MultiSlater(object):
                         )
 
             if self.verbose:
-                print(
-                    "# Memory required by exact ERIs: "
-                    " {:.4f} GB.".format(self._mem_required)
-                )
+                print("# Memory required by exact ERIs: " " {:.4f} GB.".format(self._mem_required))
             if comm is not None:
                 comm.barrier()
         # else:
@@ -677,10 +637,7 @@ class MultiSlater(object):
         for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
             if self.verbose:
-                print(
-                    "# Rotating Cholesky for determinant {} of "
-                    "{}.".format(i + 1, hr_ndet)
-                )
+                print("# Rotating Cholesky for determinant {} of " "{}.".format(i + 1, hr_ndet))
             # start = i*M*(na+nb)
             start_a = i * M * na  # determinant loops
             start_b = i * M * nb  # determinant loops
@@ -726,26 +683,18 @@ class MultiSlater(object):
                 self._rchola[start_n:end_n, start_a : start_a + M * na] = rup[:]
                 self._rcholb[start_n:end_n, start_b : start_b + M * nb] = rdn[:]
 
-            self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (
-                1024.0**3.0
-            )
+            self._mem_required = (self._rchola.nbytes + self._rcholb.nbytes) / (1024.0**3.0)
             if self.verbose:
                 print(
                     "# Memory required by half-rotated integrals: "
                     " {:.4f} GB.".format(self._mem_required)
                 )
-                print(
-                    "# Time to half-rotated integrals: {} s.".format(
-                        time.time() - start_time
-                    )
-                )
+                print("# Time to half-rotated integrals: {} s.".format(time.time() - start_time))
         if comm is not None:
             comm.barrier()
 
         if hamiltonian.control_variate:
-            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(
-                system, hamiltonian
-            )
+            self.ecoul0, self.exxa0, self.exxb0 = self.local_energy_2body(system, hamiltonian)
 
     def rot_chol(self, idet=0, spin=None):
         """Helper function"""

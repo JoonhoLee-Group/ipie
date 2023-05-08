@@ -11,8 +11,7 @@ from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
 
 
 @pytest.mark.unit
@@ -49,9 +48,7 @@ def test_hybrid():
         ecore=0,
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=3, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
     trial.calculate_energy(system, ham)
     options = {"hybrid": True}

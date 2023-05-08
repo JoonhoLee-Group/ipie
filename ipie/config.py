@@ -15,7 +15,6 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import importlib
 import sys
 
 
@@ -67,3 +66,4 @@ config.add_option("mixed_precision", bool(int(IPIE_USE_MIXED_PRECISION)))
 # Memory limits should be in GB
 config.add_option("max_memory_for_wicks", 2.0)
 config.add_option("max_memory_sd_energy_gpu", 2.0)
+config.add_option("estimator_buffer_size", 1000)

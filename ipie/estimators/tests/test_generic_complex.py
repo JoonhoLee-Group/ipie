@@ -22,9 +22,10 @@ import pytest
 from ipie.estimators.energy import local_energy
 
 from ipie.utils.testing import build_test_case_handlers
-from ipie.systems.generic import Generic 
+from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.misc import dotdict
+
 
 @pytest.mark.unit
 def test_local_energy_single_det_vs_real():
@@ -42,18 +43,29 @@ def test_local_energy_single_det_vs_real():
             "num_steps": nsteps,
         }
     )
-    
-    test_handler = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7, complex_integrals=False, complex_trial = False, trial_type="single_det")
+
+    test_handler = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=False,
+        complex_trial=False,
+        trial_type="single_det",
+    )
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
     system = Generic(nelec)
     trial = test_handler.trial
-    
+
     chol = ham.chol
 
     cx_chol = numpy.array(chol, dtype=numpy.complex128)
-    cx_ham = HamGeneric(numpy.array(ham.H1,dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False)
+    cx_ham = HamGeneric(
+        numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
+    )
 
     energy = local_energy(system, ham, walkers, trial)
 
@@ -61,6 +73,7 @@ def test_local_energy_single_det_vs_real():
     cx_energy = local_energy(system, cx_ham, walkers, trial)
 
     numpy.testing.assert_allclose(energy, cx_energy, atol=1e-10)
+
 
 @pytest.mark.unit
 def test_local_energy_single_det_vs_eri():
@@ -78,28 +91,36 @@ def test_local_energy_single_det_vs_eri():
             "num_steps": nsteps,
         }
     )
-    
-    test_handler = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7, 
-                                            complex_integrals=True, complex_trial = True, trial_type="single_det",
-                                            choltol = 1e-10)
+
+    test_handler = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det",
+        choltol=1e-10,
+    )
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
     system = Generic(nelec)
     trial = test_handler.trial
-    
+
     walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
-    
+
     energy = local_energy(system, ham, walkers, trial)
-    etot = energy[:,0]
-    e1 = energy[:,1]
-    e2 = energy[:,2]
+    etot = energy[:, 0]
+    e1 = energy[:, 1]
+    e2 = energy[:, 2]
 
     nbasis = ham.nbasis
-    eri = ham.eri.reshape(nbasis,nbasis,nbasis,nbasis)
+    eri = ham.eri.reshape(nbasis, nbasis, nbasis, nbasis)
     h1e = ham.H1[0]
 
-    e1ref = numpy.einsum("ij,wij->w",h1e, walkers.Ga+walkers.Gb)
+    e1ref = numpy.einsum("ij,wij->w", h1e, walkers.Ga + walkers.Gb)
 
     numpy.testing.assert_allclose(e1, e1ref, atol=1e-10)
 
@@ -107,20 +128,21 @@ def test_local_energy_single_det_vs_eri():
 
     chol = ham.chol.copy()
     nchol = chol.shape[1]
-    chol = chol.reshape(nbasis,nbasis,nchol)
+    chol = chol.reshape(nbasis, nbasis, nchol)
 
     # check if chol and eri are consistent
     eri_chol = numpy.einsum("mnx,slx->mnls", chol, chol.conj())
     numpy.testing.assert_allclose(eri, eri_chol, atol=1e-10)
 
-    G = walkers.Ga+walkers.Gb
-    ecoul = 0.5 * numpy.einsum("ijkl,wij,wkl->w",eri, G, G)
-    exx = -0.5 * numpy.einsum("ijkl,wil,wkj->w",eri, walkers.Ga, walkers.Ga)
-    exx -= 0.5 * numpy.einsum("ijkl,wil,wkj->w",eri, walkers.Gb, walkers.Gb)
-    
+    G = walkers.Ga + walkers.Gb
+    ecoul = 0.5 * numpy.einsum("ijkl,wij,wkl->w", eri, G, G)
+    exx = -0.5 * numpy.einsum("ijkl,wil,wkj->w", eri, walkers.Ga, walkers.Ga)
+    exx -= 0.5 * numpy.einsum("ijkl,wil,wkj->w", eri, walkers.Gb, walkers.Gb)
+
     e2ref = ecoul + exx
 
     numpy.testing.assert_allclose(e2, e2ref, atol=1e-10)
+
 
 if __name__ == "__main__":
     test_local_energy_single_det_vs_real()

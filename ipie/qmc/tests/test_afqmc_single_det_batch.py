@@ -86,9 +86,7 @@ def test_generic_single_det_batch():
     )
     numer_batch = afqmc.estimators["energy"]["ENumer"]
     denom_batch = afqmc.estimators["energy"]["EDenom"]
-    data_batch = extract_observable(
-        "estimates.test_generic_single_det_batch.h5", "energy"
-    )
+    data_batch = extract_observable("estimates.test_generic_single_det_batch.h5", "energy")
     driver_options["estimates"] = {
         "filename": "estimates.test_generic_single_det_batch.h5",
         "mixed": {"energy_eval_freq": options["steps"]},
@@ -223,9 +221,7 @@ def test_generic_single_det_batch_density_diff():
     assert numer.imag == pytest.approx(numer_batch.imag)
     assert denom.imag == pytest.approx(denom_batch.imag)
     # assert weight.imag == pytest.approx(weight_batch.imag)
-    data = extract_mixed_estimates(
-        "estimates.test_generic_single_det_batch_density_diff.h5"
-    )
+    data = extract_mixed_estimates("estimates.test_generic_single_det_batch_density_diff.h5")
 
     # print(data_batch.ENumer)
     # print(data.ENumer)

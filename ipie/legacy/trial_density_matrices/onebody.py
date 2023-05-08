@@ -5,11 +5,14 @@ import numpy
 import scipy.linalg
 
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.thermal import (greens_function, one_rdm,
-                                            one_rdm_from_G, one_rdm_stable,
-                                            particle_number)
-from ipie.legacy.trial_density_matrices.chem_pot import (
-    compute_rho, find_chemical_potential)
+from ipie.legacy.estimators.thermal import (
+    greens_function,
+    one_rdm,
+    one_rdm_from_G,
+    one_rdm_stable,
+    particle_number,
+)
+from ipie.legacy.trial_density_matrices.chem_pot import compute_rho, find_chemical_potential
 from ipie.utils.misc import update_stack
 
 
@@ -84,9 +87,7 @@ class OneBody(object):
                 )
 
         # adjust stack size
-        self.stack_size = update_stack(
-            self.stack_size, self.num_slices, verbose=verbose
-        )
+        self.stack_size = update_stack(self.stack_size, self.num_slices, verbose=verbose)
         self.num_bins = int(beta / (self.stack_size * dt))
 
         if verbose:
@@ -126,19 +127,12 @@ class OneBody(object):
             )
 
         if self.verbose:
-            print(
-                "# Chemical potential in trial density matrix: {: .10e}".format(self.mu)
-            )
+            print("# Chemical potential in trial density matrix: {: .10e}".format(self.mu))
 
-        self.P = one_rdm_stable(
-            compute_rho(self.rho, self.mu, dtau, sign=sign), self.num_bins
-        )
+        self.P = one_rdm_stable(compute_rho(self.rho, self.mu, dtau, sign=sign), self.num_bins)
         self.nav = particle_number(self.P).real
         if self.verbose:
-            print(
-                "# Average particle number in trial density matrix: "
-                "{}".format(self.nav)
-            )
+            print("# Average particle number in trial density matrix: " "{}".format(self.nav))
         self.dmat = compute_rho(self.dmat, self.mu, dt, sign=sign)
         self.dmat_inv = numpy.array(
             [
@@ -147,8 +141,6 @@ class OneBody(object):
             ]
         )
 
-        self.G = numpy.array(
-            [greens_function(self.dmat[0]), greens_function(self.dmat[1])]
-        )
+        self.G = numpy.array([greens_function(self.dmat[0]), greens_function(self.dmat[1])])
         self.error = False
         self.init = numpy.array([0])
