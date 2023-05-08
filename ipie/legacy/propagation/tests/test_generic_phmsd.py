@@ -11,8 +11,7 @@ from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd)
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd
 
 
 @pytest.mark.unit
@@ -29,9 +28,7 @@ def test_phmsd_force_bias():
         ecore=0,
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=2, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=2, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
     trial.half_rotate(system, ham)
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
@@ -52,12 +49,8 @@ def test_phmsd_force_bias():
         Gi, Gihalf = gab_spin(trial.psi[idet], walker.phi, nelec[0], nelec[1])
         Gia = Gi[0]
         Gib = Gi[1]
-        Oia = numpy.dot(
-            trial.psi[idet][:, : nelec[0]].conj().T, walker.phi[:, : nelec[0]]
-        )
-        Oib = numpy.dot(
-            trial.psi[idet][:, nelec[0] :].conj().T, walker.phi[:, nelec[0] :]
-        )
+        Oia = numpy.dot(trial.psi[idet][:, : nelec[0]].conj().T, walker.phi[:, : nelec[0]])
+        Oib = numpy.dot(trial.psi[idet][:, nelec[0] :].conj().T, walker.phi[:, nelec[0] :])
 
         sign_a, logdet_a = numpy.linalg.slogdet(Oia)
         sign_b, logdet_b = numpy.linalg.slogdet(Oib)
@@ -68,9 +61,7 @@ def test_phmsd_force_bias():
         denom += ovlp * trial.coeffs[idet].conj()
 
     G /= denom
-    fb_ref[:] = -prop.sqrt_dt * (
-        1.0j * numpy.dot(ham.chol_vecs.T, G.ravel()) - prop.mf_shift
-    )
+    fb_ref[:] = -prop.sqrt_dt * (1.0j * numpy.dot(ham.chol_vecs.T, G.ravel()) - prop.mf_shift)
 
     assert numpy.allclose(fb_ref, fb_slow)
     assert numpy.allclose(fb_ref, fb_multi_det)
@@ -90,9 +81,7 @@ def test_phmsd_overlap():
         ecore=0,
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=2, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=2, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
     qmc = dotdict({"dt": 0.005, "nstblz": 5})
     prop = GenericContinuous(system, ham, trial, qmc)
@@ -103,12 +92,8 @@ def test_phmsd_overlap():
     denom = 0.0 + 0.0j
     for idet in range(ndets):
         Gi, _ = gab_spin(trial.psi[idet], walker.phi, nelec[0], nelec[1])
-        Oia = numpy.dot(
-            trial.psi[idet][:, : nelec[0]].conj().T, walker.phi[:, : nelec[0]]
-        )
-        Oib = numpy.dot(
-            trial.psi[idet][:, nelec[0] :].conj().T, walker.phi[:, nelec[0] :]
-        )
+        Oia = numpy.dot(trial.psi[idet][:, : nelec[0]].conj().T, walker.phi[:, : nelec[0]])
+        Oib = numpy.dot(trial.psi[idet][:, nelec[0] :].conj().T, walker.phi[:, nelec[0] :])
 
         sign_a, logdet_a = numpy.linalg.slogdet(Oia)
         sign_b, logdet_b = numpy.linalg.slogdet(Oib)
@@ -133,9 +118,7 @@ def test_phmsd_propagation():
         ecore=0,
     )
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=3, init=True
-    )
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3, init=True)
     trial = MultiSlater(system, ham, wfn, init=init)
     trial.calculate_energy(system, ham)
     options = {"hybrid": False}

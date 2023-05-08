@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,8 @@
 
 # at config level import appropriate kernels.
 from ipie.config import config
-if config.get_option('use_gpu'):
+
+if config.get_option("use_gpu"):
     from .gpu.exchange import exchange_reduction
 else:
     exchange_reduction = None

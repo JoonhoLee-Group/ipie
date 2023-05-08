@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +22,12 @@ import numpy as np
 from pyscf import cc, gto, scf
 
 from mpi4py import MPI
+import sys
+
+try:
+    import cupy
+except ImportError:
+    sys.exit(0)
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 4)],
@@ -36,7 +41,8 @@ mf.kernel()
 
 # Need to flag that we want to use GPU before **any** ipie modules are imported
 from ipie.config import config
-config.update_option('use_gpu', True)
+
+config.update_option("use_gpu", True)
 
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 

@@ -114,12 +114,8 @@ def half_rotate_generic(
     na = orbsa.shape[-1]
     nb = orbsb.shape[-1]
     if trial.verbose:
-        print(
-            "# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M))
-        )
-        print(
-            "# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M))
-        )
+        print("# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M)))
+        print("# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M)))
 
     chol = hamiltonian.chol.reshape((M, M, nchol))
 
@@ -130,9 +126,9 @@ def half_rotate_generic(
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
     if isinstance(hamiltonian, GenericComplexChol):
-        cholbar = chol.transpose(1,0,2).conj().copy()
-        A = hamiltonian.A.reshape((M,M,nchol))
-        B = hamiltonian.B.reshape((M,M,nchol))
+        cholbar = chol.transpose(1, 0, 2).conj().copy()
+        A = hamiltonian.A.reshape((M, M, nchol))
+        B = hamiltonian.B.reshape((M, M, nchol))
         rchola = [get_shared_array(comm, shape_a, integral_type) for i in range(4)]
         rcholb = [get_shared_array(comm, shape_b, integral_type) for i in range(4)]
     elif isinstance(hamiltonian, GenericRealChol):
@@ -175,7 +171,7 @@ def half_rotate_generic(
             L = [chol, cholbar, A, B]
         elif isinstance(hamiltonian, GenericRealChol):
             L = [chol]
-        
+
         for i in range(len(L)):
             # Investigate whether these einsums are fast in the future
             rup = np.einsum(

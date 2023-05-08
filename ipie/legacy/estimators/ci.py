@@ -18,9 +18,7 @@ def simple_fci_bose_fermi(
     perms = [[0 for i in range(system.nbasis)]]
     for nboson in range(1, nboson_max + 1):
         perm = list(
-            unlabeled_balls_in_labeled_boxes(
-                nboson, [nboson for i in range(system.nbasis)]
-            )
+            unlabeled_balls_in_labeled_boxes(nboson, [nboson for i in range(system.nbasis)])
         )
         perms += perm
         blkboson += [len(perm)]
@@ -107,22 +105,10 @@ def simple_fci_bose_fermi(
     Htot = He + Hb + Heb
 
     print("# finshed forming Htot")
-    print(
-        "# He nnz = {} out of total {}".format(He.nnz, ndets * nperms * ndets * nperms)
-    )
-    print(
-        "# Hb nnz = {} out of total {}".format(Hb.nnz, ndets * nperms * ndets * nperms)
-    )
-    print(
-        "# Heb nnz = {} out of total {}".format(
-            Heb.nnz, ndets * nperms * ndets * nperms
-        )
-    )
-    print(
-        "# Htot nnz = {} out of total {}".format(
-            Htot.nnz, ndets * nperms * ndets * nperms
-        )
-    )
+    print("# He nnz = {} out of total {}".format(He.nnz, ndets * nperms * ndets * nperms))
+    print("# Hb nnz = {} out of total {}".format(Hb.nnz, ndets * nperms * ndets * nperms))
+    print("# Heb nnz = {} out of total {}".format(Heb.nnz, ndets * nperms * ndets * nperms))
+    print("# Htot nnz = {} out of total {}".format(Htot.nnz, ndets * nperms * ndets * nperms))
 
     eigval, eigvec = scipy.sparse.linalg.eigsh(Htot, k=3, which="SA")
 
@@ -150,9 +136,7 @@ def simple_fci_bose_fermi(
                 if ni == nboson_max:
                     continue
 
-                for j, jperm in enumerate(
-                    perms[offset_i : offset_i + blkboson[ni + 1]]
-                ):
+                for j, jperm in enumerate(perms[offset_i : offset_i + blkboson[ni + 1]]):
                     diff = numpy.array(iperm) - numpy.array(jperm)
                     ndiff = numpy.sum(numpy.abs(diff))
                     if ndiff == 1 and diff[isite] == -1:
@@ -168,9 +152,7 @@ def simple_fci_bose_fermi(
             X = eigvec[:, 0].T.conj().dot(xi.dot(eigvec[:, 0]))
             print("i, X = {}, {}".format(isite, X))
 
-        print(
-            "# Eel, Eb, Eeb, Etot = {}, {}, {}, {}".format(Eel, Eb, Eeb, Eel + Eb + Eeb)
-        )
+        print("# Eel, Eb, Eeb, Etot = {}, {}, {}, {}".format(Eel, Eb, Eeb, Eel + Eb + Eeb))
 
     if gen_dets:
         return (eigval, eigvec), (dets, numpy.array(oa), numpy.array(ob))
@@ -383,8 +365,7 @@ def unlabeled_balls_in_labeled_boxes(balls, box_sizes):
 
     if capacity < balls:
         raise ValueError(
-            "The total capacity of the boxes is less than the "
-            "number of balls to be distributed."
+            "The total capacity of the boxes is less than the " "number of balls to be distributed."
         )
 
     return _unlabeled_balls_in_labeled_boxes(balls, box_sizes)
@@ -401,7 +382,6 @@ def _unlabeled_balls_in_labeled_boxes(balls, box_sizes):
         yield len(box_sizes) * (0,)
 
     elif len(box_sizes) == 1:
-
         # If the single available box has sufficient capacity to store the balls,
         # there is only one possible distribution, and we return it to the caller
         # via `yield`.  Otherwise, the flow of control will pass to the end of the
@@ -410,7 +390,6 @@ def _unlabeled_balls_in_labeled_boxes(balls, box_sizes):
             yield (balls,)
 
     else:
-
         # Iterate over the number of balls in the first box (from the maximum
         # possible down to zero), recursively invoking the generator to distribute
         # the remaining balls among the remaining boxes.

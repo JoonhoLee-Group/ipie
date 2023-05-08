@@ -35,7 +35,6 @@ def unpack_VHS_batch(idx_i, idx_j, VHS_packed, VHS):
 
 @jit(nopython=True, fastmath=True)
 def pack_cholesky(idx_i, idx_j, Lchol_packed, Lchol):
-
     nchol = Lchol.shape[2]
     nbsf = Lchol.shape[0]
     dim_upper_triangle = nbsf * (nbsf + 1) // 2

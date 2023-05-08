@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,8 @@
 from numba import cuda
 
 
+# Note sure where this is coming from (no value for ndim?)
+# pylint: disable=no-value-for-parameter
 @cuda.jit("void(int32[:],int32[:],complex128[:,:],complex128[:,:,:])")
 def unpack_VHS_batch_gpu(idx_i, idx_j, VHS_packed, VHS):
     nwalkers = VHS.shape[0]

@@ -19,35 +19,27 @@
 """Helper Routines for setting up a calculation"""
 # todo : handle more gracefully.
 import json
-import sys
-import time
-
-import h5py
-import numpy
 
 try:
+    # TODO: WTF is this?
     import mpi4py
 
     mpi4py.rc.recv_mprobe = False
     from mpi4py import MPI
 
-    # import dill
-    # MPI.pickle.__init__(dill.dumps, dill.loads)
     parallel = True
 except ImportError:
     parallel = False
 
-from ipie.estimators.handler import EstimatorHandler
+from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.comm import FakeComm
-from ipie.utils.io import get_input_value, to_json
-from ipie.utils.misc import serialise
-
 from ipie.systems.utils import get_system
-from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
+from ipie.utils.io import get_input_value
 from ipie.utils.mpi import MPIHandler
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
+
 
 def init_communicator():
     if parallel:
@@ -77,9 +69,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         alias=["model"],
         verbose=verbosity > 1,
     )
-    ham_opts = get_input_value(
-        options, "hamiltonian", default={}, verbose=verbosity > 1
-    )
+    ham_opts = get_input_value(options, "hamiltonian", default={}, verbose=verbosity > 1)
     # backward compatibility with previous code (to be removed)
     for item in sys_opts.items():
         if item[0].lower() == "name" and "name" in ham_opts.keys():
@@ -113,6 +103,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         raise ValueError("Trying to use legacy features which aren't supported.")
     else:
         from ipie.qmc.options import QMCOpts
+
         qmc = QMCOpts(qmc_opts, verbose=0)
         if qmc.nwalkers is None:
             assert qmc.nwalkers_per_task is not None
@@ -121,41 +112,61 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             assert qmc.nwalkers is not None
             qmc.nwalkers_per_task = int(qmc.nwalkers / comm.size)
 
-        mpi_handler = MPIHandler(comm, qmc_opts, verbose=verbosity)
-        system = get_system(sys_opts, verbose=verbosity, comm=comm)
-        # Have to deal with shared comm in the future. I think we will remove this...
-        hamiltonian = get_hamiltonian(
-            system, ham_opts, verbose=verbosity, comm=comm
-        )
+        mpi_handler = MPIHandler(comm, nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
+        system = get_system(
+            sys_opts, verbose=verbosity, comm=comm
+        )  # Have to deal with shared comm in the future. I think we will remove this...
+        hamiltonian = get_hamiltonian(system, ham_opts, verbose=verbosity, comm=comm)
+        wfn_file = get_input_value(twf_opt, "filename", default="", alias=["wfn_file"])
         trial = get_trial_wavefunction(
             system,
             hamiltonian,
-            options=twf_opt,
+            wfn_file,
             comm=comm,
             scomm=comm,
             verbose=verbosity,
+            ndets=get_input_value(twf_opt, "ndets", default=1, alias=["num_dets"]),
+            ndets_props=get_input_value(
+                twf_opt, "ndets_props", default=1, alias=["num_dets_props"]
+            ),
+            ndet_chunks=get_input_value(
+                twf_opt, "ndet_chunks", default=1, alias=["num_det_chunks"]
+            ),
         )
-        ndets, initial_walker = get_initial_walker(trial)
-        walkers = UHFWalkersTrial(trial,initial_walker, 
-                                        system.nup, system.ndown, 
-                                        hamiltonian.nbasis, qmc.nwalkers_per_task,
-                                        mpi_handler = mpi_handler)
-        walkers.build(trial) # any intermediates that require information from trial
+        _, initial_walker = get_initial_walker(trial)
+        walkers = UHFWalkersTrial(
+            trial,
+            initial_walker,
+            system.nup,
+            system.ndown,
+            hamiltonian.nbasis,
+            qmc.nwalkers_per_task,
+            mpi_handler=mpi_handler,
+        )
+        walkers.build(trial)  # any intermediates that require information from trial
+        est_opts = get_input_value(
+            options,
+            "estimators",
+            default={},
+            alias=["estimates"],
+            verbose=verbosity > 1,
+        )
         afqmc = AFQMC(
-            comm,  options=options, 
+            comm,
             system=system,
             hamiltonian=hamiltonian,
             trial=trial,
             walkers=walkers,
-            seed=qmc.rng_seed, 
+            seed=qmc.rng_seed,
             nwalkers=qmc.nwalkers,
             nwalkers_per_task=qmc.nwalkers_per_task,
-            num_steps_per_block=qmc.nsteps, 
-            num_blocks=qmc.nblocks, 
+            num_steps_per_block=qmc.nsteps,
+            num_blocks=qmc.nblocks,
             timestep=qmc.dt,
             stabilise_freq=qmc.nstblz,
             pop_control_freq=qmc.npop_control,
-            verbose=verbosity
+            verbose=verbosity,
+            filename=est_opts.get("filename", "estimates.h5"),
         )
 
         afqmc.pcontrol.method = wlk_opts["population_control"]
@@ -185,7 +196,7 @@ def build_afqmc_driver(
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
     }
-    return get_driver(options,comm)
+    return get_driver(options, comm)
 
 
 def read_input(input_file, comm, verbose=False):
@@ -221,4 +232,3 @@ def read_input(input_file, comm, verbose=False):
         raise FileNotFoundError
 
     return options
-

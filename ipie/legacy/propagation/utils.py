@@ -11,13 +11,9 @@ def get_propagator_driver(system, hamiltonian, trial, qmc, options={}, verbose=F
     hs = options.get("hubbard_stratonovich", "continuous")
 
     if "discrete" in hs:
-        return get_discrete_propagator(
-            options, qmc, system, hamiltonian, trial, verbose
-        )
+        return get_discrete_propagator(options, qmc, system, hamiltonian, trial, verbose)
     else:
-        return Continuous(
-            system, hamiltonian, trial, qmc, options=options, verbose=verbose
-        )
+        return Continuous(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
 
 
 def get_discrete_propagator(options, qmc, system, hamiltonian, trial, verbose=False):
@@ -43,9 +39,7 @@ def get_discrete_propagator(options, qmc, system, hamiltonian, trial, verbose=Fa
     if hamiltonian.name == "Hubbard":
         propagator = Hirsch(hamiltonian, trial, qmc, options=options, verbose=verbose)
     elif hamiltonian.name == "HubbardHolstein":
-        propagator = HirschDMC(
-            hamiltonian, trial, qmc, options=options, verbose=verbose
-        )
+        propagator = HirschDMC(hamiltonian, trial, qmc, options=options, verbose=verbose)
     else:
         print(
             "No suitable discrete propagator exists for {}. Check your input.".format(

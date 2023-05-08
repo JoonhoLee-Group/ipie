@@ -2,8 +2,7 @@ import numpy
 import pytest
 
 from ipie.legacy.estimators.greens_function import gab
-from ipie.legacy.hamiltonians.hubbard import (Hubbard, decode_basis,
-                                              encode_basis)
+from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis, encode_basis
 from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
 from ipie.systems.generic import Generic
 

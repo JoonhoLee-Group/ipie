@@ -24,13 +24,14 @@ import os
 
 import h5py
 import numpy
-
 from mpi4py import MPI
+from typing import Union, Tuple
 
+from ipie.config import config
 from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
-from ipie.utils.io import get_input_value, format_fixed_width_strings
+from ipie.utils.io import format_fixed_width_strings
 
 # Some supported (non-custom) estimators
 _predefined_estimators = {
@@ -68,42 +69,31 @@ class EstimatorHandler(object):
         hamiltonian,
         trial,
         walker_state=None,
-        options={},
-        verbose=False,
+        verbose: bool = False,
+        filename: Union[str, None] = None,
+        block_size: int = 1,
+        basename: str = "estimates",
+        overwrite=True,
+        observables: Tuple[str] = ("energy",),  # TODO: Use factory method!
+        index: int = 0,
     ):
         if verbose:
             print("# Setting up estimator object.")
         if comm.rank == 0:
-            self.index = get_input_value(options, "index", default=0, verbose=verbose)
-            self.filename = get_input_value(
-                options, "filename", default=None, verbose=verbose
-            )
-            self.basename = get_input_value(
-                options, "basename", default="estimates", verbose=verbose
-            )
+            self.basename = basename
+            self.filename = filename
+            self.index = 0
             if self.filename is None:
-                overwrite = get_input_value(
-                    options, "overwrite", default=True, verbose=verbose
-                )
-                self.filename = self.basename + ".%s.h5" % self.index
+                self.filename = f"{self.basename}.{self.index}.h5"
                 while os.path.isfile(self.filename) and not overwrite:
                     self.index = int(self.filename.split(".")[1])
                     self.index = self.index + 1
-                    self.filename = self.basename + ".%s.h5" % self.index
+                    self.filename = f"{self.basename}.{self.index}.h5"
             if verbose:
-                print("# Writing estimator data to {}.".format(self.filename))
+                print(f"# Writing estimator data to {self.filename}")
         else:
             self.filename = None
-        self.buffer_size = get_input_value(
-            options, "buffer_size", default=1000, verbose=verbose
-        )
-        observables = get_input_value(
-            options,
-            "observables",
-            default={"energy": {}},
-            alias=["estimators", "observable"],
-            verbose=verbose,
-        )
+        self.buffer_size = config.get_option("estimator_buffer_size")
         if walker_state is not None:
             self.num_walker_props = walker_state.size
             self.walker_header = walker_state.names
@@ -113,14 +103,14 @@ class EstimatorHandler(object):
         self._estimators = {}
         self._shapes = []
         self._offsets = {}
-        for obs, obs_dict in observables.items():
+        self.json_string = "{}"
+        # TODO: Replace this, should be built outside
+        for obs in observables:
             try:
                 est = _predefined_estimators[obs](
-                    comm=comm,
                     system=system,
                     ham=hamiltonian,
                     trial=trial,
-                    options=obs_dict,
                 )
                 self[obs] = est
             except KeyError:
@@ -129,16 +119,17 @@ class EstimatorHandler(object):
             print("# Finished settting up estimator object.")
 
     def __setitem__(self, name: str, estimator: EstimatorBase) -> None:
+        over_writing = self._estimators.get(name) is not None
         self._estimators[name] = estimator
-        size = estimator.size
-        self._shapes.append(estimator.shape)
-        if len(self._offsets.keys()) == 0:
-            self._offsets[name] = 0
-            prev_obs = name
-        else:
-            prev_obs = list(self._offsets.keys())[-1]
-            offset = self._estimators[prev_obs].size + self._offsets[prev_obs]
-            self._offsets[name] = offset
+        if not over_writing:
+            self._shapes.append(estimator.shape)
+            if len(self._offsets.keys()) == 0:
+                self._offsets[name] = 0
+                prev_obs = name
+            else:
+                prev_obs = list(self._offsets.keys())[-1]
+                offset = self._estimators[prev_obs].size + self._offsets[prev_obs]
+                self._offsets[name] = offset
 
     def get_offset(self, name: str) -> int:
         offset = self._offsets.get(name)
@@ -188,9 +179,7 @@ class EstimatorHandler(object):
                     fh5[f"block_size_1/size/{k}"] = o.size
                     fh5[f"block_size_1/scalar/{k}"] = int(o.scalar_estimator)
                     fh5[f"block_size_1/names/{k}"] = " ".join(name for name in o.names)
-                    fh5[
-                        f"block_size_1/offset/{k}"
-                    ] = self.num_walker_props + self.get_offset(k)
+                    fh5[f"block_size_1/offset/{k}"] = self.num_walker_props + self.get_offset(k)
         if comm.rank == 0:
             print(header)
 
@@ -254,5 +243,5 @@ class EstimatorHandler(object):
     def zero(self):
         self.local_estimates[:] = 0.0
         self.global_estimates[:] = 0.0
-        for k, e in self.items():
+        for _, e in self.items():
             e.zero()

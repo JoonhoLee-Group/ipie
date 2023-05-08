@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +16,6 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-import sys
-
 import numpy
 from numba import jit
 
@@ -28,8 +25,7 @@ from ipie.utils.backend import synchronize
 
 # FDM: deprecated remove?
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
-    """Compute local energy using half-rotated eri tensor.
-    """
+    """Compute local energy using half-rotated eri tensor."""
 
     na = system.nup
     nb = system.ndown
@@ -81,18 +77,13 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     """
     # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
 
     if numpy.isrealobj(ham.chol):
-        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(
-            Ga.imag.ravel()
-        )
-        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(
-            Gb.imag.ravel()
-        )
+        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
+        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
     else:
         Xa = ham.chol.T.dot(Ga.ravel())
         Xb = ham.chol.T.dot(Gb.ravel())
@@ -341,10 +332,6 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     rcholb = trial._rcholb
 
     # Element wise multiplication.
-    nalpha, nbeta = system.nup, system.ndown
-    nbasis = Ghalfa.shape[-1]
-    if rchola is not None:
-        naux = rchola.shape[0]
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
@@ -357,13 +344,9 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     ecoul += 2 * xp.dot(Xa, Xb)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
-        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
 
     synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy

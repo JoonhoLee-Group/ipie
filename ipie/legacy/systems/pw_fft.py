@@ -8,6 +8,7 @@ import scipy.linalg
 import scipy.sparse
 
 import ipie.utils
+
 # from ipie.utils.io import dump_qmcpack_cholesky
 from ipie.legacy.trial_wavefunction.free_electron import FreeElectron
 
@@ -94,9 +95,7 @@ class PW_FFT(object):
         # k-space grid spacing.
         self.kfac = 2 * math.pi / self.L
         # Fermi Wavevector (infinite system).
-        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (
-            1 / 3.0
-        )
+        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (1 / 3.0)
         # Fermi energy (inifinite systems).
         self.ef = 0.5 * self.kf**2
         #
@@ -112,15 +111,13 @@ class PW_FFT(object):
             print("# Madelung Energy: %13.8e" % self.ecore)
 
         # Single particle eigenvalues and corresponding kvectors
-        (self.sp_eigv, self.basis, self.nmax, self.gmap) = self.sp_energies(
-            self.kfac, self.ecut
-        )
+        (self.sp_eigv, self.basis, self.nmax, self.gmap) = self.sp_energies(self.kfac, self.ecut)
         self.mesh = [self.nmax * 2 + 1] * 3
 
         self.shifted_nmax = 2 * self.nmax
         self.imax_sq = numpy.max(numpy.sum(self.basis * self.basis, axis=1))
         self.create_lookup_table()
-        for (i, k) in enumerate(self.basis):
+        for i, k in enumerate(self.basis):
             assert i == self.lookup_basis(k)
 
         # Number of plane waves.
@@ -166,9 +163,7 @@ class PW_FFT(object):
         trial_b = I[:, sort_basis[: self.ndown]].copy()
 
         # Hard coded to be RHF trial for now
-        self.trial = numpy.zeros(
-            (self.nbasis, self.nup + self.ndown), dtype=numpy.complex128
-        )
+        self.trial = numpy.zeros((self.nbasis, self.nup + self.ndown), dtype=numpy.complex128)
         self.trial[:, : self.nup] = trial_a.copy()
         self.trial[:, self.nup :] = trial_b.copy()
 
@@ -285,7 +280,7 @@ class PW_FFT(object):
         """
         rho_ikpq_i = []
         rho_ikpq_kpq = []
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             idxkpq_list_i = []
             idxkpq_list_kpq = []
             for i, k in enumerate(self.basis):
@@ -297,7 +292,7 @@ class PW_FFT(object):
             rho_ikpq_i += [idxkpq_list_i]
             rho_ikpq_kpq += [idxkpq_list_kpq]
 
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             rho_ikpq_i[iq] = numpy.array(rho_ikpq_i[iq], dtype=numpy.int64)
             rho_ikpq_kpq[iq] = numpy.array(rho_ikpq_kpq[iq], dtype=numpy.int64)
 
@@ -321,10 +316,8 @@ class PW_FFT(object):
                 else:
                     factor = (piovol / numpy.dot(qscaled, qscaled)) ** 0.5
 
-                for (innz, kpq) in enumerate(rho_ikpq_kpq[iq]):
-                    row_index += [
-                        rho_ikpq_kpq[iq][innz] + rho_ikpq_i[iq][innz] * self.nbasis
-                    ]
+                for innz, kpq in enumerate(rho_ikpq_kpq[iq]):
+                    row_index += [rho_ikpq_kpq[iq][innz] + rho_ikpq_i[iq][innz] * self.nbasis]
                     col_index += [iq]
                     values += [factor]
         else:
@@ -338,10 +331,8 @@ class PW_FFT(object):
                 else:
                     factor = (piovol / numpy.dot(qscaled, qscaled)) ** 0.5
 
-                for (innz, kpq) in enumerate(rho_ikpq_kpq[iq]):
-                    row_index += [
-                        rho_ikpq_kpq[iq][innz] * self.nbasis + rho_ikpq_i[iq][innz]
-                    ]
+                for innz, kpq in enumerate(rho_ikpq_kpq[iq]):
+                    row_index += [rho_ikpq_kpq[iq][innz] * self.nbasis + rho_ikpq_i[iq][innz]]
                     col_index += [iq]
                     values += [factor]
 

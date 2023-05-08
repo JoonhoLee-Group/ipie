@@ -3,8 +3,7 @@ import time
 import numpy
 import scipy.linalg
 
-from ipie.legacy.estimators.greens_function import (gab, gab_mod,
-                                                    gab_multi_det_full)
+from ipie.legacy.estimators.greens_function import gab, gab_mod, gab_multi_det_full
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.utils.io import read_fortran_complex_numbers
 from ipie.utils.linalg import diagonalise_sorted
@@ -61,9 +60,7 @@ class MultiDeterminant(object):
             shape=(2, self.ndets, self.ndets, system.nactive, system.nactive),
             dtype=self.trial_type,
         )
-        self.weights = numpy.zeros(
-            shape=(2, self.ndets, self.ndets), dtype=self.trial_type
-        )
+        self.weights = numpy.zeros(shape=(2, self.ndets, self.ndets), dtype=self.trial_type)
         # Store the complex conjugate of the multi-determinant trial
         # wavefunction expansion coefficients for ease later.
         Gup = gab(self.psi[0, :, : system.nup], self.psi[0, :, : system.nup])
@@ -104,7 +101,7 @@ class MultiDeterminant(object):
         namelist = "&FCI\n UHF = 0\n NCI = %d\n TYPE = occ\n/" % self.psi.shape[0]
         output.write(namelist + "\n")
         norb = self.psi.shape[1]
-        for (ci, phi) in zip(self.coeffs, self.psi):
+        for ci, phi in zip(self.coeffs, self.psi):
             occup, cols = numpy.where(phi[:, : self.nup] == 1)
             occdn, cols = numpy.where(phi[:, self.nup :] == 1)
             dup = " ".join(str(i + 1) for i in occup)

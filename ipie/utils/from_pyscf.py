@@ -24,6 +24,8 @@ from typing import Tuple, Union
 import h5py
 import numpy
 import scipy.linalg
+
+# pylint: disable=import-error
 from pyscf import lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
@@ -44,7 +46,6 @@ def gen_ipie_input_from_pyscf_chk(
     linear_dep_thresh: float = 1e-8,
     num_frozen_core: int = 0,
 ) -> None:
-
     if mcscf:
         scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
     else:
@@ -147,10 +148,8 @@ def generate_wavefunction_from_mo_coeff(
         rohf = True
     else:
         rohf = False
-    nalpha, nbeta = nelec
     nmo = X.shape[1] - num_frozen_core
     if ortho_ao:
-        norb = X.shape[1]
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
@@ -215,8 +214,6 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     if verbose:
         print(" # Time to orthogonalise: %f" % (time.time() - start))
     enuc = mol.energy_nuc()
-    # Step 3. (Optionally) freeze core / virtuals.
-    nelec = mol.nelec
 
     return h1e, chol_vecs.reshape((-1, nbasis, nbasis)), enuc
 
@@ -225,9 +222,7 @@ def ao2mo_chol(eri, C, verbose=False):
     nb = C.shape[-1]
     for i, cv in enumerate(eri):
         if verbose and i % 100 == 0:
-            print(
-                " # ao2mo cholesky % complete = {} %".format(100 * float(i) / len(eri))
-            )
+            print(" # ao2mo cholesky % complete = {} %".format(100 * float(i) / len(eri)))
         half = numpy.dot(cv.reshape(nb, nb), C)
         eri[i] = numpy.dot(C.conj().T, half).ravel()
 
@@ -244,9 +239,7 @@ def cholesky(
     nao = mol.nao_nr()
     if nao * nao * cmax * nao * 8.0 / 1024.0**3 > MAX_SIZE:
         if verbose:
-            print(
-                "# Approximate memory for cholesky > MAX_SIZE ({} GB).".format(MAX_SIZE)
-            )
+            print("# Approximate memory for cholesky > MAX_SIZE ({} GB).".format(MAX_SIZE))
             print("# Using out of core algorithm.")
             return chunked_cholesky_outcore(
                 mol,
@@ -257,9 +250,7 @@ def cholesky(
                 CHUNK_SIZE=CHUNK_SIZE,
             )
         else:
-            return chunked_cholesky(
-                mol, max_error=max_error, verbose=verbose, cmax=cmax
-            )
+            return chunked_cholesky(mol, max_error=max_error, verbose=verbose, cmax=cmax)
 
 
 def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
@@ -304,7 +295,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
     for i in range(0, mol.nbas):
         shls = (i, i + 1, 0, mol.nbas, i, i + 1, 0, mol.nbas)
         buf = mol.intor("int2e_sph", shls_slice=shls)
-        di, dk, dj, dl = buf.shape
+        di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
     nu = numpy.argmax(diag)
@@ -323,13 +314,9 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         sl -= 1
     Mapprox = numpy.zeros(nao * nao)
     # ERI[:,jl]
-    eri_col = mol.intor(
-        "int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1)
-    )
+    eri_col = mol.intor("int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1))
     cj, cl = max(j - dims[sj], 0), max(l - dims[sl], 0)
-    chol_vecs[0] = (
-        numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
-    )
+    chol_vecs[0] = numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
 
     nchol = 0
     while abs(delta_max) > max_error:
@@ -432,7 +419,7 @@ def chunked_cholesky_outcore(
     for i in range(0, mol.nbas):
         shls = (i, i + 1, 0, mol.nbas, i, i + 1, 0, mol.nbas)
         buf = mol.intor("int2e_sph", shls_slice=shls)
-        di, dk, dj, dl = buf.shape
+        di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
     nu = numpy.argmax(diag)
@@ -453,13 +440,9 @@ def chunked_cholesky_outcore(
     if dims[sl] != l and l != 0:
         sl -= 1
     Mapprox = numpy.zeros(nao * nao)
-    eri_col = mol.intor(
-        "int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1)
-    )
+    eri_col = mol.intor("int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1))
     cj, cl = max(j - dims[sj], 0), max(l - dims[sl], 0)
-    chol_vecs[0] = (
-        numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
-    )
+    chol_vecs[0] = numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
 
     def compute_residual(chol, ichol, nchol, nu):
         # Updated residual = \sum_x L_i^x L_nu^x
@@ -649,7 +632,6 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
 
 def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     mol = mf.mol
-    ecore = mf.energy_nuc()
     hcore = mf.get_hcore()
     if ortho_ao:
         s1e = mf.mol.intor("int1e_ovlp_sph")
@@ -658,9 +640,7 @@ def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
         X = mf.mo_coeff
         if len(X.shape) == 3:
             X = X[0]
-    h1e, chol, enuc = generate_integrals(
-        mol, hcore, X, chol_cut=chol_cut, verbose=verbose
-    )
+    h1e, chol, enuc = generate_integrals(mol, hcore, X, chol_cut=chol_cut, verbose=verbose)
     return h1e, chol, enuc, X
 
 
@@ -669,7 +649,7 @@ def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
     mol = scf_data["mol"]
     hcore = scf_data["hcore"]
     if ortho_ao:
-        oao = scf_data["X"]
+        raise ValueError("ortho_ao isn't used")
     else:
         X = scf_data["mo_coeff"]
         if len(X.shape) == 3:

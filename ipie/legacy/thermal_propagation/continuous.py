@@ -6,8 +6,7 @@ import time
 import numpy
 import scipy.sparse.linalg
 
-from ipie.legacy.estimators.thermal import (inverse_greens_function_qr,
-                                            one_rdm_from_G)
+from ipie.legacy.estimators.thermal import inverse_greens_function_qr, one_rdm_from_G
 from ipie.legacy.thermal_propagation.generic import GenericContinuous
 from ipie.legacy.thermal_propagation.hubbard import HubbardContinuous
 from ipie.legacy.thermal_propagation.planewave import PlaneWave
@@ -34,9 +33,7 @@ class Continuous(object):
         If true print out more information during setup.
     """
 
-    def __init__(
-        self, options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False
-    ):
+    def __init__(self, options, qmc, system, hamiltonian, trial, verbose=False, lowrank=False):
         if verbose:
             print("# Parsing continuous propagator input options.")
             print("# Using continuous Hubbar--Stratonovich transformations.")
@@ -267,9 +264,7 @@ class Continuous(object):
             walker.weight = 0.0
 
 
-def get_continuous_propagator(
-    system, hamiltonian, trial, qmc, options={}, verbose=False
-):
+def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbose=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -289,9 +284,7 @@ def get_continuous_propagator(
         Propagator object.
     """
     if system.name == "UEG":
-        propagator = PlaneWave(
-            system, hamiltonian, trial, qmc, options=options, verbose=verbose
-        )
+        propagator = PlaneWave(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
     elif system.name == "Hubbard":
         propagator = HubbardContinuous(
             system, hamiltonian, trial, qmc, options=options, verbose=verbose

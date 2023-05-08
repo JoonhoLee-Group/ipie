@@ -24,6 +24,7 @@ from ipie.utils.testing import build_test_case_handlers
 from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
 
+
 @pytest.mark.unit
 def test_greens_function_batch():
     nelec = (5, 5)
@@ -61,18 +62,10 @@ def test_greens_function_batch():
     walkers = batched_data.walkers
     ovlp = greens_function_single_det(walkers, batched_data.trial, build_full=True)
     for iw in range(nwalkers):
-        numpy.testing.assert_allclose(
-            legacy_walkers[iw].Ghalf[0], walkers.Ghalfa[iw], atol=1e-12
-        )
-        numpy.testing.assert_allclose(
-            legacy_walkers[iw].Ghalf[1], walkers.Ghalfb[iw], atol=1e-12
-        )
-        numpy.testing.assert_allclose(
-            legacy_walkers[iw].G[0], walkers.Ga[iw], atol=1e-12
-        )
-        numpy.testing.assert_allclose(
-            legacy_walkers[iw].G[1], walkers.Gb[iw], atol=1e-12
-        )
+        numpy.testing.assert_allclose(legacy_walkers[iw].Ghalf[0], walkers.Ghalfa[iw], atol=1e-12)
+        numpy.testing.assert_allclose(legacy_walkers[iw].Ghalf[1], walkers.Ghalfb[iw], atol=1e-12)
+        numpy.testing.assert_allclose(legacy_walkers[iw].G[0], walkers.Ga[iw], atol=1e-12)
+        numpy.testing.assert_allclose(legacy_walkers[iw].G[1], walkers.Gb[iw], atol=1e-12)
 
 
 @pytest.mark.unit

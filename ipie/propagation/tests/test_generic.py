@@ -31,6 +31,7 @@ from ipie.utils.legacy_testing import (
     build_legacy_test_case_handlers,
 )
 
+
 @pytest.mark.unit
 def test_overlap_rhf_batch():
     numpy.random.seed(7)
@@ -285,9 +286,7 @@ def test_hybrid_batch():
             "num_steps": nsteps,
         }
     )
-    legacy_data = build_legacy_test_case_handlers(
-        nelec, nmo, num_dets=1, options=qmc, seed=7
-    )
+    legacy_data = build_legacy_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
     walkers = legacy_data.walker_handler.walkers
@@ -316,27 +315,22 @@ def test_vhs():
             "num_steps": nsteps,
         }
     )
-    legacy_data = build_legacy_test_case_handlers(
-        nelec, nmo, num_dets=1, options=qmc, seed=7
+    legacy_data = build_legacy_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
+    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields).reshape(
+        nwalkers, legacy_data.hamiltonian.nfields
     )
-    xshifted = numpy.random.normal(
-        0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields
-    ).reshape(nwalkers, legacy_data.hamiltonian.nfields)
     vhs_serial = []
     for iw in range(nwalkers):
         vhs_serial.append(
-            legacy_data.propagator.propagator.construct_VHS(
-                legacy_data.hamiltonian, xshifted[iw]
-            )
+            legacy_data.propagator.propagator.construct_VHS(legacy_data.hamiltonian, xshifted[iw])
         )
 
     qmc.batched = True
     batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    vhs_batch = batched_data.propagator.construct_VHS(
-        batched_data.hamiltonian, xshifted.T.copy()
-    )
+    vhs_batch = batched_data.propagator.construct_VHS(batched_data.hamiltonian, xshifted.T.copy())
     for iw in range(nwalkers):
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
+
 
 if __name__ == "__main__":
     test_overlap_rhf_batch()

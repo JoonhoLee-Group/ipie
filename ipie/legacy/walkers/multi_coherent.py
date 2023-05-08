@@ -6,7 +6,9 @@ import scipy.linalg
 
 from ipie.legacy.estimators.local_energy import local_energy_multi_det_hh
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import (
-    HarmonicOscillator, HarmonicOscillatorMomentum)
+    HarmonicOscillator,
+    HarmonicOscillatorMomentum,
+)
 from ipie.legacy.walkers.stack import FieldConfig, PropagatorStack
 from ipie.utils.linalg import sherman_morrison
 from ipie.utils.misc import get_numeric_names
@@ -107,17 +109,13 @@ class MultiCoherentWalker(object):
             if len(trial.psi.shape) == 3:
                 for i in range(trial.nperms):
                     shift = trial.shift[i, :].copy()
-                    boson_trial = HarmonicOscillator(
-                        m=system.m, w=system.w0, order=0, shift=shift
-                    )
+                    boson_trial = HarmonicOscillator(m=system.m, w=system.w0, order=0, shift=shift)
                     self.Lapi[i] = boson_trial.laplacian(self.X)
             else:
                 shift0 = trial.shift.copy()
                 for i, perm in enumerate(trial.perms):
                     shift = shift0[perm].copy()
-                    boson_trial = HarmonicOscillator(
-                        m=system.m, w=system.w0, order=0, shift=shift
-                    )
+                    boson_trial = HarmonicOscillator(m=system.m, w=system.w0, order=0, shift=shift)
                     self.Lapi[i] = boson_trial.laplacian(self.X)
 
         # Compute initial overlap. Avoids issues with singular matrices for
@@ -131,14 +129,10 @@ class MultiCoherentWalker(object):
         self.hybrid_energy = 0.0
         if verbose:
             print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(
-                    self.ot.real
-                )
+                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(self.ot.real)
             )
         # Green's functions for various elements of the trial wavefunction.
-        self.Gi = numpy.zeros(
-            shape=(self.nperms, 2, system.nbasis, system.nbasis), dtype=dtype
-        )
+        self.Gi = numpy.zeros(shape=(self.nperms, 2, system.nbasis, system.nbasis), dtype=dtype)
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
         self.G = numpy.zeros(shape=(2, system.nbasis, system.nbasis), dtype=dtype)
@@ -155,9 +149,7 @@ class MultiCoherentWalker(object):
         # self.phi_bp = copy.deepcopy(trial.psi)
 
         if nbp is not None:
-            self.field_configs = FieldConfig(
-                system.nfields, nprop_tot, nbp, numpy.complex128
-            )
+            self.field_configs = FieldConfig(system.nfields, nprop_tot, nbp, numpy.complex128)
         else:
             self.field_configs = None
 
@@ -183,15 +175,12 @@ class MultiCoherentWalker(object):
                 if abs(self.ots[i]) > 1e-16:
                     self.inv_ovlp[0][i] = scipy.linalg.inv(Oup)
                     self.inv_ovlp[1][i] = scipy.linalg.inv(Odn)
-                self.weights[i] = (
-                    trial.coeffs[i].conj() * self.ots[i] * self.phi_boson[i]
-                )
+                self.weights[i] = trial.coeffs[i].conj() * self.ots[i] * self.phi_boson[i]
         else:
             shift0 = trial.shift.copy()
             psi0 = trial.psi.copy()
 
             for i, perm in enumerate(trial.perms):
-
                 det = psi0[perm, :].copy()
                 shift = shift0[perm].copy()
 
@@ -205,9 +194,7 @@ class MultiCoherentWalker(object):
                 if abs(self.ots[i]) > 1e-16:
                     self.inv_ovlp[0][i] = scipy.linalg.inv(Oup)
                     self.inv_ovlp[1][i] = scipy.linalg.inv(Odn)
-                self.weights[i] = (
-                    trial.coeffs[i].conj() * self.ots[i] * self.phi_boson[i]
-                )
+                self.weights[i] = trial.coeffs[i].conj() * self.ots[i] * self.phi_boson[i]
 
             trial.boson_trial.update_shift(shift0)
             trial.psi = psi0.copy()
@@ -317,9 +304,7 @@ class MultiCoherentWalker(object):
                 trial.boson_trial.update_shift(shift)
 
                 self.phi_boson[ix] = trial.boson_trial.value(self.X)
-                self.weights[ix] = (
-                    trial.coeffs[ix].conj() * self.ots[ix] * self.phi_boson[ix]
-                )
+                self.weights[ix] = trial.coeffs[ix].conj() * self.ots[ix] * self.phi_boson[ix]
         else:
             shift0 = trial.shift.copy()
             for ix, perm in enumerate(trial.perms):
@@ -331,9 +316,7 @@ class MultiCoherentWalker(object):
                 trial.boson_trial.update_shift(shift)
 
                 self.phi_boson[ix] = trial.boson_trial.value(self.X)
-                self.weights[ix] = (
-                    trial.coeffs[ix].conj() * self.ots[ix] * self.phi_boson[ix]
-                )
+                self.weights[ix] = trial.coeffs[ix].conj() * self.ots[ix] * self.phi_boson[ix]
             trial.boson_trial.update_shift(shift0)
         return sum(self.weights)
 
@@ -350,9 +333,7 @@ class MultiCoherentWalker(object):
         (self.phi[:, :nup], Rup) = scipy.linalg.qr(self.phi[:, :nup], mode="economic")
         Rdown = numpy.zeros(Rup.shape)
         if ndown > 0:
-            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(
-                self.phi[:, nup:], mode="economic"
-            )
+            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(self.phi[:, nup:], mode="economic")
         signs_up = numpy.diag(numpy.sign(numpy.diag(Rup)))
         if ndown > 0:
             signs_down = numpy.diag(numpy.sign(numpy.diag(Rdown)))
@@ -396,7 +377,6 @@ class MultiCoherentWalker(object):
         nup = self.nup
 
         if len(trial.psi.shape) == 3:
-
             for ix in range(trial.nperms):
                 t = trial.psi[ix, :, :].copy()
 
@@ -411,7 +391,6 @@ class MultiCoherentWalker(object):
             self.G = numpy.einsum("i,isjk->sjk", self.weights, self.Gi) / denom
 
         else:
-
             psi0 = trial.psi.copy()
 
             for ix, perm in enumerate(trial.perms):
@@ -508,9 +487,7 @@ class MultiCoherentWalker(object):
             elif isinstance(data, list):
                 for ix, l in enumerate(data):
                     if isinstance(l, (numpy.ndarray)):
-                        self.__dict__[d][ix] = (
-                            buff[s : s + l.size].reshape(l.shape).copy()
-                        )
+                        self.__dict__[d][ix] = buff[s : s + l.size].reshape(l.shape).copy()
                         s += l.size
                     elif isinstance(l, (int, float, complex)):
                         self.__dict__[d][ix] = buff[s]

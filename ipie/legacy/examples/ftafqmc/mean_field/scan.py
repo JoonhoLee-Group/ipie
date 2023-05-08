@@ -49,9 +49,7 @@ for b, n in zip(fci.beta, fci.N):
     )
 pl.plot(fci.beta, fci.E, label="FCI")
 pl.plot(fci.beta, zip(*data)[0], label="THF", linestyle=":")
-data = pd.DataFrame(
-    {"beta": fci.beta, "FCI": fci.E, "THF": zip(*data)[0], "Match": match}
-)
+data = pd.DataFrame({"beta": fci.beta, "FCI": fci.E, "THF": zip(*data)[0], "Match": match})
 print(data.to_string())
 # trial = MeanField(comm, system, beta, dt,
 # options={"nav": fci.N.values[-1]}, verbose=True)

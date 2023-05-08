@@ -137,9 +137,7 @@ class BackPropagation(object):
             else:
                 self.back_propagate = ipie.legacy.propagation.hubbard.back_propagate
 
-    def update_uhf(
-        self, qmc, system, hamiltonian, trial, psi, step, free_projection=False
-    ):
+    def update_uhf(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Calculate back-propagated estimates for RHF/UHF walkers.
 
         Parameters
@@ -185,10 +183,7 @@ class BackPropagation(object):
             else:
                 energies = numpy.zeros(3)
 
-            if (
-                self.calc_two_rdm is not None
-                and self.calc_two_rdm is not "structure_factor"
-            ):
+            if self.calc_two_rdm is not None and self.calc_two_rdm is not "structure_factor":
                 # <p^+ q^+ s r> = G(p, r, q, s) also spin-summed
                 self.two_rdm = numpy.einsum(
                     "pr,qs->prqs", self.G[0], self.G[0], optimize=True
@@ -260,9 +255,7 @@ class BackPropagation(object):
         self.accumulated = True
         self.buff_ix = buff_ix
 
-    def update_ghf(
-        self, qmc, system, hamiltonian, trial, psi, step, free_projection=False
-    ):
+    def update_ghf(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Calculate back-propagated estimates for GHF walkers.
 
         Parameters
@@ -284,9 +277,7 @@ class BackPropagation(object):
             return
         print(" ***** Back Propagation with GHF is broken.")
         sys.exit()
-        psi_bp = self.back_propagate(
-            system, psi.walkers, trial, self.nstblz, self.BT2, self.dt
-        )
+        psi_bp = self.back_propagate(system, psi.walkers, trial, self.nstblz, self.BT2, self.dt)
         denominator = sum(wnm.weight for wnm in psi.walkers)
         nup = system.nup
         for i, (wnm, wb) in enumerate(zip(psi.walkers, psi_bp)):
@@ -295,9 +286,7 @@ class BackPropagation(object):
             # walker to store the reorthogonalisation factors.
             weights = wb.weights * trial.coeffs * wb.ots
             denom = sum(weights)
-            energies = numpy.array(
-                list(local_energy_ghf(system, wb.Gi, weights, denom))
-            )
+            energies = numpy.array(list(local_energy_ghf(system, wb.Gi, weights, denom)))
             self.G = numpy.einsum("i,ijk->jk", weights, wb.Gi) / denom
             self.estimates[1:] = self.estimates[1:] + wnm.weight * numpy.append(
                 energies, self.G.flatten()
@@ -325,9 +314,7 @@ class BackPropagation(object):
         comm.Reduce(self.estimates, self.global_estimates, op=mpi_sum)
         if comm.rank == 0:
             weight = self.global_estimates[self.nreg]
-            self.output.push(
-                numpy.array([weight]), "denominator_{:d}".format(self.buff_ix)
-            )
+            self.output.push(numpy.array([weight]), "denominator_{:d}".format(self.buff_ix))
             if self.eval_energy:
                 if free_projection:
                     self.output.push(

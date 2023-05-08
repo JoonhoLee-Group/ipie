@@ -86,9 +86,7 @@ def test_reortho():
     eigs, eigv = numpy.linalg.eigh(ham.H1[0])
     coeffs = numpy.array([1.0 + 0j])
     numpy.random.seed(7)
-    wfn = numpy.random.random((ham.nbasis * system.ne)).reshape(
-        1, ham.nbasis, system.ne
-    )
+    wfn = numpy.random.random((ham.nbasis * system.ne)).reshape(1, ham.nbasis, system.ne)
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
     nup = system.nup
