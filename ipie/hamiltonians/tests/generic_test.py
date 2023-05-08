@@ -30,7 +30,12 @@ def test_complex_modified_cholesky():
     # ERI is already in the right form for cholesky decomposition
     _, _, _, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
 
+<<<<<<< HEAD
     eri = eri.reshape((nmo**2, nmo**2)).T
+=======
+    eri = eri.transpose((0,1,3,2))
+    eri = eri.reshape((nmo**2,nmo**2))
+>>>>>>> develop
     chol = modified_cholesky(eri, tol=1e-8, verbose=False, cmax=30)
     nchol = chol.shape[0]
 

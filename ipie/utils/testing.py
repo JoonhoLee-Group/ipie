@@ -46,7 +46,7 @@ from ipie.trial_wavefunction.particle_hole import (
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 
 
-def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
+def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
     h1e = numpy.random.random((nmo, nmo))
     if cplx:
         h1e = h1e + 1j * numpy.random.random((nmo, nmo))
@@ -59,16 +59,32 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8):
         # (ik|jl) = (ki|lj)*
         eri = eri + eri.transpose(2, 3, 0, 1)
         eri = eri + eri.transpose(3, 2, 1, 0).conj()
+
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 3, 2).conj(), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 0, 1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0).conj(), atol=1e-10)
+
     if sym == 8:
         eri = eri + eri.transpose(1, 0, 2, 3)
+
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 3, 2), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 0, 1), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(1, 0, 2, 3), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(2, 3, 1, 0), atol=1e-10)
+        numpy.testing.assert_allclose(eri, eri.transpose(3, 2, 0, 1), atol=1e-10)
+
     # Construct hermitian matrix M_{ik,lj}.
     eri = eri.transpose((0, 1, 3, 2))
     eri = eri.reshape((nmo * nmo, nmo * nmo))
     # Make positive semi-definite.
     eri = numpy.dot(eri, eri.conj().T)
-    chol = modified_cholesky(eri, tol=1e-3, verbose=False, cmax=30)
+    chol = modified_cholesky(eri, tol=tol, verbose=False, cmax=30)
     chol = chol.reshape((-1, nmo, nmo))
     enuc = numpy.random.rand()
+    eri = eri.reshape((nmo, nmo, nmo, nmo))
+    eri = eri.transpose((0, 1, 3, 2))  # putting it back to the right order for 4-index
     return h1e, chol, enuc, eri
 
 
@@ -480,18 +496,24 @@ def build_test_case_handlers(
     seed: Union[int, None] = None,
     rhf_trial: bool = False,
     two_body_only: bool = False,
-    # pylint: disable=dangerous-default-value
+    choltol: float = 1e-3,
     options={},
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    sym = 8
+    if complex_integrals:
+        sym = 4
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+    )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, num_basis**2)).T.copy(),
         ecore=0,
     )
+    ham.eri = eri.copy()
     trial, init = build_random_trial(
         num_elec,
         num_basis,

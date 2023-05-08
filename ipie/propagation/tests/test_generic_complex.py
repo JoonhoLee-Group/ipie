@@ -41,6 +41,7 @@ def test_AB_cholesky():
         }
     )
 
+<<<<<<< HEAD
     test_handler = build_test_case_handlers(
         nelec,
         nmo,
@@ -55,10 +56,19 @@ def test_AB_cholesky():
     ham = test_handler.hamiltonian
     chol = ham.chol  # M^2 x nchol
 
+=======
+    ham = test_handler.hamiltonian 
+    chol = ham.chol # M^2 x nchol
+>>>>>>> develop
     nbasis = ham.nbasis
     nchol = ham.nchol
 
+<<<<<<< HEAD
     chol = chol.reshape((nbasis, nbasis, nchol))
+=======
+    A = 0.5 * (chol + chol.transpose((1,0,2)).conj())
+    B = 1.j * 0.5 * (chol - chol.transpose((1,0,2)).conj())
+>>>>>>> develop
 
     A = 0.5 * (chol + chol.transpose((1, 0, 2)))
     B = 1.0j * 0.5 * (chol - chol.transpose((1, 0, 2)))
