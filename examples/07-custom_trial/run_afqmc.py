@@ -32,6 +32,7 @@ mf.kernel()
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.backend import arraylib as xp
 
+
 # Let's make a trial wavefunction than injects noise into the overlap evaluateio
 # We will inherit from SingleDet trial class to avoid some boilerplate.
 # For odder trials you should inherit from TrialWavefunctionBase
@@ -54,9 +55,7 @@ class NoisySingleDet(SingleDet):
 
     def calc_greens_function(self, walkers, build_full=False) -> np.ndarray:
         greens = super().calc_greens_function(walkers, build_full)
-        noise = np.random.normal(scale=self._noise_level, size=greens.size).reshape(
-            greens.shape
-        )
+        noise = np.random.normal(scale=self._noise_level, size=greens.size).reshape(greens.shape)
         return greens * (1 + noise)
 
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
@@ -82,29 +81,21 @@ class NoisyEnergyEstimator(EnergyEstimator):
         ham=None,
         trial=None,
         verbose=False,
-        options={},
     ):
         super().__init__(
-            comm=comm,
-            qmc=qmc,
             system=system,
             ham=ham,
             trial=trial,
-            verbose=verbose,
         )
 
-    def compute_estimator(
-        self, system, walker_batch, hamiltonian, trial_wavefunction, istep=1
-    ):
-        trial_wavefunction.calc_greens_function(walker_batch)
+    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+        trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
-        energy = local_energy_batch(
-            system, hamiltonian, walker_batch, trial_wavefunction
-        )
-        self._data["ENumer"] = xp.sum(walker_batch.weight * energy[:, 0].real)
-        self._data["EDenom"] = xp.sum(walker_batch.weight)
-        self._data["E1Body"] = xp.sum(walker_batch.weight * energy[:, 1].real)
-        self._data["E2Body"] = xp.sum(walker_batch.weight * energy[:, 2].real)
+        energy = local_energy_batch(system, hamiltonian, walkers, trial)
+        self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
+        self._data["EDenom"] = xp.sum(walkers.weight)
+        self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
+        self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
 
         return self.data
 
@@ -178,8 +169,8 @@ trial.half_rotate(ham)
 
 # 4. Build walkers
 from ipie.walkers.uhf_walkers import UHFWalkers
-walkers = UHFWalkers(np.hstack([orbs, orbs]),
-    system.nup, system.ndown, ham.nbasis, num_walkers)
+
+walkers = UHFWalkers(np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers)
 
 np.random.seed(7)
 afqmc = AFQMC(
@@ -192,8 +183,7 @@ afqmc = AFQMC(
     num_steps_per_block=num_steps_per_block,
     num_blocks=num_blocks,
     timestep=timestep,
-    seed = 59306159,
-    options={"estimators": {"observables": {}}},
+    seed=59306159,
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
 afqmc.estimators.overwrite = True
@@ -205,9 +195,10 @@ from ipie.analysis.extraction import extract_observable
 
 qmc_data = extract_observable(afqmc.estimators.filename, "energy")
 y = qmc_data["ETotal"]
-y = y[1:] # discard first 1 block
+y = y[1:]  # discard first 1 block
 
 from ipie.analysis.autocorr import reblock_by_autocorr
+
 df = reblock_by_autocorr(y, verbose=1)
 # print(df.to_csv(index=False))
 
