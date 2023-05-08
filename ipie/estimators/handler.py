@@ -112,6 +112,7 @@ class EstimatorHandler(object):
                     ham=hamiltonian,
                     trial=trial,
                 )
+                print(obs, est)
                 self[obs] = est
             except KeyError:
                 raise RuntimeError(f"unknown observable: {obs}")
@@ -119,15 +120,17 @@ class EstimatorHandler(object):
             print("# Finished settting up estimator object.")
 
     def __setitem__(self, name: str, estimator: EstimatorBase) -> None:
+        over_writing = self._estimators.get(name) is not None
         self._estimators[name] = estimator
-        self._shapes.append(estimator.shape)
-        if len(self._offsets.keys()) == 0:
-            self._offsets[name] = 0
-            prev_obs = name
-        else:
-            prev_obs = list(self._offsets.keys())[-1]
-            offset = self._estimators[prev_obs].size + self._offsets[prev_obs]
-            self._offsets[name] = offset
+        if not over_writing:
+            self._shapes.append(estimator.shape)
+            if len(self._offsets.keys()) == 0:
+                self._offsets[name] = 0
+                prev_obs = name
+            else:
+                prev_obs = list(self._offsets.keys())[-1]
+                offset = self._estimators[prev_obs].size + self._offsets[prev_obs]
+                self._offsets[name] = offset
 
     def get_offset(self, name: str) -> int:
         offset = self._offsets.get(name)

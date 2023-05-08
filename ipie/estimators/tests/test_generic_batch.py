@@ -22,6 +22,7 @@ import pytest
 from ipie.estimators.greens_function import greens_function_single_det_batch
 from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch,
+    local_energy_single_det_rhf_batch,
     local_energy_single_det_uhf,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric

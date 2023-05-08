@@ -143,7 +143,7 @@ class AFQMC(object):
             "stabilise_freq": stabilise_freq,
         }
 
-        self.mpi_handler = MPIHandler(comm, qmc_opt, verbose=verbose)
+        self.mpi_handler = MPIHandler(comm, nmembers=1, verbose=verbose)
         self.shared_comm = self.mpi_handler.shared_comm
         # 2. Calculation objects.
         self.system = system
