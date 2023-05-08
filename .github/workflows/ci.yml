@@ -21,10 +21,10 @@ jobs:
           pip install -r dev/requirements.txt
       - name: pylint
         run: |
-          pylint -s no --disable=R,C ipie/
+          python dev/run_tests.py --pylint
       - name: format
         run: |
-          black --check ipie
+          python dev/run_tests.py --black
   build:
     strategy:
       matrix:

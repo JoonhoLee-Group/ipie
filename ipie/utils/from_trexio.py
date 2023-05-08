@@ -17,6 +17,7 @@
 
 """Generate AFQMC data from a TREXIO file."""
 try:
+    # pylint: disable=import-error
     import trexio
 except:
     print("TREXIO is not installed. Try pip install trexio.")

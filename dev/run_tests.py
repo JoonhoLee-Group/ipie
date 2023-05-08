@@ -85,7 +85,7 @@ def run_integration():
 
 
 def run_pytest():
-    _run_subprocess("pytest -sv ipie/walkers")
+    return _run_subprocess("pytest -sv ipie/")
 
 
 def run_examples():

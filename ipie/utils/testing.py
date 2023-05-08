@@ -428,8 +428,7 @@ def build_test_case_handlers_mpi(
     seed: Union[int, None] = None,
     rhf_trial: bool = False,
     two_body_only: bool = False,
-    # pylint: disable=dangerous-default-value
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)
@@ -497,7 +496,7 @@ def build_test_case_handlers(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     choltol: float = 1e-3,
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)
@@ -559,8 +558,7 @@ def build_driver_test_instance(
     rhf_trial: bool = False,
     seed: Union[int, None] = None,
     density_diff=False,
-    # pylint: disable=dangerous-default-value
-    options={},
+    options: Union[dict, None] = None,
 ):
     if seed is not None:
         numpy.random.seed(seed)

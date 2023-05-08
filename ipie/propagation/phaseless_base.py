@@ -14,7 +14,7 @@ from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 @plum.dispatch
 def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
-    """Construct mean-field shifted one-body propagator.
+    r"""Construct mean-field shifted one-body propagator.
 
     .. math::
 
@@ -55,7 +55,7 @@ def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
-    """Compute mean field shift.
+    r"""Compute mean field shift.
 
     .. math::
 
@@ -72,7 +72,7 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase):
-    """Compute mean field shift.
+    r"""Compute mean field shift.
 
     .. math::
 
