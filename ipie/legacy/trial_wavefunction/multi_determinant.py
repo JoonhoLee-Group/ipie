@@ -75,7 +75,7 @@ class MultiDeterminant(object):
 
     def from_ascii(self, system):
         if self.verbose:
-            print("# Reading wavefunction from %s." % self.coeffs_file)
+            print(f"# Reading wavefunction from {self.coeffs_file}.")
         self.coeffs = read_fortran_complex_numbers(self.coeffs_file)
         orbitals = read_fortran_complex_numbers(self.orbital_file)
         start = 0
@@ -106,4 +106,4 @@ class MultiDeterminant(object):
             occdn, cols = numpy.where(phi[:, self.nup :] == 1)
             dup = " ".join(str(i + 1) for i in occup)
             ddn = " ".join(str(i + phi.shape[0] + 1) for i in occdn)
-            output.write("%f " % ci.real + dup + " " + ddn + "\n")
+            output.write(f"{ci.real:f} " + dup + " " + ddn + "\n")

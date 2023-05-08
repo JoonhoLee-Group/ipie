@@ -200,9 +200,9 @@ def update_stack(stack_size, num_slices, name="stack", verbose=False):
     else:
         stack_size = upper_bound
     if verbose:
-        print("# Initial {} upper_bound is {}".format(name, upper_bound))
-        print("# Initial {} lower_bound is {}".format(name, lower_bound))
-        print("# Adjusted {} size is {}".format(name, stack_size))
+        print(f"# Initial {name} upper_bound is {upper_bound}")
+        print(f"# Initial {name} lower_bound is {lower_bound}")
+        print(f"# Adjusted {name} size is {stack_size}")
     return stack_size
 
 
@@ -238,7 +238,7 @@ def merge_dicts(a, b, path=None):
             elif a[key] == b[key]:
                 pass  # same leaf value
             else:
-                raise Exception("Conflict at %s" % ".".join(path + [str(key)]))
+                raise Exception(f"Conflict at {'.'.join(path + [str(key)])}")
         else:
             a[key] = b[key]
     return a
@@ -297,25 +297,25 @@ def get_node_mem():
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
     import ipie
 
-    print("# ipie version: {:s}".format(ipie.__version__))
+    print(f"# ipie version: {ipie.__version__:s}")
     if sha1 is not None:
-        print("# Git hash: {:s}.".format(sha1))
-        print("# Git branch: {:s}.".format(branch))
+        print(f"# Git hash: {sha1:s}.")
+        print(f"# Git branch: {branch:s}.")
     if len(local_mods) > 0:
         print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
             if prefix == "M":
-                print("# Modified : {:s}".format(file))
+                print(f"# Modified : {file:s}")
             elif prefix == "??":
-                print("# Untracked : {:s}".format(file))
-    print("# Calculation uuid: {:s}.".format(uuid))
+                print(f"# Untracked : {file:s}")
+    print(f"# Calculation uuid: {uuid:s}.")
     mem = get_node_mem()
-    print("# Approximate memory available per node: {:.4f} GB.".format(mem))
-    print("# Running on {:d} MPI rank{:s}.".format(nranks, "s" if nranks > 1 else ""))
+    print(f"# Approximate memory available per node: {mem:.4f} GB.")
+    print(f"# Running on {nranks:d} MPI rank{'s' if nranks > 1 else '':s}.")
     hostname = socket.gethostname()
-    print("# Root processor name: {}".format(hostname))
+    print(f"# Root processor name: {hostname}")
     py_ver = sys.version.splitlines()
-    print("# Python interpreter: {:s}".format(" ".join(py_ver)))
+    print(f"# Python interpreter: {' '.join(py_ver):s}")
     info = {"nranks": nranks, "python": py_ver, "branch": branch, "sha1": sha1}
     from importlib import import_module
 
@@ -325,27 +325,27 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
             # Strip __init__.py
             path = l.__file__[:-12]
             vers = l.__version__
-            print("# Using {:s} v{:s} from: {:s}.".format(lib, vers, path))
-            info["{:s}".format(lib)] = {"version": vers, "path": path}
+            print(f"# Using {lib:s} v{vers:s} from: {path:s}.")
+            info[f"{lib:s}"] = {"version": vers, "path": path}
             if lib == "numpy":
                 try:
                     np_lib = l.__config__.blas_opt_info["libraries"]
                 except AttributeError:
                     np_lib = l.__config__.blas_ilp64_opt_info["libraries"]
-                print("# - BLAS lib: {:s}".format(" ".join(np_lib)))
+                print(f"# - BLAS lib: {' '.join(np_lib):s}")
                 try:
                     lib_dir = l.__config__.blas_opt_info["library_dirs"]
                 except AttributeError:
                     lib_dir = l.__config__.blas_ilp64_opt_info["library_dirs"]
-                print("# - BLAS dir: {:s}".format(" ".join(lib_dir)))
-                info["{:s}".format(lib)]["BLAS"] = {
+                print(f"# - BLAS dir: {' '.join(lib_dir):s}")
+                info[f"{lib:s}"]["BLAS"] = {
                     "lib": " ".join(np_lib),
                     "path": " ".join(lib_dir),
                 }
             elif lib == "mpi4py":
                 mpicc = l.get_config().get("mpicc", "none")
-                print("# - mpicc: {:s}".format(mpicc))
-                info["{:s}".format(lib)]["mpicc"] = mpicc
+                print(f"# - mpicc: {mpicc:s}")
+                info[f"{lib:s}"]["mpicc"] = mpicc
             elif lib == "cupy":
                 try:
                     cu_info = l.cuda.runtime.getDeviceProperties(0)
@@ -357,17 +357,17 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
                     version_string = (
                         cuda_version[:2] + "." + cuda_version[2:4] + "." + cuda_version[4]
                     )
-                    print("# - CUDA compute capability: {:s}".format(cuda_compute))
-                    print("# - CUDA version: {}".format(version_string))
-                    print("# - GPU Type: {:s}".format(str(cu_info["name"])[1:]))
+                    print(f"# - CUDA compute capability: {cuda_compute:s}")
+                    print(f"# - CUDA version: {version_string}")
+                    print(f"# - GPU Type: {str(cu_info['name'])[1:]:s}")
                     print(
-                        "# - GPU Mem: {:.3f} GB".format(cu_info["totalGlobalMem"] / (1024**3.0))
+                        f"# - GPU Mem: {cu_info['totalGlobalMem'] / 1024 ** 3.0:.3f} GB"
                     )
-                    print("# - Number of GPUs: {:d}".format(l.cuda.runtime.getDeviceCount()))
+                    print(f"# - Number of GPUs: {l.cuda.runtime.getDeviceCount():d}")
                 except:
                     print("# cupy import error")
         except (ModuleNotFoundError, ImportError):
-            print("# Package {:s} not found.".format(lib))
+            print(f"# Package {lib:s} not found.")
     return info
 
 
@@ -376,7 +376,7 @@ def timeit(func):
         start = time.time()
         res = func(*args, **kwargs)
         end = time.time()
-        print(" # Time : {} ".format(end - start))
+        print(f" # Time : {end - start} ")
         return res
 
     return wrapper

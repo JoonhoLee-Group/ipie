@@ -43,7 +43,7 @@ def get_system(sys_opts=None, verbose=0, comm=None):
         system = Generic(nelec, sys_opts, verbose)
     else:
         if comm.rank == 0:
-            print("# Error: unrecognized system name {}.".format(sys_opts["name"]))
+            print(f"# Error: unrecognized system name {sys_opts['name']}.")
             sys.exit()
 
     return system

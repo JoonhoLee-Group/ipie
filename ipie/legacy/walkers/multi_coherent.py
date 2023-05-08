@@ -129,7 +129,7 @@ class MultiCoherentWalker(object):
         self.hybrid_energy = 0.0
         if verbose:
             print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(self.ot.real)
+                f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}"
             )
         # Green's functions for various elements of the trial wavefunction.
         self.Gi = numpy.zeros(shape=(self.nperms, 2, system.nbasis, system.nbasis), dtype=dtype)

@@ -35,5 +35,5 @@ def set_rng_seed(seed, comm):
     seed = seed + comm.rank
     xp.random.seed(seed)
     if comm.rank == 0:
-        print("# random seed is {}".format(seed))
+        print(f"# random seed is {seed}")
     return seed

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import os
 import argparse
-import sys
-import subprocess
 import glob
+import os
+import subprocess
+import sys
 
 
 def parse_args(args):
@@ -55,6 +55,10 @@ def _run_subprocess(job_string: str, shell=False) -> int:
 
 def run_black():
     return _run_subprocess("black --check ipie")
+
+
+def run_flynt():
+    return _run_subprocess("flynt --check ipie")
 
 
 def run_pylint():

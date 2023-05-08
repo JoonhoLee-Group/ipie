@@ -177,7 +177,7 @@ class AFQMC(object):
         if comm.rank == 0:
             if self.trial.compute_trial_energy:
                 self.trial.calculate_energy(self.system, self.hamiltonian)
-                print("# Trial wfn energy is {}".format(self.trial.energy))
+                print(f"# Trial wfn energy is {self.trial.energy}")
             else:
                 print("# WARNING: skipping trial energy calculation is requested.")
 
@@ -234,7 +234,7 @@ class AFQMC(object):
 
         if comm.rank == 0:
             mem_avail = get_host_memory()
-            print("# Available memory on the node is {:4.3f} GB".format(mem_avail))
+            print(f"# Available memory on the node is {mem_avail:4.3f} GB")
             json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
             json_string = to_json(self)
             self.estimators.json_string = json_string
@@ -373,10 +373,10 @@ class AFQMC(object):
         npcon = max(nsteps // self.qmc.npop_control, 1)
         if self.root:
             if verbose:
-                print("# End Time: {:s}".format(time.asctime()))
-                print("# Running time : {:.6f} seconds".format((time.time() - self._init_time)))
+                print(f"# End Time: {time.asctime():s}")
+                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
                 print("# Timing breakdown (per call, total calls per block, total blocks):")
-                print("# - Setup: {:.6f} s".format(self.tsetup))
+                print(f"# - Setup: {self.tsetup:.6f} s")
                 print(
                     "# - Block: {:.6f} s / block for {} total blocks".format(
                         self.tstep / (nblocks), nblocks

@@ -87,7 +87,7 @@ def scipy_fftconvolve(in1, in2, mesh1=None, mesh2=None, mode="full", axes=None):
         (s1[other_axes] == s2[other_axes]) | (s1[other_axes] == 1) | (s2[other_axes] == 1)
     ):
         raise ValueError(
-            "incompatible shapes for in1 and in2:" " {0} and {1}".format(in1.shape, in2.shape)
+            f"incompatible shapes for in1 and in2: {in1.shape} and {in2.shape}"
         )
 
     complex_result = numpy.issubdtype(in1.dtype, numpy.complexfloating) or numpy.issubdtype(
@@ -222,7 +222,7 @@ def scipy_fftconvolve(in1, in2, mesh1=None, mesh2=None, mode="full", axes=None):
         (s1[other_axes] == s2[other_axes]) | (s1[other_axes] == 1) | (s2[other_axes] == 1)
     ):
         raise ValueError(
-            "incompatible shapes for in1 and in2:" " {0} and {1}".format(in1.shape, in2.shape)
+            f"incompatible shapes for in1 and in2: {in1.shape} and {in2.shape}"
         )
 
     complex_result = numpy.issubdtype(in1.dtype, numpy.complexfloating) or numpy.issubdtype(

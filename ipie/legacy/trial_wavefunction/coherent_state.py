@@ -314,9 +314,9 @@ class CoherentState(object):
         self.random_guess = options.get("random_guess", False)
         self.symmetrize = options.get("symmetrize", False)
         if verbose:
-            print("# random guess = {}".format(self.random_guess))
+            print(f"# random guess = {self.random_guess}")
         if verbose:
-            print("# Symmetrize Coherent State = {}".format(self.symmetrize))
+            print(f"# Symmetrize Coherent State = {self.symmetrize}")
 
         self.wfn_file = options.get("wfn_file", None)
 
@@ -325,7 +325,7 @@ class CoherentState(object):
 
         if self.wfn_file is not None:
             if verbose:
-                print("# Reading trial wavefunction from %s" % (self.wfn_file))
+                print(f"# Reading trial wavefunction from {self.wfn_file}")
             f = h5py.File(self.wfn_file, "r")
             self.shift = f["shift"][()].real
             self.psi = f["psi"][()]
@@ -351,7 +351,7 @@ class CoherentState(object):
 
                 self.G = None
                 if verbose:
-                    print("# A total of {} coherent states are used".format(self.nperms))
+                    print(f"# A total of {self.nperms} coherent states are used")
 
             else:
                 gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T
@@ -409,11 +409,11 @@ class CoherentState(object):
             self.variational = options.get("variational", True)
             self.restricted = options.get("restricted", False)
             if verbose:
-                print("# restricted = {}".format(self.restricted))
+                print(f"# restricted = {self.restricted}")
 
             self.restricted_shift = options.get("restricted_shift", False)
             if verbose:
-                print("# restricted_shift = {}".format(self.restricted_shift))
+                print(f"# restricted_shift = {self.restricted_shift}")
 
             rho = [numpy.diag(self.G[0]), numpy.diag(self.G[1])]
             self.shift = (
@@ -423,12 +423,12 @@ class CoherentState(object):
                 / (system.m * system.w0**2)
             )
             self.shift = self.shift.real
-            print("# Initial shift = {}".format(self.shift[0:5]))
+            print(f"# Initial shift = {self.shift[0:5]}")
 
             self.init_guess_file = options.get("init_guess_file", None)
             if self.init_guess_file is not None:
                 if verbose:
-                    print("# Reading initial guess from %s" % (self.init_guess_file))
+                    print(f"# Reading initial guess from {self.init_guess_file}")
                 f = h5py.File(self.init_guess_file, "r")
                 self.shift = f["shift"][()].real
                 self.psi = f["psi"][()]
@@ -484,11 +484,11 @@ class CoherentState(object):
 
             if self.variational:
                 if verbose:
-                    print("# we will repeat SCF {} times".format(self.maxiter))
+                    print(f"# we will repeat SCF {self.maxiter} times")
                 self.run_variational(system, verbose)
-                print("# Variational Coherent State Energy = {}".format(self.energy))
+                print(f"# Variational Coherent State Energy = {self.energy}")
 
-            print("# Optimized shift = {}".format(self.shift[0:5]))
+            print(f"# Optimized shift = {self.shift[0:5]}")
 
             self.boson_trial = HarmonicOscillator(
                 m=system.m, w=system.w0, order=0, shift=self.shift
@@ -502,16 +502,16 @@ class CoherentState(object):
                 self.nperms = self.perms.shape[0]
                 norm = 1.0 / numpy.sqrt(self.nperms)
                 self.coeffs = norm * numpy.ones(self.nperms)
-                print("# Number of permutations = {}".format(self.nperms))
+                print(f"# Number of permutations = {self.nperms}")
             elif self.coeffs == None:
                 self.coeffs = 1.0
 
         self.calculate_energy(system)
 
         if self.symmetrize:
-            print("# Coherent State energy (symmetrized) = {}".format(self.energy))
+            print(f"# Coherent State energy (symmetrized) = {self.energy}")
         else:
-            print("# Coherent State energy = {}".format(self.energy))
+            print(f"# Coherent State energy = {self.energy}")
 
         self.initialisation_time = time.time() - init_time
 
@@ -540,7 +540,7 @@ class CoherentState(object):
         Sij = self.psi[:, :nocca].T.dot(self.psi[:, nocca:])
         self.S2 = S2exact + min(nocca, noccb) - numpy.sum(numpy.abs(Sij * Sij).ravel())
         if verbose:
-            print("# <S^2> = {: 3f}".format(self.S2))
+            print(f"# <S^2> = {self.S2: 3f}")
 
         # For interface compatability
         self.ndets = 1
@@ -775,7 +775,7 @@ class CoherentState(object):
 
                     if echange < 1e-10 and rms < 1e-10:
                         if verbose:
-                            print("# {} {} {} {} (converged)".format(t, ecurr, echange, rms))
+                            print(f"# {t} {ecurr} {echange} {rms} (converged)")
                             self.energy = ecurr
                             ehistory += [ecurr]
                         break
@@ -785,9 +785,9 @@ class CoherentState(object):
                         shift_prev = shift_curr
                         if verbose and t % 20 == 0:
                             if t == 0:
-                                print("# {} {}".format(t, ecurr))
+                                print(f"# {t} {ecurr}")
                             else:
-                                print("# {} {} {} {}".format(t, ecurr, echange, rms))
+                                print(f"# {t} {ecurr} {echange} {rms}")
 
             x = numpy.array(params)
             self.shift = x[:nbsf]
@@ -882,7 +882,7 @@ class CoherentState(object):
                 )
                 e = res.fun
                 if verbose:
-                    print("# macro iter {} energy is {}".format(i, e))
+                    print(f"# macro iter {i} energy is {e}")
                 if e < self.energy and numpy.abs(self.energy - e) > 1e-6:
                     self.energy = res.fun
                     self.shift = self.shift
@@ -939,7 +939,7 @@ class CoherentState(object):
         # Sij = psi_accept[:,:nocca].T.dot(psi_accept[:,nocca:])
         # S2 = S2exact + min(nocca, noccb) - numpy.sum(numpy.abs(Sij*Sij).ravel())
 
-        print("# <S^2> = {: 3f}".format(S2))
+        print(f"# <S^2> = {S2: 3f}")
 
     def update_electronic_greens_function(self, system, verbose=0):
         gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T

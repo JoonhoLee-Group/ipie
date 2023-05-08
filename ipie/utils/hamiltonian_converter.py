@@ -66,8 +66,8 @@ def read_fcidump(filename, symmetry=8, verbose=True):
                 elif "MS2" in i:
                     ms2 = int(i.split("=")[1])
         if verbose:
-            print("# Number of orbitals: {}".format(nbasis))
-            print("# Number of electrons: {}".format(nelec))
+            print(f"# Number of orbitals: {nbasis}")
+            print(f"# Number of electrons: {nelec}")
         h1e = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
         h2e = numpy.zeros((nbasis, nbasis, nbasis, nbasis), dtype=numpy.complex128)
         lines = f.readlines()
@@ -416,7 +416,7 @@ def read_qmcpack_cholesky_kpoint(filename, get_chol=True):
         nalpha = dims[4]
         nbeta = dims[5]
         for i in range(0, nkp):
-            hk = fh5["Hamiltonian/H1_kp{}".format(i)][:]
+            hk = fh5[f"Hamiltonian/H1_kp{i}"][:]
             nmo = nmo_pk[i]
             hcore.append(hk.view(numpy.complex128).reshape(nmo, nmo))
         chol_vecs = []
@@ -442,10 +442,10 @@ def read_qmcpack_cholesky_kpoint(filename, get_chol=True):
 def get_kpoint_chol(filename, nchol_pk, minus_k, i):
     with h5py.File(filename, "r") as fh5:
         try:
-            Lk = fh5["Hamiltonian/KPFactorized/L{}".format(i)][:]
+            Lk = fh5[f"Hamiltonian/KPFactorized/L{i}"][:]
             Lk = Lk.view(numpy.complex128)[:, :, 0]
         except KeyError:
-            Lk = fh5["Hamiltonian/KPFactorized/L{}".format(minus_k[i])][:]
+            Lk = fh5[f"Hamiltonian/KPFactorized/L{minus_k[i]}"][:]
             Lk = Lk.view(numpy.complex128).conj()[:, :, 0]
     return Lk
 
@@ -478,9 +478,9 @@ def read_qmcpack_dense(filename):
 def fcidump_header(nel, norb, spin):
     header = (
         "&FCI "
-        + "NORB={:d}, ".format(norb)
-        + "NELEC={:d}, ".format(nel)
-        + "MS2={:d},\n".format(spin)
+        + f"NORB={norb:d}, "
+        + f"NELEC={nel:d}, "
+        + f"MS2={spin:d},\n"
         + "ORBSYM="
         + ",".join([str(1)] * norb)
         + ",\n"

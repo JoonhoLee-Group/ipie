@@ -179,8 +179,8 @@ def test_fft_kmq(nalpha):
             if ikmq is not None:
                 Gtrace_direct += trial[i, 0] * Gh[0, ikmq]
         fq_direct[iq] = Gtrace_direct
-    print("trial[igmq,0] = {}".format(trial[:, 0]))
-    print("Gh[0,i] = {}".format(Gh[0, :]))
+    print(f"trial[igmq,0] = {trial[:, (0)]}")
+    print(f"Gh[0,i] = {Gh[(0), :]}")
     # Check by fft convolve
     # Compare to fq
     fq_conv = numpy.zeros(nqgrid, dtype=numpy.complex128)

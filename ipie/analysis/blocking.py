@@ -163,7 +163,7 @@ def reblock_mixed(groupby, columns, verbose=False):
                 reblocked[c + "_nsamp"] = data_len.values[ix]
             except KeyError:
                 if verbose:
-                    print("Reblocking of {:4} failed. Insufficient " "statistics.".format(c))
+                    print(f"Reblocking of {c:4} failed. Insufficient statistics.")
         for i, v in enumerate(group):
             reblocked[columns[i]] = v
         analysed.append(reblocked)
@@ -196,7 +196,7 @@ def reblock_free_projection(frame):
                 reblocked[c] = rb["mean"].values
                 reblocked[c + "_error"] = rb["standard error"].values
             except KeyError:
-                print("Reblocking of {:4} failed. Insufficient " "statistics.".format(c))
+                print(f"Reblocking of {c:4} failed. Insufficient statistics.")
     analysed.append(reblocked)
 
     if len(analysed) == 0:

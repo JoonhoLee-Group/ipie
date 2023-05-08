@@ -58,7 +58,7 @@ def apply_exponential_batch(phi, VHS, exp_nmax, debug=False):
     synchronize()
 
     if debug:
-        print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+        print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
     return phi
 
 
@@ -92,7 +92,7 @@ def apply_exponential(phi, VHS, exp_nmax, debug=False):
 
     synchronize()
     if debug:
-        print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+        print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
     return phi
 
 

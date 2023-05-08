@@ -27,8 +27,8 @@ def half_rotate_generic(
     na = orbsa.shape[-1]
     nb = orbsb.shape[-1]
     if trial.verbose:
-        print("# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M)))
-        print("# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M)))
+        print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
+        print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
 
     chol = hamiltonian.chol.reshape((M, M, nchol))
 

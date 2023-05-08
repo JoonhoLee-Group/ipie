@@ -156,7 +156,7 @@ class Generic(object):
         self.sparse = False
         if verbose:
             print("# Number of orbitals: %d" % self.nbasis)
-            print("# Approximate memory required by Cholesky vectors %f GB" % mem)
+            print(f"# Approximate memory required by Cholesky vectors {mem:f} GB")
         self.nchol = self.chol_vecs.shape[-1]
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod

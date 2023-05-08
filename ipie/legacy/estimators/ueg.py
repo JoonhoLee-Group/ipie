@@ -219,7 +219,7 @@ def unit_test():
         Pb[i, i] = 1.0
     P = np.array([Pa, Pb])
     etot, ekin, epot = local_energy_ueg(system, G=P)
-    print("ERHF = {}, {}, {}".format(etot, ekin, epot))
+    print(f"ERHF = {etot}, {ekin}, {epot}")
 
     from ipie.legacy.estimators.greens_function import gab
     from ipie.utils.linalg import exponentiate_matrix, reortho

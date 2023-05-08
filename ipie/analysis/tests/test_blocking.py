@@ -98,7 +98,7 @@ def test_analyse_estimates_textfile():
     with open("test.dat", "w") as f:
         f.write(" ".join(h for h in header) + "\n")
         for i in range(nblock):
-            f.write(" ".join("{:13.10e}".format(val.real) for val in data[i]) + "\n")
+            f.write(" ".join(f"{val.real:13.10e}" for val in data[i]) + "\n")
         f.write("# End Time\n")
 
     data = reblock_minimal(["test.dat"], start_block=1)

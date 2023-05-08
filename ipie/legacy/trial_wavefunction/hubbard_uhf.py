@@ -166,19 +166,19 @@ class HubbardUHF(object):
 
         hamiltonian.U = uold
         if verbose:
-            print("# Minimum energy found: {: 8f}".format(min(minima)))
+            print(f"# Minimum energy found: {min(minima): 8f}")
             nocca = system.nup
             noccb = system.ndown
             MS = numpy.abs(nocca - noccb) / 2.0
             S2exact = MS * (MS + 1.0)
             Sij = psi_accept[:, :nocca].T.dot(psi_accept[:, nocca:])
             S2 = S2exact + min(nocca, noccb) - numpy.sum(numpy.abs(Sij * Sij).ravel())
-            print("# <S^2> = {: 3f}".format(S2))
+            print(f"# <S^2> = {S2: 3f}")
         try:
             return (psi_accept, e_accept, min(minima), False, [niup, nidown])
         except UnboundLocalError:
             warnings.warn(
-                "Warning: No HubbardUHF wavefunction found." "Delta E: %f" % (enew - emin)
+                f"Warning: No HubbardUHF wavefunction found.Delta E: {enew - emin:f}"
             )
             return (trial, numpy.append(e_up, e_down), None, True, None)
 
@@ -232,7 +232,7 @@ class HubbardUHF(object):
         nup_diff = sum(abs(niup - niup_old)) / len(niup)
         ndown_diff = sum(abs(nidown - nidown_old)) / len(nidown)
         if verbose > 1:
-            print("# de: %.10e dniu: %.10e dnid: %.10e" % (ediff, nup_diff, ndown_diff))
+            print(f"# de: {ediff:.10e} dniu: {nup_diff:.10e} dnid: {ndown_diff:.10e}")
 
         return (ediff < deps) and (nup_diff < depsn) and (ndown_diff < depsn)
 

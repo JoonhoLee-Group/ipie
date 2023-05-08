@@ -26,10 +26,10 @@ class PW(object):
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r." % self.force_bias)
+                print(f"# Setting force bias to {self.force_bias!r}.")
         self.exp_nmax = options.get("expansion_order", 6)
         if verbose:
-            print("# expansion_order = {}".format(self.exp_nmax))
+            print(f"# expansion_order = {self.exp_nmax}")
         # Derived Attributes
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5

@@ -416,7 +416,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             )
             end = time.time()
             if self.verbose:
-                print("# Time to compute 1-RDM: {} s".format(end - start))
+                print(f"# Time to compute 1-RDM: {end - start} s")
         else:
             self.G = self.compute_1rdm(self.nbasis)
 
