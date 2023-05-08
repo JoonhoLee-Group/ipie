@@ -22,7 +22,7 @@ import pytest
 from ipie.estimators.greens_function import (
     greens_function_single_det_batch,
 )
-from ipie.propagation.overlap import calc_overlap_single_det_batch
+from ipie.propagation.overlap import calc_overlap_single_det_uhf
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import (
     build_test_case_handlers,
@@ -72,7 +72,7 @@ def test_overlap_rhf_batch():
     walkers = legacy_data.walker_handler.walkers
     walker_batch = batched_data.walkers
 
-    ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
+    ovlp = calc_overlap_single_det_uhf(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
     ot = [walkers[iw].ot for iw in range(walker_batch.nwalkers)]
     assert numpy.allclose(ovlp, ot)
@@ -120,7 +120,7 @@ def test_overlap_batch():
     walkers = legacy_data.walker_handler.walkers
     walker_batch = batched_data.walkers
 
-    ovlp = calc_overlap_single_det_batch(walker_batch, batched_data.trial)
+    ovlp = calc_overlap_single_det_uhf(walker_batch, batched_data.trial)
     ovlp_gf = greens_function_single_det_batch(walker_batch, batched_data.trial)
     ot = [walkers[iw].ot for iw in range(walker_batch.nwalkers)]
     assert numpy.allclose(ovlp, ot)

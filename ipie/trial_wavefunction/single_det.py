@@ -11,7 +11,7 @@ from ipie.estimators.greens_function_single_det import (
 )
 from ipie.estimators.utils import gab_spin
 from ipie.propagation.overlap import (
-    calc_overlap_single_det_batch,
+    calc_overlap_single_det_uhf,
 )
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det_chunked,
@@ -131,9 +131,9 @@ class SingleDet(TrialWavefunctionBase):
 
 
     def calc_overlap(self, walkers) -> np.ndarray:
-        return calc_overlap_single_det_batch(walkers, self)
+        return calc_overlap_single_det_uhf(walkers, self)
 
-    def calc_greens_function(self, walkers, build_full=False) -> np.ndarray:
+    def calc_greens_function(self, walkers, build_full: bool = False) -> np.ndarray:
         if config.get_option("use_gpu"):
             return greens_function_single_det_batch(walkers, self, build_full=build_full)
         else:
@@ -147,7 +147,7 @@ class SingleDet(TrialWavefunctionBase):
             )
         else:
             return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
-
+    
     @plum.dispatch
     def calc_force_bias(self, hamiltonian:GenericComplexChol, walkers:UHFWalkers, mpi_handler: MPIHandler=None) -> np.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
@@ -162,11 +162,3 @@ class SingleDet(TrialWavefunctionBase):
         vbias[hamiltonian.nchol:,:] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
         vbias = vbias.T.copy()
         return vbias
-
-    # def cast_to_single_precision(self):
-    # assert self._rchola is not none
-    # self._vbias0 = self._rchola.dot(self.psi0a.t.ravel()) + self._rchola.dot(
-    # self.psi0b.t.ravel()
-    # )
-    # self._rchola = self._rchola.astype(np.float32)
-    # self._rcholb = self._rcholb.astype(np.float32)

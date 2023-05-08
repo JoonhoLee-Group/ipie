@@ -294,6 +294,26 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
         exx += numpy.dot(T.ravel(), T.T.ravel())
     return exx
 
+def half_rotated_cholesky_jk_ghf(system, Ghalf, trial):
+    rchol = trial._rchol
+
+    # # Element wise multiplication.
+    # nalpha, nbeta = system.nup, system.ndown
+    # nbasis = Ghalf.shape[-1]
+    # Xa = rchol.dot(Ghalf.real.ravel()) + 1.0j * rchol.dot(Ghalf.imag.ravel())
+
+    # ecoul = xp.dot(Xa, Xa)
+    # ecoul += xp.dot(Xb, Xb)
+    # ecoul += 2 * xp.dot(Xa, Xb)
+    # exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+    # exx = exx_kernel_rchol_real(rchola, Ghalf) + exx_kernel_rchol_real(
+    #     rcholb, Ghalfb
+    # )
+    ecoul = 0.0 + 0.0j
+    exx = 0.0 + 0.0j
+    synchronize()
+    return 0.5 * ecoul, -0.5 * exx  # JK energy
+
 
 def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     """Compute exchange and coulomb contributions via jitted kernels.

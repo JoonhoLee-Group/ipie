@@ -6,6 +6,94 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
 from ipie.hamiltonians.generic import Generic, GenericRealChol, GenericComplexChol
 
+def half_rotate_generic_ghf(
+    trial: TrialWavefunctionBase,
+    hamiltonian: Generic,
+    comm: MPI.COMM_WORLD,
+    orbs: np.ndarray,
+    ndets: int = 1,
+    verbose: bool = False,
+) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    if verbose:
+        print("# Constructing half rotated Cholesky vectors.")
+    assert len(orbs.shape) == 3
+    assert orbs.shape[0] == ndets
+    M = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
+    nocc = orbs.shape[-1]
+    if trial.verbose:
+        print(
+            "# Shape of half-rotated Cholesky: {}".format((ndets, nchol, nocc * M))
+        )
+
+    chol = hamiltonian.chol.reshape((M, M, nchol))
+
+    shape = (ndets, nchol, (M * nocc))
+
+    ctype = hamiltonian.chol.dtype
+    ptype = orbs.dtype
+    integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
+    if isinstance(hamiltonian, GenericComplexChol):
+        cholbar = chol.transpose(1,0,2).conj().copy()
+        A = hamiltonian.A.reshape((M,M,nchol))
+        B = hamiltonian.B.reshape((M,M,nchol))
+        rchol = [get_shared_array(comm, shape, integral_type) for i in range(4)]
+    elif isinstance(hamiltonian, GenericRealChol):
+        rchol = [get_shared_array(comm, shape, integral_type)]
+
+    rH1 = get_shared_array(comm, (ndets, nocc, M), integral_type)
+    rH1[:] = np.einsum("Jpi,pq->Jiq", orbs.conj(), hamiltonian.H1[0], optimize=True)
+
+    if verbose:
+        print("# Half-Rotating Cholesky for determinant.")
+    start = 0  # determinant loops
+    compute = True
+    # Distribute amongst MPI tasks on this node.
+    if comm is not None:
+        nwork_per_thread = hamiltonian.nchol // comm.size
+        if nwork_per_thread == 0:
+            start_n = 0
+            end_n = nchol
+            if comm.rank != 0:
+                # Just run on root processor if problem too small.
+                compute = False
+        else:
+            start_n = comm.rank * nwork_per_thread  # Cholesky work split
+            end_n = (comm.rank + 1) * nwork_per_thread
+            if comm.rank == comm.size - 1:
+                end_n = nchol
+    else:
+        start_n = 0
+        end_n = hamiltonian.nchol
+
+    nchol_loc = end_n - start_n
+    if compute:
+        if isinstance(hamiltonian, GenericComplexChol):
+            L = [chol, cholbar, A, B]
+        elif isinstance(hamiltonian, GenericRealChol):
+            L = [chol]
+        
+        for i in range(len(L)):
+            # Investigate whether these einsums are fast in the future
+            rup = np.einsum(
+                "Jmi,mnx->Jxin",
+                orbs.conj(),
+                L[i][:, :, start_n:end_n],
+                optimize=True,
+            )
+            rup = rup.reshape((ndets, nchol_loc, na * M))
+            rchol[i][:, start_n:end_n, start : start + M * na] = rup[:]
+
+    if comm is not None:
+        comm.barrier()
+
+    if isinstance(hamiltonian, GenericRealChol):
+        rchol = rchol[0]
+
+    # storing intermediates for correlation energy
+    return rH1, rchol
+
+
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,
