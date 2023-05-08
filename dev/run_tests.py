@@ -58,11 +58,11 @@ def run_black():
 
 
 def run_flynt():
-    return _run_subprocess("flynt --check ipie")
+    return _run_subprocess("flynt --fail-on-change --dry-run ipie")
 
 
 def run_pylint():
-    return _run_subprocess("pylint -s no --disable=R,C ipie/")
+    return _run_subprocess("pylint --score n --disable=R,C ipie/")
 
 
 def run_mpi():
