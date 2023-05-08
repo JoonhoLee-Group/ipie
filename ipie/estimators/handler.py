@@ -112,7 +112,6 @@ class EstimatorHandler(object):
                     ham=hamiltonian,
                     trial=trial,
                 )
-                print(obs, est)
                 self[obs] = est
             except KeyError:
                 raise RuntimeError(f"unknown observable: {obs}")
