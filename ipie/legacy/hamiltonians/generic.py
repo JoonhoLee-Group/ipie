@@ -114,9 +114,7 @@ class Generic(object):
 
         if self.pno:
             if self.verbose:
-                print(
-                    f"# pno is true for local energy with a threshold of {self.thresh_pno}"
-                )
+                print(f"# pno is true for local energy with a threshold of {self.thresh_pno}")
             self.ij_list_aa = []
             self.ij_list_bb = []
             self.ij_list_ab = []
@@ -136,9 +134,7 @@ class Generic(object):
         if self.stochastic_ri:
             self.nsamples = nsamples
             if self.verbose:
-                print(
-                    f"# stochastic_ri is true for local energy with {self.nsamples} samples"
-                )
+                print(f"# stochastic_ri is true for local energy with {self.nsamples} samples")
                 print(f"# control_variate = {self.control_variate}")
 
         if isrealobj(self.chol_vecs.dtype):

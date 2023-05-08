@@ -43,9 +43,7 @@ class ThermalWalker(Walker):
                 print(
                     "# Walker stack size differs from that estimated from " "trial density matrix."
                 )
-                print(
-                    f"# Be careful. cond(BT)**stack_size: {trial.cond ** self.stack_size:10.3e}."
-                )
+                print(f"# Be careful. cond(BT)**stack_size: {trial.cond ** self.stack_size:10.3e}.")
         self.stack_length = self.num_slices // self.stack_size
         if verbose:
             print(f"# Walker stack size: {self.stack_size}")

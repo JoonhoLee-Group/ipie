@@ -65,9 +65,7 @@ class MultiDetWalker(Walker):
         self.ovlp = self.ot
         self.le_oratio = 1.0
         if verbose:
-            print(
-                f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}"
-            )
+            print(f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}")
         # Green's functions for various elements of the trial wavefunction.
         self.Gi = numpy.zeros(
             shape=(self.ndets, 2, hamiltonian.nbasis, hamiltonian.nbasis), dtype=dtype

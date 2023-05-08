@@ -36,9 +36,7 @@ def secant(comm, options, x0, x1, target, maxiter=10, threshold=1e-3):
         nx1 = determine_nav(comm, options, x1, target)
         xn = x1 - nx1 * (x1 - x0) / (nx1 - nx0)
         if comm.rank == 0:
-            print(
-                f" # Chemical potential iteration: {it} {x0} {x1} {nx0} {nx1} {xn}"
-            )
+            print(f" # Chemical potential iteration: {it} {x0} {x1} {nx0} {nx1} {xn}")
         if abs(xn - x1) < threshold:
             break
         x0 = x1

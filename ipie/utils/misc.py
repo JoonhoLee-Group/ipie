@@ -360,9 +360,7 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
                     print(f"# - CUDA compute capability: {cuda_compute:s}")
                     print(f"# - CUDA version: {version_string}")
                     print(f"# - GPU Type: {str(cu_info['name'])[1:]:s}")
-                    print(
-                        f"# - GPU Mem: {cu_info['totalGlobalMem'] / 1024 ** 3.0:.3f} GB"
-                    )
+                    print(f"# - GPU Mem: {cu_info['totalGlobalMem'] / 1024 ** 3.0:.3f} GB")
                     print(f"# - Number of GPUs: {l.cuda.runtime.getDeviceCount():d}")
                 except:
                     print("# cupy import error")

@@ -177,9 +177,7 @@ class HubbardUHF(object):
         try:
             return (psi_accept, e_accept, min(minima), False, [niup, nidown])
         except UnboundLocalError:
-            warnings.warn(
-                f"Warning: No HubbardUHF wavefunction found.Delta E: {enew - emin:f}"
-            )
+            warnings.warn(f"Warning: No HubbardUHF wavefunction found.Delta E: {enew - emin:f}")
             return (trial, numpy.append(e_up, e_down), None, True, None)
 
     def initialise(self, nbasis, nup, ndown):
