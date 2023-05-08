@@ -46,8 +46,10 @@ def _run_subprocess(job_string: str, shell=False) -> int:
         print(output.decode("utf-8"))
         return 0
     except subprocess.CalledProcessError as err:
-        print(err.stdout.decode("utf-8"))
-        print(err.stderr.decode("utf-8"))
+        if err.stdout is not None:
+            print(err.stdout.decode("utf-8"))
+        if err.stderr is not None:
+            print(err.stderr.decode("utf-8"))
         return err.returncode
 
 
