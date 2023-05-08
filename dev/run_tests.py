@@ -20,7 +20,7 @@ def parse_args(args):
         Command line arguments.
     """
 
-    modes = ["pytest", "pylint", "black", "mpi", "examples", "all"]
+    modes = ["pytest", "pylint", "black", "mpi", "examples", "flynt", "all"]
     parser = argparse.ArgumentParser(description=__doc__)
     for opt in modes:
         parser.add_argument(
@@ -121,6 +121,7 @@ def run_examples():
 run_test = {
     "black": run_black,
     "pylint": run_pylint,
+    "flynt": run_flynt,
     "mpi": run_mpi,
     "integration": run_integration,
     "pytest": run_pytest,
