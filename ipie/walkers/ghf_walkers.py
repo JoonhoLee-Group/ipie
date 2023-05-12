@@ -17,12 +17,14 @@
 #
 
 import numpy
+import plum
 
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import cast_to_device
-from ipie.utils.backend import synchronize, qr, qr_mode
+from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
+from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 
 
 class GHFWalkers(BaseWalkers):
@@ -34,13 +36,39 @@ class GHFWalkers(BaseWalkers):
         The number of walkers in this batch
     """
 
+    @plum.dispatch
+    def __init__(self, walkers: UHFWalkers, verbose: bool = False):
+        self.nup = walkers.nup
+        self.ndown = walkers.ndown
+        self.nbasis = walkers.nbasis
+        self.mpi_handler = walkers.mpi_handler
+        super().__init__(walkers.nwalkers, verbose=verbose)
+
+        self.phi = numpy.zeros(
+            (self.nwalkers, self.nbasis * 2, self.nup + self.ndown), dtype=walkers.phia.dtype
+        )
+
+        # for iw in range(self.nwalkers):
+        self.phi[:, : self.nbasis, : self.nup] = walkers.phia
+        self.phi[:, self.nbasis :, self.nup :] = walkers.phib
+
+        self.G = numpy.zeros(
+            (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
+        )
+        self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga
+        self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb
+        self.Ghalf = None
+
+    @plum.dispatch
     def __init__(
         self,
-        initial_walker:numpy.ndarray,
-        nup:int, ndown:int, nbasis:int,
-        nwalkers:int,
-        mpi_handler=None,
-        verbose:bool=False
+        initial_walker: numpy.ndarray,
+        nup: int,
+        ndown: int,
+        nbasis: int,
+        nwalkers: int,
+        mpi_handler: MPIHandler = None,
+        verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
         self.nup = nup
@@ -48,10 +76,7 @@ class GHFWalkers(BaseWalkers):
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
 
-        super().__init__(
-            nwalkers,
-            verbose=verbose
-        )
+        super().__init__(nwalkers, verbose=verbose)
 
         # should completely deprecate these
         self.field_configs = None
@@ -67,18 +92,12 @@ class GHFWalkers(BaseWalkers):
             dtype=numpy.complex128,
         )
 
-        self.Ghalf = numpy.zeros(
-            shape=(self.nwalkers, self.nup+self.ndown,self.nbasis), dtype=numpy.complex128
-        )
-
         self.buff_names += ["phi"]
 
-        self.buff_size = round(
-            self.set_buff_size_single_walker() / float(self.nwalkers)
-        )
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
-    def build(self,trial):
+    def build(self, trial):
         self.ovlp = trial.calc_greens_function(self)
 
     # This function casts relevant member variables into cupy arrays
@@ -91,7 +110,7 @@ class GHFWalkers(BaseWalkers):
         parameters
         ----------
         """
-        if config.get_option('use_gpu'):
+        if config.get_option("use_gpu"):
             return self.reortho_batched()
         detR = []
         for iw in range(self.nwalkers):
@@ -124,9 +143,9 @@ class GHFWalkers(BaseWalkers):
         parameters
         ----------
         """
-        assert config.get_option('use_gpu')
+        assert config.get_option("use_gpu")
         (self.phi, Rup) = qr(self.phi, mode=qr_mode)
-        Rup_diag = xp.einsum("wii->wi",Rup)
+        Rup_diag = xp.einsum("wii->wi", Rup)
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
         self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR

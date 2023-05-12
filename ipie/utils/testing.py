@@ -23,18 +23,11 @@ from typing import Tuple, Union
 import numpy
 from mpi4py import MPI
 
-from ipie.utils.io import get_input_value
+from ipie.hamiltonians import Generic as HamGeneric
+from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.options import QMCOpts
-from ipie.utils.linalg import modified_cholesky
-from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
-from ipie.hamiltonians import Generic as HamGeneric
-from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
-from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
@@ -42,8 +35,14 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicksNonChunked,
     ParticleHoleWicksSlow,
 )
-
-from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.utils.io import get_input_value
+from ipie.utils.linalg import modified_cholesky
+from ipie.utils.mpi import MPIHandler
+from ipie.walkers.base_walkers import BaseWalkers
+from ipie.walkers.pop_controller import PopController
+from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -108,25 +107,26 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
     else:
         return (coeffs, wfn)
 
-def get_random_nomsd_ghf(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
-    a = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
-    b = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
-    if cplx:
-        wfn = (a + 1j * b).reshape((ndet, nbasis * 2, nup + ndown))
-        coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
-    else:
-        wfn = a.reshape((ndet, nbasis * 2, nup + ndown))
-        coeffs = numpy.random.rand(ndet)
-    if init:
-        a = numpy.random.rand(nbasis * 2 * (nup + ndown))
-        b = numpy.random.rand(nbasis * 2 * (nup + ndown))
-        if cplx:
-            init_wfn = (a + 1j * b).reshape((nbasis * 2, nup + ndown))
-        else:
-            init_wfn = a.reshape((nbasis * 2, nup + ndown))
-        return (coeffs, wfn, init_wfn)
-    else:
-        return (coeffs, wfn)
+
+# def get_random_nomsd_ghf(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
+#     a = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
+#     b = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
+#     if cplx:
+#         wfn = (a + 1j * b).reshape((ndet, nbasis * 2, nup + ndown))
+#         coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
+#     else:
+#         wfn = a.reshape((ndet, nbasis * 2, nup + ndown))
+#         coeffs = numpy.random.rand(ndet)
+#     if init:
+#         a = numpy.random.rand(nbasis * 2 * (nup + ndown))
+#         b = numpy.random.rand(nbasis * 2 * (nup + ndown))
+#         if cplx:
+#             init_wfn = (a + 1j * b).reshape((nbasis * 2, nup + ndown))
+#         else:
+#             init_wfn = a.reshape((nbasis * 2, nup + ndown))
+#         return (coeffs, wfn, init_wfn)
+#     else:
+#         return (coeffs, wfn)
 
 
 def truncated_combinations(iterable, r, count):
@@ -516,6 +516,7 @@ def build_test_case_handlers(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     choltol: float = 1e-3,
+    reortho: bool = True,
     options: Union[dict, None] = None,
 ):
     if seed is not None:
@@ -561,7 +562,8 @@ def build_test_case_handlers(
             prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
             prop.propagate_walkers(walkers, ham, trial, trial.energy)
-        walkers.reortho()
+        if reortho:
+            walkers.reortho()
         trial.calc_greens_function(walkers)
 
     return TestData(trial, walkers, ham, prop)

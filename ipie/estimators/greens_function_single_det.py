@@ -1,20 +1,21 @@
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
-def greens_function_single_det_ghf(walkers, trial, build_full=False):
+
+def greens_function_single_det_ghf(walkers, trial):
     det = []
     for iw in range(walkers.nwalkers):
         ovlp = xp.dot(walkers.phi[iw].T, trial.psi0.conj())
         ovlp_inv = xp.linalg.inv(ovlp)
-        walkers.Ghalfa[iw] = xp.dot(ovlp_inv, walkers.phi[iw].T)
-        if not trial.half_rotated or build_full:
-            walkers.Ga[iw] = xp.dot(trial.psi0.conj(), walkers.Ghalfa[iw])
+        Ghalf = xp.dot(ovlp_inv, walkers.phi[iw].T)
+        walkers.G[iw] = xp.dot(trial.psi0.conj(), Ghalf)
         sign, log_ovlp = xp.linalg.slogdet(ovlp)
         det += [sign * xp.exp(log_ovlp - walkers.log_shift[iw])]
 
     det = xp.array(det, dtype=xp.complex128)
     synchronize()
     return det
+
 
 def greens_function_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.

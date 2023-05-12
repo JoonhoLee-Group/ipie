@@ -1,13 +1,13 @@
-from mpi4py import MPI
 import numpy as np
 import pytest
+from mpi4py import MPI
 
-from ipie.utils.testing import get_random_phmsd_opt, get_random_sys_ham
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicks,
-    ParticleHoleWicksSlow,
     ParticleHoleWicksNonChunked,
+    ParticleHoleWicksSlow,
 )
+from ipie.utils.testing import get_random_phmsd_opt, get_random_sys_ham
 
 
 @pytest.mark.unit

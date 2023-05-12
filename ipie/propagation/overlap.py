@@ -17,14 +17,14 @@
 #
 
 import itertools
+
 import numpy
 import scipy.linalg
 
 from ipie.estimators.kernels.cpu import wicks as wk
-
-
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+
 
 def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     """Caculate overlap with single det trial wavefunction.
@@ -43,15 +43,11 @@ def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     """
     nup = walkers.nup
     ndown = walkers.ndown
-    ovlp_a = xp.einsum(
-        "wmi,mj->wij", walkers.phia, trial.psi0a.conj(), optimize=True
-    )
+    ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, trial.psi0a.conj(), optimize=True)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
     if ndown > 0 and not walkers.rhf:
-        ovlp_b = xp.einsum(
-            "wmi,mj->wij", walkers.phib, trial.psi0b.conj(), optimize=True
-        )
+        ovlp_b = xp.einsum("wmi,mj->wij", walkers.phib, trial.psi0b.conj(), optimize=True)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
     elif ndown > 0 and walkers.rhf:
@@ -63,10 +59,9 @@ def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
 
     return ot
 
+
 def calc_overlap_single_det_ghf(walkers: "GHFWalkers", trial: "SingleDet"):
-    ovlp = xp.einsum(
-        "wmi,mj->wij", walkers.phi, trial.psi0.conj(), optimize=True
-    )
+    ovlp = xp.einsum("wmi,mj->wij", walkers.phi, trial.psi0.conj(), optimize=True)
     sign, log_ovlp = xp.linalg.slogdet(ovlp)
 
     ot = sign * xp.exp(log_ovlp - walkers.log_shift)
