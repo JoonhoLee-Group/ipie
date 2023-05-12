@@ -24,6 +24,9 @@ from ipie.utils.backend import cast_to_device
 from ipie.utils.backend import synchronize, qr, qr_mode
 from ipie.walkers.base_walkers import BaseWalkers
 
+from ipie.utils.mpi import MPIHandler
+import mpi4py
+
 
 class UHFWalkers(BaseWalkers):
     """UHF style walker.
@@ -41,7 +44,7 @@ class UHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler=None,
+        mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -179,7 +182,7 @@ class UHFWalkersParticleHole(UHFWalkers):
         ndown,
         nbasis,
         nwalkers,
-        mpi_handler=None,
+        mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
         verbose=False,
     ):
         super().__init__(
@@ -245,7 +248,7 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
         ndown,
         nbasis,
         nwalkers,
-        mpi_handler=None,
+        mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
         verbose=False,
     ):
         super().__init__(

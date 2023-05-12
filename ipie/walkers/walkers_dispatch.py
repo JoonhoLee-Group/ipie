@@ -31,6 +31,9 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.walkers.uhf_walkers import UHFWalkers, UHFWalkersParticleHole, UHFWalkersParticleHoleNaive
 
+from ipie.utils.mpi import MPIHandler
+import mpi4py
+
 
 def get_initial_walker(trial: TrialWavefunctionBase) -> numpy.ndarray:
     if isinstance(trial, SingleDet):
@@ -56,7 +59,7 @@ def GHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return GHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
@@ -70,7 +73,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
@@ -84,7 +87,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkersParticleHole(
@@ -100,7 +103,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkersParticleHole(
@@ -116,7 +119,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkersParticleHoleNaive(
@@ -132,7 +135,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkersParticleHoleNaive(
@@ -148,7 +151,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler=MPIHandler(mpi4py.MPI.COMM_WORLD),
     verbose: bool = False,
 ):
     return UHFWalkersParticleHoleNaive(

@@ -82,11 +82,12 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        comm: mpi4py.MPI.Intracomm = mpi4py.MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
         orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+        comm = None
         rot_1body, rot_chol = half_rotate_generic(
             self,
             hamiltonian,
@@ -108,7 +109,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        comm: mpi4py.MPI.Intracomm = mpi4py.MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -150,7 +151,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericRealChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler = MPIHandler(mpi4py.MPI.COMM_WORLD),
     ) -> numpy.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
@@ -164,7 +165,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericComplexChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler = MPIHandler(mpi4py.MPI.COMM_WORLD),
     ) -> numpy.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
