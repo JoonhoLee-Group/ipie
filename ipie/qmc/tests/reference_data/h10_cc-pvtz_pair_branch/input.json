@@ -7,7 +7,7 @@
     },
     "qmc": {
         "dt": 0.005,
-        "nwalkers": 100,
+        "nwalkers": 25,
         "blocks": 10,
         "nsteps": 10,
         "rng_seed": 10,

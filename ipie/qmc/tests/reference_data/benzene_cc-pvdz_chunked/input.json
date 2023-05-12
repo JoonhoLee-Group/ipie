@@ -9,7 +9,7 @@
     },
     "qmc": {
         "dt": 0.005,
-        "nwalkers": 10,
+        "nwalkers": 2,
         "nsteps": 5,
         "blocks": 4,
         "batched": true,
