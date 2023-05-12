@@ -19,8 +19,8 @@
 """Driver to perform AFQMC calculation"""
 import json
 import time
-from typing import Union
 import uuid
+from typing import Union
 
 from ipie.config import config
 from ipie.estimators.handler import EstimatorHandler
@@ -100,7 +100,6 @@ class AFQMC(object):
         verbose: int = 0,
         seed: int = None,
         nwalkers: int = 100,
-        nwalkers_per_task: int = None,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
         timestep: float = 0.005,
@@ -135,7 +134,6 @@ class AFQMC(object):
 
         qmc_opt = {
             "nwalkers": nwalkers,
-            "nwalkers_per_task": nwalkers_per_task,
             "timestep": timestep,
             "nsteps": num_steps_per_block,
             "num_blocks": num_blocks,
@@ -162,18 +160,6 @@ class AFQMC(object):
                         " Check if this is really what you wanted.".format(comm.size, ngpus)
                     )
 
-        if self.qmc.nwalkers is None:
-            assert self.qmc.nwalkers_per_task is not None
-            self.qmc.nwalkers = self.qmc.nwalkers_per_task * comm.size
-        if self.qmc.nwalkers_per_task is None:
-            assert self.qmc.nwalkers is not None
-            self.qmc.nwalkers_per_task = int(self.qmc.nwalkers / comm.size)
-
-        # Reset number of walkers so they are evenly distributed across
-        # cores/ranks.
-        # Number of walkers per core/rank.
-        self.qmc.nwalkers = int(self.qmc.nwalkers / comm.size)  # This should be gone in the future
-        assert self.qmc.nwalkers == self.qmc.nwalkers_per_task
         # Total number of walkers.
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
@@ -215,7 +201,9 @@ class AFQMC(object):
         self.tsetup = time.time() - self._init_time
 
         # Using only default population control
-        self.pcontrol = PopController(self.qmc.nwalkers, num_steps_per_block, self.mpi_handler)
+        self.pcontrol = PopController(
+            self.qmc.nwalkers, num_steps_per_block, self.mpi_handler, verbose=verbose
+        )
         self.accumulators = WalkerAccumulator(
             ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
         )  # lagacy purposes??

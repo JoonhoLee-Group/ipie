@@ -1,4 +1,5 @@
 import time
+
 import numpy
 from mpi4py import MPI
 
@@ -67,6 +68,10 @@ class PopController:
 
         self.target_weight = self.ntot_walkers
         self.total_weight = self.ntot_walkers
+
+        if verbose:
+            print(f"# target weight is {self.target_weight}")
+            print(f"# total weight is {self.total_weight}")
 
         self.timer = PopControllerTimer()
 

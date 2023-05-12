@@ -34,6 +34,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = False
         self.ortho_expansion = False
         self.optimized = True
+
         self.compute_trial_energy = False
         self.energy = None
         self.e1b = None
