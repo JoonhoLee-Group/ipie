@@ -1,10 +1,9 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Union
 
 import numpy as np
 
 from ipie.utils.backend import cast_to_device
-
 
 _wfn_type = Union[
     np.ndarray, Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]
@@ -35,7 +34,11 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = False
         self.ortho_expansion = False
         self.optimized = True
+
         self.compute_trial_energy = False
+        self.e1b = None
+        self.e2b = None
+        self.energy = None
 
     def cast_to_cupy(self) -> None:
         cast_to_device(self, self.verbose)
