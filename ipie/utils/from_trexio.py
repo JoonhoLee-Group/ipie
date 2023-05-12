@@ -25,8 +25,12 @@ except:
 
 import numpy
 
+from ipie.utils.from_pyscf import freeze_core
 
-def gen_ipie_from_trexio(trexio_filename: str, verbose: bool = True) -> None:
+
+def gen_ipie_from_trexio(
+    trexio_filename: str, num_frozen_core: int = 0, verbose: bool = True
+) -> None:
     trexio_file = trexio.File(trexio_filename, "r", trexio.TREXIO_AUTO)
 
     mo_num = trexio.read_mo_num(trexio_file)
@@ -86,14 +90,45 @@ def gen_ipie_from_trexio(trexio_filename: str, verbose: bool = True) -> None:
     if verbose:
         print(f"Read Cholesky vectors")
 
-    result = {
-        "nup": nup,
-        "ndn": ndn,
-        "chol": chol,
-        "hcore": hcore,
-        "occa": occa,
-        "occb": occb,
-        "ci_coeffs": ci_coeffs,
-        "e0": e0,
-    }
+    if num_frozen_core > 0:
+        assert num_frozen_core <= nup, f"{num_frozen_core} < {nup}"
+        assert num_frozen_core <= ndn, f"{num_frozen_core} < {ndn}"
+        mo_coeffs = numpy.eye(mo_num)
+        h1e_eff, chol_act, e0_eff = freeze_core(
+            hcore, chol.T, e0, mo_coeffs, num_frozen_core, verbose=verbose
+        )
+        chol_act = chol_act.T.copy()
+        h1e_eff = h1e_eff[0].copy()
+
+        occa_eff = numpy.zeros((len(occa), len(occa[0]) - num_frozen_core), dtype=numpy.int64)
+        occb_eff = numpy.zeros((len(occb), len(occb[0]) - num_frozen_core), dtype=numpy.int64)
+
+        for i, (oa, ob) in enumerate(zip(occa, occb)):
+            occa_eff[i, :] = oa[num_frozen_core:]
+            occb_eff[i, :] = ob[num_frozen_core:]
+
+        occa_eff -= num_frozen_core
+        occb_eff -= num_frozen_core
+
+        result = {
+            "nup": nup - num_frozen_core,
+            "ndn": ndn - num_frozen_core,
+            "chol": chol_act,
+            "hcore": h1e_eff,
+            "occa": occa_eff,
+            "occb": occb_eff,
+            "ci_coeffs": ci_coeffs,
+            "e0": e0_eff,
+        }
+    else:
+        result = {
+            "nup": nup,
+            "ndn": ndn,
+            "chol": chol,
+            "hcore": hcore,
+            "occa": occa,
+            "occb": occb,
+            "ci_coeffs": ci_coeffs,
+            "e0": e0,
+        }
     return result

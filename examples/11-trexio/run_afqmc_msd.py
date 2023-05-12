@@ -10,10 +10,12 @@ trexio_filename = "h2o_dz.h5"
 
 comm = MPI.COMM_WORLD
 
+num_frozen_core = 1
+
 if comm.rank == 0:
     print("Hartree-Fock energy: -76.0267720534593")
     print("CI energy          : -76.1665620477625")
-    results = gen_ipie_from_trexio(trexio_filename)
+    results = gen_ipie_from_trexio(trexio_filename, num_frozen_core=num_frozen_core)
     nup = results["nup"]
     ndown = results["ndn"]
 
@@ -50,7 +52,6 @@ mo_coeff = numpy.eye(nbasis)
 
 # Build System
 system = Generic(nelec=(nup, ndown))
-
 # Build Hamiltonian
 ham = HamGeneric(
     numpy.array([h1e, h1e]),
@@ -102,7 +103,7 @@ nblocks = 100
 timestep = 0.005
 seed = 7
 
-trial.compute_trial_energy = False
+trial.compute_trial_energy = True
 afqmc_msd = AFQMC(
     comm,
     system=system,
