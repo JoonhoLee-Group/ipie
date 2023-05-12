@@ -17,23 +17,22 @@
 #
 
 import numpy
+import plum
 
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleWicks,
-    ParticleHoleWicksSlow,
     ParticleHoleNaive,
+    ParticleHoleWicks,
     ParticleHoleWicksNonChunked,
+    ParticleHoleWicksSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-
-import plum
-from typing import Union
+from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.walkers.uhf_walkers import UHFWalkers, UHFWalkersParticleHole, UHFWalkersParticleHoleNaive
 
 
-def get_initial_walker(trial: TrialWavefunctionBase) -> (int, numpy.ndarray):
+def get_initial_walker(trial: TrialWavefunctionBase) -> numpy.ndarray:
     if isinstance(trial, SingleDet):
         initial_walker = trial.psi
         num_dets = 1
@@ -50,6 +49,20 @@ def get_initial_walker(trial: TrialWavefunctionBase) -> (int, numpy.ndarray):
 
 # walker dispatcher based on trial type
 @plum.dispatch
+def GHFWalkersTrial(
+    trial: SingleDet,
+    initial_walker: numpy.ndarray,
+    nup: int,
+    ndown: int,
+    nbasis: int,
+    nwalkers: int,
+    mpi_handler=None,
+    verbose: bool = False,
+):
+    return GHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
+
+
+@plum.dispatch
 def UHFWalkersTrial(
     trial: SingleDet,
     initial_walker: numpy.ndarray,
@@ -65,7 +78,7 @@ def UHFWalkersTrial(
 
 @plum.dispatch
 def UHFWalkersTrial(
-    trial: Union[ParticleHoleWicks],
+    trial: ParticleHoleWicks,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,
@@ -81,7 +94,7 @@ def UHFWalkersTrial(
 
 @plum.dispatch
 def UHFWalkersTrial(
-    trial: Union[ParticleHoleWicksNonChunked],
+    trial: ParticleHoleWicksNonChunked,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,
@@ -97,7 +110,7 @@ def UHFWalkersTrial(
 
 @plum.dispatch
 def UHFWalkersTrial(
-    trial: Union[ParticleHoleWicksSlow],
+    trial: ParticleHoleWicksSlow,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,
@@ -113,7 +126,7 @@ def UHFWalkersTrial(
 
 @plum.dispatch
 def UHFWalkersTrial(
-    trial: Union[ParticleHoleNaive],
+    trial: ParticleHoleNaive,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,
@@ -129,7 +142,7 @@ def UHFWalkersTrial(
 
 @plum.dispatch
 def UHFWalkersTrial(
-    trial: Union[NOCI],
+    trial: NOCI,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,

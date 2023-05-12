@@ -118,4 +118,3 @@ afqmc_msd = AFQMC(
 )
 afqmc_msd.run(comm=comm)
 afqmc_msd.finalise(verbose=True)
-

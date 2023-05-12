@@ -6,7 +6,7 @@ import numpy
 import scipy
 
 from ipie.estimators.utils import convolve, scipy_fftconvolve
-from ipie.propagation.operations import kinetic_real
+from ipie.legacy.propagation.operations import kinetic_real
 
 
 class PW(object):

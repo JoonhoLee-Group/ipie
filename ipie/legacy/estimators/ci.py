@@ -128,6 +128,7 @@ def simple_fci_bose_fermi(
             nocc1 = eigvec[:, 0].T.conj().dot(rho.dot(eigvec[:, 0]))
             print("i, nocc = {}, {}".format(isite, nocc1))
 
+        Xsum = 0.0
         for isite in range(system.nbasis):
             bi = scipy.sparse.csr_matrix((nperms, nperms))
             for i, iperm in enumerate(perms):
@@ -151,7 +152,8 @@ def simple_fci_bose_fermi(
 
             X = eigvec[:, 0].T.conj().dot(xi.dot(eigvec[:, 0]))
             print("i, X = {}, {}".format(isite, X))
-
+            Xsum += X
+        print("Xsum = {}".format(Xsum))
         print("# Eel, Eb, Eeb, Etot = {}, {}, {}, {}".format(Eel, Eb, Eeb, Eel + Eb + Eeb))
 
     if gen_dets:
