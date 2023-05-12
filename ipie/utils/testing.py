@@ -23,18 +23,11 @@ from typing import Tuple, Union
 import numpy
 from mpi4py import MPI
 
-from ipie.utils.io import get_input_value
+from ipie.hamiltonians import Generic as HamGeneric
+from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.options import QMCOpts
-from ipie.utils.linalg import modified_cholesky
-from ipie.utils.mpi import MPIHandler
 from ipie.systems import Generic
-from ipie.hamiltonians import Generic as HamGeneric
-from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
-from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
@@ -42,8 +35,14 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicksNonChunked,
     ParticleHoleWicksSlow,
 )
-
-from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.utils.io import get_input_value
+from ipie.utils.linalg import modified_cholesky
+from ipie.utils.mpi import MPIHandler
+from ipie.walkers.base_walkers import BaseWalkers
+from ipie.walkers.pop_controller import PopController
+from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -585,7 +584,7 @@ def build_driver_test_instance(
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
-    qmc.nwalkers = qmc.nwalkers_per_task
+    qmc.nwalkers = qmc.nwalkers
 
     nwalkers = qmc.nwalkers
 
@@ -602,7 +601,6 @@ def build_driver_test_instance(
         walkers=walkers,
         seed=qmc.rng_seed,
         nwalkers=qmc.nwalkers,
-        nwalkers_per_task=qmc.nwalkers_per_task,
         num_steps_per_block=qmc.nsteps,
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
