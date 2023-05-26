@@ -29,7 +29,8 @@ procedure will always work OR that the automations we provide are always
 appropriate. Check out ipie.utils.from_dice for the individual functions which
 implement the workflow. In particular, the defaults (which may not be
 controllable from the factory method) may require tuning. One should always
-visualize the active space too (and the noons) to make sure things are sensible.
+visualize the active space too (and the orbitals) to make sure things are
+sensible.
 """
 import numpy as np
 
