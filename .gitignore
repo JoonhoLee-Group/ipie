@@ -101,3 +101,11 @@ ipie/qmc/tests/reference_data/**/*.h5
 *tmp*
 *.chk
 *.h5
+
+*.svg
+*.bin
+*.e
+*.txt
+*wheels*
+*FCIDUMP*
+*out*
