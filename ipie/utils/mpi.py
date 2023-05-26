@@ -18,7 +18,6 @@
 
 """MPI Helper functions."""
 import numpy
-from mpi4py import MPI
 
 
 def make_splits_displacements(ntotal, nsplit):
@@ -65,6 +64,8 @@ class MPIHandler(object):
         ntotal = len(array)
         nsplit = self.ssize
         split_sizes, displacements = make_splits_displacements(ntotal, nsplit)
+        from mpi4py import MPI
+
         if isinstance(array, list):
             if isinstance(array[0], int):
                 my_array = numpy.zeros(split_sizes[self.srank], dtype=numpy.int64)
@@ -85,10 +86,14 @@ class MPIHandler(object):
         return my_array
 
     def allreduce_group(self, array, root=0):  # allreduce within a group
+        from mpi4py import MPI
+
         return self.scomm.allreduce(array, op=MPI.SUM)
 
 
 def get_shared_comm(comm, verbose=False):
+    from mpi4py import MPI
+
     try:
         return comm.Split_type(MPI.COMM_TYPE_SHARED)
     except:
@@ -105,6 +110,8 @@ def get_shared_array(comm, shape, dtype, verbose=False):
     comm : `mpi4py.MPI`
     """
     size = numpy.prod(shape)
+    from mpi4py import MPI
+
     try:
         itemsize = numpy.dtype(dtype).itemsize
         if comm.rank == 0:
@@ -123,6 +130,8 @@ def get_shared_array(comm, shape, dtype, verbose=False):
 
 
 def have_shared_mem(comm):
+    from mpi4py import MPI
+
     try:
         MPI.Win.Allocate_shared(1, 1, comm=comm)
         return True
