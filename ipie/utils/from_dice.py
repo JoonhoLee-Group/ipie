@@ -254,7 +254,7 @@ def build_trial_from_shciscf(
     noons_fname: str = "noons.h5",
     noons_thresh: float = 0.02,
     num_dets_for_trial: int = 1000000,
-    convert_det_phase: bool = True,
+    convert_det_phase: bool = False,
 ) -> Tuple[ParticleHoleWicks, shci.SHCI]:
     """Wrapper function to generate trial using SHCI to select the active space.
 
@@ -307,7 +307,7 @@ def build_driver_from_shciscf(
     num_dets_for_trial: int = 1000000,
     num_walkers: int = 100,
     noons_thresh: float = 0.02,
-    convert_det_phase: bool = True,
+    convert_det_phase: bool = False,
     chol_cut=1e-8,
     seed=7,
 ) -> "AFQMC":
