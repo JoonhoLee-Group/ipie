@@ -194,15 +194,15 @@ def read_single_det_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
 
 
 def format_fixed_width_strings(strings):
-    return " ".join("{:>23}".format(s) for s in strings)
+    return " ".join(f"{s:>23}" for s in strings)
 
 
 def format_fixed_width_floats(floats):
-    return " ".join("{: .16e}".format(f) for f in floats)
+    return " ".join(f"{f: .16e}" for f in floats)
 
 
 def format_fixed_width_cmplx(floats):
-    return " ".join("{: .10e} {: .10e}".format(f.real, f.imag) for f in floats)
+    return " ".join(f"{f.real: .10e} {f.imag: .10e}" for f in floats)
 
 
 # TODO: Mark for deletion
@@ -253,18 +253,18 @@ def get_input_value(inputs, key, default, alias=None, verbose=False):
     val = inputs.get(key, None)
     if val is not None and verbose:
         if isinstance(val, dict):
-            print("# Options for {}".format(key))
+            print(f"# Options for {key}")
             for k, v in val.items():
-                print("# Setting {} to {}.".format(k, v))
+                print(f"# Setting {k} to {v}.")
         else:
-            print("# Setting {} to {}.".format(key, val))
+            print(f"# Setting {key} to {val}.")
     if val is None:
         if alias is not None:
             for a in alias:
                 val = inputs.get(a, None)
                 if val is not None:
                     if verbose:
-                        print("# Setting {} to {}.".format(key, val))
+                        print(f"# Setting {key} to {val}.")
                     break
         if val is None:
             val = default
@@ -319,11 +319,11 @@ def read_qmcpack_nomsd_hdf5(wgroup, nelec=None):
     wfn = numpy.zeros((nci, nmo, na + nb), dtype=numpy.complex128)
     for idet in range(nci):
         ix = 2 * idet if uhf else idet
-        pa = orbs_from_dset(wgroup["PsiT_{:d}/".format(idet)])
+        pa = orbs_from_dset(wgroup[f"PsiT_{idet:d}/"])
         wfn[idet, :, :na] = pa
         if uhf:
             ix = 2 * idet + 1
-            wfn[idet, :, na:] = orbs_from_dset(wgroup["PsiT_{:d}/".format(ix)])
+            wfn[idet, :, na:] = orbs_from_dset(wgroup[f"PsiT_{ix:d}/"])
         else:
             wfn[idet, :, na:] = pa[:, :nb]
     return (coeffs, wfn), psi0
@@ -464,7 +464,7 @@ def write_nomsd_single(fh5, psi, idet):
     idet : int
         Determinant number.
     """
-    base = "PsiT_{:d}/".format(idet)
+    base = f"PsiT_{idet:d}/"
     dims = [psi.shape[0], psi.shape[1], psi.nnz]
     fh5[base + "dims"] = numpy.array(dims, dtype=numpy.int32)
     fh5[base + "data_"] = to_qmcpack_complex(psi.data)
@@ -653,8 +653,8 @@ def write_qmcpack_sparse(
         if verbose:
             print(" # Total number of non-zero elements in sparse cholesky ERI" " tensor: %d" % nnz)
             nelem = chol.shape[0] * chol.shape[1]
-            print(" # Sparsity of ERI Cholesky tensor: " "%f" % (1 - float(nnz) / nelem))
-            print(" # Total memory required for ERI tensor: %13.8e GB" % (mem))
+            print(f" # Sparsity of ERI Cholesky tensor: {1 - float(nnz) / nelem:f}")
+            print(f" # Total memory required for ERI tensor: {mem:13.8e} GB")
         fh5["Hamiltonian/Factorized/block_sizes"] = numpy.array([nnz])
         fh5["Hamiltonian/Factorized/index_0"] = numpy.array(ix)
         if real_chol:

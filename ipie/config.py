@@ -34,19 +34,19 @@ class Config:
     def update_option(self, key, val):
         _val = self.options.get(key)
         if _val is None:
-            raise KeyError("config option not found: {}".format(_val))
+            raise KeyError(f"config option not found: {_val}")
         self.options[key] = val
 
     def get_option(self, key):
         _val = self.options.get(key)
         if _val is None:
-            raise KeyError("config option not found: {}".format(_val))
+            raise KeyError(f"config option not found: {_val}")
         return _val
 
     def __str__(self):
         _str = ""
         for k, v in self.options.items():
-            _str += "{} : {}\n".format(k, v)
+            _str += f"{k} : {v}\n"
         return _str
 
 

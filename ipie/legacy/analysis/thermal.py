@@ -48,8 +48,8 @@ def nav_mu(mu, coeffs):
 
 
 def find_chem_pot(data, target, vol, order=3, plot=False):
-    print("# System volume: {}.".format(vol))
-    print("# Target number of electrons: {}.".format(vol * target))
+    print(f"# System volume: {vol}.")
+    print(f"# Target number of electrons: {vol * target}.")
     nav = data.Nav.values / vol
     nav_error = data.Nav_error.values / vol
     # Half filling special case where error bar is zero.
@@ -76,7 +76,7 @@ def find_chem_pot(data, target, vol, order=3, plot=False):
                 mu_min = mu
             elif res[0] < rmin:
                 mu_min = mu
-            print("# min = {:f} max = {:f} res = {:} mu = " "{:f}".format(a, b, res, mu))
+            print(f"# min = {a:f} max = {b:f} res = {res} mu = {mu:f}")
         except ValueError:
             mu = None
             print("Root not found in interval.")

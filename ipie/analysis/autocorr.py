@@ -92,7 +92,7 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
         tacs += [autocorr_gw2010(y[:n])]
     if verbose:
         for n, tac in zip(reversed(Ndata), reversed(tacs)):
-            print("nsamples, tac = {}, {}".format(n, tac))
+            print(f"nsamples, tac = {n}, {tac}")
 
     # block_size = int(numpy.round(numpy.max(tacs)))
     block_size = int(numpy.ceil(tacs[0]))  # should take the one with the largest sample size
@@ -111,9 +111,9 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
 
     df = pd.DataFrame(
         {
-            "%s_ac" % name: [yavg],
-            "%s_error_ac" % name: [ystd],
-            "%s_nsamp_ac" % name: [nblocks],
+            f"{name}_ac": [yavg],
+            f"{name}_error_ac": [ystd],
+            f"{name}_nsamp_ac": [nblocks],
             "ac": [block_size],
         }
     )

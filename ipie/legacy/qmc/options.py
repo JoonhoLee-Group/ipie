@@ -9,16 +9,16 @@ def convert_from_reduced_unit(system, qmc_opts, verbose=False):
     if system.name == "UEG":
         TF = system.ef  # Fermi temeprature
         if verbose:
-            print("# Fermi Temperature: {:13.8e}".format(TF))
-            print("# beta in reduced unit: {:13.8e}".format(qmc_opts["beta"]))
-            print("# dt in reduced unit: {:13.8e}".format(qmc_opts["dt"]))
+            print(f"# Fermi Temperature: {TF:13.8e}")
+            print(f"# beta in reduced unit: {qmc_opts['beta']:13.8e}")
+            print(f"# dt in reduced unit: {qmc_opts['dt']:13.8e}")
         dt = qmc_opts["dt"]  # original dt
         beta = qmc_opts["beta"]  # original dt
         scaled_dt = dt / TF  # converting to Hartree ^ -1
         scaled_beta = beta / TF  # converting to Hartree ^ -1
         if verbose:
-            print("# beta in Hartree^-1:  {:13.8e}".format(scaled_beta))
-            print("# dt in Hartree^-1: {:13.8e}".format(scaled_dt))
+            print(f"# beta in Hartree^-1:  {scaled_beta:13.8e}")
+            print(f"# dt in Hartree^-1: {scaled_dt:13.8e}")
         return scaled_dt, scaled_beta
 
 

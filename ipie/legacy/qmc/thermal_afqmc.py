@@ -348,17 +348,17 @@ class ThermalAFQMC(object):
         """
         if self.root:
             if verbose:
-                print("# End Time: %s" % time.asctime())
-                print("# Running time : %.6f seconds" % (time.time() - self._init_time))
+                print(f"# End Time: {time.asctime()}")
+                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
                 print("# Timing breakdown (per processor, per path/slice):")
-                print("# - Setup: %f s" % self.tsetup)
+                print(f"# - Setup: {self.tsetup:f} s")
                 nsteps = self.qmc.nsteps
                 nslice = nsteps * self.qmc.ntime_slices
                 npcon = nslice // self.qmc.npop_control
-                print("# - Path update: %f s" % (self.tpath / nsteps))
-                print("# - Propagation: %f s" % (self.tprop / nslice))
-                print("# - Estimators: %f s" % (self.testim / nsteps))
-                print("# - Population control: %f s" % (self.tpopc / npcon))
+                print(f"# - Path update: {self.tpath / nsteps:f} s")
+                print(f"# - Propagation: {self.tprop / nslice:f} s")
+                print(f"# - Estimators: {self.testim / nsteps:f} s")
+                print(f"# - Population control: {self.tpopc / npcon:f} s")
 
     def determine_dtype(self, propagator, system):
         """Determine dtype for trial wavefunction and walkers.

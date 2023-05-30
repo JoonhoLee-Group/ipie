@@ -87,7 +87,7 @@ class MultiSlater(object):
                 print("# Assuming orthogonal trial wavefunction expansion.")
             else:
                 print("# Assuming non-orthogonal trial wavefunction expansion.")
-            print("# Trial wavefunction shape: {}".format(self.psi.shape))
+            print(f"# Trial wavefunction shape: {self.psi.shape}")
 
         self.ndets = get_input_value(options, "ndets", default=len(self.coeffs), verbose=verbose)
         # if self.verbose:
@@ -227,7 +227,7 @@ class MultiSlater(object):
                 self.G = self.compute_1rdm(hamiltonian.nbasis)
             end = time.time()
             if verbose:
-                print("# Time to compute 1-RDM: {} s".format(end - start))
+                print(f"# Time to compute 1-RDM: {end - start} s")
 
         self.error = False
         self.initialisation_time = time.time() - init_time
@@ -316,7 +316,7 @@ class MultiSlater(object):
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print("# Time to evaluate local energy: {} s".format(time.time() - start))
+            print(f"# Time to evaluate local energy: {time.time() - start} s")
 
     def from_phmsd(self, nup, ndown, nbasis, wfn, orbs):
         ndets = len(wfn[0])
@@ -624,7 +624,7 @@ class MultiSlater(object):
                         )
 
             if self.verbose:
-                print("# Memory required by exact ERIs: " " {:.4f} GB.".format(self._mem_required))
+                print(f"# Memory required by exact ERIs:  {self._mem_required:.4f} GB.")
             if comm is not None:
                 comm.barrier()
         # else:
@@ -637,7 +637,7 @@ class MultiSlater(object):
         for i, psi in enumerate(self.psi[:hr_ndet]):
             start_time = time.time()
             if self.verbose:
-                print("# Rotating Cholesky for determinant {} of " "{}.".format(i + 1, hr_ndet))
+                print(f"# Rotating Cholesky for determinant {i + 1} of {hr_ndet}.")
             # start = i*M*(na+nb)
             start_a = i * M * na  # determinant loops
             start_b = i * M * nb  # determinant loops
@@ -689,7 +689,7 @@ class MultiSlater(object):
                     "# Memory required by half-rotated integrals: "
                     " {:.4f} GB.".format(self._mem_required)
                 )
-                print("# Time to half-rotated integrals: {} s.".format(time.time() - start_time))
+                print(f"# Time to half-rotated integrals: {time.time() - start_time} s.")
         if comm is not None:
             comm.barrier()
 

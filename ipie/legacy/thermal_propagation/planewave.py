@@ -41,7 +41,7 @@ class PlaneWave(object):
             )
         if verbose:
             print("# Number of fields = %i" % hamiltonian.nfields)
-            print("# Using lowrank propagation: {}".format(self.lowrank))
+            print(f"# Using lowrank propagation: {self.lowrank}")
 
         self.vbias = numpy.zeros(hamiltonian.nfields, dtype=numpy.complex128)
 
@@ -105,7 +105,7 @@ class PlaneWave(object):
         """
         H1 = hamiltonian.h1e_mod
         I = numpy.identity(H1[0].shape[0], dtype=H1.dtype)
-        print("hamiltonian.mu = {}".format(hamiltonian.mu))
+        print(f"hamiltonian.mu = {hamiltonian.mu}")
         # No spin dependence for the moment.
         self.BH1 = numpy.array(
             [
@@ -262,7 +262,7 @@ class PlaneWave(object):
                 if not self.nfb_trig and self.verbose:
                     print("# Rescaling force bias is triggered.")
                     print("# Warning will only be printed once per thread.")
-                    print("# Bound = {}".format(self.fb_bound))
+                    print(f"# Bound = {self.fb_bound}")
                     xb = (xbar[i].real, xbar[i].imag)
                     vb = abs(xbar[i]) / self.sqrt_dt
                     vb = (vb.real, vb.imag)
@@ -316,7 +316,7 @@ class PlaneWave(object):
             Temp = VHS.dot(Temp) / n
             phi += Temp
         if debug:
-            print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+            print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
         return phi
 
     def estimate_eshift(self, walker):
@@ -708,12 +708,12 @@ def unit_test():
             Theta[:, :, :] = Theta[:, :, inv_sort_basis]
             Ctrial = Ctrial[inv_sort_basis, :]
 
-            print("E = {}".format(local_energy_pw_fft(system, G=P, Ghalf=Theta, trial=Ctrial)))
+            print(f"E = {local_energy_pw_fft(system, G=P, Ghalf=Theta, trial=Ctrial)}")
         else:
             P = one_rdm_from_G(walker.G)
             print(numpy.diag(walker.G[0].real))
-            print("weight = {}".format(walker.weight))
-            print("E = {}".format(local_energy_ueg(system, P)))
+            print(f"weight = {walker.weight}")
+            print(f"E = {local_energy_ueg(system, P)}")
 
         pr.disable()
         pr.print_stats(sort="tottime")

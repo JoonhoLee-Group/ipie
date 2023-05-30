@@ -46,7 +46,7 @@ comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
 # Unique filename to avoid name collision when running through CI.
 test_id = str(uuid.uuid1())
-output_file = "estimates_{}.h5".format(test_id)
+output_file = f"estimates_{test_id}.h5"
 
 _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 # glob is a bit dangerous.

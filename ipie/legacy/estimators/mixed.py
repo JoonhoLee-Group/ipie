@@ -412,7 +412,7 @@ class Mixed(object):
             header = header.encode("utf-8")
         print(header)
         for k, v in self.key.items():
-            s = "# %s : %s" % (k, v) + eol
+            s = f"# {k} : {v}" + eol
             if encode:
                 s = s.encode("utf-8")
             print(s)

@@ -212,7 +212,7 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
     elif len(X.shape) == 3:
         ao2mo_chol(chol_vecs, X[0])
     if verbose:
-        print(" # Time to orthogonalise: %f" % (time.time() - start))
+        print(f" # Time to orthogonalise: {time.time() - start:f}")
     enuc = mol.energy_nuc()
 
     return h1e, chol_vecs.reshape((-1, nbasis, nbasis)), enuc
@@ -222,7 +222,7 @@ def ao2mo_chol(eri, C, verbose=False):
     nb = C.shape[-1]
     for i, cv in enumerate(eri):
         if verbose and i % 100 == 0:
-            print(" # ao2mo cholesky % complete = {} %".format(100 * float(i) / len(eri)))
+            print(f" # ao2mo cholesky % complete = {100 * float(i) / len(eri)} %")
         half = numpy.dot(cv.reshape(nb, nb), C)
         eri[i] = numpy.dot(C.conj().T, half).ravel()
 
@@ -239,7 +239,7 @@ def cholesky(
     nao = mol.nao_nr()
     if nao * nao * cmax * nao * 8.0 / 1024.0**3 > MAX_SIZE:
         if verbose:
-            print("# Approximate memory for cholesky > MAX_SIZE ({} GB).".format(MAX_SIZE))
+            print(f"# Approximate memory for cholesky > MAX_SIZE ({MAX_SIZE} GB).")
             print("# Using out of core algorithm.")
             return chunked_cholesky_outcore(
                 mol,
@@ -396,10 +396,10 @@ def chunked_cholesky_outcore(
     mem = 8.0 * nchol_max * nao * nao / 1024.0**3
     chunk_size = min(int(CHUNK_SIZE * 1024.0**3 / (8 * nao * nao)), nchol_max)
     if verbose:
-        print("# Number of AOs: {}".format(nao))
-        print("# Writing AO Cholesky to {:s}.".format(filename))
-        print("# Max number of Cholesky vectors: {}".format(nchol_max))
-        print("# Max memory required for Cholesky tensor: {} GB".format(mem))
+        print(f"# Number of AOs: {nao}")
+        print(f"# Writing AO Cholesky to {filename:s}.")
+        print(f"# Max number of Cholesky vectors: {nchol_max}")
+        print(f"# Max memory required for Cholesky tensor: {mem} GB")
         print(
             "# Splitting calculation into chunks of size: {} / GB".format(
                 chunk_size, 8 * chunk_size * nao * nao / (1024.0**3)
@@ -428,9 +428,9 @@ def chunked_cholesky_outcore(
         fh5.create_dataset("Lao", shape=(nchol_max, nao * nao), dtype=numpy.float64)
     end = time.time()
     if verbose:
-        print("# Time to generate diagonal {} s.".format(end - start))
+        print(f"# Time to generate diagonal {end - start} s.")
         print("# Generating Cholesky decomposition of ERIs.")
-        print("# iteration {:5d}: delta_max = {:13.8e}".format(0, delta_max))
+        print(f"# iteration {0:5d}: delta_max = {delta_max:13.8e}")
     j = nu // nao
     l = nu % nao
     sj = numpy.searchsorted(dims, j)
@@ -504,8 +504,8 @@ def chunked_cholesky_outcore(
                 fh5["Lao"][ichunk * chunk_size : (ichunk + 1) * chunk_size] = chol_vecs
             endw = time.time()
             if verbose:
-                print("# Writing Cholesky chunk {} to file".format(ichunk))
-                print("# Time to write {}".format(endw - startw))
+                print(f"# Writing Cholesky chunk {ichunk} to file")
+                print(f"# Time to write {endw - startw}")
             ichunk += 1
             chol_vecs[:] = 0.0
         chol_vecs[(nchol + 1) % chunk_size] = (Munu0 - R) / (delta_max) ** 0.5

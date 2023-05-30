@@ -69,7 +69,7 @@ class HirschDMC(object):
 
         self.symmetric_trotter = options.get("symmetric_trotter", False)
         if verbose:
-            print("# symmetric_trotter is {}".format(self.symmetric_trotter))
+            print(f"# symmetric_trotter is {self.symmetric_trotter}")
 
         Ueff = system.U
 
@@ -80,7 +80,7 @@ class HirschDMC(object):
             Ueff = system.Ueff
 
         if verbose:
-            print("# Ueff = {}".format(Ueff))
+            print(f"# Ueff = {Ueff}")
 
         self.sorella = options.get("sorella", False)
         self.charge = options.get("charge", False)
@@ -119,7 +119,7 @@ class HirschDMC(object):
                 ) * numpy.exp(0.5 * qmc.dt * Ueff)
 
             if verbose:
-                print("# charge_factor = {}".format(self.charge_factor))
+                print(f"# charge_factor = {self.charge_factor}")
 
             # field by spin
             self.auxf = numpy.array(
@@ -157,9 +157,9 @@ class HirschDMC(object):
         shift = trial.shift.copy()
         if verbose:
             if len(trial.psi.shape) == 3:
-                print("# Shift in propagation = {}".format(shift[0, :3]))
+                print(f"# Shift in propagation = {shift[(0), :3]}")
             else:
-                print("# Shift in propagation = {}".format(shift[:3]))
+                print(f"# Shift in propagation = {shift[:3]}")
 
         if len(trial.psi.shape) == 3:
             self.boson_trial = HarmonicOscillator(

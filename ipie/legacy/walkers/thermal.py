@@ -43,17 +43,15 @@ class ThermalWalker(Walker):
                 print(
                     "# Walker stack size differs from that estimated from " "trial density matrix."
                 )
-                print(
-                    "# Be careful. cond(BT)**stack_size: %10.3e." % (trial.cond**self.stack_size)
-                )
+                print(f"# Be careful. cond(BT)**stack_size: {trial.cond ** self.stack_size:10.3e}.")
         self.stack_length = self.num_slices // self.stack_size
         if verbose:
-            print("# Walker stack size: {}".format(self.stack_size))
+            print(f"# Walker stack size: {self.stack_size}")
 
         self.lowrank = walker_opts.get("low_rank", False)
         self.lowrank_thresh = walker_opts.get("low_rank_thresh", 1e-6)
         if verbose:
-            print("# Using low rank trick: {}".format(self.lowrank))
+            print(f"# Using low rank trick: {self.lowrank}")
         self.stack = PropagatorStack(
             self.stack_size,
             trial.num_slices,
@@ -95,7 +93,7 @@ class ThermalWalker(Walker):
             eloc = local_energy_G(system, hamiltonian, self, P)
             nav = particle_number(P)
             print("# Initial walker energy: {} {} {}".format(*eloc))
-            print("# Initial walker electron number: {}".format(nav))
+            print(f"# Initial walker electron number: {nav}")
         # self.buff_names = ['weight', 'G', 'unscaled_weight', 'phase', 'Tl',
         # 'Ql', 'Dl', 'Tr', 'Qr', 'Dr', 'M0']
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
@@ -720,7 +718,7 @@ def unit_test():
     try:
         assert abs(eref - ekin) < 1e-8
     except AssertionError:
-        print("Error in kinetic energy check. Ref: %13.8e Calc:%13.8e" % (eref, ekin))
+        print(f"Error in kinetic energy check. Ref: {eref:13.8e} Calc:{ekin:13.8e}")
     walker = ThermalWalker({"stack_size": 10}, system, trial)
     rdm = one_rdm_from_G(walker.G)
     ekin = local_energy_hubbard(system, rdm)[1]

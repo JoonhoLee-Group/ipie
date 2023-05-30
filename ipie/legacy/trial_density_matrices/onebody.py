@@ -40,15 +40,15 @@ class OneBody(object):
 
         if verbose:
             print("# Building OneBody density matrix.")
-            print("# beta in OneBody: {}".format(beta))
-            print("# dt in OneBody: {}".format(dt))
+            print(f"# beta in OneBody: {beta}")
+            print(f"# dt in OneBody: {dt}")
 
         dmat_up = scipy.linalg.expm(-dt * (self.H1[0]))
         dmat_down = scipy.linalg.expm(-dt * (self.H1[1]))
         self.dmat = numpy.array([dmat_up, dmat_down])
         cond = numpy.linalg.cond(self.dmat[0])
         if verbose:
-            print("# condition number of BT: {: 10e}".format(cond))
+            print(f"# condition number of BT: {cond: 10e}")
 
         if nav is not None:
             self.nav = nav
@@ -57,7 +57,7 @@ class OneBody(object):
             if self.nav is None:
                 self.nav = system.nup + system.ndown
         if verbose:
-            print("# Target average electron number: {}".format(self.nav))
+            print(f"# Target average electron number: {self.nav}")
 
         self.max_it = options.get("max_it", 1000)
         self.deps = options.get("threshold", 1e-6)
@@ -91,7 +91,7 @@ class OneBody(object):
         self.num_bins = int(beta / (self.stack_size * dt))
 
         if verbose:
-            print("# Number of stacks: {}".format(self.num_bins))
+            print(f"# Number of stacks: {self.num_bins}")
 
         sign = 1
         if hamiltonian._alt_convention:
@@ -127,12 +127,12 @@ class OneBody(object):
             )
 
         if self.verbose:
-            print("# Chemical potential in trial density matrix: {: .10e}".format(self.mu))
+            print(f"# Chemical potential in trial density matrix: {self.mu: .10e}")
 
         self.P = one_rdm_stable(compute_rho(self.rho, self.mu, dtau, sign=sign), self.num_bins)
         self.nav = particle_number(self.P).real
         if self.verbose:
-            print("# Average particle number in trial density matrix: " "{}".format(self.nav))
+            print(f"# Average particle number in trial density matrix: {self.nav}")
         self.dmat = compute_rho(self.dmat, self.mu, dt, sign=sign)
         self.dmat_inv = numpy.array(
             [

@@ -79,7 +79,7 @@ class Continuous(object):
             if verbose:
                 print("# Using phaseless approximation.")
                 if self.force_bias:
-                    print("# Setting force bias to %r." % self.force_bias)
+                    print(f"# Setting force bias to {self.force_bias!r}.")
             self.propagate_walker = self.propagate_walker_phaseless
         if verbose:
             print("# Finished setting up propagator.")
@@ -154,7 +154,7 @@ class Continuous(object):
             Temp = VHS.dot(Temp) / n
             phi += Temp
         if debug:
-            print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+            print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
         return phi
 
     def propagate_walker_free(self, system, walker, trial, eshift=0):

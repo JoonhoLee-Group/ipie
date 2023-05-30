@@ -36,7 +36,7 @@ class Continuous(object):
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r." % self.force_bias)
+                print(f"# Setting force bias to {self.force_bias!r}.")
         self.exp_nmax = options.get("expansion_order", 6)
         # Derived Attributes
         self.dt = qmc.dt
@@ -161,7 +161,7 @@ class Continuous(object):
             phi += Temp
 
         if debug:
-            print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+            print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
 
         if is_cupy(
             VHS

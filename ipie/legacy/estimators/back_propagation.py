@@ -85,7 +85,7 @@ class BackPropagation(object):
         self.BT2 = BT2
         self.restore_weights = bp.get("restore_weights", None)
         if root:
-            print("# restore_weights = {}".format(self.restore_weights))
+            print(f"# restore_weights = {self.restore_weights}")
         self.dt = qmc.dt
         dms_size = self.G.size
         # Abuse of language for the moment. Only accumulates S(k) for UEG.
@@ -314,28 +314,28 @@ class BackPropagation(object):
         comm.Reduce(self.estimates, self.global_estimates, op=mpi_sum)
         if comm.rank == 0:
             weight = self.global_estimates[self.nreg]
-            self.output.push(numpy.array([weight]), "denominator_{:d}".format(self.buff_ix))
+            self.output.push(numpy.array([weight]), f"denominator_{self.buff_ix:d}")
             if self.eval_energy:
                 if free_projection:
                     self.output.push(
                         self.global_estimates[: self.nreg],
-                        "energies_{:d}".format(self.buff_ix),
+                        f"energies_{self.buff_ix:d}",
                     )
                 else:
                     self.output.push(
                         self.global_estimates[: self.nreg] / weight,
-                        "energies_{:d}".format(self.buff_ix),
+                        f"energies_{self.buff_ix:d}",
                     )
             if self.calc_one_rdm:
                 start = self.nreg + 1
                 end = self.nreg + 1 + self.G.size
                 rdm = self.global_estimates[start:end].reshape(self.G.shape)
-                self.output.push(rdm, "one_rdm_{:d}".format(self.buff_ix))
+                self.output.push(rdm, f"one_rdm_{self.buff_ix:d}")
             if self.calc_two_rdm:
                 start = self.nreg + 1 + self.G.size
                 end = start + self.two_rdm.size
                 rdm = self.global_estimates[start:end].reshape(self.two_rdm.shape)
-                self.output.push(rdm, "two_rdm_{:d}".format(self.buff_ix))
+                self.output.push(rdm, f"two_rdm_{self.buff_ix:d}")
 
             if self.eval_ekt:
                 start = self.nreg + 1
@@ -346,11 +346,11 @@ class BackPropagation(object):
 
                 end = start + self.ekt_fock_1p.size
                 fock = self.global_estimates[start:end].reshape(self.ekt_fock_1p.shape)
-                self.output.push(fock, "fock_1p_{:d}".format(self.buff_ix))
+                self.output.push(fock, f"fock_1p_{self.buff_ix:d}")
                 start = end
                 end = end + self.ekt_fock_1h.size
                 fock = self.global_estimates[start:end].reshape(self.ekt_fock_1h.shape)
-                self.output.push(fock, "fock_1h_{:d}".format(self.buff_ix))
+                self.output.push(fock, f"fock_1h_{self.buff_ix:d}")
 
             if self.buff_ix == self.splits[-1]:
                 self.output.increment()

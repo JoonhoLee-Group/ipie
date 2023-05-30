@@ -127,8 +127,8 @@ def extract_rdm(filename, est_type="back_propagated", rdm_type="one_rdm", ix=Non
         splits = get_param(filename, ["estimators", "estimators", "back_prop", "splits"])
         ix = splits[0][-1]
     if est_type == "back_propagated":
-        denom = extract_data(filename, est_type, "denominator_{}".format(ix), raw=True)
-        one_rdm = extract_data(filename, est_type, rdm_type + "_{}".format(ix), raw=True)
+        denom = extract_data(filename, est_type, f"denominator_{ix}", raw=True)
+        one_rdm = extract_data(filename, est_type, rdm_type + f"_{ix}", raw=True)
     else:
         one_rdm = extract_data(filename, est_type, rdm_type, raw=True)
         denom = None
@@ -208,7 +208,7 @@ def get_metadata(filename):
         with h5py.File(filename, "r") as fh5:
             metadata = json.loads(fh5["metadata"][()])
     except:
-        print("# problem with file = {}".format(filename))
+        print(f"# problem with file = {filename}")
     return metadata
 
 
