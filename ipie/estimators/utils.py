@@ -136,4 +136,7 @@ def gab_spin(A, B, na, nb):
     GA, GAH = gab_mod(A[:, :na], B[:, :na])
     if nb > 0:
         GB, GBH = gab_mod(A[:, na:], B[:, na:])
+    else:
+        GB = numpy.zeros(GA.shape)
+        GBH = numpy.zeros((0, GAH.shape[1]))
     return numpy.array([GA, GB]), [GAH, GBH]
