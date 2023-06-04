@@ -175,7 +175,7 @@ class LangFirsov(object):
 
         if self.read_in is not None:
             if verbose:
-                print("# Reading trial wavefunction from %s" % (self.read_in))
+                print(f"# Reading trial wavefunction from {self.read_in}")
             try:
                 self.psi = numpy.load(self.read_in)
                 self.psi = self.psi.astype(self.trial_type)
@@ -235,10 +235,10 @@ class LangFirsov(object):
         self.gamma = (
             system.g * numpy.sqrt(2.0 / (system.m * system.w0**3)) * numpy.ones(system.nbasis)
         )
-        print("# Initial gamma = {}".format(self.gamma))
+        print(f"# Initial gamma = {self.gamma}")
         self.run_variational(system)
 
-        print("# Variational Lang-Firsov Energy = {}".format(self.energy))
+        print(f"# Variational Lang-Firsov Energy = {self.energy}")
 
         self.initialisation_time = time.time() - init_time
         self.init = self.psi.copy()
@@ -250,9 +250,9 @@ class LangFirsov(object):
         self._eri = None
         self._UVT = None
 
-        print("# Lang-Firsov optimized gamma = {}".format(self.gamma))
-        print("# Lang-Firsov optimized shift = {}".format(self.shift))
-        print("# Lang-Firsov optimized energy = {}".format(self.energy))
+        print(f"# Lang-Firsov optimized gamma = {self.gamma}")
+        print(f"# Lang-Firsov optimized shift = {self.shift}")
+        print(f"# Lang-Firsov optimized energy = {self.energy}")
 
         if verbose:
             print("# Updated lang_firsov.")
@@ -320,7 +320,7 @@ class LangFirsov(object):
             e = res.fun
 
             if self.verbose:
-                print("# macro iter {} energy is {}".format(i, e))
+                print(f"# macro iter {i} energy is {e}")
             if e < self.energy and numpy.abs(self.energy - e) > 1e-6:
                 self.energy = res.fun
                 xconv = res.x.copy()
@@ -588,4 +588,4 @@ class LangFirsov(object):
         Ekin = numpy.sum(const_mat * system.T[0] * self.G[0] + const_mat * system.T[1] * self.G[1])
 
         self.energy = Eph + Eeph + Eee + Ekin
-        print("# Eee, Ekin, Eph, Eeph = {}, {}, {}, {}".format(Eee, Ekin, Eph, Eeph))
+        print(f"# Eee, Ekin, Eph, Eeph = {Eee}, {Ekin}, {Eph}, {Eeph}")

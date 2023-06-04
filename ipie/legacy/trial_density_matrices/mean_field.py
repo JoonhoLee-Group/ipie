@@ -44,7 +44,7 @@ class MeanField(OneBody):
             print("# Determining Thermal Hartree--Fock Density Matrix.")
         for it in range(self.max_macro_it):
             if self.verbose:
-                print("# Macro iteration: {}".format(it))
+                print(f"# Macro iteration: {it}")
             HMF = self.scf(system, beta, mu_old, P)
             rho = numpy.array([scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
@@ -64,7 +64,7 @@ class MeanField(OneBody):
             P = one_rdm_stable(rho_mu, self.num_bins)
             dmu = abs(mu - mu_old)
             if self.verbose:
-                print("# New mu: {:13.8e} Old mu: {:13.8e} Dmu: {:13.8e}".format(mu, mu_old, dmu))
+                print(f"# New mu: {mu:13.8e} Old mu: {mu_old:13.8e} Dmu: {dmu:13.8e}")
             if dmu < self.deps:
                 break
             mu_old = mu
@@ -109,5 +109,5 @@ class MeanField(OneBody):
             Pold = Pnew.copy()
         if self.verbose:
             N = particle_number(P).real
-            print(" # Average particle number: {:13.8e}".format(N))
+            print(f" # Average particle number: {N:13.8e}")
         return HMF

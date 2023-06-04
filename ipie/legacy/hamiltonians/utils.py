@@ -35,7 +35,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         start = time.time()
         hcore, chol, h1e_mod, enuc = get_generic_integrals(filename, comm=comm, verbose=verbose)
         if verbose:
-            print("# Time to read integrals: {:.6f}".format(time.time() - start))
+            print(f"# Time to read integrals: {time.time() - start:.6f}")
         ham = Generic(
             h1e=hcore,
             chol=chol,
@@ -46,7 +46,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         )
     else:
         if comm.rank == 0:
-            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts["name"]))
+            print(f"# Error: unrecognized hamiltonian name {ham_opts['name']}.")
             sys.exit()
         ham = None
 

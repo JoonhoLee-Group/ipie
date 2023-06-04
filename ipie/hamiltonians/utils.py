@@ -52,7 +52,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         start = time.time()
         hcore, chol, _, enuc = get_generic_integrals(filename, comm=comm, verbose=verbose)
         if verbose:
-            print("# Time to read integrals: {:.6f}".format(time.time() - start))
+            print(f"# Time to read integrals: {time.time() - start:.6f}")
 
         start = time.time()
 
@@ -90,7 +90,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         chol = chol.reshape((nbsf * nbsf, nchol))
 
         if verbose:
-            print("# Time to pack Cholesky vectors: {:.6f}".format(time.time() - start))
+            print(f"# Time to pack Cholesky vectors: {time.time() - start:.6f}")
 
         ham = Generic(
             h1e=hcore,
@@ -100,7 +100,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
         )
     else:
         if comm.rank == 0:
-            print("# Error: unrecognized hamiltonian name {}.".format(ham_opts["name"]))
+            print(f"# Error: unrecognized hamiltonian name {ham_opts['name']}.")
             sys.exit()
 
     return ham
@@ -132,7 +132,7 @@ def get_generic_integrals(filename, comm=None, verbose=False):
     """
     shmem = have_shared_mem(comm)
     if verbose:
-        print("# Have shared memory: {}".format(shmem))
+        print(f"# Have shared memory: {shmem}")
     if shmem:
         if comm.rank == 0:
             hcore, chol, enuc = read_integrals(filename)

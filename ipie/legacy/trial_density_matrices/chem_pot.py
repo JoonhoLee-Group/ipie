@@ -14,7 +14,7 @@ def find_chemical_potential(
     mu2 = 1
     sign = -1 if alt_convention else 1
     if verbose:
-        print("# Finding chemical potential to match <N> = {:13.8e}".format(target))
+        print(f"# Finding chemical potential to match <N> = {target:13.8e}")
     while numpy.sign(dmu1) * numpy.sign(dmu2) > 0:
         rho1 = compute_rho(rho, mu1, beta, sign=sign)
         dmat = one_rdm_stable(rho1, num_bins)
@@ -24,14 +24,14 @@ def find_chemical_potential(
         dmu2 = delta_nav(dmat, target)
         if numpy.sign(dmu1) * numpy.sign(dmu2) < 0:
             if verbose:
-                print("# Chemical potential lies within range of [%f,%f]" % (mu1, mu2))
-                print("# delta_mu1 = %f, delta_mu2 = %f" % (dmu1.real, dmu2.real))
+                print(f"# Chemical potential lies within range of [{mu1:f},{mu2:f}]")
+                print(f"# delta_mu1 = {dmu1.real:f}, delta_mu2 = {dmu2.real:f}")
             break
         else:
             mu1 -= 2
             mu2 += 2
             if verbose:
-                print("# Increasing chemical potential search to [%f,%f]" % (mu1, mu2))
+                print(f"# Increasing chemical potential search to [{mu1:f},{mu2:f}]")
     found_mu = False
     if verbose:
         print("# " + format_fixed_width_strings(["iteration", "mu", "Dmu", "<N>"]))

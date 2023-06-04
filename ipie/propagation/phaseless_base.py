@@ -110,7 +110,7 @@ class PhaselessBase(ContinuousBase):
         start = time.time()
         self.mf_shift = construct_mean_field_shift(hamiltonian, trial)
         if verbose:
-            print("# Time to mean field shift: {} s".format(time.time() - start))
+            print(f"# Time to mean field shift: {time.time() - start} s")
             print(
                 "# Absolute value of maximum component of mean field shift: "
                 "{:13.8e}.".format(numpy.max(numpy.abs(self.mf_shift)))

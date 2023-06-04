@@ -36,10 +36,7 @@ def secant(comm, options, x0, x1, target, maxiter=10, threshold=1e-3):
         nx1 = determine_nav(comm, options, x1, target)
         xn = x1 - nx1 * (x1 - x0) / (nx1 - nx0)
         if comm.rank == 0:
-            print(
-                " # Chemical potential iteration: {} {} {} {} {} {}"
-                "".format(it, x0, x1, nx0, nx1, xn)
-            )
+            print(f" # Chemical potential iteration: {it} {x0} {x1} {nx0} {nx1} {xn}")
         if abs(xn - x1) < threshold:
             break
         x0 = x1
@@ -59,7 +56,7 @@ def find_mu_opt(options):
     mu1 = mu0 - 0.5 * abs(mu0)
     mu_opt = secant(comm, options, mu0, mu1, system.ne)
     if comm.rank == 0:
-        print("# Converged mu: {}".format(mu_opt))
+        print(f"# Converged mu: {mu_opt}")
     # Run longer simulation at optimal mu.
     sys_opts["mu"] = mu_opt
     qmc["nsteps"] = 50

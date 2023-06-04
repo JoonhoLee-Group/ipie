@@ -48,7 +48,7 @@ class UEG(object):
         self.name = "UEG"
         self.mu = options.get("mu", None)
         if self.mu is not None:
-            print("# mu: {:6.4e}".format(self.mu))
+            print(f"# mu: {self.mu:6.4e}")
         self._alt_convention = options.get("alt_convention", False)
         self.sparse = True
 
@@ -87,8 +87,8 @@ class UEG(object):
         self.nchol = len(self.qvecs)
         self.nfields = 2 * len(self.qvecs)
         if verbose:
-            print("# Number of plane waves: {:d}".format(self.nbasis))
-            print("# Number of Cholesky vectors: {:d}.".format(self.nchol))
+            print(f"# Number of plane waves: {self.nbasis:d}")
+            print(f"# Number of Cholesky vectors: {self.nchol:d}.")
         # For consistency with frozen core molecular code.
         self.orbs = None
         self.frozen_core = False

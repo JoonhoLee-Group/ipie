@@ -76,7 +76,7 @@ class SingleDet(TrialWavefunctionBase):
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print("# Time to evaluate local energy: {} s".format(time.time() - start))
+            print(f"# Time to evaluate local energy: {time.time() - start} s")
 
     @plum.dispatch
     def half_rotate(

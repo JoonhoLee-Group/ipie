@@ -80,9 +80,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         self.ovlp = self.ot
         self.le_oratio = 1.0
         if verbose:
-            print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(self.ot.real)
-            )
+            print(f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}")
 
         # Green's functions for various elements of the trial wavefunction.
         if trial.ortho_expansion:

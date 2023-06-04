@@ -25,6 +25,9 @@ jobs:
       - name: format
         run: |
           python dev/run_tests.py --black
+      - name: flynt
+        run: |
+          python dev/run_tests.py --flynt
   build:
     strategy:
       matrix:

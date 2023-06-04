@@ -62,7 +62,7 @@ class PW_FFT(object):
         if verbose:
             print("# Parsing input options.")
         self.name = "PW_FFT"
-        print("# {}".format(self.name))
+        print(f"# {self.name}")
         self.nup = inputs.get("nup")
         self.ndown = inputs.get("ndown")
         self.nelec = (self.nup, self.ndown)
@@ -73,7 +73,7 @@ class PW_FFT(object):
         if verbose:
             print("# Number of spin-up electrons: %i" % self.nup)
             print("# Number of spin-down electrons: %i" % self.ndown)
-            print("# rs: %10.5f" % self.rs)
+            print(f"# rs: {self.rs:10.5f}")
 
         self.thermal = inputs.get("thermal", False)
         self._alt_convention = inputs.get("alt_convention", False)
@@ -104,11 +104,11 @@ class PW_FFT(object):
 
         if verbose:
             print("# Spin polarisation (zeta): %d" % self.zeta)
-            print("# Electron density (rho): %13.8e" % self.rho)
-            print("# Box Length (L): %13.8e" % self.L)
-            print("# Volume: %13.8e" % self.vol)
-            print("# k-space factor (2pi/L): %13.8e" % self.kfac)
-            print("# Madelung Energy: %13.8e" % self.ecore)
+            print(f"# Electron density (rho): {self.rho:13.8e}")
+            print(f"# Box Length (L): {self.L:13.8e}")
+            print(f"# Volume: {self.vol:13.8e}")
+            print(f"# k-space factor (2pi/L): {self.kfac:13.8e}")
+            print(f"# Madelung Energy: {self.ecore:13.8e}")
 
         # Single particle eigenvalues and corresponding kvectors
         (self.sp_eigv, self.basis, self.nmax, self.gmap) = self.sp_energies(self.kfac, self.ecut)

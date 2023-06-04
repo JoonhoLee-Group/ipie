@@ -60,8 +60,8 @@ class Walkers(object):
             rank = comm.rank
         if verbose:
             print("# Setting up walkers.handler.Walkers.")
-            print("# qmc.nwalkers = {}".format(self.nwalkers))
-            print("# qmc.ntot_walkers = {}".format(self.ntot_walkers))
+            print(f"# qmc.nwalkers = {self.nwalkers}")
+            print(f"# qmc.ntot_walkers = {self.ntot_walkers}")
 
         if trial.name == "MultiSlater":
             self.walker_type = "MSD"
@@ -122,7 +122,7 @@ class Walkers(object):
                     if qmc.nstblz < stack_size:
                         qmc.nstblz = stack_size
                         if verbose:
-                            print("# Updated stabilization frequency: " " {}".format(qmc.nstblz))
+                            print(f"# Updated stabilization frequency:  {qmc.nstblz}")
                     else:
                         qmc.nstblz = update_stack(
                             qmc.nstblz, stack_size, name="nstblz", verbose=verbose
@@ -144,7 +144,7 @@ class Walkers(object):
             if nbp is not None:
                 if verbose:
                     print("# Performing back propagation.")
-                    print("# Number of steps in imaginary time: {:}.".format(nbp))
+                    print(f"# Number of steps in imaginary time: {nbp}.")
                 self.buff_size += self.walkers[0].field_configs.buff_size
             self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         else:
@@ -165,7 +165,7 @@ class Walkers(object):
             if nbp is not None:
                 if verbose:
                     print("# Performing back propagation.")
-                    print("# Number of steps in imaginary time: {:}.".format(nbp))
+                    print(f"# Number of steps in imaginary time: {nbp}.")
                 self.buff_size += self.walkers[0].field_configs.buff_size
             self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         if hamiltonian.name == "Generic" or system.name == "UEG":
@@ -182,9 +182,9 @@ class Walkers(object):
         self.min_weight = walker_opts.get("min_weight", 0.1)
         self.max_weight = walker_opts.get("max_weight", 4.0)
         if verbose:
-            print("# Using {} population control " "algorithm.".format(self.pcont_method))
+            print(f"# Using {self.pcont_method} population control algorithm.")
             mem = float(self.walker_buffer.nbytes) / (1024.0**3)
-            print("# Buffer size for communication: {:13.8e} GB".format(mem))
+            print(f"# Buffer size for communication: {mem:13.8e} GB")
             if mem > 2.0:
                 # TODO: FDM FIX THIS
                 print(" # Warning: Walker buffer size > 2GB. May run into MPI" "issues.")
@@ -201,7 +201,7 @@ class Walkers(object):
             self.write_restart = False
         if self.read_file is not None:
             if verbose:
-                print("# Reading walkers from %s file series." % self.read_file)
+                print(f"# Reading walkers from {self.read_file} file series.")
             self.read_walkers(comm)
         self.target_weight = qmc.ntot_walkers
         self.nw = qmc.nwalkers
@@ -282,7 +282,7 @@ class Walkers(object):
         scale = total_weight / self.target_weight
         if total_weight < 1e-8:
             if comm.rank == 0:
-                print("# Warning: Total weight is {:13.8e}: ".format(total_weight))
+                print(f"# Warning: Total weight is {total_weight:13.8e}: ")
                 print("# Something is seriously wrong.")
             sys.exit()
         self.set_total_weight(total_weight)
@@ -492,7 +492,7 @@ class Walkers(object):
                 fh5["walker_%d" % ix][:] = self.get_write_buffer(i)
         if comm.rank == 0:
             print(" # Writing walkers to file.")
-            print(" # Time to write restart: {:13.8e} s".format(time.time() - start))
+            print(f" # Time to write restart: {time.time() - start:13.8e} s")
 
     def update_log_ovlp(self, comm):
         send = numpy.zeros(3, dtype=numpy.complex128)
@@ -522,4 +522,4 @@ class Walkers(object):
                     ix = i + self.nwalkers * comm.rank
                     self.set_walker_from_buffer(i, fh5["walker_%d" % ix][:])
                 except KeyError:
-                    print(" # Could not read walker data from:" " %s" % (self.read_file))
+                    print(f" # Could not read walker data from: {self.read_file}")

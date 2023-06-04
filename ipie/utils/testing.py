@@ -607,7 +607,7 @@ def build_driver_test_instance(
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
-    qmc.nwalkers = qmc.nwalkers_per_task
+    qmc.nwalkers = qmc.nwalkers
 
     nwalkers = qmc.nwalkers
 
@@ -624,7 +624,6 @@ def build_driver_test_instance(
         walkers=walkers,
         seed=qmc.rng_seed,
         nwalkers=qmc.nwalkers,
-        nwalkers_per_task=qmc.nwalkers_per_task,
         num_steps_per_block=qmc.nsteps,
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,

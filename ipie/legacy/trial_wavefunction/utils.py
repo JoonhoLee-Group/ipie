@@ -43,20 +43,20 @@ def get_trial_wavefunction(
         psi0 = None
         if wfn_file is not None:
             if verbose:
-                print("# Reading wavefunction from {}.".format(wfn_file))
+                print(f"# Reading wavefunction from {wfn_file}.")
             read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
             thresh = options.get("threshold", None)
             if thresh is not None:
                 coeff = read[0]
                 ndets = len(coeff[abs(coeff) > thresh])
                 if verbose:
-                    print("# Discarding determinants with weight " "  below {}.".format(thresh))
+                    print(f"# Discarding determinants with weight   below {thresh}.")
             else:
                 ndets = options.get("ndets", None)
                 if ndets is None:
                     ndets = len(read[0])
             if verbose:
-                print("# Number of determinants in trial wavefunction: {}".format(ndets))
+                print(f"# Number of determinants in trial wavefunction: {ndets}")
             if ndets is not None:
                 wfn = []
                 # Wavefunction is a tuple, immutable so have to iterate through

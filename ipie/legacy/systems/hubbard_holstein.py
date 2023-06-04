@@ -98,11 +98,11 @@ class HubbardHolstein(object):
             self.g = sqrt(float(d) * 2.0 * self.lmbda * self.t * self.w0)
 
         if verbose:
-            print("# d = {}".format(d))
-            print("# nx, ny = {},{}".format(self.nx, self.ny))
-            print("# nbasis = {}".format(self.nbasis))
-            print("# t, U = {}, {}".format(self.t, self.U))
-            print("# m, w0, g, lambda = {}, {}, {}, {}".format(self.m, self.w0, self.g, self.lmbda))
+            print(f"# d = {d}")
+            print(f"# nx, ny = {self.nx},{self.ny}")
+            print(f"# nbasis = {self.nbasis}")
+            print(f"# t, U = {self.t}, {self.U}")
+            print(f"# m, w0, g, lambda = {self.m}, {self.w0}, {self.g}, {self.lmbda}")
 
         self.lang_firsov = inputs.get("lang_firsov", False)
         self.gamma_lf = 0.0
@@ -113,8 +113,8 @@ class HubbardHolstein(object):
                 + self.gamma_lf**2 * self.m * self.w0**2
                 - 2.0 * self.g * self.gamma_lf * numpy.sqrt(2.0 * self.m * self.w0)
             )
-            print("# gamma_lf = {}".format(self.gamma_lf))
-            print("# Ueff = {}".format(self.Ueff))
+            print(f"# gamma_lf = {self.gamma_lf}")
+            print(f"# Ueff = {self.Ueff}")
 
         self.nactive = self.nbasis
         self.nfv = 0

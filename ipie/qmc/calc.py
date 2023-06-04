@@ -38,7 +38,7 @@ from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value
 from ipie.utils.mpi import MPIHandler
-from ipie.walkers.walkers_dispatch import UHFWalkersTrial, get_initial_walker
+from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 def init_communicator():
@@ -105,13 +105,6 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         from ipie.qmc.options import QMCOpts
 
         qmc = QMCOpts(qmc_opts, verbose=0)
-        if qmc.nwalkers is None:
-            assert qmc.nwalkers_per_task is not None
-            qmc.nwalkers = qmc.nwalkers_per_task * comm.size
-        if qmc.nwalkers_per_task is None:
-            assert qmc.nwalkers is not None
-            qmc.nwalkers_per_task = int(qmc.nwalkers / comm.size)
-
         mpi_handler = MPIHandler(comm, nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
         system = get_system(
             sys_opts, verbose=verbosity, comm=comm
@@ -140,7 +133,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             system.nup,
             system.ndown,
             hamiltonian.nbasis,
-            qmc.nwalkers_per_task,
+            qmc.nwalkers,
             mpi_handler=mpi_handler,
         )
         walkers.build(trial)  # any intermediates that require information from trial
@@ -159,7 +152,6 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             walkers=walkers,
             seed=qmc.rng_seed,
             nwalkers=qmc.nwalkers,
-            nwalkers_per_task=qmc.nwalkers_per_task,
             num_steps_per_block=qmc.nsteps,
             num_blocks=qmc.nblocks,
             timestep=qmc.dt,
@@ -191,7 +183,7 @@ def build_afqmc_driver(
             "nup": nelec[0],
             "ndown": nelec[1],
         },
-        "qmc": {"nwalkers_per_task": num_walkers_per_task, "rng_seed": seed},
+        "qmc": {"nwalkers": num_walkers_per_task, "rng_seed": seed},
         "hamiltonian": {"integrals": hamiltonian_file},
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
@@ -219,7 +211,7 @@ def read_input(input_file, comm, verbose=False):
     """
     if comm.rank == 0:
         if verbose:
-            print("# Initialising pie simulation from %s" % input_file)
+            print(f"# Initialising pie simulation from {input_file}")
         try:
             with open(input_file) as inp:
                 options = json.load(inp)

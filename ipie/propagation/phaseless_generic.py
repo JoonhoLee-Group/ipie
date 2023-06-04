@@ -1,7 +1,8 @@
+import math
 import time
+
 import numpy
 import scipy.linalg
-import math
 
 from ipie.utils.pack_numba import unpack_VHS_batch
 
@@ -10,20 +11,18 @@ try:
 except:
     pass
 
+import plum  # dispatch
+
 from ipie.config import config
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_base import GenericBase
+from ipie.propagation.operations import apply_exponential, apply_exponential_batch
+from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-
-from ipie.propagation.phaseless_base import PhaselessBase
-from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 
-from ipie.hamiltonians.generic_base import GenericBase
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-
-from ipie.propagation.operations import apply_exponential, apply_exponential_batch
-
-import plum # dispatch
 
 class PhaselessGeneric(PhaselessBase):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
@@ -33,7 +32,7 @@ class PhaselessGeneric(PhaselessBase):
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
-    def apply_VHS(self, walkers:UHFWalkers, hamiltonian:GenericBase, xshifted:xp.ndarray):
+    def apply_VHS(self, walkers: UHFWalkers, hamiltonian: GenericBase, xshifted: xp.ndarray):
         start_time = time.time()
         assert walkers.nwalkers == xshifted.shape[-1]
         VHS = self.construct_VHS(hamiltonian, xshifted)
@@ -56,7 +55,7 @@ class PhaselessGeneric(PhaselessBase):
         self.timer.tgemm += time.time() - start_time
 
     @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray)->xp.ndarray:
+    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
         print("JOONHO here abstract function for construct VHS")
         "abstract function for construct VHS"
 
@@ -116,7 +115,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
         self.mpi_handler = mpi_handler
 
     @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray)->xp.ndarray:
+    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
         "abstract function for construct VHS"
 
     @plum.dispatch
