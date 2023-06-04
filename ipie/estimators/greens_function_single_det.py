@@ -52,7 +52,7 @@ def greens_function_single_det(walker_batch, trial, build_full=False):
         elif ndown > 0 and walker_batch.rhf:
             det += [sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift[iw])]
         elif ndown == 0:
-            det += [sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)]
+            det += [sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift[iw])]
 
     det = xp.array(det, dtype=xp.complex128)
 
