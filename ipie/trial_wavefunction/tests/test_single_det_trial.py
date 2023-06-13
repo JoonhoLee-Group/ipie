@@ -47,6 +47,12 @@ def test_single_det_ghf():
     nalpha, nbeta = (5, 7)
     numpy.random.seed(7)
 
+    wavefunction = get_random_nomsd(nalpha, nbeta, nbasis, ndet=1)
+    trial = SingleDet(
+        wavefunction[1][0],
+        (nalpha, nbeta),
+        nbasis,
+    )
     sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, naux)
     trial.half_rotate(ham)
     trial.calculate_energy(sys, ham)
@@ -102,7 +108,7 @@ def test_single_det_all_up():
     nbasis = 10
     naux = 5 * nbasis
     nalpha, nbeta = (5, 0)
-    np.random.seed(7)
+    numpy.random.seed(7)
     wavefunction = get_random_nomsd(nalpha, nbeta, nbasis, ndet=1)
     trial = SingleDet(
         wavefunction[1][0],
@@ -130,3 +136,4 @@ def test_single_det_all_up():
 if __name__ == "__main__":
     test_single_det()
     test_single_det_ghf()
+    test_single_det_all_up()

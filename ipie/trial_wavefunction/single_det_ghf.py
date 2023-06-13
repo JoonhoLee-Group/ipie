@@ -1,11 +1,10 @@
 import time
-from typing import Union
+from typing import Tuple, Union
 
 import mpi4py.MPI
 import numpy
 import plum
 
-from ipie.config import config
 from ipie.estimators.generic import cholesky_jk_ghf
 from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
 from ipie.estimators.utils import gab_mod
@@ -49,7 +48,11 @@ class SingleDetGHF(TrialWavefunctionBase):
 
     @plum.dispatch
     def __init__(
-        self, wavefunction: numpy.ndarray, num_elec: int, num_basis: int, verbose: bool = False
+        self,
+        wavefunction: numpy.ndarray,
+        num_elec: Tuple[int, int],
+        num_basis: int,
+        verbose: bool = False,
     ):
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
