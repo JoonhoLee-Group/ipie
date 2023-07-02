@@ -205,7 +205,7 @@ class BaseWalkers(metaclass=ABCMeta):
             fh5["walker_%d" % comm.rank][:] = self.get_write_buffer()
         if comm.rank == 0:
             print(" # Writing walkers to file.")
-            print(" # Time to write restart: {:13.8e} s".format(time.time() - start))
+            print(f" # Time to write restart: {time.time() - start:13.8e} s")
 
     def read_walkers_batch(self, comm):
         assert self.write_file is not None
@@ -213,7 +213,7 @@ class BaseWalkers(metaclass=ABCMeta):
             try:
                 self.set_walkers_from_buffer(fh5["walker_%d" % comm.rank][:])
             except KeyError:
-                print(" # Could not read walker data from:" " %s" % (self.read_file))
+                print(f" # Could not read walker data from: {self.read_file}")
 
     @abstractmethod
     def reortho(self):

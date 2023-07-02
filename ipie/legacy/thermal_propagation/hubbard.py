@@ -53,7 +53,7 @@ class ThermalDiscrete(object):
         if abs(self.dmu) > 1e-16:
             self._mu = trial.mu
             if verbose:
-                print("# Chemical potential shift (mu_T-mu): {}".format(-sign * self.dmu))
+                print(f"# Chemical potential shift (mu_T-mu): {-sign * self.dmu}")
         else:
             self._mu = ham.mu
         self.delta = self.auxf - 1

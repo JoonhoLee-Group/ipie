@@ -114,9 +114,7 @@ class Generic(object):
 
         if self.pno:
             if self.verbose:
-                print(
-                    "# pno is true for local energy with a threshold of {}".format(self.thresh_pno)
-                )
+                print(f"# pno is true for local energy with a threshold of {self.thresh_pno}")
             self.ij_list_aa = []
             self.ij_list_bb = []
             self.ij_list_ab = []
@@ -136,10 +134,8 @@ class Generic(object):
         if self.stochastic_ri:
             self.nsamples = nsamples
             if self.verbose:
-                print(
-                    "# stochastic_ri is true for local energy with {} samples".format(self.nsamples)
-                )
-                print("# control_variate = {}".format(self.control_variate))
+                print(f"# stochastic_ri is true for local energy with {self.nsamples} samples")
+                print(f"# control_variate = {self.control_variate}")
 
         if isrealobj(self.chol_vecs.dtype):
             if verbose:
@@ -157,7 +153,7 @@ class Generic(object):
         self.sparse = False
         if verbose:
             print("# Number of orbitals: %d" % self.nbasis)
-            print("# Approximate memory required by Cholesky vectors %f GB" % mem)
+            print(f"# Approximate memory required by Cholesky vectors {mem:f} GB")
         self.nchol = self.chol_vecs.shape[-1]
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod
@@ -238,7 +234,7 @@ def read_integrals(integral_file):
     except KeyError:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_dense(integral_file)
     except OSError:
-        print("# Unknown Hamiltonian file {}.".format(integral_file))
+        print(f"# Unknown Hamiltonian file {integral_file}.")
     except:
         print("# Unknown Hamiltonian file format.")
     return h1e, chol_vecs, ecore

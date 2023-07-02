@@ -22,6 +22,81 @@ from ipie.hamiltonians.generic_base import GenericBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 from ipie.propagation.operations import apply_exponential, apply_exponential_batch
+import plum  # dispatch
+
+
+def apply_exponential_batch(phi, VHS, exp_nmax, debug=False):
+    """Apply exponential propagator of the HS transformation
+    Parameters
+    ----------
+    system :
+        system class
+    phi : numpy array
+        a state
+    VHS : numpy array
+        HS transformation potential
+    Returns
+    -------
+    phi : numpy array
+        Exp(VHS) * phi
+    """
+    if debug:
+        copy = numpy.copy(phi)
+        c2 = scipy.linalg.expm(VHS).dot(copy)
+
+    # Temporary array for matrix exponentiation.
+    Temp = xp.zeros(phi.shape, dtype=phi.dtype)
+
+    xp.copyto(Temp, phi)
+    if config.get_option("use_gpu"):
+        for n in range(1, exp_nmax + 1):
+            Temp = xp.einsum("wik,wkj->wij", VHS, Temp, optimize=True) / n
+            phi += Temp
+    else:
+        for iw in range(phi.shape[0]):
+            for n in range(1, exp_nmax + 1):
+                Temp[iw] = VHS[iw].dot(Temp[iw]) / n
+                phi[iw] += Temp[iw]
+
+    synchronize()
+
+    if debug:
+        print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
+    return phi
+
+
+def apply_exponential(phi, VHS, exp_nmax, debug=False):
+    """Apply exponential propagator of the HS transformation
+    Parameters
+    ----------
+    system :
+        system class
+    phi : numpy array
+        a state
+    VHS : numpy array
+        HS transformation potential
+    Returns
+    -------
+    phi : numpy array
+        Exp(VHS) * phi
+    """
+
+    if debug:
+        copy = numpy.copy(phi)
+        c2 = scipy.linalg.expm(VHS).dot(copy)
+
+    # Temporary array for matrix exponentiation.
+    Temp = xp.zeros(phi.shape, dtype=phi.dtype)
+
+    xp.copyto(Temp, phi)
+    for n in range(1, exp_nmax + 1):
+        Temp = VHS.dot(Temp) / n
+        phi += Temp
+
+    synchronize()
+    if debug:
+        print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
+    return phi
 
 import plum # dispatch
 

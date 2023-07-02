@@ -81,7 +81,7 @@ def read_input(input_file, comm, verbose=False):
     """
     if comm.rank == 0:
         if verbose:
-            print("# Initialising pie simulation from %s" % input_file)
+            print(f"# Initialising pie simulation from {input_file}")
         with open(input_file) as inp:
             options = json.load(inp)
         inp.close()

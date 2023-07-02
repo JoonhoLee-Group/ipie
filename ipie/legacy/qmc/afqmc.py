@@ -199,7 +199,7 @@ class AFQMC(object):
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
-            print("# Trial wfn energy is {}".format(self.trial.energy))
+            print(f"# Trial wfn energy is {self.trial.energy}")
         comm.barrier()
         prop_opt = options.get("propagator", {})
         self.propagators = get_propagator_driver(
@@ -348,18 +348,18 @@ class AFQMC(object):
         """
         if self.root:
             if verbose:
-                print("# End Time: {:s}".format(time.asctime()))
-                print("# Running time : {:.6f} seconds".format((time.time() - self._init_time)))
+                print(f"# End Time: {time.asctime():s}")
+                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
                 print("# Timing breakdown (per processor, per block/step):")
-                print("# - Setup: {:.6f} s".format(self.tsetup))
+                print(f"# - Setup: {self.tsetup:.6f} s")
                 nsteps = max(self.qmc.nsteps, 1)
                 nstblz = max(nsteps // self.qmc.nstblz, 1)
                 npcon = max(nsteps // self.qmc.npop_control, 1)
-                print("# - Step: {:.6f} s".format((self.tstep / nsteps)))
-                print("# - Orthogonalisation: {:.6f} s".format(self.tortho / nstblz))
-                print("# - Propagation: {:.6f} s".format(self.tprop / nsteps))
-                print("# - Estimators: {:.6f} s".format(self.testim / nsteps))
-                print("# - Population control: {:.6f} s".format(self.tpopc / npcon))
+                print(f"# - Step: {self.tstep / nsteps:.6f} s")
+                print(f"# - Orthogonalisation: {self.tortho / nstblz:.6f} s")
+                print(f"# - Propagation: {self.tprop / nsteps:.6f} s")
+                print(f"# - Estimators: {self.testim / nsteps:.6f} s")
+                print(f"# - Population control: {self.tpopc / npcon:.6f} s")
 
     def determine_dtype(self, propagator, system):
         """Determine dtype for trial wavefunction and walkers.

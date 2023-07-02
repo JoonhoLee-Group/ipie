@@ -51,7 +51,7 @@ and run the following in the top-level ipie directory
 ::
 
     $ pip install -r requirements.txt
-    $ pip install -e.
+    $ pip install -e .
 
 Requirements
 ------------

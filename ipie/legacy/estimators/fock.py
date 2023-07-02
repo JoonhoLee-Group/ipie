@@ -11,5 +11,5 @@ def fock_matrix(system, G):
     elif system.name == "Hubbard":
         return fock_hubbard(system, G)
     else:
-        print("# Fock matrix not implemented for {}".format(system.name))
+        print(f"# Fock matrix not implemented for {system.name}")
         return None

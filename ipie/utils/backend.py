@@ -16,6 +16,7 @@
 #
 
 import os
+
 from ipie.config import config
 
 _use_gpu = config.get_option("use_gpu")

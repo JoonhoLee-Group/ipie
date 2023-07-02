@@ -1,15 +1,15 @@
-from mpi4py import MPI
-import numpy as np
 from typing import Tuple
 
+import numpy as np
+
+from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealChol
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
-from ipie.hamiltonians.generic import Generic, GenericRealChol, GenericComplexChol
 
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,
-    comm: MPI.COMM_WORLD,
+    comm: "MPI.COMM_WORLD",
     orbsa: np.ndarray,
     orbsb: np.ndarray,
     ndets: int = 1,
@@ -26,8 +26,8 @@ def half_rotate_generic(
     na = orbsa.shape[-1]
     nb = orbsb.shape[-1]
     if trial.verbose:
-        print("# Shape of alpha half-rotated Cholesky: {}".format((ndets, nchol, na * M)))
-        print("# Shape of beta half-rotated Cholesky: {}".format((ndets, nchol, nb * M)))
+        print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
+        print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
 
     chol = hamiltonian.chol.reshape((M, M, nchol))
 

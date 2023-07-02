@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import os
 import argparse
-import sys
-import subprocess
 import glob
+import os
+import subprocess
+import sys
 
 
 def parse_args(args):
@@ -20,7 +20,7 @@ def parse_args(args):
         Command line arguments.
     """
 
-    modes = ["pytest", "pylint", "black", "mpi", "examples", "all"]
+    modes = ["pytest", "pylint", "black", "mpi", "examples", "flynt", "all"]
     parser = argparse.ArgumentParser(description=__doc__)
     for opt in modes:
         parser.add_argument(
@@ -57,8 +57,12 @@ def run_black():
     return _run_subprocess("black --check ipie")
 
 
+def run_flynt():
+    return _run_subprocess("flynt --fail-on-change --dry-run ipie")
+
+
 def run_pylint():
-    return _run_subprocess("pylint -s no --disable=R,C ipie/")
+    return _run_subprocess("pylint --score n --disable=R,C ipie/")
 
 
 def run_mpi():
@@ -117,6 +121,7 @@ def run_examples():
 run_test = {
     "black": run_black,
     "pylint": run_pylint,
+    "flynt": run_flynt,
     "mpi": run_mpi,
     "integration": run_integration,
     "pytest": run_pytest,

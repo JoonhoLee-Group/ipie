@@ -154,7 +154,7 @@ class EstimatorHandler(object):
         self.global_estimates = numpy.zeros(
             (self.size + self.num_walker_props), dtype=numpy.complex128
         )
-        header = "{:>17s}  ".format("Block")
+        header = f"{'Block':>17s}  "
         header += format_fixed_width_strings(self.walker_header)
         header += " "
         for k, e in self.items():
@@ -189,7 +189,7 @@ class EstimatorHandler(object):
 
     def increment_file_number(self):
         self.index = self.index + 1
-        self.filename = self.basename + ".%s.h5" % self.index
+        self.filename = self.basename + f".{self.index}.h5"
 
     def compute_estimators(self, comm, system, hamiltonian, trial, walker_batch):
         """Update estimators with bached psi

@@ -25,7 +25,7 @@ class HartreeFock(object):
         self.wfn_file = trial_opts.get("filename", None)
         if self.wfn_file is not None:
             if verbose:
-                print("# Reading trial wavefunction from %s." % self.wfn_file)
+                print(f"# Reading trial wavefunction from {self.wfn_file}.")
             try:
                 orbs_matrix = read_qmcpack_wfn(self.wfn_file)
                 if verbose:
@@ -107,4 +107,4 @@ class HartreeFock(object):
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print("# Time to evaluate local energy: {} s".format(time.time() - start))
+            print(f"# Time to evaluate local energy: {time.time() - start} s")

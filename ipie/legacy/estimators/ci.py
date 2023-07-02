@@ -39,7 +39,7 @@ def simple_fci_bose_fermi(
     dets = [numpy.sort(d) for d in dets]
     ndets = len(dets)
 
-    print("# ndets, nperms, ntot = {}, {}, {}".format(ndets, nperms, ndets * nperms))
+    print(f"# ndets, nperms, ntot = {ndets}, {nperms}, {ndets * nperms}")
 
     ntot = ndets * nperms
 
@@ -105,10 +105,10 @@ def simple_fci_bose_fermi(
     Htot = He + Hb + Heb
 
     print("# finshed forming Htot")
-    print("# He nnz = {} out of total {}".format(He.nnz, ndets * nperms * ndets * nperms))
-    print("# Hb nnz = {} out of total {}".format(Hb.nnz, ndets * nperms * ndets * nperms))
-    print("# Heb nnz = {} out of total {}".format(Heb.nnz, ndets * nperms * ndets * nperms))
-    print("# Htot nnz = {} out of total {}".format(Htot.nnz, ndets * nperms * ndets * nperms))
+    print(f"# He nnz = {He.nnz} out of total {ndets * nperms * ndets * nperms}")
+    print(f"# Hb nnz = {Hb.nnz} out of total {ndets * nperms * ndets * nperms}")
+    print(f"# Heb nnz = {Heb.nnz} out of total {ndets * nperms * ndets * nperms}")
+    print(f"# Htot nnz = {Htot.nnz} out of total {ndets * nperms * ndets * nperms}")
 
     eigval, eigvec = scipy.sparse.linalg.eigsh(Htot, k=3, which="SA")
 
@@ -126,7 +126,7 @@ def simple_fci_bose_fermi(
                         rhoi[i, i] += 1.0
             rho = scipy.sparse.kron(Ib, rhoi)
             nocc1 = eigvec[:, 0].T.conj().dot(rho.dot(eigvec[:, 0]))
-            print("i, nocc = {}, {}".format(isite, nocc1))
+            print(f"i, nocc = {isite}, {nocc1}")
 
         Xsum = 0.0
         for isite in range(system.nbasis):
@@ -151,10 +151,9 @@ def simple_fci_bose_fermi(
             xi = scipy.sparse.kron(xib, Iel)
 
             X = eigvec[:, 0].T.conj().dot(xi.dot(eigvec[:, 0]))
-            print("i, X = {}, {}".format(isite, X))
             Xsum += X
-        print("Xsum = {}".format(Xsum))
-        print("# Eel, Eb, Eeb, Etot = {}, {}, {}, {}".format(Eel, Eb, Eeb, Eel + Eb + Eeb))
+
+        print(f"# Eel, Eb, Eeb, Etot = {Eel}, {Eb}, {Eeb}, {Eel + Eb + Eeb}")
 
     if gen_dets:
         return (eigval, eigvec), (dets, numpy.array(oa), numpy.array(ob))
