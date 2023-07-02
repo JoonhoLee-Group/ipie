@@ -44,6 +44,7 @@ class SingleDet(TrialWavefunctionBase):
         self.psi0a = self.psi[:, : self.nalpha]
         self.psi0b = self.psi[:, self.nalpha :]
         self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
+        self.compute_trial_energy=True
 
     def build(self) -> None:
         pass

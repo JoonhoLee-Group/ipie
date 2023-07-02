@@ -299,6 +299,7 @@ def reblock_minimal(files, start_block=0, verbose=False):
     Parses from textfile.
     """
     reblocked = []
+    ys = []
     if isinstance(files, str):
         _files = [files]
     else:
@@ -309,9 +310,17 @@ def reblock_minimal(files, start_block=0, verbose=False):
         else:
             data = extract_data_from_textfile(f)[start_block:]
         y = data["ETotal"].values
-        rb = reblock_by_autocorr(y, verbose=verbose)
-        rb["filename"] = f
-        reblocked.append(rb)
+        #print(y)
+        #rb = reblock_by_autocorr(y, verbose=verbose)
+        #rb["filename"] = f
+        #reblocked.append(rb)
+        #ys.append(y)
+        for x in y:
+            ys += [x]
+    ys = numpy.array(ys).ravel()
+    rb = reblock_by_autocorr(ys, verbose=verbose)
+    rb["filename"] = str(files)
+    reblocked.append(rb)
     df = pd.concat(reblocked)
     return df
 
