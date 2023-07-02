@@ -81,9 +81,12 @@ def extract_data_from_textfile(filename):
     header = ""
     with open(filename, "r") as f:
         for line in f:
+            line = line.strip()
+            if len(line) > 0 and line[0] == "=": 
+                break
             if "End Time" in line:
                 break
-            if start_collecting and "End Time" not in line:
+            if start_collecting and "End Time" not in line and len(line)>0:
                 data = [float(s) for s in line.split()]
                 output.append(data)
             if ("Iteration" in line or "Block" in line) and ":" not in line:
@@ -92,6 +95,7 @@ def extract_data_from_textfile(filename):
             elif "Block" in line and ":" not in line:
                 header = line.split()
                 start_collecting = True
+    # print("output = {}".format(output))
     data = numpy.array(output)
     results = pd.DataFrame({k: v for k, v in zip(header, data.T)})
     return results
