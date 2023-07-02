@@ -149,7 +149,8 @@ if __name__ == "__main__":
         coeffs0 = coeffs0[:options.ndets]
         occa0 = occa0[:options.ndets]
         occb0 = occb0[:options.ndets]
-    coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
+    #coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
+    coeffs, occa, occb = coeffs0, occa0, occb0
     write_wavefunction(
         (coeffs, occa, occb),
         filename=options.filename,
