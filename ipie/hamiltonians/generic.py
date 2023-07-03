@@ -25,6 +25,7 @@ from ipie.utils.io import (
     from_qmcpack_sparse,
     read_hamiltonian,
 )
+from ipie.utils.mpi import get_shared_array
 
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
@@ -47,7 +48,7 @@ class GenericRealChol(GenericBase):
     Can be created by passing the one and two electron integrals directly.
     """
 
-    def __init__(self, h1e, chol, ecore=0.0, verbose=False):
+    def __init__(self, h1e, chol, ecore=0.0, mpi_handler=None, verbose=False):
         assert (
             h1e.shape[0] == 2
         )  # assuming each spin component is given. this should be fixed for GHF...?
@@ -63,7 +64,10 @@ class GenericRealChol(GenericBase):
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
         self.sym_idx = numpy.triu_indices(self.nbasis)
         cp_shape = (self.nbasis * (self.nbasis + 1) // 2, self.chol.shape[-1])
-        self.chol_packed = numpy.zeros(cp_shape, dtype=self.chol.dtype)
+        if mpi_handler is not None and mpi_handler.shared:
+            self.chol_packed = get_shared_array(mpi_handler.shared_comm, cp_shape, dtype=self.chol.dtype, verbose=verbose)
+        else:
+            self.chol_packed = numpy.zeros(cp_shape, dtype=self.chol.dtype)
         pack_cholesky(self.sym_idx[0], self.sym_idx[1], self.chol_packed, self.chol)
         self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))
 
@@ -96,7 +100,7 @@ class GenericComplexChol(GenericBase):
     Can be created by passing the one and two electron integrals directly.
     """
 
-    def __init__(self, h1e, chol, ecore=0.0, verbose=False):
+    def __init__(self, h1e, chol, ecore=0.0, mpi_handler=None, verbose=False):
         assert h1e.shape[0] == 2
         super().__init__(h1e, ecore, verbose)
 
@@ -114,8 +118,12 @@ class GenericComplexChol(GenericBase):
 
         # We need to store A and B integrals
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
-        self.A = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
-        self.B = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
+        if mpi_handler is not None and mpi_handler.shared:
+            self.A = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtyle=self.chol.dtype, verbose=verbose)
+            self.B = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtyle=self.chol.dtype, verbose=verbose)
+        else:
+            self.A = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
+            self.B = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
 
         for x in range(self.nchol):
             self.A[:, :, x] = self.chol[:, :, x] + self.chol[:, :, x].T.conj()
@@ -143,11 +151,11 @@ class GenericComplexChol(GenericBase):
         return numpy.dot(chol_ik, chol_lj.conj())
 
 
-def Generic(h1e, chol, ecore=0.0, verbose=False):
+def Generic(h1e, chol, ecore=0.0, mpi_handler=None, verbose=False):
     if chol.dtype == numpy.dtype("complex128"):
-        return GenericComplexChol(h1e, chol, ecore, verbose)
+        return GenericComplexChol(h1e, chol, ecore, mpi_handler, verbose)
     elif chol.dtype == numpy.dtype("float64"):
-        return GenericRealChol(h1e, chol, ecore, verbose)
+        return GenericRealChol(h1e, chol, ecore, mpi_handler, verbose)
 
 
 def read_integrals(integral_file):

@@ -35,6 +35,7 @@ class MPIHandler(object):
     def __init__(self, comm, nmembers: int = 1, verbose: bool = False):
         self.comm = comm  # global communicator
         self.shared_comm = get_shared_comm(comm)  # global communicator
+        self.shared = True # shared memory is on by default
         self.size = comm.Get_size()
         self.rank = comm.Get_rank()
 
