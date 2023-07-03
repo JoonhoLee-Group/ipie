@@ -3,7 +3,7 @@ import numpy
 import scipy.linalg
 from abc import abstractmethod
 from ipie.propagation.continuous_base import ContinuousBase
-from ipie.propagation.operations import kinetic_spin_real_batch
+from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
@@ -125,9 +125,9 @@ class PhaselessBase(ContinuousBase):
 
     def propagate_walkers_one_body(self, walkers):
         start_time = time.time()
-        walkers.phia = kinetic_spin_real_batch(walkers.phia, self.expH1[0])
+        walkers.phia = propagate_one_body(walkers.phia, self.expH1[0])
         if walkers.ndown > 0 and not walkers.rhf:
-            walkers.phib = kinetic_spin_real_batch(walkers.phib, self.expH1[1])
+            walkers.phib = propagate_one_body(walkers.phib, self.expH1[1])
         synchronize()
         self.timer.tgemm += time.time() - start_time
 

@@ -5,7 +5,7 @@ import math
 import numpy
 import scipy.linalg
 
-from ipie.legacy.propagation.operations import local_energy_bound
+from ipie.legacy.propagation.operations import kinetic_real, local_energy_bound
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import (
     HarmonicOscillator,
     HarmonicOscillatorMomentum,
@@ -13,7 +13,6 @@ from ipie.legacy.trial_wavefunction.harmonic_oscillator import (
 from ipie.legacy.utils.fft import fft_wavefunction, ifft_wavefunction
 from ipie.legacy.walkers.multi_ghf import MultiGHFWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import reortho
 
 

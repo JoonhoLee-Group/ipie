@@ -495,6 +495,7 @@ def build_test_case_handlers(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     choltol: float = 1e-3,
+    reortho: bool = True,
     options: Union[dict, None] = None,
 ):
     if seed is not None:
@@ -540,7 +541,8 @@ def build_test_case_handlers(
             prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
             prop.propagate_walkers(walkers, ham, trial, trial.energy)
-        walkers.reortho()
+        if reortho:
+            walkers.reortho()
         trial.calc_greens_function(walkers)
 
     return TestData(trial, walkers, ham, prop)

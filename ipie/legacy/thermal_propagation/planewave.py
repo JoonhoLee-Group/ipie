@@ -8,8 +8,8 @@ import scipy.sparse.linalg
 from scipy.linalg import sqrtm
 
 from ipie.legacy.estimators.thermal import inverse_greens_function_qr, one_rdm_from_G
+from ipie.legacy.propagation.operations import kinetic_real
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import exponentiate_matrix
 
 
@@ -625,11 +625,11 @@ def unit_test():
 
     from ipie.estimators.pw_fft import local_energy_pw_fft
     from ipie.legacy.estimators.ueg import local_energy_ueg
+    from ipie.legacy.qmc.options import QMCOpts
     from ipie.legacy.systems.ueg import UEG
     from ipie.legacy.trial_density_matrices.onebody import OneBody
     from ipie.legacy.walkers.thermal import ThermalWalker
     from ipie.qmc.comm import FakeComm
-    from ipie.legacy.qmc.options import QMCOpts
     from ipie.systems.pw_fft import PW_FFT
 
     beta = 16.0
