@@ -50,7 +50,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyblock
-        pip install pyscf==2.1.1
+        pip install pyscf
         pip install pytest-cov
     - name: Install package
       run: |
