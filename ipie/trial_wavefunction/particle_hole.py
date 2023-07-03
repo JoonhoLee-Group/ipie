@@ -94,7 +94,10 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.occa = np.array(occa, dtype=np.int32)
         self.occb = np.array(occb, dtype=np.int32)
         self.coeffs = np.array(wfn[0][:num_dets], dtype=np.complex128)
-        max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
+        if nbeta > 0:
+            max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
+        else:
+            max_orbital = np.max(wfn[1]) + 1
         if use_active_space:
             self.nact = max_orbital
             self.nelec_cas = nocca_in_wfn + noccb_in_wfn
@@ -172,13 +175,16 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         # TODO: Use safer value than zero that fails in debug mode.
         # d0a = [0,1,3,5]
         # occ_map_a = [0,1,0,2,0,3]
+        nalpha, nbeta = self.nelec
         self.occ_map_a = np.zeros(max(d0a) + 1, dtype=np.int32)
-        self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
         self.occ_map_a[d0a] = list(range(self.nocc_alpha))
-        self.occ_map_b[d0b] = list(range(self.nocc_beta))
+        if nbeta > 0 :
+            self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
+            self.occ_map_b[d0b] = list(range(self.nocc_beta))
+        else:
+            self.occ_map_b = []
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
         nexcit_a = nalpha
         nexcit_b = nbeta
         # This is an overestimate because we don't know number of active
