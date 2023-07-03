@@ -17,36 +17,12 @@
 #
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.misc import is_cupy
-
+from ipie.utils.backend import synchronize
+from ipie.config import config
 
 # TODO: Rename this
-def kinetic_real(phi, system, bt2, H1diag=False):
-    r"""Propagate by the kinetic term by direct matrix multiplication.
 
-    For use with the continuus algorithm and free propagation.
-
-    todo : this is the same a propagating by an arbitrary matrix, remove.
-
-    Parameters
-    ----------
-    walker : :class:`pie.walker.Walker`
-        Walker object to be updated. on output we have acted on
-        :math:`|\phi_i\rangle` by :math:`B_{T/2}` and updated the weight
-        appropriately.  updates inplace.
-    state : :class:`pie.state.State`
-        Simulation state.
-    """
-    nup = system.nup
-    # Assuming that our walker is in UHF form.
-    if H1diag:
-        phi[:, :nup] = xp.einsum("ii,ij->ij", bt2[0], phi[:, :nup])
-        phi[:, nup:] = xp.einsum("ii,ij->ij", bt2[1], phi[:, nup:])
-    else:
-        phi[:, :nup] = bt2[0].dot(phi[:, :nup])
-        phi[:, nup:] = bt2[1].dot(phi[:, nup:])
-
-
-def kinetic_spin_real_batch(phi, bt2, H1diag=False):
+def propagate_one_body(phi, bt2, H1diag=False):
     r"""Propagate by the kinetic term by direct matrix multiplication. Only one spin component. Assuming phi is a batch.
 
     For use with the continuus algorithm and free propagation.
@@ -72,5 +48,64 @@ def kinetic_spin_real_batch(phi, bt2, H1diag=False):
             # Loop is O(10x) times faster on CPU for FeP benchmark
             for iw in range(phi.shape[0]):
                 phi[iw] = xp.dot(bt2, phi[iw])
+
+    return phi
+
+def apply_exponential(phi, VHS, exp_nmax):
+    """Apply exponential propagator of the HS transformation
+    Parameters
+    ----------
+    system :
+        system class
+    phi : numpy array
+        a state
+    VHS : numpy array
+        HS transformation potential
+    Returns
+    -------
+    phi : numpy array
+        Exp(VHS) * phi
+    """
+    # Temporary array for matrix exponentiation.
+    Temp = xp.zeros(phi.shape, dtype=phi.dtype)
+
+    xp.copyto(Temp, phi)
+    for n in range(1, exp_nmax + 1):
+        Temp = VHS.dot(Temp) / n
+        phi += Temp
+
+    synchronize()
+    return phi
+
+def apply_exponential_batch(phi, VHS, exp_nmax):
+    """Apply exponential propagator of the HS transformation
+    Parameters
+    ----------
+    system :
+        system class
+    phi : numpy array
+        a state
+    VHS : numpy array
+        HS transformation potential
+    Returns
+    -------
+    phi : numpy array
+        Exp(VHS) * phi
+    """
+    # Temporary array for matrix exponentiation.
+    Temp = xp.zeros(phi.shape, dtype=phi.dtype)
+
+    xp.copyto(Temp, phi)
+    if config.get_option("use_gpu"):
+        for n in range(1, exp_nmax + 1):
+            Temp = xp.einsum("wik,wkj->wij", VHS, Temp, optimize=True) / n
+            phi += Temp
+    else:
+        for iw in range(phi.shape[0]):
+            for n in range(1, exp_nmax + 1):
+                Temp[iw] = VHS[iw].dot(Temp[iw]) / n
+                phi[iw] += Temp[iw]
+
+    synchronize()
 
     return phi
