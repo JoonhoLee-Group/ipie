@@ -128,7 +128,6 @@ def simple_fci_bose_fermi(
             nocc1 = eigvec[:, 0].T.conj().dot(rho.dot(eigvec[:, 0]))
             print(f"i, nocc = {isite}, {nocc1}")
 
-        Xsum = 0.0
         for isite in range(system.nbasis):
             bi = scipy.sparse.csr_matrix((nperms, nperms))
             for i, iperm in enumerate(perms):

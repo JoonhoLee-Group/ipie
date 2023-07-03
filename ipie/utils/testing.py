@@ -108,27 +108,6 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
         return (coeffs, wfn)
 
 
-# def get_random_nomsd_ghf(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
-#     a = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
-#     b = numpy.random.rand(ndet * nbasis * 2 * (nup + ndown))
-#     if cplx:
-#         wfn = (a + 1j * b).reshape((ndet, nbasis * 2, nup + ndown))
-#         coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
-#     else:
-#         wfn = a.reshape((ndet, nbasis * 2, nup + ndown))
-#         coeffs = numpy.random.rand(ndet)
-#     if init:
-#         a = numpy.random.rand(nbasis * 2 * (nup + ndown))
-#         b = numpy.random.rand(nbasis * 2 * (nup + ndown))
-#         if cplx:
-#             init_wfn = (a + 1j * b).reshape((nbasis * 2, nup + ndown))
-#         else:
-#             init_wfn = a.reshape((nbasis * 2, nup + ndown))
-#         return (coeffs, wfn, init_wfn)
-#     else:
-#         return (coeffs, wfn)
-
-
 def truncated_combinations(iterable, r, count):
     # Modified from:
     # https://docs.python.org/3/library/itertools.html#itertools.combinations
