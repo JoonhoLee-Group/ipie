@@ -30,15 +30,15 @@ class SingleDet(TrialWavefunctionBase):
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         if verbose:
-            print("# Parsing input options for trial_wavefunction.MultiSlater.")
+            print("# Parsing input options for trial_wavefunction.SingleDet.")
         self.psi = wavefunction
         self.num_elec = num_elec
         self._num_dets = 1
         self._max_num_dets = 1
-        imag_norm = np.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
-        if imag_norm <= 1e-8:
+        # imag_norm = np.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
+        # if imag_norm <= 1e-8:
             # print("# making trial wavefunction MO coefficient real")
-            self.psi = np.array(self.psi.real, dtype=np.float64)
+            # self.psi = np.array(self.psi.real, dtype=np.float64)
 
         self.psi0a = self.psi[:, : self.nalpha]
         self.psi0b = self.psi[:, self.nalpha :]
@@ -64,13 +64,12 @@ class SingleDet(TrialWavefunctionBase):
             + np.sum(self.Ghalf[1] * self._rH1b)
             + hamiltonian.ecore
         )
-        self.ej, self.ek = half_rotated_cholesky_jk(
-            system, self.Ghalf[0], self.Ghalf[1], trial=self
-        )
+        self.ej, self.ek = half_rotated_cholesky_jk(self.Ghalf[0], self.Ghalf[1], trial=self)
         self.e2b = self.ej + self.ek
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
+            print("# (Ej, Ek) = {}, {}".format(self.ej, self.ek))
             print(
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
@@ -79,9 +78,9 @@ class SingleDet(TrialWavefunctionBase):
 
     @plum.dispatch
     def half_rotate(
-        self: "SingleDet",
+        self,
         hamiltonian: GenericRealChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        mpi_handler: MPIHandler# = None,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -89,7 +88,7 @@ class SingleDet(TrialWavefunctionBase):
         rot_1body, rot_chol = half_rotate_generic(
             self,
             hamiltonian,
-            comm,
+            mpi_handler.shared_comm,
             orbsa,
             orbsb,
             ndets=num_dets,
@@ -101,39 +100,40 @@ class SingleDet(TrialWavefunctionBase):
         self._rH1b = rot_1body[1][0]
         self._rchola = rot_chol[0][0]
         self._rcholb = rot_chol[1][0]
+
         self.half_rotated = True
 
     @plum.dispatch
     def half_rotate(
-        self: "SingleDet",
+        self,
         hamiltonian: GenericComplexChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        mpi_handler: MPIHandler# = None,
     ):
-        num_dets = 1
-        orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
-        orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
-        rot_1body, rot_chol = half_rotate_generic(
-            self,
-            hamiltonian,
-            comm,
-            orbsa,
-            orbsb,
-            ndets=num_dets,
-            verbose=self.verbose,
-        )
-        # Single determinant functions do not expect determinant index, so just
-        # grab zeroth element.
-        self._rH1a = rot_1body[0][0]
-        self._rH1b = rot_1body[1][0]
-        self._rchola = rot_chol[0][0][0]
-        self._rcholb = rot_chol[1][0][0]
-        self._rcholbara = rot_chol[0][1][0]
-        self._rcholbarb = rot_chol[1][1][0]
-        self._rAa = rot_chol[0][2][0]
-        self._rAb = rot_chol[1][2][0]
-        self._rBa = rot_chol[0][3][0]
-        self._rBb = rot_chol[1][3][0]
-        self.half_rotated = True
+       num_dets = 1
+       orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
+       orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+       rot_1body, rot_chol = half_rotate_generic(
+           self,
+           hamiltonian,
+           mpi_handler.shared_comm,
+           orbsa,
+           orbsb,
+           ndets=num_dets,
+           verbose=self.verbose,
+       )
+       # Single determinant functions do not expect determinant index, so just
+       # grab zeroth element.
+       self._rH1a = rot_1body[0][0]
+       self._rH1b = rot_1body[1][0]
+       self._rchola = rot_chol[0][0][0]
+       self._rcholb = rot_chol[1][0][0]
+       self._rcholbara = rot_chol[0][1][0]
+       self._rcholbarb = rot_chol[1][1][0]
+       self._rAa = rot_chol[0][2][0]
+       self._rAb = rot_chol[1][2][0]
+       self._rBa = rot_chol[0][3][0]
+       self._rBb = rot_chol[1][3][0]
+       self.half_rotated = True
 
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_single_det_batch(walkers, self)
@@ -149,7 +149,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericRealChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler# = None,
     ) -> np.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
@@ -160,10 +160,10 @@ class SingleDet(TrialWavefunctionBase):
 
     @plum.dispatch
     def calc_force_bias(
-        self,
-        hamiltonian: GenericComplexChol,
-        walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+       self,
+       hamiltonian: GenericComplexChol,
+       walkers: UHFWalkers,
+       mpi_handler: MPIHandler# = None,
     ) -> np.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)

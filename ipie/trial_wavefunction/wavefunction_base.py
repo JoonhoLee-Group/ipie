@@ -4,6 +4,7 @@ from typing import Tuple, Union
 import numpy as np
 
 from ipie.utils.backend import cast_to_device
+from ipie.utils.mpi import MPIHandler
 
 _wfn_type = Union[
     np.ndarray, Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]
@@ -69,7 +70,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian) -> None:
+    def half_rotate(self, hamiltonian, mpi_handler=None) -> None:
         ...
 
     @abstractmethod

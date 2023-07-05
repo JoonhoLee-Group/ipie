@@ -133,12 +133,12 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
     zeros = numpy.zeros
     dot = numpy.dot
     nwalkers = Ghalfa_batch.shape[0]
-    Ghalfa_batch_real = Ghalfa_batch.real.copy()
-    Ghalfa_batch_imag = Ghalfa_batch.imag.copy()
-    Ghalfb_batch_real = Ghalfb_batch.real.copy()
-    Ghalfb_batch_imag = Ghalfb_batch.imag.copy()
-    X = rchola.dot(Ghalfa_batch_real.T) + 1.0j * rchola.dot(Ghalfa_batch_imag.T)  # naux x nwalkers
-    X += rcholb.dot(Ghalfb_batch_real.T) + 1.0j * rcholb.dot(Ghalfb_batch_imag.T)  # naux x nwalkers
+    Ghalfa_batch_real_T = Ghalfa_batch.real.T.copy()
+    Ghalfa_batch_imag_T = Ghalfa_batch.imag.T.copy()
+    Ghalfb_batch_real_T = Ghalfb_batch.real.T.copy()
+    Ghalfb_batch_imag_T = Ghalfb_batch.imag.T.copy()
+    X = rchola.dot(Ghalfa_batch_real_T) + 1.0j * rchola.dot(Ghalfa_batch_imag_T)  # naux x nwalkers
+    X += rcholb.dot(Ghalfb_batch_real_T) + 1.0j * rcholb.dot(Ghalfb_batch_imag_T)  # naux x nwalkers
     ecoul = zeros(nwalkers, dtype=numpy.complex128)
     X = X.T.copy()
     for iw in range(nwalkers):

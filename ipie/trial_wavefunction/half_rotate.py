@@ -29,7 +29,6 @@ def half_rotate_generic(
     if trial.verbose:
         print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
-
     chol = hamiltonian.chol.reshape((M, M, nchol))
 
     shape_a = (ndets, nchol, (M * na))
@@ -39,7 +38,8 @@ def half_rotate_generic(
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
     if isinstance(hamiltonian, GenericComplexChol):
-        cholbar = chol.transpose(1, 0, 2).conj().copy()
+        cholbar = get_shared_array(comm, (M, M, nchol), integral_type)
+        cholbar[:,:,:] = chol.transpose(1, 0, 2).conj()
         A = hamiltonian.A.reshape((M, M, nchol))
         B = hamiltonian.B.reshape((M, M, nchol))
         rchola = [get_shared_array(comm, shape_a, integral_type) for i in range(4)]
@@ -79,6 +79,7 @@ def half_rotate_generic(
         end_n = hamiltonian.nchol
 
     nchol_loc = end_n - start_n
+    # print(comm.rank, start_n, end_n, nchol_loc)
     if compute:
         if isinstance(hamiltonian, GenericComplexChol):
             L = [chol, cholbar, A, B]
@@ -86,6 +87,7 @@ def half_rotate_generic(
             L = [chol]
 
         for i in range(len(L)):
+            comm.barrier()
             # Investigate whether these einsums are fast in the future
             rup = np.einsum(
                 "Jmi,mnx->Jxin",
@@ -93,6 +95,7 @@ def half_rotate_generic(
                 L[i][:, :, start_n:end_n],
                 optimize=True,
             )
+            comm.barrier()
             rup = rup.reshape((ndets, nchol_loc, na * M))
             rdn = np.einsum(
                 "Jmi,mnx->Jxin",
@@ -108,8 +111,7 @@ def half_rotate_generic(
         comm.barrier()
 
     if isinstance(hamiltonian, GenericRealChol):
-        rchola = rchola[0]
-        rcholb = rcholb[0]
-
-    # storing intermediates for correlation energy
-    return (rH1a, rH1b), (rchola, rcholb)
+        return (rH1a, rH1b), (rchola[0], rcholb[0])
+    else:
+        # storing intermediates for correlation energy
+        return (rH1a, rH1b), (rchola, rcholb)

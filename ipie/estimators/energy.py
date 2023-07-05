@@ -14,7 +14,6 @@
 #
 # Author: Fionn Malone <fmalone@google.com>
 #
-
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.local_energy_batch import (
     local_energy_batch,

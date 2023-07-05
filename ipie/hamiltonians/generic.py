@@ -119,8 +119,8 @@ class GenericComplexChol(GenericBase):
         # We need to store A and B integrals
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
         if mpi_handler is not None and mpi_handler.shared:
-            self.A = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtyle=self.chol.dtype, verbose=verbose)
-            self.B = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtyle=self.chol.dtype, verbose=verbose)
+            self.A = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtype=self.chol.dtype, verbose=verbose)
+            self.B = get_shared_array(mpi_handler.shared_comm, self.chol.shape, dtype=self.chol.dtype, verbose=verbose)
         else:
             self.A = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
             self.B = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)

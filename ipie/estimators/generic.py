@@ -257,7 +257,17 @@ def exx_kernel_rchol_real(rchol, Ghalf):
 
 
 @jit(nopython=True, fastmath=True)
-def exx_kernel_rchol_complex(rchol, Ghalf):
+def ecoul_kernel_complex_rchol(rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb):
+    X1 = rchola.dot(Ghalfa.ravel())
+    X1 += rcholb.dot(Ghalfb.ravel())
+    X2 = rcholbara.dot(Ghalfa.ravel())
+    X2 += rcholbarb.dot(Ghalfb.ravel())
+    ecoul = xp.dot(X1, X2)
+    ecoul *= 0.5
+    return ecoul
+
+@jit(nopython=True, fastmath=True)
+def exx_kernel_complex_rchol(rchol, rcholbar, Ghalf):
     """Compute exchange contribution for complex rchol.
 
     Parameters
@@ -270,23 +280,29 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
     Returns
     -------
     exx : :class:`numpy.ndarray`
-        exchange contribution for given green's function.
+        exchange contribution for all walkers.
     """
     naux = rchol.shape[0]
     nocc = Ghalf.shape[0]
-    nbasis = Ghalf.shape[1]
+    nbsf = Ghalf.shape[1]
 
     exx = 0 + 0j
     GhalfT = Ghalf.T.copy()
+    T1 = xp.zeros((nocc, nocc), dtype=numpy.complex128)
+    T2 = xp.zeros((nocc, nocc), dtype=numpy.complex128)
+    exx = 0.0 + 0.0j
     # Fix this with gpu env
     for jx in range(naux):
-        rmi = rchol[jx].reshape((nocc, nbasis))
-        T = rmi.dot(GhalfT)
-        exx += numpy.dot(T.ravel(), T.T.ravel())
+        rcholx = rchol[jx].reshape(nocc, nbsf)
+        rcholbarx = rcholbar[jx].reshape(nocc, nbsf)
+        T1 = rcholx.dot(Ghalf.T)
+        T2 = rcholbarx.dot(Ghalf.T)
+        exx += xp.dot(T1.ravel(), T2.T.ravel())
+    exx *= 0.5
     return exx
 
 
-def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
+def half_rotated_cholesky_jk(Ghalfa, Ghalfb, trial):
     """Compute exchange and coulomb contributions via jitted kernels.
 
     Parameters
@@ -315,18 +331,24 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
+        ecoul = xp.dot(Xa, Xa)
+        ecoul += xp.dot(Xb, Xb)
+        ecoul += 2 * xp.dot(Xa, Xb)
     else:
-        Xa = rchola.dot(Ghalfa.ravel())
-        Xb = rcholb.dot(Ghalfb.ravel())
+        rcholbara = trial._rcholbara
+        rcholbarb = trial._rcholbarb
+        ecoul = 2.0 * ecoul_kernel_complex_rchol(
+            rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb
+        )
 
-    ecoul = xp.dot(Xa, Xa)
-    ecoul += xp.dot(Xb, Xb)
-    ecoul += 2 * xp.dot(Xa, Xb)
-    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
+        rcholbara = trial._rcholbara
+        rcholbarb = trial._rcholbarb
+        exx = exx_kernel_complex_rchol(rchola, rcholbara, Ghalfa)
+        exx += exx_kernel_complex_rchol(rcholb, rcholbarb, Ghalfb)
+        exx *= 2.0
 
     synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy
