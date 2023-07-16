@@ -27,7 +27,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/
@@ -109,3 +109,6 @@ ipie/qmc/tests/reference_data/**/*.h5
 *wheels*
 *FCIDUMP*
 *out*
+
+bazel-*
+*.dylib
