@@ -17,6 +17,7 @@ struct BitString {
     BitString &operator^=(const BitString &other);
     BitString &operator|=(const BitString &other);
     BitString &operator&=(const BitString &other);
+    BitString operator-(const BitString &other);
 
     bool operator==(const BitString &other) const;
     bool operator!=(const BitString &other) const;
@@ -25,6 +26,9 @@ struct BitString {
     void encode_bits(std::vector<int> &set_bits);
     void decode_bits(std::vector<int> &set_bits);
     void clear_bits();
+    bool is_set(const size_t bit_indx);
+    void set_bit(const size_t bit_indx);
+    void set_bits(const std::vector<size_t> &bit_indx);
     size_t count_set_bits();
     size_t count_difference(const BitString &other);
 };

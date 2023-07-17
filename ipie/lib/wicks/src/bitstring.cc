@@ -17,6 +17,14 @@ BitString& BitString::operator^=(const BitString& other) {
     return *this;
 }
 
+BitString BitString::operator-(const BitString& other) {
+    BitString result(other.num_bits);
+    for (int w = 0; w < num_words; w++) {
+        result[w] = bitstring[w] - other.bitstring[w];
+    }
+    return result;
+}
+
 BitString& BitString::operator&=(const BitString& other) {
     for (int w = 0; w < num_words; w++) {
         bitstring[w] &= other.bitstring[w];
@@ -88,6 +96,26 @@ size_t BitString::count_difference(const BitString& other) {
     return num_set / 2;
 }
 
+bool BitString::is_set(const size_t indx) {
+    size_t word = indx / 64;
+    int offset = indx - word * 64;
+    uint64_t one = 1;
+    return bitstring[word] & (one << offset);
+}
+
+void BitString::set_bit(const size_t indx) {
+    size_t word = indx / 64;
+    int offset = indx - word * 64;
+    uint64_t one = 1;
+    bitstring[word] |= (one << offset);
+}
+void BitString::set_bits(const std::vector<size_t>& bit_indxs) {
+    for (auto i : bit_indxs) {
+        set_bit(i);
+    }
+}
+
+// all ones before bit_indx
 void build_set_mask(size_t bit_indx, BitString& mask) {
     uint64_t all_set = 0xFFFFFFFFFFFFFFFF;
     uint64_t one = 1;

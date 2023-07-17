@@ -87,15 +87,12 @@ TEST(bitstring, equal) {
 
 TEST(bitstring, build_set_mask) {
     auto mask = ipie::BitString(100);
-    uint64_t set_bit = 1;
     build_set_mask(67, mask);
     for (int i = 0; i < 67; i++) {
-        bool set = mask[i / 64] & (set_bit << i);
-        ASSERT_EQ(set, true);
+        ASSERT_EQ(mask.is_set(i), true);
     }
     for (int i = 67; i < 128; i++) {
-        bool set = mask[i / 64] & (set_bit << i);
-        ASSERT_EQ(set, false);
+        ASSERT_EQ(mask.is_set(i), false);
     }
 }
 
@@ -103,11 +100,8 @@ TEST(bitstring, encode_bits) {
     auto a = ipie::BitString(100);
     std::vector<int> bit_indxs = {1, 37, 66, 73};
     a.encode_bits(bit_indxs);
-    uint64_t one = 1;
     for (auto i : bit_indxs) {
-        int word = i / 64;
-        bool set = a[word] & (one << i);
-        ASSERT_EQ(set, true);
+        ASSERT_EQ(a.is_set(i), true);
     }
 }
 TEST(bitstring, decode_bits) {
@@ -150,4 +144,12 @@ TEST(bitstring, count_difference) {
     other_indxs = {2, 38, 69, 74};
     b.encode_bits(other_indxs);
     ASSERT_EQ(a.count_difference(b), 4);
+}
+
+TEST(bitstring, clear_bits) {
+    auto a = ipie::BitString(100);
+    a[0] = 0xFFFFFFFFFFFFFFFF;
+    a[1] = 0xFFFFFFFFFFFFFFFF;
+    a.clear_bits();
+    ASSERT_EQ(a.count_set_bits(), 0);
 }

@@ -8,9 +8,8 @@ SOURCE_FILES = glob(
         "src/*.h",
     ],
     exclude = glob([
-        "src/ci*.cc",
-        "src/ci*.cc",
-        "src/*.test.cc"
+        "src/*.test.cc",
+        "src/*.pybind*"
     ]),
 )
 
