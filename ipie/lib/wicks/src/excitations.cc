@@ -1,28 +1,54 @@
+#include "excitations.h"
+
 #include <vector>
 
 #include "bitstring.h"
 
 namespace ipie {
-void decode_single_excitation(BitString &bra, BitString &ket, std::vector<int> &ia) {
+
+Excitation::Excitation(size_t max_ex) : max_excit(max_ex), from(max_ex), to(max_ex) {
+}
+
+void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
     std::vector<int> diff_bits(2);
     BitString delta(bra);
     delta ^= ket;
     delta.decode_bits(diff_bits);
     if (ket.is_set(diff_bits[0])) {
-        ia[0] = diff_bits[0];
-        ia[1] = diff_bits[1];
+        ia.from[0] = diff_bits[0];
+        ia.to[0] = diff_bits[1];
     } else {
-        ia[0] = diff_bits[1];
-        ia[1] = diff_bits[0];
+        ia.from[0] = diff_bits[1];
+        ia.to[0] = diff_bits[0];
     }
 }
-int single_excitation_permutation(BitString &ket, std::vector<int> &ia) {
+void decode_excitation_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) {
+    BitString delta(bra);
+    delta ^= ket;
+    std::vector<int> diff_bits(4);
+    delta.decode_bits(diff_bits);
+    size_t excit = 0;
+    for (size_t i = 0; i < 4; i++) {
+        // |bra> = a^ b^ i j | ket>
+        // from should stor ij
+        // to should store ab
+        if (ket.is_set(diff_bits[i])) {
+            ijab.from[excit] = diff_bits[i];
+            excit++;
+        } else {
+            ijab.to[excit] = diff_bits[i];
+            excit++;
+        }
+    }
+}
+
+int single_excitation_permutation(BitString &ket, Excitation &ia) {
     BitString and_mask(ket.num_bits), mask_i(ket.num_bits), mask_a(ket.num_bits);
     BitString occ_to_count(ket);
     // check bit a is occupied or bit i is unoccupied.
     // else just count set bits between i and a.
-    int i = ia[0];
-    int a = ia[1];
+    int i = ia.from[0];
+    int a = ia.to[0];
     if (a == i) {
         return 1;
     } else {
