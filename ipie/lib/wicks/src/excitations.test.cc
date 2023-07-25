@@ -1,9 +1,7 @@
+
 #include "excitations.h"
 
 #include "gtest/gtest.h"
-
-#include "bitstring.h"
-#include "excitations.h"
 
 TEST(excitations, decode_single_excitation) {
     auto bra = ipie::BitString(100);
@@ -86,10 +84,13 @@ TEST(excitations, decode_double_excitation) {
     bra.set_bit(73);
     bra.set_bit(94);
     ket.set_bit(0);
-    bra.set_bit(33);
-    bra.set_bit(74);
+    ket.set_bit(33);
+    ket.set_bit(74);
     ket.set_bit(99);
-    // decode_single_excitation(bra, ket);
-    // ASSERT_EQ(ia[0], 99);
-    // ASSERT_EQ(ia[1], 73);
+    ipie::Excitation ijab(2);
+    decode_double_excitation(bra, ket, ijab);
+    ASSERT_EQ(ijab.from[0], 74);
+    ASSERT_EQ(ijab.from[1], 99);
+    ASSERT_EQ(ijab.to[0], 73);
+    ASSERT_EQ(ijab.to[1], 94);
 }

@@ -2,8 +2,6 @@
 
 #include <vector>
 
-#include "bitstring.h"
-
 namespace ipie {
 
 Excitation::Excitation(size_t max_ex) : max_excit(max_ex), from(max_ex), to(max_ex) {
@@ -22,22 +20,22 @@ void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
         ia.to[0] = diff_bits[0];
     }
 }
-void decode_excitation_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) {
+void decode_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) {
     BitString delta(bra);
     delta ^= ket;
     std::vector<int> diff_bits(4);
     delta.decode_bits(diff_bits);
-    size_t excit = 0;
+    size_t ifrom = 0, ito = 0;
     for (size_t i = 0; i < 4; i++) {
         // |bra> = a^ b^ i j | ket>
         // from should stor ij
         // to should store ab
         if (ket.is_set(diff_bits[i])) {
-            ijab.from[excit] = diff_bits[i];
-            excit++;
+            ijab.from[ifrom] = diff_bits[i];
+            ifrom++;
         } else {
-            ijab.to[excit] = diff_bits[i];
-            excit++;
+            ijab.to[ito] = diff_bits[i];
+            ito++;
         }
     }
 }
