@@ -19,16 +19,17 @@
 """Generate AFQMC data from PYSCF (molecular) simulation."""
 import time
 from dataclasses import dataclass
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import h5py
 import numpy
 import scipy.linalg
 
 # pylint: disable=import-error
-from pyscf import lib, scf
+from pyscf import gto, lib, scf
 
 from ipie.estimators.generic import core_contribution_cholesky
+from ipie.hamiltonians.generic import GenericRealChol
 from ipie.legacy.estimators.generic import local_energy_generic_cholesky
 from ipie.legacy.estimators.greens_function import gab
 from ipie.utils.io import write_hamiltonian, write_wavefunction
@@ -109,6 +110,42 @@ class Wavefunction:
     wfn: Union[Tuple, numpy.ndarray]
 
 
+def generate_hamiltonian_from_chk(
+    pyscf_chk: str,
+    use_mcscf: bool = False,
+    chol_cut: float = 1e-5,
+    num_frozen_core: int = 0,
+    verbose: bool = False,
+) -> GenericRealChol:
+    """Generate ipie Hamiltonian from pyscf chkfile.
+
+    Wrapper around generate_hamiltonian.
+
+    Parameters
+    ----------
+        pyscf_chk : pyscf scf or mcscf checkpoint file.
+        use_mcscf : Use MCSCF mo coefficients or not.
+        chol_cut : Cholesky threshold.
+        num_frozen_core : Number of core orbitals to freeze.
+        verbose : print out some information.
+
+    Returns
+    -------
+        ham : ipie Hamiltonian.
+    """
+    scf_data = load_from_pyscf_chkfile(pyscf_chk, base="mcscf" if use_mcscf else "scf")
+    ham = generate_hamiltonian(
+        scf_data["mol"],
+        scf_data["mo_coeff"],
+        scf_data["hcore"],
+        scf_data["mo_coeff"],
+        chol_cut=chol_cut,
+        num_frozen_core=num_frozen_core,
+        verbose=verbose,
+    )
+    return ham
+
+
 def generate_hamiltonian(
     mol,
     mo_coeffs: numpy.ndarray,
@@ -118,7 +155,7 @@ def generate_hamiltonian(
     num_frozen_core: int = 0,
     ortho_ao: bool = False,
     verbose: bool = False,
-) -> Hamiltonian:
+) -> GenericRealChol:
     h1e, chol, e0 = generate_integrals(
         mol, hcore, basis_change_matrix, chol_cut=chol_cut, verbose=verbose
     )
@@ -126,12 +163,15 @@ def generate_hamiltonian(
         assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
         assert num_frozen_core <= mol.nelec[0], f"{num_frozen_core} < {mol.nelec[0]}"
         assert num_frozen_core <= mol.nelec[1], f"{num_frozen_core} < {mol.nelec[1]}"
+        nbasis = chol.shape[-1]
         h1e_eff, chol_act, e0_eff = freeze_core(
             h1e, chol, e0, mo_coeffs, num_frozen_core, verbose=verbose
         )
-        return Hamiltonian(h1e_eff[0], chol_act, e0_eff)
+        return GenericRealChol(h1e_eff, chol_act.reshape((-1, nbasis * nbasis)).T.copy(), e0_eff)
     else:
-        return Hamiltonian(h1e, chol, e0)
+        return GenericRealChol(
+            numpy.array([h1e, h1e]), chol.reshape((-1, nbasis * nbasis)).T.copy(), e0
+        )
 
 
 def generate_wavefunction_from_mo_coeff(
@@ -191,9 +231,40 @@ def generate_wavefunction_from_mo_coeff(
     return wfn
 
 
-def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False, cas=None):
-    # Unpack SCF data.
-    # Step 1. Rotate core Hamiltonian to orthogonal basis.
+def generate_integrals(
+    mol: gto.Mole,
+    hcore: numpy.ndarray,
+    X: numpy.ndarray,
+    chol_cut: float = 1e-5,
+    verbose: bool = False,
+    cas: Optional[Tuple[int, int]] = None,
+):
+    """Generate integrals from pyscf mol object.
+
+    Parameters
+    ----------
+        mol : pyscf.gto.Mole
+            pyscf molecule
+        hcore : numpy.array
+            core hamiltonian
+        X : numpy.array
+            basis rotation matrix
+        chol_cut : float
+            Cholesky cutoff
+        verbose : bool
+            Print some information during decomposition.
+        cas : Tuple[int, int]
+            Active space to specify. Optional. Deafault None.
+
+    Returns
+    -------
+        h1e : numpy.ndarray
+            One-body hamiltonian in MO basis, or basis defined by X.
+        chol_vecs : numpy.ndarray
+            Cholesky vectors. Output shape = (naux, nbasis, nbasis)
+        enuc : float
+            Core energy.
+    """
     if len(X.shape) == 2:
         h1e = numpy.dot(X.T, numpy.dot(hcore, X))
     elif len(X.shape) == 3:
@@ -228,13 +299,7 @@ def ao2mo_chol(eri, C, verbose=False):
 
 
 def cholesky(
-    mol,
-    filename="hamil.h5",
-    max_error=1e-6,
-    verbose=False,
-    cmax=20,
-    CHUNK_SIZE=2.0,
-    MAX_SIZE=20.0,
+    mol, filename="hamil.h5", max_error=1e-6, verbose=False, cmax=20, CHUNK_SIZE=2.0, MAX_SIZE=20.0
 ):
     nao = mol.nao_nr()
     if nao * nao * cmax * nao * 8.0 / 1024.0**3 > MAX_SIZE:
@@ -572,13 +637,7 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
     if mo_coeff is None:
         mo_occ = lib.chkfile.load(chkfile, "/scf" + "/mo_occ")
         mo_coeff = lib.chkfile.load(chkfile, "/scf" + "/mo_coeff")
-    scf_data = {
-        "mol": mol,
-        "mo_occ": mo_occ,
-        "hcore": hcore,
-        "X": X,
-        "mo_coeff": mo_coeff,
-    }
+    scf_data = {"mol": mol, "mo_occ": mo_occ, "hcore": hcore, "X": X, "mo_coeff": mo_coeff}
     if base == "mcscf":
         scf_data["ci_coeffs"] = ci_coeffs
         scf_data["occa"] = occa
@@ -654,11 +713,5 @@ def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
         X = scf_data["mo_coeff"]
         if len(X.shape) == 3:
             X = X[0]
-    h1e, chol, enuc = generate_integrals(
-        mol,
-        hcore,
-        X,
-        chol_cut=chol_cut,
-        verbose=verbose,
-    )
+    h1e, chol, enuc = generate_integrals(mol, hcore, X, chol_cut=chol_cut, verbose=verbose)
     return h1e, chol, enuc, X
