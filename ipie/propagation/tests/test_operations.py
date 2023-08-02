@@ -1,8 +1,13 @@
 import numpy
-import scipy
 import pytest
+import scipy
 
-from ipie.propagation.operations import propagate_one_body, apply_exponential, apply_exponential_batch
+from ipie.propagation.operations import (
+    apply_exponential,
+    apply_exponential_batch,
+    propagate_one_body,
+)
+
 
 @pytest.mark.unit
 def test_propagate_one_body():
@@ -10,17 +15,18 @@ def test_propagate_one_body():
     nbasis = 25
     nocc = 10
 
-    ndim = nwalkers*nbasis*nocc
-    phi = numpy.random.randn(ndim) + 1.j * numpy.random.randn(ndim) 
+    ndim = nwalkers * nbasis * nocc
+    phi = numpy.random.randn(ndim) + 1.0j * numpy.random.randn(ndim)
 
     phi = phi.reshape((nwalkers, nbasis, nocc))
 
-    expH1 = numpy.random.randn(nbasis**2).reshape(nbasis,nbasis)
+    expH1 = numpy.random.randn(nbasis**2).reshape(nbasis, nbasis)
 
     phi_ref = numpy.einsum("mn,wni->wmi", expH1, phi)
     phi = propagate_one_body(phi, expH1)
 
     numpy.testing.assert_allclose(phi, phi_ref, atol=1e-10)
+
 
 @pytest.mark.unit
 def test_apply_exponential():
@@ -28,14 +34,17 @@ def test_apply_exponential():
     nbasis = 25
     nocc = 10
 
-    ndim = nwalkers*nbasis*nocc
-    phi = numpy.random.randn(ndim) + 1.j * numpy.random.randn(ndim) 
+    ndim = nwalkers * nbasis * nocc
+    phi = numpy.random.randn(ndim) + 1.0j * numpy.random.randn(ndim)
     phi = phi.reshape((nwalkers, nbasis, nocc))
 
     phi_ref = numpy.zeros_like(phi)
 
-    VHS = 0.005 * (numpy.random.randn(nwalkers*nbasis*nbasis) + 1.j * numpy.random.randn(nwalkers*nbasis*nbasis))
-    VHS = VHS.reshape((nwalkers,nbasis,nbasis))
+    VHS = 0.005 * (
+        numpy.random.randn(nwalkers * nbasis * nbasis)
+        + 1.0j * numpy.random.randn(nwalkers * nbasis * nbasis)
+    )
+    VHS = VHS.reshape((nwalkers, nbasis, nbasis))
     for iw in range(nwalkers):
         VHS[iw] = VHS[iw] + VHS[iw].T.conj()
         expV = scipy.linalg.expm(VHS[iw])

@@ -6,10 +6,8 @@ from typing import Tuple
 
 import h5py
 import numpy as np
-from pyscf import scf
-
-# pylint: disable=import-error
-from pyscf.shciscf import shci
+from pyscf import scf  # pylint: disable=import-error
+from pyscf.shciscf import shci  # pylint: disable=import-error
 
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 
@@ -326,7 +324,6 @@ def build_driver_from_shciscf(
     # called through a subprocess through the shciscf driver class.
     from mpi4py import MPI
 
-    from ipie.hamiltonians.generic import GenericRealChol
     from ipie.qmc.afqmc import AFQMC
     from ipie.systems.generic import Generic
     from ipie.utils.from_pyscf import generate_hamiltonian
@@ -336,11 +333,6 @@ def build_driver_from_shciscf(
     system = Generic(mf.mol.nelec)
     ham = generate_hamiltonian(
         mf.mol, shci_inst.mo_coeff, mf.get_hcore(), shci_inst.mo_coeff, chol_cut=chol_cut
-    )
-    nmo = ham.h1e.shape[-1]
-    naux = ham.chol.shape[0]
-    ham_ipie = GenericRealChol(
-        np.array([ham.h1e, ham.h1e]), ham.chol.reshape((naux, nmo * nmo)).T.copy(), ham.e0
     )
 
     comm = MPI.COMM_WORLD
@@ -352,7 +344,7 @@ def build_driver_from_shciscf(
         initial_walker,
         system.nup,
         system.ndown,
-        ham_ipie.nbasis,
+        ham.nbasis,
         num_walkers,
         mpi_handler=mpi_handler,
     )
@@ -360,7 +352,7 @@ def build_driver_from_shciscf(
     afqmc = AFQMC(
         comm,
         system=system,
-        hamiltonian=ham_ipie,
+        hamiltonian=ham,
         trial=trial,
         walkers=walkers,
         seed=seed,

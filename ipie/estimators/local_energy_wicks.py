@@ -22,16 +22,14 @@ import numpy
 from numba import jit
 
 from ipie.estimators.generic import local_energy_generic_cholesky
+from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.propagation.overlap import (
     compute_determinants_batched,
-    get_overlap_one_det_wicks,
-    get_cofactor_matrix_batched,
     get_cofactor_matrix_4_batched,
+    get_cofactor_matrix_batched,
+    get_overlap_one_det_wicks,
 )
 from ipie.utils.linalg import minor_mask, minor_mask4
-
-
-from ipie.estimators.kernels.cpu import wicks as wk
 
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
@@ -637,7 +635,12 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, t
             ]
         )
         det_sizes_b = max(
-            max([len(trial.cre_ex_b_chunk[ichunk][i]) * i * i for i in range(1, trial.max_excite + 1)])
+            max(
+                [
+                    len(trial.cre_ex_b_chunk[ichunk][i]) * i * i
+                    for i in range(1, trial.max_excite + 1)
+                ]
+            )
             for ichunk in range(trial.num_det_chunks)
         )
         max_size = max(det_sizes_a, det_sizes_b)

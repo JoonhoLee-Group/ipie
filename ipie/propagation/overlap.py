@@ -41,7 +41,6 @@ def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     ot : float / complex
         Overlap.
     """
-    nup = walkers.nup
     ndown = walkers.ndown
     ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, trial.psi0a.conj(), optimize=True)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)

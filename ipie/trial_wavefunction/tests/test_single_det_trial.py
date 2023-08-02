@@ -11,7 +11,7 @@ def print_matrix(matrix):
     for i in range(matrix.shape[0]):
         contents = ""
         for j in range(matrix.shape[1]):
-            contents += "{:5.3f} ".format(matrix[i, j])
+            contents += f"{matrix[i, j]:5.3f} "
         print(contents)
 
 

@@ -2,7 +2,6 @@ import math
 import time
 
 import numpy
-import scipy.linalg
 
 from ipie.utils.pack_numba import unpack_VHS_batch
 
@@ -11,7 +10,7 @@ try:
 except:
     pass
 
-import plum  # dispatch
+import plum
 
 from ipie.config import config
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
@@ -20,7 +19,6 @@ from ipie.propagation.operations import apply_exponential, apply_exponential_bat
 from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.walkers.uhf_walkers import UHFWalkers
 
 

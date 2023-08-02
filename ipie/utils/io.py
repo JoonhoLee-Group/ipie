@@ -48,7 +48,6 @@ def write_hamiltonian(
 
 def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
     with h5py.File(filename, "r") as fh5:
-        print(fh5["hcore"][:])
         hcore = numpy.array(fh5["hcore"])
         LXmn = numpy.array(fh5["LXmn"])
         e0 = float(fh5["e0"][()])
