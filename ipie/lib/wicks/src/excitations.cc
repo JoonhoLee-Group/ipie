@@ -71,4 +71,37 @@ int single_excitation_permutation(BitString &ket, Excitation &ia) {
         }
     }
 }
+
+int double_excitation_permutation(BitString &ket, Excitation &ijab) {
+    BitString mask(ket.num_bits);
+    BitString tmp(ket);
+    BitString occ_to_count(ket);
+    // (-1)^{perm} a^b^ji|ket>
+    // i
+    build_set_mask(ijab.from[0], mask);
+    tmp &= mask;
+    size_t num_set = tmp.count_set_bits();
+    tmp.clear_bit(ijab.from[0]);
+    mask.clear_bits();
+    build_set_mask(ijab.from[0], mask);
+    // j
+    build_set_mask(ijab.from[1], mask);
+    tmp &= mask;
+    num_set += tmp.count_set_bits();
+    tmp.clear_bit(ijab.from[1]);
+    mask.clear_bits();
+    // b
+    build_set_mask(ijab.to[1], mask);
+    tmp &= mask;
+    num_set += tmp.count_set_bits();
+    tmp.clear_bit(ijab.from[1]);
+    mask.clear_bits();
+    // a
+    build_set_mask(ijab.to[0], mask);
+    tmp &= mask;
+    num_set += tmp.count_set_bits();
+    tmp.clear_bit(ijab.from[0]);
+    mask.clear_bits();
+    return num_set % 2 ? 1 : -1;
+}
 }  // namespace ipie

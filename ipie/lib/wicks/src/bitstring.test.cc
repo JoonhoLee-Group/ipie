@@ -153,3 +153,15 @@ TEST(bitstring, clear_bits) {
     a.clear_bits();
     ASSERT_EQ(a.count_set_bits(), 0);
 }
+
+TEST(bitstring, set_clear_bit) {
+    auto a = ipie::BitString(100);
+    for (size_t i = 0; i < 100; i++) {
+        a.set_bit(i);
+        ASSERT_EQ(a.count_set_bits(), i + 1);
+    }
+    for (size_t i = 0; i < 100; i++) {
+        a.clear_bit(i);
+        ASSERT_EQ(a.count_set_bits(), 100 - (i + 1));
+    }
+}

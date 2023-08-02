@@ -26,6 +26,7 @@ struct BitString {
     void encode_bits(std::vector<int> &set_bits);
     void decode_bits(std::vector<int> &set_bits);
     void clear_bits();
+    void clear_bit(const size_t bit_indx);
     bool is_set(const size_t bit_indx);
     void set_bit(const size_t bit_indx);
     void set_bits(const std::vector<size_t> &bit_indx);

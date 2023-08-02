@@ -109,10 +109,18 @@ void BitString::set_bit(const size_t indx) {
     uint64_t one = 1;
     bitstring[word] |= (one << offset);
 }
+
 void BitString::set_bits(const std::vector<size_t>& bit_indxs) {
     for (auto i : bit_indxs) {
         set_bit(i);
     }
+}
+
+void BitString::clear_bit(const size_t indx) {
+    size_t word = indx / 64;
+    int offset = indx - word * 64;
+    uint64_t one = 1;
+    bitstring[word] ^= (one << offset);
 }
 
 // all ones before bit_indx
