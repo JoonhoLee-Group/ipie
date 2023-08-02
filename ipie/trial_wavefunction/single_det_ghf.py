@@ -8,7 +8,7 @@ import plum
 from ipie.estimators.generic import cholesky_jk_ghf
 from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
 from ipie.estimators.utils import gab_mod
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic import GenericRealChol
 from ipie.propagation.overlap import calc_overlap_single_det_ghf
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
@@ -107,10 +107,10 @@ class SingleDetGHF(TrialWavefunctionBase):
 
         if self.verbose:
             print(
-                "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
-                % (self.energy.real, self.e1b.real, self.e2b.real)
+                f"# (E, E1B, E2B): ({self.energy.real:13.8e}, {self.e1b.real:13.8e},"
+                f"{self.e2b.real:13.8e})"
             )
-            print("# Time to evaluate local energy: {} s".format(time.time() - start))
+            print(f"# Time to evaluate local energy: {time.time() - start}")
 
     @plum.dispatch
     def half_rotate(self, hamiltonian: GenericRealChol, comm: mpi4py.MPI.Intracomm = None):
@@ -123,7 +123,7 @@ class SingleDetGHF(TrialWavefunctionBase):
         return calc_overlap_single_det_ghf(walkers, self)
 
     def calc_greens_function(self, walkers, build_full: bool = False) -> numpy.ndarray:
-        return greens_function_single_det_ghf(walkers, self, build_full=build_full)
+        return greens_function_single_det_ghf(walkers, self)
 
     @plum.dispatch
     def calc_force_bias(

@@ -1054,7 +1054,11 @@ class CoherentState(object):
                 # single coherent state energy
                 phi = HarmonicOscillator(system.m, system.w0, order=0, shift=self.shift)
                 Lap = phi.laplacian(self.shift)
-                (energy_single, e1b_single, e2b_single,) = local_energy_hubbard_holstein_jax(
+                (
+                    energy_single,
+                    e1b_single,
+                    e2b_single,
+                ) = local_energy_hubbard_holstein_jax(
                     system.T,
                     system.U,
                     system.g,

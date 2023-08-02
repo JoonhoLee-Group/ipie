@@ -178,7 +178,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         nalpha, nbeta = self.nelec
         self.occ_map_a = np.zeros(max(d0a) + 1, dtype=np.int32)
         self.occ_map_a[d0a] = list(range(self.nocc_alpha))
-        if nbeta > 0 :
+        if nbeta > 0:
             self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
             self.occ_map_b[d0b] = list(range(self.nocc_beta))
         else:

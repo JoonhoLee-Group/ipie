@@ -6,6 +6,7 @@ from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealCh
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
 
+
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,

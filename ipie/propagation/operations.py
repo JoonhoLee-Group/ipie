@@ -15,15 +15,18 @@
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
 #
-from ipie.utils.backend import arraylib as xp
-from ipie.utils.misc import is_cupy
-from ipie.utils.backend import synchronize
 from ipie.config import config
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
+from ipie.utils.misc import is_cupy
 
 # TODO: Rename this
 
+
 def propagate_one_body(phi, bt2, H1diag=False):
-    r"""Propagate by the kinetic term by direct matrix multiplication. Only one spin component. Assuming phi is a batch.
+    r"""Propagate by the kinetic term by direct matrix multiplication.
+
+    Only one spin component. Assuming phi is a batch.
 
     For use with the continuus algorithm and free propagation.
 
@@ -51,6 +54,7 @@ def propagate_one_body(phi, bt2, H1diag=False):
 
     return phi
 
+
 def apply_exponential(phi, VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation
     Parameters
@@ -76,6 +80,7 @@ def apply_exponential(phi, VHS, exp_nmax):
 
     synchronize()
     return phi
+
 
 def apply_exponential_batch(phi, VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation

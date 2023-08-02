@@ -17,12 +17,13 @@
 #
 
 """Generate AFQMC data from PYSCF (molecular) simulation."""
+import math
 import time
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
 import h5py
-import numpy
+import numpy as np
 import scipy.linalg
 
 # pylint: disable=import-error
@@ -77,7 +78,7 @@ def gen_ipie_input_from_pyscf_chk(
         num_frozen_core=num_frozen_core,
         verbose=verbose,
     )
-    write_hamiltonian(ham.h1e, ham.chol, ham.e0, filename=hamil_file)
+    write_hamiltonian(ham.H1[0], copy_LPX_to_LXmn(ham.chol), ham.ecore, filename=hamil_file)
     nelec = (mol.nelec[0] - num_frozen_core, mol.nelec[1] - num_frozen_core)
     if verbose:
         print(f"# Number of electrons in simulation: {nelec}")
@@ -99,15 +100,22 @@ def gen_ipie_input_from_pyscf_chk(
 
 
 @dataclass(frozen=True)
-class Hamiltonian:
-    h1e: numpy.ndarray
-    chol: numpy.ndarray
-    e0: float
-
-
-@dataclass(frozen=True)
 class Wavefunction:
-    wfn: Union[Tuple, numpy.ndarray]
+    wfn: Union[Tuple, np.ndarray]
+
+
+def copy_LXmn_to_LPX(chol: np.ndarray) -> np.ndarray:
+    assert len(chol.shape) == 3
+    assert chol.shape[-1] == chol.shape[-2]
+    naux, nbasis, _ = chol.shape
+    return chol.reshape(naux, nbasis * nbasis).T.copy()
+
+
+def copy_LPX_to_LXmn(chol: np.ndarray) -> np.ndarray:
+    assert len(chol.shape) == 2
+    nbasis_sq, naux = chol.shape
+    nbasis = math.isqrt(nbasis_sq)
+    return chol.reshape(nbasis, nbasis, naux).transpose((2, 0, 1)).copy()
 
 
 def generate_hamiltonian_from_chk(
@@ -148,9 +156,9 @@ def generate_hamiltonian_from_chk(
 
 def generate_hamiltonian(
     mol,
-    mo_coeffs: numpy.ndarray,
-    hcore: numpy.ndarray,
-    basis_change_matrix: numpy.ndarray,
+    mo_coeffs: np.ndarray,
+    hcore: np.ndarray,
+    basis_change_matrix: np.ndarray,
     chol_cut: float = 1e-8,
     num_frozen_core: int = 0,
     ortho_ao: bool = False,
@@ -163,25 +171,22 @@ def generate_hamiltonian(
         assert not ortho_ao, "--ortho-ao and --frozen-core not supported together."
         assert num_frozen_core <= mol.nelec[0], f"{num_frozen_core} < {mol.nelec[0]}"
         assert num_frozen_core <= mol.nelec[1], f"{num_frozen_core} < {mol.nelec[1]}"
-        nbasis = chol.shape[-1]
         h1e_eff, chol_act, e0_eff = freeze_core(
             h1e, chol, e0, mo_coeffs, num_frozen_core, verbose=verbose
         )
-        return GenericRealChol(h1e_eff, chol_act.reshape((-1, nbasis * nbasis)).T.copy(), e0_eff)
+        return GenericRealChol(h1e_eff, copy_LXmn_to_LPX(chol_act), e0_eff)
     else:
-        return GenericRealChol(
-            numpy.array([h1e, h1e]), chol.reshape((-1, nbasis * nbasis)).T.copy(), e0
-        )
+        return GenericRealChol(np.array([h1e, h1e]), copy_LXmn_to_LPX(chol), e0)
 
 
 def generate_wavefunction_from_mo_coeff(
-    mo_coeff: Union[list, numpy.ndarray],
-    mo_occ: Union[list, numpy.ndarray],
-    X: numpy.ndarray,
+    mo_coeff: Union[list, np.ndarray],
+    mo_occ: Union[list, np.ndarray],
+    X: np.ndarray,
     nelec: tuple,
     ortho_ao: bool = False,
     num_frozen_core: int = 0,
-) -> Union[list, numpy.ndarray]:
+) -> Union[list, np.ndarray]:
     """Generate QMCPACK trial wavefunction."""
     uhf = isinstance(mo_coeff, list) or len(mo_coeff.shape) == 3
     if not uhf and nelec[0] != nelec[1]:
@@ -193,31 +198,31 @@ def generate_wavefunction_from_mo_coeff(
         Xinv = scipy.linalg.inv(X)
         if uhf:
             # We are assuming C matrix is energy ordered.
-            wfna = numpy.dot(Xinv, mo_coeff[0])[:, mo_occ[0] > 0]
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, mo_occ[1] > 0]
+            wfna = np.dot(Xinv, mo_coeff[0])[:, mo_occ[0] > 0]
+            wfnb = np.dot(Xinv, mo_coeff[1])[:, mo_occ[1] > 0]
             wfn = [wfna, wfnb]
         elif rohf:
             _occ_a = mo_occ > 0
             _occ_b = mo_occ > 1
-            wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
-            wfnb = numpy.dot(Xinv, mo_coeff)[:, _occ_b]
+            wfna = np.dot(Xinv, mo_coeff)[:, _occ_a]
+            wfnb = np.dot(Xinv, mo_coeff)[:, _occ_b]
             wfn = [wfna, wfnb]
         else:
-            mo_occ = numpy.array(mo_occ, dtype=numpy.int64)
+            mo_occ = np.array(mo_occ, dtype=np.int64)
             _occ_a = mo_occ > 0
-            wfna = numpy.dot(Xinv, mo_coeff)[:, _occ_a]
+            wfna = np.dot(Xinv, mo_coeff)[:, _occ_a]
             wfn = wfna
     else:
         if uhf:
             # HP: Assuming we are working in the alpha orbital basis, and write the beta orbitals as LCAO of alpha orbitals
-            I = numpy.identity(nmo, dtype=numpy.float64)
+            I = np.identity(nmo, dtype=np.float64)
             wfna = I[:, mo_occ[0][num_frozen_core:] > 0]
             Xinv = scipy.linalg.pinv(X[:, num_frozen_core:])
-            wfnb = numpy.dot(Xinv, mo_coeff[1])[:, num_frozen_core:]
+            wfnb = np.dot(Xinv, mo_coeff[1])[:, num_frozen_core:]
             wfnb = wfnb[:, mo_occ[1][num_frozen_core:] > 0]
             wfn = [wfna, wfnb]
         elif rohf:
-            I = numpy.identity(nmo, dtype=numpy.float64)
+            I = np.identity(nmo, dtype=np.float64)
             _occ_a = mo_occ > 0
             _occ_b = mo_occ > 1
             wfna = I[:, _occ_a[num_frozen_core:]].copy()
@@ -225,7 +230,7 @@ def generate_wavefunction_from_mo_coeff(
             wfn = [wfna, wfnb]
         else:
             # Assuming we are working in MO basis, only works for RHF, ROHF trials.
-            I = numpy.identity(nmo, dtype=numpy.float64)
+            I = np.identity(nmo, dtype=np.float64)
             wfna = I[:, mo_occ[num_frozen_core:] > 0]
             wfn = wfna
     return wfn
@@ -233,8 +238,8 @@ def generate_wavefunction_from_mo_coeff(
 
 def generate_integrals(
     mol: gto.Mole,
-    hcore: numpy.ndarray,
-    X: numpy.ndarray,
+    hcore: np.ndarray,
+    X: np.ndarray,
     chol_cut: float = 1e-5,
     verbose: bool = False,
     cas: Optional[Tuple[int, int]] = None,
@@ -245,9 +250,9 @@ def generate_integrals(
     ----------
         mol : pyscf.gto.Mole
             pyscf molecule
-        hcore : numpy.array
+        hcore : np.array
             core hamiltonian
-        X : numpy.array
+        X : np.array
             basis rotation matrix
         chol_cut : float
             Cholesky cutoff
@@ -258,17 +263,17 @@ def generate_integrals(
 
     Returns
     -------
-        h1e : numpy.ndarray
+        h1e : np.ndarray
             One-body hamiltonian in MO basis, or basis defined by X.
-        chol_vecs : numpy.ndarray
+        chol_vecs : np.ndarray
             Cholesky vectors. Output shape = (naux, nbasis, nbasis)
         enuc : float
             Core energy.
     """
     if len(X.shape) == 2:
-        h1e = numpy.dot(X.T, numpy.dot(hcore, X))
+        h1e = np.dot(X.T, np.dot(hcore, X))
     elif len(X.shape) == 3:
-        h1e = numpy.dot(X[0].T, numpy.dot(hcore, X[0]))
+        h1e = np.dot(X[0].T, np.dot(hcore, X[0]))
     nbasis = h1e.shape[-1]
     # Step 2. Genrate Cholesky decomposed ERIs in non-orthogonal AO basis.
     if verbose:
@@ -294,8 +299,8 @@ def ao2mo_chol(eri, C, verbose=False):
     for i, cv in enumerate(eri):
         if verbose and i % 100 == 0:
             print(f" # ao2mo cholesky % complete = {100 * float(i) / len(eri)} %")
-        half = numpy.dot(cv.reshape(nb, nb), C)
-        eri[i] = numpy.dot(C.conj().T, half).ravel()
+        half = np.dot(cv.reshape(nb, nb), C)
+        eri[i] = np.dot(C.conj().T, half).ravel()
 
 
 def cholesky(
@@ -329,7 +334,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
     ----------
     mol : :class:`pyscf.mol`
         pyscf mol object.
-    orthoAO: :class:`numpy.ndarray`
+    orthoAO: :class:`np.ndarray`
         Orthogonalising matrix for AOs. (e.g., mo_coeff).
     delta : float
         Accuracy desired.
@@ -341,14 +346,14 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
 
     Returns
     -------
-    chol_vecs : :class:`numpy.ndarray`
+    chol_vecs : :class:`np.ndarray`
         Matrix of cholesky vectors in AO basis.
     """
     nao = mol.nao_nr()
-    diag = numpy.zeros(nao * nao)
+    diag = np.zeros(nao * nao)
     nchol_max = cmax * nao
     # This shape is more convenient for ipie.
-    chol_vecs = numpy.zeros((nchol_max, nao * nao))
+    chol_vecs = np.zeros((nchol_max, nao * nao))
     ndiag = 0
     dims = [0]
     nao_per_i = 0
@@ -363,7 +368,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
-    nu = numpy.argmax(diag)
+    nu = np.argmax(diag)
     delta_max = diag[nu]
     if verbose:
         print("# Generating Cholesky decomposition of ERIs." % nchol_max)
@@ -371,17 +376,17 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         print("# iteration %5d: delta_max = %f" % (0, delta_max))
     j = nu // nao
     l = nu % nao
-    sj = numpy.searchsorted(dims, j)
-    sl = numpy.searchsorted(dims, l)
+    sj = np.searchsorted(dims, j)
+    sl = np.searchsorted(dims, l)
     if dims[sj] != j and j != 0:
         sj -= 1
     if dims[sl] != l and l != 0:
         sl -= 1
-    Mapprox = numpy.zeros(nao * nao)
+    Mapprox = np.zeros(nao * nao)
     # ERI[:,jl]
     eri_col = mol.intor("int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1))
     cj, cl = max(j - dims[sj], 0), max(l - dims[sl], 0)
-    chol_vecs[0] = numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
+    chol_vecs[0] = np.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
 
     nchol = 0
     while abs(delta_max) > max_error:
@@ -391,8 +396,8 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         Mapprox += chol_vecs[nchol] * chol_vecs[nchol]
         # D_ii = M_ii - M'_ii
         delta = diag - Mapprox
-        nu = numpy.argmax(numpy.abs(delta))
-        delta_max = numpy.abs(delta[nu])
+        nu = np.argmax(np.abs(delta))
+        delta_max = np.abs(delta[nu])
         # Compute ERI chunk.
         # shls_slice computes shells of integrals as determined by the angular
         # momentum of the basis function and the number of contraction
@@ -402,8 +407,8 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         j = nu // nao
         l = nu % nao
         # Associated shell index.
-        sj = numpy.searchsorted(dims, j)
-        sl = numpy.searchsorted(dims, l)
+        sj = np.searchsorted(dims, j)
+        sl = np.searchsorted(dims, l)
         if dims[sj] != j and j != 0:
             sj -= 1
         if dims[sl] != l and l != 0:
@@ -416,7 +421,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
         cj, cl = max(j - dims[sj], 0), max(l - dims[sl], 0)
         Munu0 = eri_col[:, :, cj, cl].reshape(nao * nao)
         # Updated residual = \sum_x L_i^x L_nu^x
-        R = numpy.dot(chol_vecs[: nchol + 1, nu], chol_vecs[: nchol + 1, :])
+        R = np.dot(chol_vecs[: nchol + 1, nu], chol_vecs[: nchol + 1, :])
         chol_vecs[nchol + 1] = (Munu0 - R) / (delta_max) ** 0.5
         nchol += 1
         if verbose:
@@ -440,7 +445,7 @@ def chunked_cholesky_outcore(
     ----------
     mol : :class:`pyscf.mol`
         pyscf mol object.
-    orthoAO: :class:`numpy.ndarray`
+    orthoAO: :class:`np.ndarray`
         Orthogonalising matrix for AOs. (e.g., mo_coeff).
     delta : float
         Accuracy desired.
@@ -452,11 +457,11 @@ def chunked_cholesky_outcore(
 
     Returns
     -------
-    chol_vecs : :class:`numpy.ndarray`
+    chol_vecs : :class:`np.ndarray`
         Matrix of cholesky vectors in AO basis.
     """
     nao = mol.nao_nr()
-    diag = numpy.zeros(nao * nao)
+    diag = np.zeros(nao * nao)
     nchol_max = cmax * nao
     mem = 8.0 * nchol_max * nao * nao / 1024.0**3
     chunk_size = min(int(CHUNK_SIZE * 1024.0**3 / (8 * nao * nao)), nchol_max)
@@ -471,7 +476,7 @@ def chunked_cholesky_outcore(
             )
         )
         print("# Generating diagonal.")
-    chol_vecs = numpy.zeros((chunk_size, nao * nao))
+    chol_vecs = np.zeros((chunk_size, nao * nao))
     ndiag = 0
     dims = [0]
     nao_per_i = 0
@@ -487,10 +492,10 @@ def chunked_cholesky_outcore(
         di, _, _, _ = buf.shape
         diag[ndiag : ndiag + di * nao] = buf.reshape(di * nao, di * nao).diagonal()
         ndiag += di * nao
-    nu = numpy.argmax(diag)
+    nu = np.argmax(diag)
     delta_max = diag[nu]
     with h5py.File(filename, "w") as fh5:
-        fh5.create_dataset("Lao", shape=(nchol_max, nao * nao), dtype=numpy.float64)
+        fh5.create_dataset("Lao", shape=(nchol_max, nao * nao), dtype=np.float64)
     end = time.time()
     if verbose:
         print(f"# Time to generate diagonal {end - start} s.")
@@ -498,20 +503,20 @@ def chunked_cholesky_outcore(
         print(f"# iteration {0:5d}: delta_max = {delta_max:13.8e}")
     j = nu // nao
     l = nu % nao
-    sj = numpy.searchsorted(dims, j)
-    sl = numpy.searchsorted(dims, l)
+    sj = np.searchsorted(dims, j)
+    sl = np.searchsorted(dims, l)
     if dims[sj] != j and j != 0:
         sj -= 1
     if dims[sl] != l and l != 0:
         sl -= 1
-    Mapprox = numpy.zeros(nao * nao)
+    Mapprox = np.zeros(nao * nao)
     eri_col = mol.intor("int2e_sph", shls_slice=(0, mol.nbas, 0, mol.nbas, sj, sj + 1, sl, sl + 1))
     cj, cl = max(j - dims[sj], 0), max(l - dims[sl], 0)
-    chol_vecs[0] = numpy.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
+    chol_vecs[0] = np.copy(eri_col[:, :, cj, cl].reshape(nao * nao)) / delta_max**0.5
 
     def compute_residual(chol, ichol, nchol, nu):
         # Updated residual = \sum_x L_i^x L_nu^x
-        # R = numpy.dot(chol_vecs[:nchol+1,nu], chol_vecs[:nchol+1,:])
+        # R = np.dot(chol_vecs[:nchol+1,nu], chol_vecs[:nchol+1,:])
         R = 0.0
         with h5py.File(filename, "r") as fh5:
             for ic in range(0, ichol):
@@ -521,8 +526,8 @@ def chunked_cholesky_outcore(
                 # sys.exit()
                 # print(ic*chunk_size, (ic*chunk_size)
                 L = fh5["Lao"][ic * chunk_size : (ic + 1) * chunk_size, :]
-                R += numpy.dot(L[:, nu], L[:, :])
-        R += numpy.dot(chol[: nchol + 1, nu], chol[: nchol + 1, :])
+                R += np.dot(L[:, nu], L[:, :])
+        R += np.dot(chol[: nchol + 1, nu], chol[: nchol + 1, :])
         return R
 
     nchol = 0
@@ -534,8 +539,8 @@ def chunked_cholesky_outcore(
         Mapprox += chol_vecs[nchol % chunk_size] * chol_vecs[nchol % chunk_size]
         # D_ii = M_ii - M'_ii
         delta = diag - Mapprox
-        nu = numpy.argmax(numpy.abs(delta))
-        delta_max = numpy.abs(delta[nu])
+        nu = np.argmax(np.abs(delta))
+        delta_max = np.abs(delta[nu])
         # Compute ERI chunk.
         # shls_slice computes shells of integrals as determined by the angular
         # momentum of the basis function and the number of contraction
@@ -545,8 +550,8 @@ def chunked_cholesky_outcore(
         j = nu // nao
         l = nu % nao
         # Associated shell index.
-        sj = numpy.searchsorted(dims, j)
-        sl = numpy.searchsorted(dims, l)
+        sj = np.searchsorted(dims, j)
+        sl = np.searchsorted(dims, l)
         if dims[sj] != j and j != 0:
             sj -= 1
         if dims[sl] != l and l != 0:
@@ -585,7 +590,7 @@ def chunked_cholesky_outcore(
                 )
             )
     with h5py.File(filename, "r+") as fh5:
-        fh5["dims"] = numpy.array([nao * nao, nchol])
+        fh5["dims"] = np.array([nao * nao, nchol])
     return nchol
 
 
@@ -594,7 +599,7 @@ def get_ortho_ao(S, LINDEP_CUTOFF=0):
 
     Parameters
     ----------
-    S : :class:`numpy.ndarray`
+    S : :class:`np.ndarray`
         Overlap matrix.
     LINDEP_CUTOFF : float
         Linear dependency cutoff. Basis functions whose eigenvalues lie below
@@ -603,11 +608,11 @@ def get_ortho_ao(S, LINDEP_CUTOFF=0):
 
     Returns
     -------
-    X : :class:`numpy.array`
+    X : :class:`np.array`
         Transformation matrix.
     """
-    sdiag, Us = numpy.linalg.eigh(S)
-    X = Us[:, sdiag > LINDEP_CUTOFF] / numpy.sqrt(sdiag[sdiag > LINDEP_CUTOFF])
+    sdiag, Us = np.linalg.eigh(S)
+    X = Us[:, sdiag > LINDEP_CUTOFF] / np.sqrt(sdiag[sdiag > LINDEP_CUTOFF])
     return X
 
 
@@ -652,7 +657,7 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
     chol = chol.reshape((nchol, nbasis, nbasis))
     ham = dotdict(
         {
-            "H1": numpy.array([h1e, h1e]),
+            "H1": np.array([h1e, h1e]),
             "chol_vecs": chol.T.copy().reshape((nbasis * nbasis, nchol)),
             "nchol": nchol,
             "ecore": ecore,
@@ -661,20 +666,20 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
     )
     system = dotdict({"nup": 0, "ndown": 0})
     if len(X.shape) == 2:
-        psi_a = numpy.identity(nbasis)[:, :nfrozen]
-        psi_b = numpy.identity(nbasis)[:, :nfrozen]
+        psi_a = np.identity(nbasis)[:, :nfrozen]
+        psi_b = np.identity(nbasis)[:, :nfrozen]
     elif len(X.shape) == 3:
         C = X
-        psi_a = numpy.identity(nbasis)[:, :nfrozen]
+        psi_a = np.identity(nbasis)[:, :nfrozen]
         Xinv = scipy.linalg.inv(X[0])
-        psi_b = numpy.dot(Xinv, C[1])[:, :nfrozen]
+        psi_b = np.dot(Xinv, C[1])[:, :nfrozen]
 
     Gcore_a = gab(psi_a, psi_a)
     Gcore_b = gab(psi_b, psi_b)
     ecore = local_energy_generic_cholesky(system, ham, [Gcore_a, Gcore_b])[0]
 
     (hc_a, hc_b) = core_contribution_cholesky(chol, [Gcore_a, Gcore_b])
-    h1e = numpy.array([h1e, h1e])
+    h1e = np.array([h1e, h1e])
     h1e[0] = h1e[0] + 2 * hc_a
     h1e[1] = h1e[1] + 2 * hc_b
     h1e = h1e[:, nfrozen:, nfrozen:]
