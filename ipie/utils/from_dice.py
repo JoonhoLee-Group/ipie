@@ -6,10 +6,8 @@ from typing import Tuple
 
 import h5py
 import numpy as np
-from pyscf import scf
-
-# pylint: disable=import-error
-from pyscf.shciscf import shci
+from pyscf import scf  # pylint: disable=import-error
+from pyscf.shciscf import shci  # pylint: disable=import-error
 
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 
