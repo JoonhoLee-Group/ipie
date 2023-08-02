@@ -56,10 +56,17 @@ and run the following in the top-level ipie directory
 Requirements
 ------------
 
-ipie currently relies on MPI (via mpi4py) for parallelism and it is often the
-trickiest dependency to setup correctly.
+To build ipie with MPI support (via mpi4py) do:
 
-One of the easiest ways (if you are using pip to install ipie wheels) is via conda:
+::
+
+    $ pip install -e .[mpi]
+
+Note that mpi4py requires a working MPI installation to be built on your
+machine. This  it is often the trickiest dependency to setup correctly.
+
+One of the easiest ways (if you are using pip to install ipie wheels) is via
+conda:
 
 ::
 

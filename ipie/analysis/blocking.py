@@ -19,28 +19,27 @@
 #!/usr/bin/env python
 """Run a reblocking analysis on ipie QMC output files."""
 
-import warnings
-
 import h5py
 import numpy
 import pandas as pd
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    # pylint: disable=import-error
+try:
     import pyblock
+    _have_pyblock = True
+except ModuleNotFoundError:
+    _have_pyblock = False
 
 import scipy.stats
 
 from ipie.analysis.autocorr import reblock_by_autocorr
 from ipie.analysis.extraction import (
     extract_data,
+    extract_data_from_textfile,
     extract_mixed_estimates,
+    extract_observable,
     extract_rdm,
     get_metadata,
     set_info,
-    extract_observable,
-    extract_data_from_textfile,
 )
 from ipie.utils.linalg import get_ortho_ao_mod
 from ipie.utils.misc import get_from_dict
@@ -151,6 +150,7 @@ def reblock_mixed(groupby, columns, verbose=False):
         except KeyError:
             short = short.drop(columns + ["index"], axis=1)
 
+        assert _have_pyblock, "pyblock not installed. Please install"
         (data_len, blocked_data, _) = pyblock.pd_utils.reblock(short)
         reblocked = pd.DataFrame({"ETotal": [0.0]})
         for c in short.columns:
@@ -181,6 +181,7 @@ def reblock_mixed(groupby, columns, verbose=False):
 def reblock_free_projection(frame):
     short = frame.drop(["Time", "Weight", "ETotal"], axis=1)
     analysed = []
+    assert _have_pyblock, "pyblock not installed. Please install"
     (data_len, blocked_data, covariance) = pyblock.pd_utils.reblock(short)
     reblocked = pd.DataFrame()
     denom = blocked_data.loc[:, "EDenom"]
