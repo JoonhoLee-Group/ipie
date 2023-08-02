@@ -20,11 +20,11 @@ import os
 
 import numpy
 import pytest
-from mpi4py import MPI
 
-from ipie.analysis.extraction import extract_observable, extract_mixed_estimates
-from ipie.utils.testing import build_driver_test_instance
+from ipie.analysis.extraction import extract_mixed_estimates, extract_observable
+from ipie.config import MPI
 from ipie.utils.legacy_testing import build_legacy_driver_instance
+from ipie.utils.testing import build_driver_test_instance
 
 steps = 25
 blocks = 10

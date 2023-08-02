@@ -21,8 +21,8 @@ import unittest
 
 import numpy
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.hamiltonians.utils import get_generic_integrals
 from ipie.systems.generic import Generic

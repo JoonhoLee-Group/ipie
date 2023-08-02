@@ -10,7 +10,7 @@ from ipie.utils.mpi import get_shared_array
 def half_rotate_generic(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,
-    comm: "MPI.COMM_WORLD",
+    comm,
     orbsa: np.ndarray,
     orbsb: np.ndarray,
     ndets: int = 1,

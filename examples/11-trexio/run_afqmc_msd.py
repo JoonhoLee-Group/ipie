@@ -1,6 +1,6 @@
 import numpy
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic

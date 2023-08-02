@@ -26,7 +26,7 @@ def test_back_prop():
     )
     walkers = Walkers(sys, ham, trial, qmc, walker_opts={}, nbp=est.nmax, nprop_tot=est.nmax)
     wlk = walkers.walkers[0]
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     for i in range(0, 2 * est.nmax):

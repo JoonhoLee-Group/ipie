@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
-from mpi4py import MPI
 
-from ipie.utils.testing import get_random_nomsd, get_random_sys_ham
+from ipie.config import MPI
 from ipie.trial_wavefunction.noci import NOCI
+from ipie.utils.testing import get_random_nomsd, get_random_sys_ham
 
 
 @pytest.mark.unit

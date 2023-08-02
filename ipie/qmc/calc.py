@@ -20,20 +20,9 @@
 # todo : handle more gracefully.
 import json
 
-try:
-    # TODO: WTF is this?
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
-    parallel = True
-except ImportError:
-    parallel = False
-
+from ipie.config import MPI
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.comm import FakeComm
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value
@@ -42,11 +31,7 @@ from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 def init_communicator():
-    if parallel:
-        comm = MPI.COMM_WORLD
-    else:
-        comm = FakeComm()
-    return comm
+    return MPI
 
 
 def setup_calculation(input_options):
@@ -167,7 +152,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
 
 
 def build_afqmc_driver(
-    comm: mpi4py.MPI.Intracomm,
+    comm,
     nelec: tuple,
     wavefunction_file: str = "wavefunction.h5",
     hamiltonian_file: str = "hamiltonian.h5",

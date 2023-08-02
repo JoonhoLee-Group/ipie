@@ -18,7 +18,8 @@
 
 import numpy
 import pytest
-from mpi4py import MPI
+
+from ipie.config import MPI
 
 try:
     import cupy
@@ -32,7 +33,7 @@ from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
-from ipie.utils.mpi import MPIHandler, get_shared_array
+from ipie.utils.mpi import get_shared_array, MPIHandler
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial

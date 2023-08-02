@@ -1,7 +1,7 @@
 import numpy
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.testing import get_random_nomsd, get_random_sys_ham

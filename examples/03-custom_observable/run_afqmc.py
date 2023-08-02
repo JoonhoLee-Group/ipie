@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +18,9 @@
 import os
 
 import numpy as np
-
 from pyscf import gto, scf
 
-from mpi4py import MPI
-
+from ipie.config import MPI
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
 mol = gto.M(
@@ -73,7 +70,6 @@ from ipie.estimators.greens_function import greens_function
 
 class Diagonal1RDM(EstimatorBase):
     def __init__(self, ham):
-
         # We define a dictionary to contain whatever we want to compute.
         # Note we typically want to separate the numerator and denominator of
         # the estimator
@@ -96,9 +92,7 @@ class Diagonal1RDM(EstimatorBase):
         trial_wavefunction.calc_greens_function(walker_batch)
         from ipie.estimators.greens_function import get_greens_function
 
-        numer = np.einsum(
-            "w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb
-        )
+        numer = np.einsum("w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb)
         self["DiagGNumer"] = numer
         self["DiagGDenom"] = sum(walker_batch.weight)
 
@@ -121,7 +115,6 @@ print(sum(qmc_data[0]).real)
 
 class Mixed1RDM(EstimatorBase):
     def __init__(self, ham):
-
         # We define a dictionary to contain whatever we want to compute.
         # Note we typically want to separate the numerator and denominator of
         # the estimator

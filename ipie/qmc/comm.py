@@ -16,6 +16,9 @@
 #          Joonho Lee
 #
 
+from dataclasses import dataclass
+from typing import TypeVar
+
 
 class FakeComm:
     """Fake MPI communicator class to reduce logic."""
@@ -23,8 +26,12 @@ class FakeComm:
     def __init__(self):
         self.rank = 0
         self.size = 1
+        self.buffer = {}
 
     def Barrier(self):
+        pass
+
+    def barrier(self):
         pass
 
     def Get_rank(self):
@@ -36,6 +43,12 @@ class FakeComm:
     def Gather(self, sendbuf, recvbuf, root=0):
         recvbuf[:] = sendbuf
 
+    def gather(self, sendbuf, root=0):
+        return [sendbuf]
+
+    def Allgather(self, sendbuf, recvbuf, root=0):
+        recvbuf[:] = sendbuf
+
     def Bcast(self, sendbuf, root=0):
         return sendbuf
 
@@ -45,11 +58,34 @@ class FakeComm:
     def isend(self, sendbuf, dest=None, tag=None):
         return FakeReq()
 
+    def Isend(self, sendbuf, dest=None, tag=None):
+        self.buffer[tag] = sendbuf
+        print(f"send {tag}")
+        return FakeReq()
+
     def recv(self, source=None, root=0):
         pass
 
-    def Reduce(self, sendbuf, recvbuf, op=None):
+    def Recv(self, recvbuff, source=None, root=0, tag=0):
+        print(f"recv {tag}")
+        if self.buffer.get(tag) is not None:
+            recvbuff[:] = self.buffer[tag].copy()
+
+    def Allreduce(self, sendbuf, recvbuf, root=0):
         recvbuf[:] = sendbuf
+
+    def Split(self, color: int = 0, key: int = 0):
+        return self
+
+    def Reduce(self, sendbuf, recvbuf, op=None, root=0):
+        recvbuf[:] = sendbuf
+
+    def Scatter(self, sendbuf, recvbuf, root=0):
+        recvbuf[:] = sendbuf
+
+    def scatter(self, sendbuf, root=0):
+        assert sendbuf.shape[0] == 1, "Incorrect array shape in FakeComm.scatter"
+        return sendbuf[0]
 
 
 class FakeReq:
@@ -58,3 +94,10 @@ class FakeReq:
 
     def wait(self):
         pass
+
+
+@dataclass
+class MPI:
+    COMM_WORLD = FakeComm()
+    SUM = None
+    IntraComm = TypeVar("IntraComm")

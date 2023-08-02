@@ -2,9 +2,9 @@ import os
 
 import numpy
 import pytest
-from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_data
+from ipie.config import MPI
 
 try:
     from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC

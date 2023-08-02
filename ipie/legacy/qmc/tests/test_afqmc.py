@@ -2,9 +2,9 @@ import os
 
 import numpy
 import pytest
-from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_mixed_estimates, extract_rdm
+from ipie.config import MPI
 from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.qmc.afqmc import AFQMC

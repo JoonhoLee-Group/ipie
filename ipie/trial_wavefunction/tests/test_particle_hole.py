@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleWicks,
     ParticleHoleWicksNonChunked,

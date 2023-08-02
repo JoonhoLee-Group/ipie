@@ -3,7 +3,7 @@ import pytest
 
 from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
+from ipie.legacy.hamiltonians.hubbard import decode_basis, Hubbard
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
@@ -242,7 +242,7 @@ def test_hubbard_ortho():
     options = {"free_projection": True}
     wopt = {"population_control": "pair_branch", "use_log_shift": True}
     walkers = Walkers(system, ham, trial, qmc, walker_opts=wopt)
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     # Discrete

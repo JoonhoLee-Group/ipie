@@ -22,9 +22,9 @@ import uuid
 
 import numpy as np
 import pytest
-from mpi4py import MPI
 
 from ipie.analysis.extraction import extract_test_data_hdf5
+from ipie.config import MPI
 from ipie.qmc.calc import get_driver, read_input
 
 try:

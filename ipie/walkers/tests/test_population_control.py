@@ -20,20 +20,15 @@
 import numpy
 import pytest
 
+from ipie.config import MPI
+from ipie.utils.legacy_testing import build_legacy_test_case_handlers_mpi
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler
-from ipie.utils.testing import (
-    build_test_case_handlers_mpi,
-)
-from ipie.utils.legacy_testing import build_legacy_test_case_handlers_mpi
+from ipie.utils.testing import build_test_case_handlers_mpi
 
 
 @pytest.mark.unit
 def test_pair_branch_batch():
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
 
     comm = MPI.COMM_WORLD
 
@@ -88,11 +83,6 @@ def test_pair_branch_batch():
 
 @pytest.mark.unit
 def test_comb_batch():
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     mpi_handler = MPIHandler(comm)
 
@@ -154,11 +144,6 @@ def test_comb_batch():
 
 @pytest.mark.unit
 def test_stochastic_reconfiguration_batch():
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
     numpy.random.seed(7)
     comm = MPI.COMM_WORLD
 

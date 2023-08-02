@@ -57,7 +57,7 @@ def test_estimator_handler():
     system, ham, walker_batch, trial = gen_random_test_instances(nmo, nocc, naux, nwalker)
     estim = EnergyEstimator(system=system, ham=ham, trial=trial, filename="test.txt")
     estim.print_to_stdout = False
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     handler = EstimatorHandler(

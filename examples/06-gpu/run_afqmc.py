@@ -16,13 +16,12 @@
 #
 
 import os
+import sys
 
 import numpy as np
-
 from pyscf import cc, gto, scf
 
-from mpi4py import MPI
-import sys
+from ipie.config import MPI
 
 try:
     import cupy

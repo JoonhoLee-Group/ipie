@@ -1,8 +1,8 @@
 import matplotlib.pyplot as pl
 import numpy
 import pandas as pd
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.estimators.thermal import particle_number
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC

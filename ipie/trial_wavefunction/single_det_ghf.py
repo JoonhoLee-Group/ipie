@@ -1,7 +1,6 @@
 import time
 from typing import Tuple, Union
 
-import mpi4py.MPI
 import numpy
 import plum
 
@@ -113,7 +112,7 @@ class SingleDetGHF(TrialWavefunctionBase):
             print(f"# Time to evaluate local energy: {time.time() - start}")
 
     @plum.dispatch
-    def half_rotate(self, hamiltonian: GenericRealChol, comm: mpi4py.MPI.Intracomm = None):
+    def half_rotate(self, hamiltonian: GenericRealChol, comm):
         print("# Half rotation not implemented for GHF with GenericRealChol")
         print("# Will use full greens function")
         # Half rotation does not quite make sense for spin-split integrals.

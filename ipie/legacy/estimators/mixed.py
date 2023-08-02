@@ -2,7 +2,7 @@ import h5py
 import numpy
 
 try:
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     mpi_sum = MPI.SUM
 except ImportError:

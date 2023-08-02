@@ -322,8 +322,7 @@ def build_driver_from_shciscf(
     # This is a hack because our current handling of MPI imports is dangerous.
     # import MPI can interfere with subsequent calls to mpirun which is
     # called through a subprocess through the shciscf driver class.
-    from mpi4py import MPI
-
+    from ipie.config import MPI
     from ipie.qmc.afqmc import AFQMC
     from ipie.systems.generic import Generic
     from ipie.utils.from_pyscf import generate_hamiltonian

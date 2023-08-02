@@ -18,19 +18,19 @@
 
 import numpy
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.phaseless_generic import PhaselessGenericChunked, PhaselessGeneric
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
 )
+from ipie.propagation.phaseless_generic import PhaselessGeneric, PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.mpi import MPIHandler, get_shared_array
+from ipie.utils.mpi import get_shared_array, MPIHandler
 from ipie.utils.pack_numba import pack_cholesky
-from ipie.utils.testing import generate_hamiltonian, build_random_single_det_trial
+from ipie.utils.testing import build_random_single_det_trial, generate_hamiltonian
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD

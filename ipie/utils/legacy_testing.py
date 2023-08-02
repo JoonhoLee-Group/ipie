@@ -13,11 +13,7 @@ from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (
-    generate_hamiltonian,
-    get_random_nomsd,
-    get_random_phmsd_opt,
-)
+from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd_opt
 
 
 def build_legacy_test_case(
@@ -292,7 +288,7 @@ def build_legacy_driver_instance(
     if trial.ndets == 1:
         trial.psi = trial.psi[0]
 
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(

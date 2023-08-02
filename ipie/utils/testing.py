@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC

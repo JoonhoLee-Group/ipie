@@ -442,13 +442,13 @@ class Walkers(object):
         reqs = []
         for iw, walker in enumerate(data):
             if walker[1] > 1:
-                tag = comm.rank * len(walker_info) + walker[3]
+                tag = int(comm.rank * len(walker_info) + walker[3])
                 self.walkers[iw].weight = walker[0]
                 buff = self.walkers[iw].get_buffer()
                 reqs.append(comm.Isend(buff, dest=int(round(walker[3])), tag=tag))
         for iw, walker in enumerate(data):
             if walker[1] == 0:
-                tag = walker[3] * len(walker_info) + comm.rank
+                tag = int(walker[3] * len(walker_info) + comm.rank)
                 comm.Recv(self.walker_buffer, source=int(round(walker[3])), tag=tag)
                 self.walkers[iw].set_buffer(self.walker_buffer)
         for r in reqs:

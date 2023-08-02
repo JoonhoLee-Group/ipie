@@ -16,7 +16,6 @@
 #
 
 import numpy as np
-
 from pyscf import gto, scf
 
 mol = gto.M(
@@ -66,8 +65,7 @@ class NoisySingleDet(SingleDet):
         return force_bias * (1 + noise)
 
 
-from ipie.estimators.energy import EnergyEstimator
-from ipie.estimators.energy import local_energy_batch
+from ipie.estimators.energy import EnergyEstimator, local_energy_batch
 
 
 # Need to define a custom energy estimator as currently we don't have multiple dispatch setup.
@@ -100,14 +98,11 @@ class NoisyEnergyEstimator(EnergyEstimator):
         return self.data
 
 
+from ipie.config import MPI
+
 # Checkpoint integrals and wavefunction
 # Running in serial but still need MPI World
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
-
-
-from mpi4py import MPI
+from ipie.utils.from_pyscf import generate_hamiltonian
 
 comm = MPI.COMM_WORLD
 
@@ -126,9 +121,7 @@ system = Generic(nelec=mol.nelec)
 
 # 2. Build Hamiltonian
 
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
+from ipie.utils.from_pyscf import generate_hamiltonian
 
 integrals = generate_hamiltonian(
     mol,
