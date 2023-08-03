@@ -22,7 +22,7 @@ import time
 import uuid
 from typing import Union
 
-from ipie.config import config
+from ipie.config import config, MPI
 from ipie.estimators.handler import EstimatorHandler
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCOpts
@@ -91,7 +91,6 @@ class AFQMC(object):
 
     def __init__(
         self,
-        comm,
         system=None,
         hamiltonian=None,
         trial=None,
@@ -107,6 +106,7 @@ class AFQMC(object):
         pop_control_freq=5,
         filename: Union[str, None] = None,
     ):
+        comm = MPI.COMM_WORLD
         if verbose is not None:
             self.verbosity = verbose
             if comm.rank != 0:
@@ -239,7 +239,7 @@ class AFQMC(object):
             json_string = to_json(self)
             self.estimators.json_string = json_string
 
-    def run(self, psi=None, comm=None, verbose=True):
+    def run(self, psi=None, verbose=True):
         """Perform AFQMC simulation on state object using open-ended random walk.
 
         Parameters
@@ -248,6 +248,7 @@ class AFQMC(object):
             Initial wavefunction / distribution of walkers.
         comm : MPI communicator
         """
+        comm = MPI.COMM_WORLD
         tzero_setup = time.time()
         if psi is not None:
             self.walkers = psi
