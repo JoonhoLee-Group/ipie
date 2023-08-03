@@ -15,7 +15,7 @@ from ipie.utils.misc import dotdict
 
 options = {"nx": 4, "ny": 4, "nup": 8, "ndown": 8, "U": 4}
 
-system = Generic(nelec=(8, 8), options=options)
+system = Generic(nelec=(8, 8))
 ham = Hubbard(options=options)
 eigs, eigv = numpy.linalg.eigh(ham.H1[0])
 coeffs = numpy.array([1.0 + 0j])
@@ -231,7 +231,7 @@ def total_energy(walkers, system, hamiltonian, trial, fp=False):
 @pytest.mark.unit
 def test_hubbard_ortho():
     options = {"nx": 4, "ny": 4, "nup": 5, "ndown": 5, "U": 4}
-    system = Generic(nelec=(5, 5), options=options)
+    system = Generic(nelec=(5, 5))
     ham = Hubbard(options=options)
     numpy.random.seed(7)
     wfn = numpy.zeros((1, ham.nbasis, system.ne), dtype=numpy.complex128)

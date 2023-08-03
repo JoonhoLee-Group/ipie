@@ -11,10 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+"""Use a custom walker object.
+
+In this example we will build a custom walker object. Note this requires a
+little more interaction with ipie than previous examples as we can't rely on
+factory methods so much.
+"""
 
 import numpy as np
 from pyscf import gto, scf
+
+from ipie.propagation.propagator import PhaselessGeneric
+from ipie.qmc.options import QMCParams
+from ipie.utils.mpi import MPIHandler
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
@@ -122,21 +131,11 @@ system = Generic(nelec=mol.nelec)
 
 from ipie.utils.from_pyscf import generate_hamiltonian
 
-integrals = generate_hamiltonian(
+ham = generate_hamiltonian(
     mol,
     mf.mo_coeff,
     mf.get_hcore(),
     mf.mo_coeff,  # should be optional
-)
-from ipie.hamiltonians.generic import Generic as HamGeneric
-
-num_basis = integrals.h1e.shape[0]
-num_chol = integrals.chol.shape[0]
-
-ham = HamGeneric(
-    np.array([integrals.h1e, integrals.h1e]),
-    integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-    integrals.e0,
 )
 
 # 3. Build trial wavefunction
@@ -175,23 +174,30 @@ class CustomUHFWalkers(UHFWalkers):
 walkers = CustomUHFWalkers(
     np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers  # initial_walkers
 )
+params = QMCParams(
+    num_walkers=num_walkers,
+    total_num_walkers=num_walkers * comm.size,
+    num_blocks=num_blocks,
+    num_steps_per_block=num_steps_per_block,
+    timestep=timestep,
+    rng_seed=7,
+)
+
+mpi_handler = MPIHandler()
+propagator = PhaselessGeneric(params.timestep)
+propagator.build(ham, trial, walkers, mpi_handler)
 
 afqmc = AFQMC(
-    comm,
-    system=system,
-    hamiltonian=ham,
-    trial=trial,
-    walkers=walkers,
-    nwalkers=num_walkers,
-    num_steps_per_block=num_steps_per_block,
-    num_blocks=num_blocks,
-    timestep=timestep,
-    seed=59306159,
+    system,
+    ham,
+    trial,
+    walkers,
+    propagator,
+    params,
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
-afqmc.estimators.overwrite = True
-afqmc.estimators["energy"] = estimator
-afqmc.run(comm=comm)
+add_est = {"energy": estimator}
+afqmc.run(additional_estimators=add_est)
 
 from ipie.analysis.extraction import extract_observable
 

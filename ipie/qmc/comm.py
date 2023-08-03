@@ -60,14 +60,12 @@ class FakeComm:
 
     def Isend(self, sendbuf, dest=None, tag=None):
         self.buffer[tag] = sendbuf
-        print(f"send {tag}")
         return FakeReq()
 
     def recv(self, source=None, root=0):
         pass
 
     def Recv(self, recvbuff, source=None, root=0, tag=0):
-        print(f"recv {tag}")
         if self.buffer.get(tag) is not None:
             recvbuff[:] = self.buffer[tag].copy()
 

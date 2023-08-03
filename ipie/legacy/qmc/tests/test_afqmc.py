@@ -95,7 +95,7 @@ def test_ueg():
     comm = MPI.COMM_WORLD
     # FDM: Fix cython issue.
     afqmc = AFQMC(comm=comm, options=options)
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(comm=comm, verbose=False)
     afqmc.finalise(verbose=0)
     afqmc.estimators.estimators["mixed"].update(
         afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0
@@ -153,7 +153,7 @@ def test_hubbard():
     }
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(comm=comm, options=options)
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(comm=comm, verbose=False)
     afqmc.finalise(verbose=0)
     afqmc.estimators.estimators["mixed"].update(
         afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0
@@ -203,7 +203,7 @@ def test_hubbard_complex():
     }
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(comm=comm, options=options)
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(comm=comm, verbose=False)
     afqmc.finalise(verbose=0)
     afqmc.estimators.estimators["mixed"].update(
         afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0
@@ -250,7 +250,7 @@ def test_generic():
     )
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(comm=comm, system=sys, hamiltonian=ham, options=options)
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(comm=comm, verbose=False)
     afqmc.finalise(verbose=0)
     afqmc.estimators.estimators["mixed"].update(
         afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0
@@ -298,7 +298,7 @@ def test_generic_single_det():
     )
     comm = MPI.COMM_WORLD
     afqmc = AFQMC(comm=comm, system=sys, hamiltonian=ham, options=options)
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(comm=comm, verbose=False)
     afqmc.finalise(verbose=0)
     afqmc.estimators.estimators["mixed"].update(
         afqmc.qmc, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.psi, 0

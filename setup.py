@@ -67,7 +67,7 @@ setup(
     install_requires=load_requirements("requirements.txt"),
     extras_require={
         "mpi": "mpi4py >= 3.0.0",
-        "dev": ["mpi4py >= 3.0.0", "pyblock", "pyscf", "pytest-cov", "pytest-xdist", "pytest-mpi"],
+        "dev": ["mpi4py >= 3.0.0", "pyblock", "pyscf", "pytest-cov", "pytest-xdist"],
     },
     long_description=open("README.rst").read(),
 )

@@ -42,7 +42,7 @@ def test_ueg():
     }
     comm = MPI.COMM_WORLD
     afqmc = ThermalAFQMC(comm=comm, options=options, verbose=0)
-    afqmc.run(comm=comm)
+    afqmc.run()
     afqmc.finalise(verbose=0)
     data = extract_data(afqmc.estimators.filename, "basic", "energies")
     numpy.testing.assert_almost_equal(

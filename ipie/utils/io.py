@@ -210,9 +210,9 @@ def write_json_input_file(
     hamil_filename: str,
     wfn_filename: str,
     nelec: tuple,
-    num_walkers: int = 640,
+    num_walkers: int = 10,
     timestep: float = 0.005,
-    num_blocks: float = 10,
+    num_blocks: float = 100,
     estimates_filename: str = "estimates.0.h5",
     # pylint: disable=dangerous-default-value
     options: dict = {},

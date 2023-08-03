@@ -25,6 +25,7 @@ import pandas as pd
 
 try:
     import pyblock
+
     _have_pyblock = True
 except ModuleNotFoundError:
     _have_pyblock = False

@@ -16,6 +16,9 @@
 #          Joonho Lee
 #
 
+from dataclasses import dataclass
+from typing import Optional
+
 from ipie.utils.io import get_input_value
 
 
@@ -151,3 +154,30 @@ class QMCOpts(object):
         for k, v in self.__dict__.items():
             _str += f"# {k:<25s} : {v}\n"
         return _str
+
+
+@dataclass
+class QMCParams:
+    r"""Input options and certain constants / parameters derived from them.
+
+    Args:
+        num_walkers: number of walkers **per** core / task / computational unit.
+        total_num_walkers: The total number of walkers in the simulation.
+        timestep: The timestep delta_t
+        num_steps_per_block: Number of steps of propagation before estimators
+            are evaluated.
+        num_blocks: The number of blocks. Total number of iterations =
+            num_blocks * num_steps_per_block.
+        num_stblz: number of steps before QR stabilization of walkers is performed.
+        pop_control_freq: Frequency at which population control occurs.
+        rng_seed: The random number seed. If run in parallel the seeds on other
+            cores / threads are determined from this.
+    """
+    num_walkers: int
+    total_num_walkers: int
+    timestep: float
+    num_steps_per_block: int
+    num_blocks: int
+    num_stblz: int = 5
+    pop_control_freq: int = 5
+    rng_seed: Optional[int] = None

@@ -60,7 +60,7 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n 6 --dist loadfile --cov=./ipie
+        python -m pytest -n=auto --dist loadfile --cov=./ipie
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py

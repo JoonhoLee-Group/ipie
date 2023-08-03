@@ -4,6 +4,7 @@ import glob
 import os
 import subprocess
 import sys
+from typing import List
 
 
 def parse_args(args):
@@ -20,7 +21,7 @@ def parse_args(args):
         Command line arguments.
     """
 
-    modes = ["pytest", "pylint", "black", "mpi", "examples", "flynt", "all"]
+    modes = ["pytest", "pylint", "black", "mpi", "examples", "flynt", "integration", "all"]
     parser = argparse.ArgumentParser(description=__doc__)
     for opt in modes:
         parser.add_argument(
@@ -80,29 +81,31 @@ def run_mpi():
 
 def run_integration():
     return _run_subprocess(
-        (
-            "mpiexec -np 4 python -u -m pytest -sv --with-mpi "
-            "ipie/qmc/tests/test_mpi_integration.py"
-        ),
+        "mpiexec -np 4 python -u ipie/qmc/tests/test_mpi_integration.py",
         shell=True,
     )
 
 
 def run_pytest():
-    return _run_subprocess("pytest -sv ipie/")
+    return _run_subprocess("pytest -n=auto -sv ipie/")
 
 
-def run_examples():
+def run_examples() -> List[str]:
     examples = sorted(glob.glob("examples/*"))
     # Legacy
     legacy = {"01": "", "02": "--mcscf", "05": "--frozen-core 5"}
     legacy_dirs = list(legacy.keys())
     err = 0
+    failed_tests = []
     for leg, arg in legacy.items():
         leg_dir = glob.glob(f"examples/{leg}-*")[0]
         print(f" - Running: {leg_dir}")
-        err += _run_subprocess(f"python {leg_dir}/scf.py")
-        err += _run_subprocess(f"python tools/pyscf/pyscf_to_ipie.py -i scf.chk {arg}")
+        err = _run_subprocess(f"python {leg_dir}/scf.py")
+        if err > 0:
+            failed_tests.append(f"{leg}-scf.py")
+        err = _run_subprocess(f"python tools/pyscf/pyscf_to_ipie.py -i scf.chk {arg}")
+        if err > 0:
+            failed_tests.append(f"{leg}-pyscf_to_ipie.py")
         try:
             os.remove("scf.chk")
         except FileNotFoundError:
@@ -113,9 +116,11 @@ def run_examples():
                 continue
             else:
                 print(f" - Running: {example}")
-                _run_subprocess(f"python -u {example}/run_afqmc.py")
+                err = _run_subprocess(f"python -u {example}/run_afqmc.py")
+                if err > 0:
+                    failed_tests.append(f"{example}-run_afqmc.py")
 
-    return 0
+    return failed_tests
 
 
 run_test = {
@@ -139,6 +144,10 @@ def main(args):
         if val or run_all:
             print(f"Running: {opt}")
             val = run_test[opt]()
+            if isinstance(val, list):
+                for x in val:
+                    print(x)
+                val = len(val)
             err += val
             if val:
                 print(f"Failed: {opt}.")

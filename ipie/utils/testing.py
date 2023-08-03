@@ -22,7 +22,6 @@ from typing import Tuple, Union
 
 import numpy
 
-from ipie.config import MPI
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC
@@ -42,7 +41,7 @@ from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -572,7 +571,7 @@ def build_driver_test_instance(
     )
     if density_diff:
         ham.density_diff = True
-    trial, init = build_random_trial(
+    trial, _ = build_random_trial(
         num_elec,
         num_basis,
         num_dets=num_dets,
@@ -588,27 +587,38 @@ def build_driver_test_instance(
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
 
-    nwalkers = qmc.nwalkers
+    # _, init = get_initial_walker(trial)  # Here we update init...
+    # walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    # walkers.build(trial)  # any intermediates that require information from trial
 
-    _, init = get_initial_walker(trial)  # Here we update init...
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial)  # any intermediates that require information from trial
-
-    comm = MPI.COMM_WORLD
-    afqmc = AFQMC(
-        comm=comm,
-        system=system,
-        hamiltonian=ham,
-        trial=trial,
-        walkers=walkers,
+    # params = QMCParams(
+    #     num_walkers=qmc.nwalkers,
+    #     total_num_walkers=qmc.nwalkers * comm.size,
+    #     num_blocks=qmc.nblocks,
+    #     num_steps_per_block=qmc.nsteps,
+    #     timestep=qmc.dt,
+    #     num_stblz=qmc.nstblz,
+    #     pop_control_freq=qmc.npop_control,
+    #     rng_seed=qmc.rng_seed,
+    # )
+    # afqmc = AFQMC(
+    #     system=system,
+    #     hamiltonian=ham,
+    #     trial=trial,
+    #     walkers=walkers,
+    #     propagator=pr
+    #     params,
+    # )
+    afqmc = AFQMC.build(
+        num_elec,
+        ham,
+        trial,
+        num_walkers=qmc.nwalkers,
         seed=qmc.rng_seed,
-        nwalkers=qmc.nwalkers,
         num_steps_per_block=qmc.nsteps,
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
-        stabilise_freq=qmc.nstblz,
+        stabilize_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
-        verbose=0,
-        filename=options["estimates"]["filename"],
     )
     return afqmc

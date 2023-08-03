@@ -17,23 +17,26 @@
 #
 
 """MPI Helper functions."""
-import numpy
+import numpy as np
+
+from ipie.config import MPI
 
 
 def make_splits_displacements(ntotal, nsplit):
     nt = int(ntotal // nsplit)
-    split_sizes_t = numpy.array([nt for i in range(nsplit)])
+    split_sizes_t = np.array([nt for i in range(nsplit)])
     residual = ntotal - nt * nsplit
     for i in range(residual):
         split_sizes_t[nsplit - 1 - i] += 1
-    displacements_t = numpy.insert(numpy.cumsum(split_sizes_t), 0, 0)[0:-1]
-    assert numpy.sum(split_sizes_t) == ntotal
+    displacements_t = np.insert(np.cumsum(split_sizes_t), 0, 0)[0:-1]
+    assert np.sum(split_sizes_t) == ntotal
     return split_sizes_t, displacements_t
 
 
 class MPIHandler(object):
-    def __init__(self, comm, nmembers: int = 1, verbose: bool = False):
-        self.comm = comm  # global communicator
+    def __init__(self, nmembers: int = 1, verbose: bool = False):
+        comm = MPI.COMM_WORLD
+        self.comm = comm
         self.shared_comm = get_shared_comm(comm)  # global communicator
         self.size = comm.Get_size()
         self.rank = comm.Get_rank()
@@ -54,8 +57,8 @@ class MPIHandler(object):
         self.scomm = comm.Split(color=self.color, key=self.srank)
         self.ssize = self.scomm.Get_size()
 
-        self.senders = numpy.array([i for i in range(self.ssize)])
-        self.receivers = numpy.array([i for i in range(1, self.ssize)] + [0])
+        self.senders = np.array([i for i in range(self.ssize)])
+        self.receivers = np.array([i for i in range(1, self.ssize)] + [0])
 
         assert self.ssize == self.nmembers
         assert self.srank == self.scomm.Get_rank()
@@ -64,17 +67,16 @@ class MPIHandler(object):
         ntotal = len(array)
         nsplit = self.ssize
         split_sizes, displacements = make_splits_displacements(ntotal, nsplit)
-        from ipie.config import MPI
 
         if isinstance(array, list):
             if isinstance(array[0], int):
-                my_array = numpy.zeros(split_sizes[self.srank], dtype=numpy.int64)
-                tmp = numpy.array(array)
+                my_array = np.zeros(split_sizes[self.srank], dtype=np.int64)
+                tmp = np.array(array)
                 self.scomm.Scatterv([tmp, split_sizes, displacements, MPI.INT64_T], my_array, root)
-        elif isinstance(array, numpy.ndarray):
+        elif isinstance(array, np.ndarray):
             if len(array.shape) == 2:
                 ncols = array.shape[1]
-                my_array = numpy.zeros((split_sizes[self.srank], ncols), dtype=array.dtype)
+                my_array = np.zeros((split_sizes[self.srank], ncols), dtype=array.dtype)
                 self.scomm.Scatterv(
                     [array, split_sizes * ncols, displacements * ncols, MPI.DOUBLE],
                     my_array,
@@ -86,14 +88,10 @@ class MPIHandler(object):
         return my_array
 
     def allreduce_group(self, array, root=0):  # allreduce within a group
-        from ipie.config import MPI
-
         return self.scomm.allreduce(array, op=MPI.SUM)
 
 
 def get_shared_comm(comm, verbose=False):
-    from ipie.config import MPI
-
     try:
         return comm.Split_type(MPI.COMM_TYPE_SHARED)
     except:
@@ -103,35 +101,31 @@ def get_shared_comm(comm, verbose=False):
 
 
 def get_shared_array(comm, shape, dtype, verbose=False):
-    """Get shared memory numpy array.
+    """Get shared memory np array.
 
     Parameters
     ----------
     comm : `mpi4py.MPI`
     """
-    size = numpy.prod(shape)
-    from ipie.config import MPI
-
+    size = np.prod(shape)
     try:
-        itemsize = numpy.dtype(dtype).itemsize
+        itemsize = np.dtype(dtype).itemsize
         if comm.rank == 0:
             nbytes = size * itemsize
         else:
             nbytes = 0
         win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=comm)
         buf, itemsize = win.Shared_query(0)
-        assert itemsize == numpy.dtype(dtype).itemsize
-        buf = numpy.array(buf, dtype="B", copy=False)
-        return numpy.ndarray(buffer=buf, dtype=dtype, shape=shape)
+        assert itemsize == np.dtype(dtype).itemsize
+        buf = np.array(buf, dtype="B", copy=False)
+        return np.ndarray(buffer=buf, dtype=dtype, shape=shape)
     except AttributeError:
         if verbose:
             print("# No MPI shared memory available.", comm.rank)
-        return numpy.zeros(shape, dtype=dtype)
+        return np.zeros(shape, dtype=dtype)
 
 
 def have_shared_mem(comm):
-    from ipie.config import MPI
-
     try:
         MPI.Win.Allocate_shared(1, 1, comm=comm)
         return True

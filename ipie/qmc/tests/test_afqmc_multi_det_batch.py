@@ -74,7 +74,7 @@ def test_generic_multi_det_batch():
         seed=7,
         num_dets=ndets,
     )
-    afqmc.run(comm=comm, verbose=1)
+    afqmc.run(verbose=0, estimator_filename="estimates.test_generic_multi_det_batch.h5")
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
         comm,

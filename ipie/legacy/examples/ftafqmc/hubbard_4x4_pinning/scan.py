@@ -27,7 +27,7 @@ for i, b in enumerate([2, 5, 10, 20]):
     for m in mu:
         system["mu"] = m
         afqmc = ThermalAFQMC(comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0))
-        afqmc.run(comm=comm, verbose=True)
+        afqmc.run(verbose=True)
 
 # Rerun with optimised chemical potential values.
 # These are values from reference.
@@ -52,4 +52,4 @@ for i, b in enumerate(beta):
         "mixed": {"average_gf": True},
     }
     afqmc = ThermalAFQMC(comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)

@@ -82,11 +82,11 @@ class S2Mixed(EstimatorBase):
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec, num_walkers_per_task=10, verbosity=-10)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 50
+afqmc.params.num_blocks = 50
 # afqmc.estimators.overwite = True
 # We can now add this to the estimator handler object in the afqmc driver
-afqmc.estimators["S2"] = S2Mixed(ham=afqmc.hamiltonian)
-afqmc.run(comm=comm)
+estimators = {"S2": S2Mixed(ham=afqmc.hamiltonian)}
+afqmc.run(additional_estimators=estimators)
 afqmc.finalise(verbose=True)
 # We can extract the qmc data as as a pandas data frame like so
 from ipie.analysis.extraction import extract_observable

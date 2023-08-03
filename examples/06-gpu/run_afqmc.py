@@ -57,6 +57,6 @@ afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Inspect the default qmc options
 print(afqmc.qmc)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 20
-afqmc.run(comm=comm)
+afqmc.params.num_blocks = 20
+afqmc.run()
 # We can extract the qmc data as as a pandas data frame like so

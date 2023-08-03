@@ -20,7 +20,7 @@ from ipie.qmc.options import QMCOpts
 def determine_nav(comm, options, mu, target):
     options["system"]["mu"] = mu
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
     if comm.rank == 0:
         av = analyse_energy([afqmc.estimators.h5f_name])
         nav = av.Nav.values[0]
@@ -62,7 +62,7 @@ def find_mu_opt(options):
     qmc["nsteps"] = 50
     estim["basename"] = "optimal"
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
 
 
 if __name__ == "__main__":

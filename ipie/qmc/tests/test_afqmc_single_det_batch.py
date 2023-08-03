@@ -75,7 +75,7 @@ def test_generic_single_det_batch():
     afqmc = build_driver_test_instance(
         nelec, nmo, trial_type="single_det", options=driver_options, seed=7
     )
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(verbose=False, estimator_filename="estimates.test_generic_single_det_batch.h5")
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
         comm,
@@ -168,7 +168,9 @@ def test_generic_single_det_batch_density_diff():
         seed=7,
         density_diff=True,
     )
-    afqmc.run(comm=comm, verbose=0)
+    afqmc.run(
+        verbose=False, estimator_filename="estimates.test_generic_single_det_batch_density_diff.h5"
+    )
     afqmc.finalise(verbose=0)
     afqmc.estimators.compute_estimators(
         comm,

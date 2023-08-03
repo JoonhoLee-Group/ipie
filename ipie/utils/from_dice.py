@@ -7,9 +7,16 @@ from typing import Tuple
 import h5py
 import numpy as np
 from pyscf import scf  # pylint: disable=import-error
-from pyscf.shciscf import shci  # pylint: disable=import-error
 
+try:
+    from pyscf.shciscf import shci  # pylint: disable=import-error
+except (ModuleNotFoundError, ImportError):
+    print("issues importing pyscf.shciscf")
+    raise ImportError
+
+from ipie.qmc.afqmc import AFQMC
 from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.utils.from_pyscf import generate_hamiltonian
 
 
 def get_perm(from_orb: list, to_orb: list, di: list, dj: list) -> int:
@@ -319,42 +326,10 @@ def build_driver_from_shciscf(
         noons_thresh=noons_thresh,
         convert_det_phase=convert_det_phase,
     )
-    # This is a hack because our current handling of MPI imports is dangerous.
-    # import MPI can interfere with subsequent calls to mpirun which is
-    # called through a subprocess through the shciscf driver class.
-    from ipie.config import MPI
-    from ipie.qmc.afqmc import AFQMC
-    from ipie.systems.generic import Generic
-    from ipie.utils.from_pyscf import generate_hamiltonian
-    from ipie.utils.mpi import MPIHandler
-    from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
-    system = Generic(mf.mol.nelec)
     ham = generate_hamiltonian(
         mf.mol, shci_inst.mo_coeff, mf.get_hcore(), shci_inst.mo_coeff, chol_cut=chol_cut
     )
 
-    comm = MPI.COMM_WORLD
-
-    mpi_handler = MPIHandler(comm)
-    _, initial_walker = get_initial_walker(trial)
-    walkers = UHFWalkersTrial(
-        trial,
-        initial_walker,
-        system.nup,
-        system.ndown,
-        ham.nbasis,
-        num_walkers,
-        mpi_handler=mpi_handler,
-    )
-    walkers.build(trial)  # any intermediates that require information from trial
-    afqmc = AFQMC(
-        comm,
-        system=system,
-        hamiltonian=ham,
-        trial=trial,
-        walkers=walkers,
-        seed=seed,
-        nwalkers=num_walkers,
-    )
+    afqmc = AFQMC.build(mf.mol.nelec, ham, trial)
     return afqmc, shci_inst

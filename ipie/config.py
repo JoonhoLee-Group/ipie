@@ -38,7 +38,6 @@ def _select_mpi():
 MPI = _select_mpi()
 
 
-
 class Config:
     def __init__(self):
         self.options = {}

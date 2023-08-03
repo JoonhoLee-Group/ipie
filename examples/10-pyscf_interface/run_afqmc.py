@@ -1,4 +1,3 @@
-import numpy as np
 from pyscf import cc, gto, scf
 
 from ipie.config import MPI
@@ -27,12 +26,11 @@ from ipie.qmc.calc import build_afqmc_driver
 # fixing random seed for reproducibility
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec, num_walkers_per_task=100, seed=41100801)
 if comm.rank == 0:
-    print(afqmc.qmc)  # Inspect the default qmc options
+    print(afqmc.params)  # Inspect the default qmc options
 
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 10
-afqmc.estimators.overwite = True
-afqmc.run(comm=comm)
+afqmc.params.num_blocks = 10
+afqmc.run()
 
 if comm.rank == 0:
     # We can extract the qmc data as as a pandas data frame like so
@@ -45,6 +43,5 @@ if comm.rank == 0:
     from ipie.analysis.autocorr import reblock_by_autocorr
 
     df = reblock_by_autocorr(y, verbose=1)
-
     # assert np.isclose(df.at[0,'ETotal_ac'], -5.325611614468466)
     # assert np.isclose(df.at[0,'ETotal_error_ac'], 0.00938082351500978)
