@@ -38,10 +38,7 @@ from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
-# # Using only default population control
 
-
-# if comm.rank == 0:
 class AFQMC(object):
     """AFQMC driver.
 

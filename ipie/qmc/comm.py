@@ -72,6 +72,9 @@ class FakeComm:
     def Allreduce(self, sendbuf, recvbuf, root=0):
         recvbuf[:] = sendbuf
 
+    def allreduce(self, sendbuf, op=None, root=0):
+        return sendbuf.copy()
+
     def Split(self, color: int = 0, key: int = 0):
         return self
 
@@ -79,6 +82,9 @@ class FakeComm:
         recvbuf[:] = sendbuf
 
     def Scatter(self, sendbuf, recvbuf, root=0):
+        recvbuf[:] = sendbuf
+
+    def Scatterv(self, sendbuf, recvbuf, root=0):
         recvbuf[:] = sendbuf
 
     def scatter(self, sendbuf, root=0):
@@ -98,4 +104,9 @@ class FakeReq:
 class MPI:
     COMM_WORLD = FakeComm()
     SUM = None
+    COMM_SPLIT_TYPE_SHARED = None
+    COMM_TYPE_SHARED = None
+    DOUBLE = None
+    INT64_T = None
+    Win = None
     IntraComm = TypeVar("IntraComm")
