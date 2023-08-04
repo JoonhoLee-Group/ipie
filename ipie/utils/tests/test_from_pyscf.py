@@ -77,13 +77,8 @@ def test_from_chkfile():
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_pyscf_to_ipie():
-    with (
-        tempfile.NamedTemporaryFile() as scf_chk,
-        tempfile.NamedTemporaryFile() as hamilf,
-        tempfile.NamedTemporaryFile() as wfnf,
-        tempfile.NamedTemporaryFile() as estm,
-        tempfile.NamedTemporaryFile() as inpf,
-    ):
+    # TODO: when python > 3.8 allow bracket and multiline with statement.
+    with tempfile.NamedTemporaryFile() as scf_chk, tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf, tempfile.NamedTemporaryFile() as estm, tempfile.NamedTemporaryFile() as inpf:
         mol = gto.M(
             atom=[("H", 1.5 * i, 0, 0) for i in range(0, 4)],
             basis="6-31g",
@@ -139,11 +134,7 @@ def test_pyscf_to_ipie():
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_pyscf_to_ipie_rohf():
-    with (
-        tempfile.NamedTemporaryFile() as scf_chk,
-        tempfile.NamedTemporaryFile() as hamilf,
-        tempfile.NamedTemporaryFile() as wfnf,
-    ):
+    with tempfile.NamedTemporaryFile() as scf_chk, tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
         mol = gto.Mole()
         mol.basis = "cc-pvdz"
         mol.atom = (("C", 0, 0, 0),)
@@ -186,11 +177,7 @@ def test_frozen_core():
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_frozen_uhf():
-    with (
-        tempfile.NamedTemporaryFile() as scf_chk,
-        tempfile.NamedTemporaryFile() as hamilf,
-        tempfile.NamedTemporaryFile() as wfnf,
-    ):
+    with tempfile.NamedTemporaryFile() as scf_chk, tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
         mol = gto.Mole()
         mol.basis = "cc-pvdz"
         mol.atom = (("C", 0, 0, 0),)
@@ -226,11 +213,7 @@ def test_frozen_uhf():
 @pytest.mark.unit
 @pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
 def test_frozen_rohf():
-    with (
-        tempfile.NamedTemporaryFile() as scf_chk,
-        tempfile.NamedTemporaryFile() as hamilf,
-        tempfile.NamedTemporaryFile() as wfnf,
-    ):
+    with tempfile.NamedTemporaryFile() as scf_chk, tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
         mol = gto.Mole()
         mol.basis = "cc-pvdz"
         mol.atom = (("C", 0, 0, 0),)

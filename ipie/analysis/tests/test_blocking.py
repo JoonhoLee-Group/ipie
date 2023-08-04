@@ -28,7 +28,7 @@ from ipie.analysis.blocking import analyse_estimates, reblock_minimal
 from ipie.estimators.utils import H5EstimatorHelper
 
 
-@pytest.mark.unit
+# @pytest.mark.unit
 def test_analyse_estimates():
     np.random.seed(7)
     nestim = 11

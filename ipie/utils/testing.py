@@ -587,28 +587,6 @@ def build_driver_test_instance(
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
 
-    # _, init = get_initial_walker(trial)  # Here we update init...
-    # walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    # walkers.build(trial)  # any intermediates that require information from trial
-
-    # params = QMCParams(
-    #     num_walkers=qmc.nwalkers,
-    #     total_num_walkers=qmc.nwalkers * comm.size,
-    #     num_blocks=qmc.nblocks,
-    #     num_steps_per_block=qmc.nsteps,
-    #     timestep=qmc.dt,
-    #     num_stblz=qmc.nstblz,
-    #     pop_control_freq=qmc.npop_control,
-    #     rng_seed=qmc.rng_seed,
-    # )
-    # afqmc = AFQMC(
-    #     system=system,
-    #     hamiltonian=ham,
-    #     trial=trial,
-    #     walkers=walkers,
-    #     propagator=pr
-    #     params,
-    # )
     afqmc = AFQMC.build(
         num_elec,
         ham,

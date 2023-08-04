@@ -66,8 +66,8 @@ setup(
     ext_modules=cythonized_extension,
     install_requires=load_requirements("requirements.txt"),
     extras_require={
-        "mpi": "mpi4py >= 3.0.0",
-        "dev": ["mpi4py >= 3.0.0", "pyblock", "pyscf", "pytest-cov", "pytest-xdist"],
+        "mpi": load_requirements("dev/mpi.txt"),
+        "dev": load_requirements("dev/dev.txt"),
     },
     long_description=open("README.rst").read(),
 )
