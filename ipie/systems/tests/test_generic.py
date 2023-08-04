@@ -17,7 +17,7 @@
 #
 
 import os
-import unittest
+import tempfile
 
 import numpy
 import pytest
@@ -87,18 +87,19 @@ def test_read():
     from ipie.utils.io import write_qmcpack_dense
 
     chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
-    filename = "hamil.test_read.h5"
-    write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
-    nup, ndown = nelec
-    comm = None
-    hcore, chol, h1e_mod, enuc = get_generic_integrals(filename, comm=comm, verbose=False)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=hcore, chol=chol, ecore=enuc)
-    assert ham.ecore == pytest.approx(0.4392816555570978)
-    assert ham.chol.shape == chol_.shape  # now two are transposed
-    assert len(ham.H1.shape) == 3
-    assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
+    with tempfile.NamedTemporaryFile() as tmpf:
+        filename = tmpf.name
+        write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
+        nup, ndown = nelec
+        comm = None
+        hcore, chol, h1e_mod, enuc = get_generic_integrals(filename, comm=comm, verbose=False)
+        sys = Generic(nelec=nelec)
+        ham = HamGeneric(h1e=hcore, chol=chol, ecore=enuc)
+        assert ham.ecore == pytest.approx(0.4392816555570978)
+        assert ham.chol.shape == chol_.shape  # now two are transposed
+        assert len(ham.H1.shape) == 3
+        assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
+        assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
 
 
 @pytest.mark.unit
@@ -110,36 +111,26 @@ def test_shmem():
     h1e_, chol_, enuc_, eri_ = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
     from ipie.utils.io import write_qmcpack_dense
 
-    chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
-    filename = "hamil.test_shmem.h5"
-    write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
-    filename = "hamil.test_shmem.h5"
-    from ipie.utils.mpi import get_shared_comm
+    with tempfile.NamedTemporaryFile() as tmpf:
+        chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
+        filename = tmpf.name
+        write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
+        from ipie.utils.mpi import get_shared_comm
 
-    shared_comm = get_shared_comm(comm, verbose=True)
-    hcore, chol, _, enuc = get_generic_integrals(filename, comm=shared_comm, verbose=False)
-    # system = Generic(h1e=hcore, chol=chol, ecore=enuc,
-    #                  h1e_mod=h1e_mod, nelec=nelec,
-    #                  verbose=False)
-    # print("hcore.shape = ", hcore.shape)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=hcore, chol=chol.copy(), ecore=enuc)
+        shared_comm = get_shared_comm(comm, verbose=True)
+        hcore, chol, _, enuc = get_generic_integrals(filename, comm=shared_comm, verbose=False)
+        # system = Generic(h1e=hcore, chol=chol, ecore=enuc,
+        #                  h1e_mod=h1e_mod, nelec=nelec,
+        #                  verbose=False)
+        # print("hcore.shape = ", hcore.shape)
+        sys = Generic(nelec=nelec)
+        ham = HamGeneric(h1e=hcore, chol=chol.copy(), ecore=enuc)
 
-    assert ham.ecore == pytest.approx(0.4392816555570978)
-    assert ham.chol.shape == chol_.shape  # now two are transposed
-    assert len(ham.H1.shape) == 3
-    assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-    assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
-
-
-def teardown_module():
-    cwd = os.getcwd()
-    files = ["hamil.test_read.h5", "hamil.test_shmem.h5", "hamil.test_write.h5"]
-    for f in files:
-        try:
-            os.remove(cwd + "/" + f)
-        except OSError:
-            pass
+        assert ham.ecore == pytest.approx(0.4392816555570978)
+        assert ham.chol.shape == chol_.shape  # now two are transposed
+        assert len(ham.H1.shape) == 3
+        assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
+        assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
 
 
 if __name__ == "__main__":

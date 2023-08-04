@@ -17,6 +17,7 @@
 #
 
 import os
+import tempfile
 
 import numpy
 import pytest
@@ -56,217 +57,215 @@ options = {
     "stabilise_freq": stabilise_freq,
     "rng_seed": seed,
 }
-driver_options = {
-    "verbosity": 0,
-    "get_sha1": False,
-    "qmc": options,
-    "estimates": {
-        "filename": "estimates.test_generic_single_det_batch.h5",
-        "observables": {
-            "energy": {},
-        },
-    },
-    "walkers": {"population_control": "pair_branch"},
-}
 
 
 @pytest.mark.driver
 def test_generic_single_det_batch():
-    afqmc = build_driver_test_instance(
-        nelec, nmo, trial_type="single_det", options=driver_options, seed=7
-    )
-    afqmc.run(verbose=False, estimator_filename="estimates.test_generic_single_det_batch.h5")
-    afqmc.finalise(verbose=0)
-    afqmc.estimators.compute_estimators(
-        comm,
-        afqmc.system,
-        afqmc.hamiltonian,
-        afqmc.trial,
-        afqmc.walkers,
-    )
-    numer_batch = afqmc.estimators["energy"]["ENumer"]
-    denom_batch = afqmc.estimators["energy"]["EDenom"]
-    data_batch = extract_observable("estimates.test_generic_single_det_batch.h5", "energy")
-    driver_options["estimates"] = {
-        "filename": "estimates.test_generic_single_det_batch.h5",
-        "mixed": {"energy_eval_freq": options["steps"]},
-    }
-    options["batched"] = False
-    legacy_afqmc = build_legacy_driver_instance(
-        nelec, nmo, trial_type="single_det", options=driver_options, seed=7
-    )
-    legacy_afqmc.run(comm=comm, verbose=1)
-    legacy_afqmc.finalise(verbose=0)
-    legacy_afqmc.estimators.estimators["mixed"].update(
-        legacy_afqmc.qmc,
-        legacy_afqmc.system,
-        legacy_afqmc.hamiltonian,
-        legacy_afqmc.trial,
-        legacy_afqmc.psi,
-        0,
-    )
+    with tempfile.NamedTemporaryFile() as tmpf:
+        driver_options = {
+            "verbosity": 0,
+            "get_sha1": False,
+            "qmc": options,
+            "estimates": {
+                "filename": tmpf.name,
+                "observables": {
+                    "energy": {},
+                },
+            },
+            "walkers": {"population_control": "pair_branch"},
+        }
 
-    enum = legacy_afqmc.estimators.estimators["mixed"].names
-    numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
-    denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
-    weight = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.weight]
+        afqmc = build_driver_test_instance(
+            nelec, nmo, trial_type="single_det", options=driver_options, seed=7
+        )
+        afqmc.run(verbose=False, estimator_filename=tmpf.name)
+        afqmc.finalise(verbose=0)
+        afqmc.estimators.compute_estimators(
+            comm,
+            afqmc.system,
+            afqmc.hamiltonian,
+            afqmc.trial,
+            afqmc.walkers,
+        )
+        numer_batch = afqmc.estimators["energy"]["ENumer"]
+        denom_batch = afqmc.estimators["energy"]["EDenom"]
+        data_batch = extract_observable(tmpf.name, "energy")
+        driver_options["estimates"] = {
+            "filename": tmpf.name,
+            "mixed": {"energy_eval_freq": options["steps"]},
+        }
+        options["batched"] = False
+        legacy_afqmc = build_legacy_driver_instance(
+            nelec, nmo, trial_type="single_det", options=driver_options, seed=7
+        )
+        legacy_afqmc.run(comm=comm, verbose=1)
+        legacy_afqmc.finalise(verbose=0)
+        legacy_afqmc.estimators.estimators["mixed"].update(
+            legacy_afqmc.qmc,
+            legacy_afqmc.system,
+            legacy_afqmc.hamiltonian,
+            legacy_afqmc.trial,
+            legacy_afqmc.psi,
+            0,
+        )
 
-    assert numer.real == pytest.approx(numer_batch.real)
-    assert denom.real == pytest.approx(denom_batch.real)
-    # assert weight.real == pytest.approx(weight_batch.real)
-    assert numer.imag == pytest.approx(numer_batch.imag)
-    assert denom.imag == pytest.approx(denom_batch.imag)
-    # assert weight.imag == pytest.approx(weight_batch.imag)
-    data = extract_mixed_estimates("estimates.test_generic_single_det_batch.h5")
+        enum = legacy_afqmc.estimators.estimators["mixed"].names
+        numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
+        denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
+        weight = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.weight]
 
-    assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
-        numpy.mean(data.WeightFactor.values[1:-1].real)
-    )
-    assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
-        numpy.mean(data.Weight.values[1:-1].real)
-    )
-    assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
-        numpy.mean(data.ENumer.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.EDenom.values[:-1].real) == pytest.approx(
-        numpy.mean(data.EDenom.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.ETotal.values[:-1].real) == pytest.approx(
-        numpy.mean(data.ETotal.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.E1Body.values[:-1].real) == pytest.approx(
-        numpy.mean(data.E1Body.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
-        numpy.mean(data.E2Body.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
-        numpy.mean(data.EHybrid.values[:-1].real)
-    )
-    # no longer computed
-    # assert numpy.mean(data_batch.Overlap.values[:-2].real) == pytest.approx(
-    # numpy.mean(data.Overlap.values[:-1].real)
-    # )
+        assert numer.real == pytest.approx(numer_batch.real)
+        assert denom.real == pytest.approx(denom_batch.real)
+        # assert weight.real == pytest.approx(weight_batch.real)
+        assert numer.imag == pytest.approx(numer_batch.imag)
+        assert denom.imag == pytest.approx(denom_batch.imag)
+        # assert weight.imag == pytest.approx(weight_batch.imag)
+        data = extract_mixed_estimates(tmpf.name)
+
+        assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
+            numpy.mean(data.WeightFactor.values[1:-1].real)
+        )
+        assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
+            numpy.mean(data.Weight.values[1:-1].real)
+        )
+        assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
+            numpy.mean(data.ENumer.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.EDenom.values[:-1].real) == pytest.approx(
+            numpy.mean(data.EDenom.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.ETotal.values[:-1].real) == pytest.approx(
+            numpy.mean(data.ETotal.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.E1Body.values[:-1].real) == pytest.approx(
+            numpy.mean(data.E1Body.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
+            numpy.mean(data.E2Body.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
+            numpy.mean(data.EHybrid.values[:-1].real)
+        )
+        # no longer computed
+        # assert numpy.mean(data_batch.Overlap.values[:-2].real) == pytest.approx(
+        # numpy.mean(data.Overlap.values[:-1].real)
+        # )
 
 
 @pytest.mark.driver
 def test_generic_single_det_batch_density_diff():
-    driver_options["estimates"] = {
-        "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
-        "observables": {
-            "energy": {},
-        },
-    }
-    comm = MPI.COMM_WORLD
+    with tempfile.NamedTemporaryFile() as tmpf:
+        driver_options = {
+            "verbosity": 0,
+            "get_sha1": False,
+            "qmc": options,
+            "estimates": {
+                "filename": tmpf.name,
+                "observables": {
+                    "energy": {},
+                },
+            },
+            "walkers": {"population_control": "pair_branch"},
+        }
+        driver_options["estimates"] = {
+            "filename": tmpf.name,
+            "observables": {
+                "energy": {},
+            },
+        }
+        comm = MPI.COMM_WORLD
 
-    driver_options["qmc"]["batched"] = True
-    afqmc = build_driver_test_instance(
-        nelec,
-        nmo,
-        trial_type="single_det",
-        options=driver_options,
-        seed=7,
-        density_diff=True,
-    )
-    afqmc.run(
-        verbose=False, estimator_filename="estimates.test_generic_single_det_batch_density_diff.h5"
-    )
-    afqmc.finalise(verbose=0)
-    afqmc.estimators.compute_estimators(
-        comm,
-        afqmc.system,
-        afqmc.hamiltonian,
-        afqmc.trial,
-        afqmc.walkers,
-    )
+        driver_options["qmc"]["batched"] = True
+        afqmc = build_driver_test_instance(
+            nelec,
+            nmo,
+            trial_type="single_det",
+            options=driver_options,
+            seed=7,
+            density_diff=True,
+        )
+        afqmc.run(verbose=False, estimator_filename=tmpf.name)
+        afqmc.finalise(verbose=0)
+        afqmc.estimators.compute_estimators(
+            comm,
+            afqmc.system,
+            afqmc.hamiltonian,
+            afqmc.trial,
+            afqmc.walkers,
+        )
 
-    numer_batch = afqmc.estimators["energy"]["ENumer"]
-    denom_batch = afqmc.estimators["energy"]["EDenom"]
-    # weight_batch = afqmc.estimators['energy']['Weight']
+        numer_batch = afqmc.estimators["energy"]["ENumer"]
+        denom_batch = afqmc.estimators["energy"]["EDenom"]
+        # weight_batch = afqmc.estimators['energy']['Weight']
 
-    data_batch = extract_observable(
-        "estimates.test_generic_single_det_batch_density_diff.h5", "energy"
-    )
+        data_batch = extract_observable(tmpf.name, "energy")
 
-    numpy.random.seed(seed)
-    driver_options["estimates"] = {
-        "filename": "estimates.test_generic_single_det_batch_density_diff.h5",
-        "mixed": {"energy_eval_freq": steps},
-    }
-    driver_options["qmc"]["batched"] = False
-    legacy_afqmc = build_legacy_driver_instance(
-        nelec,
-        nmo,
-        trial_type="single_det",
-        options=driver_options,
-        seed=7,
-        density_diff=True,
-    )
-    legacy_afqmc.run(comm=comm, verbose=1)
-    legacy_afqmc.finalise(verbose=0)
-    legacy_afqmc.estimators.estimators["mixed"].update(
-        legacy_afqmc.qmc,
-        legacy_afqmc.system,
-        legacy_afqmc.hamiltonian,
-        legacy_afqmc.trial,
-        legacy_afqmc.psi,
-        0,
-    )
-    enum = legacy_afqmc.estimators.estimators["mixed"].names
-    numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
-    denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
-    weight = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.weight]
+        numpy.random.seed(seed)
+        driver_options["estimates"] = {
+            "filename": tmpf.name,
+            "mixed": {"energy_eval_freq": steps},
+        }
+        driver_options["qmc"]["batched"] = False
+        legacy_afqmc = build_legacy_driver_instance(
+            nelec,
+            nmo,
+            trial_type="single_det",
+            options=driver_options,
+            seed=7,
+            density_diff=True,
+        )
+        legacy_afqmc.run(comm=comm, verbose=1)
+        legacy_afqmc.finalise(verbose=0)
+        legacy_afqmc.estimators.estimators["mixed"].update(
+            legacy_afqmc.qmc,
+            legacy_afqmc.system,
+            legacy_afqmc.hamiltonian,
+            legacy_afqmc.trial,
+            legacy_afqmc.psi,
+            0,
+        )
+        enum = legacy_afqmc.estimators.estimators["mixed"].names
+        numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
+        denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
+        weight = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.weight]
 
-    assert numer.real == pytest.approx(numer_batch.real)
-    assert denom.real == pytest.approx(denom_batch.real)
-    # assert weight.real == pytest.approx(weight_batch.real)
-    assert numer.imag == pytest.approx(numer_batch.imag)
-    assert denom.imag == pytest.approx(denom_batch.imag)
-    # assert weight.imag == pytest.approx(weight_batch.imag)
-    data = extract_mixed_estimates("estimates.test_generic_single_det_batch_density_diff.h5")
+        assert numer.real == pytest.approx(numer_batch.real)
+        assert denom.real == pytest.approx(denom_batch.real)
+        # assert weight.real == pytest.approx(weight_batch.real)
+        assert numer.imag == pytest.approx(numer_batch.imag)
+        assert denom.imag == pytest.approx(denom_batch.imag)
+        # assert weight.imag == pytest.approx(weight_batch.imag)
+        data = extract_mixed_estimates(tmpf.name)
 
-    # print(data_batch.ENumer)
-    # print(data.ENumer)
-    assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
-        numpy.mean(data.WeightFactor.values[1:-1].real)
-    )
-    assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
-        numpy.mean(data.Weight.values[1:-1].real)
-    )
-    assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
-        numpy.mean(data.ENumer.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.EDenom.values[:-1].real) == pytest.approx(
-        numpy.mean(data.EDenom.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.ETotal.values[:-1].real) == pytest.approx(
-        numpy.mean(data.ETotal.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.E1Body.values[:-1].real) == pytest.approx(
-        numpy.mean(data.E1Body.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
-        numpy.mean(data.E2Body.values[:-1].real)
-    )
-    assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
-        numpy.mean(data.EHybrid.values[:-1].real)
-    )
-    # assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(
-    # numpy.mean(data.Overlap.values[:-1].real)
-    # )
-
-
-def teardown_module():
-    cwd = os.getcwd()
-    files = [
-        "estimates.test_generic_single_det_batch_density_diff.h5",
-        "estimates.test_generic_single_det_batch.h5",
-    ]
-    for f in files:
-        try:
-            os.remove(cwd + "/" + f)
-        except OSError:
-            pass
+        # print(data_batch.ENumer)
+        # print(data.ENumer)
+        assert numpy.mean(data_batch.WeightFactor.values[1:-1].real) == pytest.approx(
+            numpy.mean(data.WeightFactor.values[1:-1].real)
+        )
+        assert numpy.mean(data_batch.Weight.values[1:-1].real) == pytest.approx(
+            numpy.mean(data.Weight.values[1:-1].real)
+        )
+        assert numpy.mean(data_batch.ENumer.values[:-1].real) == pytest.approx(
+            numpy.mean(data.ENumer.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.EDenom.values[:-1].real) == pytest.approx(
+            numpy.mean(data.EDenom.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.ETotal.values[:-1].real) == pytest.approx(
+            numpy.mean(data.ETotal.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.E1Body.values[:-1].real) == pytest.approx(
+            numpy.mean(data.E1Body.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.E2Body.values[:-1].real) == pytest.approx(
+            numpy.mean(data.E2Body.values[:-1].real)
+        )
+        assert numpy.mean(data_batch.HybridEnergy.values[:-1].real) == pytest.approx(
+            numpy.mean(data.EHybrid.values[:-1].real)
+        )
+        # assert numpy.mean(data_batch.Overlap.values[:-1].real) == pytest.approx(
+        # numpy.mean(data.Overlap.values[:-1].real)
+        # )
 
 
 if __name__ == "__main__":

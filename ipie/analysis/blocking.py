@@ -318,7 +318,9 @@ def reblock_minimal(files, start_block=0, verbose=False):
     return df
 
 
-def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=False):
+def analyse_estimates(
+    files, start_time, multi_sim=False, av_tau=False, verbose=False, outfile=None
+):
     mds = []
     basic = []
     if av_tau:
@@ -355,15 +357,14 @@ def analyse_estimates(files, start_time, multi_sim=False, av_tau=False, verbose=
         else:
             basic_av = reblock_mixed(basic, columns, verbose=verbose)
 
-        base = files[0].split("/")[-1]
-        outfile = "analysed_" + base
-        with h5py.File(outfile, "w") as fh5:
-            fh5["metadata"] = numpy.array(mds).astype("S")
-            try:
-                fh5["basic/estimates"] = basic_av.drop("integrals", axis=1).values.astype(float)
-            except KeyError:
-                pass
-            fh5["basic/headers"] = numpy.array(basic_av.columns.values).astype("S")
+        if outfile is not None:
+            with h5py.File(outfile, "w") as fh5:
+                fh5["metadata"] = numpy.array(mds).astype("S")
+                try:
+                    fh5["basic/estimates"] = basic_av.drop("integrals", axis=1).values.astype(float)
+                except KeyError:
+                    pass
+                fh5["basic/headers"] = numpy.array(basic_av.columns.values).astype("S")
 
     return basic_av
 
