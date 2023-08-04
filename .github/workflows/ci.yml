@@ -60,7 +60,7 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n=auto --cov=./ipie
+        python -m pytest -n=auto
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
@@ -69,8 +69,7 @@ jobs:
     - name: Test Integration
       timeout-minutes: 10
       run: |
-        pip install pytest-mpi
-        mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
+        mpirun -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
         python dev/run_tests.py --examples
     # - name: Codecov
     #   uses: codecov/codecov-action@v3.1.1
