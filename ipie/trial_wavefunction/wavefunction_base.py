@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Tuple, Union
 
 import numpy as np
+import mpi4py
 
 from ipie.utils.backend import cast_to_device
 
@@ -70,7 +71,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian) -> None:
+    def half_rotate(self, hamiltonian, comm=mpi4py.MPI.COMM_WORLD) -> None:
         ...
 
     @abstractmethod
@@ -82,7 +83,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler) -> np.ndarray:
         pass
 
     def chunk(self, handler):
