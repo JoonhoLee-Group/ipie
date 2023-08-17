@@ -18,7 +18,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt 
-          pip install -r dev/requirements.txt
+          pip install -r dev/dev.txt
       - name: pylint
         run: |
           python dev/run_tests.py --pylint
@@ -49,9 +49,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install -r dev/dev.txt
         pip install pyblock
         pip install pyscf
-        pip install pytest-cov
     - name: Install package
       run: |
         # HACK FOR LEGACY CODE!
@@ -60,7 +60,7 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n 6 --dist loadfile --cov=./ipie
+        python -m pytest -n=auto
     - name: mpi test
       run: |
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
@@ -69,9 +69,8 @@ jobs:
     - name: Test Integration
       timeout-minutes: 10
       run: |
-        pip install pytest-mpi
-        mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
+        mpirun -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
         python dev/run_tests.py --examples
-    - name: Codecov
-      uses: codecov/codecov-action@v3.1.1
+    # - name: Codecov
+    #   uses: codecov/codecov-action@v3.1.1
 

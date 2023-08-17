@@ -20,20 +20,11 @@
 # todo : handle more gracefully.
 import json
 
-try:
-    # TODO: WTF is this?
-    import mpi4py
-
-    mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
-
-    parallel = True
-except ImportError:
-    parallel = False
-
+from ipie.config import MPI
 from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.propagation.propagator import Propagator
 from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.comm import FakeComm
+from ipie.qmc.options import QMCParams
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value
@@ -42,11 +33,7 @@ from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 def init_communicator():
-    if parallel:
-        comm = MPI.COMM_WORLD
-    else:
-        comm = FakeComm()
-    return comm
+    return MPI.COMM_WORLD
 
 
 def setup_calculation(input_options):
@@ -105,7 +92,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         from ipie.qmc.options import QMCOpts
 
         qmc = QMCOpts(qmc_opts, verbose=0)
-        mpi_handler = MPIHandler(comm, nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
+        mpi_handler = MPIHandler(nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
         system = get_system(
             sys_opts, verbose=verbosity, comm=comm
         )  # Have to deal with shared comm in the future. I think we will remove this...
@@ -137,37 +124,33 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             mpi_handler=mpi_handler,
         )
         walkers.build(trial)  # any intermediates that require information from trial
-        est_opts = get_input_value(
-            options,
-            "estimators",
-            default={},
-            alias=["estimates"],
-            verbose=verbosity > 1,
-        )
-        afqmc = AFQMC(
-            comm,
-            system=system,
-            hamiltonian=hamiltonian,
-            trial=trial,
-            walkers=walkers,
-            seed=qmc.rng_seed,
-            nwalkers=qmc.nwalkers,
-            num_steps_per_block=qmc.nsteps,
+        params = QMCParams(
+            num_walkers=qmc.nwalkers,
+            total_num_walkers=qmc.nwalkers * comm.size,
             num_blocks=qmc.nblocks,
+            num_steps_per_block=qmc.nsteps,
             timestep=qmc.dt,
-            stabilise_freq=qmc.nstblz,
+            num_stblz=qmc.nstblz,
             pop_control_freq=qmc.npop_control,
-            verbose=verbosity,
-            filename=est_opts.get("filename", "estimates.h5"),
+            rng_seed=qmc.rng_seed,
         )
-
-        afqmc.pcontrol.method = wlk_opts["population_control"]
+        propagator = Propagator[type(hamiltonian)](params.timestep)
+        propagator.build(hamiltonian, trial, walkers, mpi_handler)
+        afqmc = AFQMC(
+            system,
+            hamiltonian,
+            trial,
+            walkers,
+            propagator,
+            params,
+            verbose=(verbosity and comm.rank == 0),
+        )
 
     return afqmc
 
 
 def build_afqmc_driver(
-    comm: mpi4py.MPI.Intracomm,
+    comm,
     nelec: tuple,
     wavefunction_file: str = "wavefunction.h5",
     hamiltonian_file: str = "hamiltonian.h5",

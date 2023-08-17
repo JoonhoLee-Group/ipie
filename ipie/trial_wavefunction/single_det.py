@@ -1,6 +1,5 @@
 import time
 
-import mpi4py.MPI
 import numpy
 import plum
 
@@ -82,7 +81,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        comm=None,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -108,7 +107,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm: mpi4py.MPI.Intracomm = None,
+        comm=None,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))

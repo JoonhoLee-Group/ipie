@@ -144,8 +144,8 @@ class UEG(object):
             if verbose:
                 print("# Constructing two-body potentials incore.")
             (self.chol_vecs, self.iA, self.iB) = self.two_body_potentials_incore()
-            write_ints = options.get("write_integrals", None)
-            if write_ints is not None:
+            write_ints = options.get("write_integrals", False)
+            if write_ints:
                 self.write_integrals(system)
             if verbose:
                 print(

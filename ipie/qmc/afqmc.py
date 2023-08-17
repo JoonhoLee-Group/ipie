@@ -20,13 +20,15 @@
 import json
 import time
 import uuid
-from typing import Union
+from typing import Dict, Optional, Tuple
 
 from ipie.config import config
+from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.handler import EstimatorHandler
 from ipie.propagation.propagator import Propagator
-from ipie.qmc.options import QMCOpts
+from ipie.qmc.options import QMCParams
 from ipie.qmc.utils import set_rng_seed
+from ipie.systems.generic import Generic
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
 from ipie.utils.io import to_json
@@ -34,121 +36,160 @@ from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.walkers.pop_controller import PopController
+from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
 class AFQMC(object):
     """AFQMC driver.
 
-    Zero temperature AFQMC using open ended random walk.
-
-    This object contains all the instances of the classes which parse input
-    options.
-
     Parameters
     ----------
-    model : dict
-        Input parameters for model system.
-    qmc_opts : dict
-        Input options relating to qmc parameters.
-    estimates : dict
-        Input options relating to what estimator to calculate.
-    trial : dict
-        Input options relating to trial wavefunction.
-    propagator : dict
-        Input options relating to propagator.
-    parallel : bool
-        If true we are running in parallel.
+    system :
+        System class. TODO Remove this?
+    hamiltonian :
+        Hamiltonian describing the system.
+    trial :
+        Trial wavefunction
+    walkers :
+        Walkers used for open ended random walk.
+    propagator :
+        Class describing how to propagate walkers.
+    params :
+        Parameters of simulation. See QMCParams for description.
     verbose : bool
-        If true we print out additional setup information.
+        How much information to print.
 
     Attributes
     ----------
-    uuid : string
-        Simulation state uuid.
-    sha1 : string
-        Git hash.
-    seed : int
-        RNG seed. This is set during initialisation in calc.
-    root : bool
-        If true we are on the root / master processor.
-    nprocs : int
-        Number of processors.
-    rank : int
-        Processor id.
-    system : system object.
-        Container for model input options.
-    qmc : :class:`pie.state.QMCOpts` object.
-        Container for qmc input options.
-    trial : :class:`pie.trial_wavefunction.X' object
-        Trial wavefunction class.
-    propagators : :class:`pie.propagation.Projectors` object
-        Container for system specific propagation routines.
-    estimators : :class:`pie.estimators.Estimators` object
-        Estimator handler.
-    psi : :class:`pie.walkers.Walkers` object
-        Walker handler. Stores the AFQMC wavefunction.
+    _parallel_rng_seed : int
+        Seed deduced from params.rng_seed which is generally different on each
+            MPI process.
     """
 
     def __init__(
         self,
-        comm,
-        system=None,
-        hamiltonian=None,
-        trial=None,
-        walkers=None,
-        propagator=None,
+        system,
+        hamiltonian,
+        trial,
+        walkers,
+        propagator,
+        params: QMCParams,
         verbose: int = 0,
-        seed: int = None,
-        nwalkers: int = 100,
-        num_steps_per_block: int = 25,
-        num_blocks: int = 100,
-        timestep: float = 0.005,
-        stabilise_freq=5,
-        pop_control_freq=5,
-        filename: Union[str, None] = None,
     ):
-        if verbose is not None:
-            self.verbosity = verbose
-            if comm.rank != 0:
-                self.verbosity = 0
-            verbose = verbose > 0 and comm.rank == 0
-        # 1. Environment attributes
-        if comm.rank == 0:
-            self.uuid = str(uuid.uuid1())
-            try:
-                self.sha1, self.branch, self.local_mods = get_git_info()
-            except:
-                self.sha1 = "None"
-                self.branch = "None"
-                self.local_mods = []
-            if verbose:
-                self.sys_info = print_env_info(
-                    self.sha1, self.branch, self.local_mods, self.uuid, comm.size
-                )
-        # Hack - this is modified later if running in parallel on
-        # initialisation.
-        self.root = comm.rank == 0
-        self.rank = comm.rank
-        self._init_time = time.time()
-        self.run_time = time.asctime()
-
-        qmc_opt = {
-            "nwalkers": nwalkers,
-            "timestep": timestep,
-            "nsteps": num_steps_per_block,
-            "num_blocks": num_blocks,
-            "pop_control_freq": pop_control_freq,
-            "stabilise_freq": stabilise_freq,
-        }
-
-        self.mpi_handler = MPIHandler(comm, nmembers=1, verbose=verbose)
-        self.shared_comm = self.mpi_handler.shared_comm
-        # 2. Calculation objects.
         self.system = system
         self.hamiltonian = hamiltonian
         self.trial = trial
+        self.walkers = walkers
+        self.propagator = propagator
+        self.mpi_handler = MPIHandler()
+        self.shared_comm = self.mpi_handler.shared_comm
+        self.verbose = verbose
+        self.verbosity = int(verbose)
+        self.params = params
+        self._init_time = time.time()
+        self._parallel_rng_seed = set_rng_seed(params.rng_seed, self.mpi_handler.comm)
 
-        self.qmc = QMCOpts(qmc_opt, verbose=verbose)
+    @staticmethod
+    # TODO: wavefunction type, trial type, hamiltonian type
+    def build(
+        num_elec: Tuple[int, int],
+        hamiltonian,
+        trial_wavefunction,
+        num_walkers: int = 100,
+        seed: int = None,
+        num_steps_per_block: int = 25,
+        num_blocks: int = 100,
+        timestep: float = 0.005,
+        stabilize_freq=5,
+        pop_control_freq=5,
+        verbose=True,
+    ) -> "AFQMC":
+        """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
+
+        Parameters
+        ----------
+        num_elec: tuple(int, int)
+            Number of alpha and beta electrons.
+        hamiltonian :
+            Hamiltonian describing the system.
+        trial_wavefunction :
+            Trial wavefunction
+        num_walkers : int
+            Number of walkers per MPI process used in the simulation. The TOTAL
+                number of walkers is num_walkers * number of processes.
+        num_steps_per_block : int
+            Number of Monte Carlo steps before estimators are evaluatied.
+                Default 25.
+        num_blocks : int
+            Number of blocks to perform. Total number of steps = num_blocks *
+                num_steps_per_block.
+        timestep : float
+            Imaginary timestep. Default 0.005.
+        stabilize_freq : float
+            Frequency at which to perform QR factorization of walkers (in units
+                of steps.) Default 25.
+        pop_control_freq : int
+            Frequency at which to perform population control (in units of
+                steps.) Default 25.
+        verbose : bool
+            Log verbosity. Default True i.e. print information to stdout.
+        """
+        mpi_handler = MPIHandler()
+        comm = mpi_handler.comm
+        params = QMCParams(
+            num_walkers=num_walkers,
+            total_num_walkers=num_walkers * comm.size,
+            num_blocks=num_blocks,
+            num_steps_per_block=num_steps_per_block,
+            timestep=timestep,
+            num_stblz=stabilize_freq,
+            pop_control_freq=pop_control_freq,
+            rng_seed=seed,
+        )
+        # 2. Calculation objects.
+        system = Generic(num_elec)
+        # TODO: do logic and logging in the function.
+        trial_wavefunction.calculate_energy(system, hamiltonian)
+        if trial_wavefunction.compute_trial_energy:
+            trial_wavefunction.e1b = comm.bcast(trial_wavefunction.e1b, root=0)
+            trial_wavefunction.e2b = comm.bcast(trial_wavefunction.e2b, root=0)
+        comm.barrier()
+        _, initial_walker = get_initial_walker(trial_wavefunction)
+        # TODO this is a factory method not a class
+        walkers = UHFWalkersTrial(
+            trial_wavefunction,
+            initial_walker,
+            system.nup,
+            system.ndown,
+            hamiltonian.nbasis,
+            num_walkers,
+            mpi_handler=mpi_handler,
+        )
+        walkers.build(trial_wavefunction)  # any intermediates that require information from trial
+        # TODO: this is a factory not a class
+        propagator = Propagator[type(hamiltonian)](params.timestep)
+        propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
+        return AFQMC(
+            system,
+            hamiltonian,
+            trial_wavefunction,
+            walkers,
+            propagator,
+            params,
+            verbose=(verbose and comm.rank == 0),
+        )
+
+    def distribute_hamiltonian(self):
+        if self.mpi_handler.nmembers > 1:
+            if self.mpi_handler.comm.rank == 0:
+                print("# Chunking hamiltonian.")
+            self.hamiltonian.chunk(self.mpi_handler)
+            if self.mpi_handler.comm.rank == 0:
+                print("# Chunking trial.")
+            self.trial.chunk(self.mpi_handler)
+
+    def copy_to_gpu(self):
+        comm = self.mpi_handler.comm
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
             _ = xp.cuda.runtime.getDeviceProperties(0)
@@ -156,109 +197,60 @@ class AFQMC(object):
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
-                        "# There are unused GPUs ({} MPI tasks but {} GPUs). "
-                        " Check if this is really what you wanted.".format(comm.size, ngpus)
+                        f"# There are unused GPUs ({comm.size} MPI tasks but {ngpus} GPUs). "
+                        " Check if this is really what you wanted."
                     )
+            self.propagator.cast_to_cupy(self.verbose and comm.rank == 0)
+            self.hamiltonian.cast_to_cupy(self.verbose and comm.rank == 0)
+            self.trial.cast_to_cupy(self.verbose and comm.rank == 0)
+            self.walkers.cast_to_cupy(self.verbose and comm.rank == 0)
 
-        # Total number of walkers.
-        if self.qmc.nwalkers == 0:
-            if comm.rank == 0:
-                print("# WARNING: Not enough walkers for selected core count.")
-                print("# There must be at least one walker per core set in the " "input file.")
-                print("# Setting one walker per core.")
-            self.qmc.nwalkers = 1
-        self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
-
-        if seed is None:
-            self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
-        else:
-            self.qmc.rng_seed = set_rng_seed(seed, comm)
-
-        if comm.rank == 0:
-            if self.trial.compute_trial_energy:
-                self.trial.calculate_energy(self.system, self.hamiltonian)
-                print(f"# Trial wfn energy is {self.trial.energy}")
-            else:
-                print("# WARNING: skipping trial energy calculation is requested.")
-
-        if self.trial.compute_trial_energy:
-            self.trial.e1b = comm.bcast(self.trial.e1b, root=0)
-            self.trial.e2b = comm.bcast(self.trial.e2b, root=0)
-
-        comm.barrier()
-
-        # set walkers
-        self.walkers = walkers
-
-        if propagator is None:
-            self.propagator = Propagator[type(self.hamiltonian)](self.qmc.dt)
-            self.propagator.build(
-                self.hamiltonian, self.trial, self.walkers, self.mpi_handler, verbose
+    def get_env_info(self):
+        # TODO: Move this somewhere else.
+        this_uuid = str(uuid.uuid1())
+        try:
+            sha1, branch, local_mods = get_git_info()
+        except:
+            sha1 = "None"
+            branch = "None"
+            local_mods = []
+        if self.verbose:
+            self.sys_info = print_env_info(
+                sha1,
+                branch,
+                local_mods,
+                this_uuid,
+                self.mpi_handler.size,
             )
-        else:
-            self.propagator = propagator
+            mem_avail = get_host_memory()
+            print(f"# Available memory on the node is {mem_avail:4.3f} GB")
 
-        self.tsetup = time.time() - self._init_time
-
-        # Using only default population control
-        self.pcontrol = PopController(
-            self.qmc.nwalkers, num_steps_per_block, self.mpi_handler, verbose=verbose
-        )
+    def setup_estimators(
+        self,
+        filename,
+        additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
+    ):
         self.accumulators = WalkerAccumulator(
-            ["Weight", "WeightFactor", "HybridEnergy"], self.qmc.nsteps
-        )  # lagacy purposes??
-
+            ["Weight", "WeightFactor", "HybridEnergy"], self.params.num_steps_per_block
+        )
+        comm = self.mpi_handler.comm
         self.estimators = EstimatorHandler(
-            comm,
+            self.mpi_handler.comm,
             self.system,
             self.hamiltonian,
             self.trial,
             walker_state=self.accumulators,
-            verbose=(comm.rank == 0 and verbose),
+            verbose=(comm.rank == 0 and self.verbose),
             filename=filename,
         )
+        if additional_estimators is not None:
+            for k, v in additional_estimators.items():
+                self.estimators[k] = v
+        # TODO: Move this to estimator and log uuid etc in serialization
+        json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
+        json_string = to_json(self)
+        self.estimators.json_string = json_string
 
-        if self.mpi_handler.nmembers > 1:
-            if comm.rank == 0:
-                print("# Chunking hamiltonian.")
-            self.hamiltonian.chunk(self.mpi_handler)
-            if comm.rank == 0:
-                print("# Chunking trial.")
-            self.trial.chunk(self.mpi_handler)
-
-        if config.get_option("use_gpu"):
-            self.propagator.cast_to_cupy(verbose and comm.rank == 0)
-            self.hamiltonian.cast_to_cupy(verbose and comm.rank == 0)
-            self.trial.cast_to_cupy(verbose and comm.rank == 0)
-            self.walkers.cast_to_cupy(verbose and comm.rank == 0)
-
-        if comm.rank == 0:
-            mem_avail = get_host_memory()
-            print(f"# Available memory on the node is {mem_avail:4.3f} GB")
-            json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
-            json_string = to_json(self)
-            self.estimators.json_string = json_string
-
-    def run(self, psi=None, comm=None, verbose=True):
-        """Perform AFQMC simulation on state object using open-ended random walk.
-
-        Parameters
-        ----------
-        psi : :class:`pie.walker.Walkers` object
-            Initial wavefunction / distribution of walkers.
-        comm : MPI communicator
-        """
-        tzero_setup = time.time()
-        if psi is not None:
-            self.walkers = psi
-        self.setup_timers()
-        eshift = 0.0
-
-        self.walkers.orthogonalise()
-
-        total_steps = self.qmc.nsteps * self.qmc.nblocks
-        # Delay initialization incase user defined estimators added after
-        # construction.
         self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
         self.estimators.compute_estimators(
@@ -272,13 +264,80 @@ class AFQMC(object):
         self.estimators.print_block(comm, 0, self.accumulators)
         self.accumulators.zero()
 
+    def setup_timers(self):
+        # TODO: Better timer
+        self.tsetup = 0
+        self.tortho = 0
+        self.tprop = 0
+
+        self.tprop_fbias = 0.0
+        self.tprop_ovlp = 0.0
+        self.tprop_update = 0.0
+        self.tprop_gf = 0.0
+        self.tprop_vhs = 0.0
+        self.tprop_gemm = 0.0
+        self.tprop_clip = 0.0
+        self.tprop_barrier = 0.0
+
+        self.testim = 0
+        self.tpopc = 0
+        self.tpopc_comm = 0
+        self.tpopc_non_comm = 0
+        self.tstep = 0
+
+    def run(
+        self,
+        psi=None,
+        estimator_filename=None,
+        verbose=True,
+        additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
+    ):
+        """Perform AFQMC simulation on state object using open-ended random walk.
+
+        Parameters
+        ----------
+        psi : :class:`pie.walker.Walkers` object
+            Initial wavefunction / distribution of walkers. Default None.
+        estimator_filename : str
+            File to write estimates to.
+        additional_estimators : dict
+            Dictionary of additional estimators to evaluate.
+        """
+        self.setup_timers()
+        tzero_setup = time.time()
+        if psi is not None:
+            self.walkers = psi
+        self.setup_timers()
+        eshift = 0.0
+        self.walkers.orthogonalise()
+
+        self.pcontrol = PopController(
+            self.params.num_walkers,
+            self.params.num_steps_per_block,
+            self.mpi_handler,
+            verbose=self.verbose,
+        )
+
+        self.get_env_info()
+        self.copy_to_gpu()
+        self.distribute_hamiltonian()
+        self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
+
+        # TODO: This magic value of 2 is pretty much never controlled on input.
+        # Moreover I'm not convinced having a two stage shift update actually
+        # matters at all.
+        num_eqlb_steps = 2.0 / self.params.timestep
+
+        total_steps = self.params.num_steps_per_block * self.params.num_blocks
+
         synchronize()
+        comm = self.mpi_handler.comm
         self.tsetup += time.time() - tzero_setup
 
         for step in range(1, total_steps + 1):
             synchronize()
             start_step = time.time()
-            if step % self.qmc.nstblz == 0:
+            if step % self.params.num_stblz == 0:
                 start = time.time()
                 self.walkers.orthogonalise()
                 synchronize()
@@ -313,12 +372,12 @@ class AFQMC(object):
             self.tprop_clip += time.time() - start_clip
 
             start_barrier = time.time()
-            if step % self.qmc.npop_control == 0:
+            if step % self.params.pop_control_freq == 0:
                 comm.Barrier()
             self.tprop_barrier += time.time() - start_barrier
 
             self.tprop += time.time() - start
-            if step % self.qmc.npop_control == 0:
+            if step % self.params.pop_control_freq == 0:
                 start = time.time()
                 self.pcontrol.pop_control(self.walkers, comm)
                 synchronize()
@@ -335,7 +394,7 @@ class AFQMC(object):
             self.testim += time.time() - start  # we dump this time into estimator
             # calculate estimators
             start = time.time()
-            if step % self.qmc.nsteps == 0:
+            if step % self.params.num_steps_per_block == 0:
                 self.estimators.compute_estimators(
                     comm,
                     self.system,
@@ -343,7 +402,9 @@ class AFQMC(object):
                     self.trial,
                     self.walkers,
                 )
-                self.estimators.print_block(comm, step // self.qmc.nsteps, self.accumulators)
+                self.estimators.print_block(
+                    comm, step // self.params.num_steps_per_block, self.accumulators
+                )
                 self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
@@ -352,7 +413,7 @@ class AFQMC(object):
             # if self.walkers.write_restart and step % self.walkers.write_freq == 0:
             #     self.walkers.write_walkers_batch(comm)
 
-            if step < self.qmc.neqlb:
+            if step < num_eqlb_steps:
                 eshift = self.accumulators.eshift
             else:
                 eshift += self.accumulators.eshift - eshift
@@ -367,11 +428,11 @@ class AFQMC(object):
         verbose : bool
             If true print out some information to stdout.
         """
-        nsteps = max(self.qmc.nsteps, 1)
-        nblocks = max(self.qmc.nblocks, 1)
-        nstblz = max(nsteps // self.qmc.nstblz, 1)
-        npcon = max(nsteps // self.qmc.npop_control, 1)
-        if self.root:
+        nsteps = max(self.params.num_steps_per_block, 1)
+        nblocks = max(self.params.num_blocks, 1)
+        nstblz = max(nsteps // self.params.num_stblz, 1)
+        npcon = max(nsteps // self.params.pop_control_freq, 1)
+        if self.mpi_handler.rank == 0:
             if verbose:
                 print(f"# End Time: {time.asctime():s}")
                 print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
@@ -464,22 +525,3 @@ class AFQMC(object):
         continuous = "continuous" in hs_type
         twist = system.ktwist.all() is not None
         return continuous or twist
-
-    def setup_timers(self):
-        self.tortho = 0
-        self.tprop = 0
-
-        self.tprop_fbias = 0.0
-        self.tprop_ovlp = 0.0
-        self.tprop_update = 0.0
-        self.tprop_gf = 0.0
-        self.tprop_vhs = 0.0
-        self.tprop_gemm = 0.0
-        self.tprop_clip = 0.0
-        self.tprop_barrier = 0.0
-
-        self.testim = 0
-        self.tpopc = 0
-        self.tpopc_comm = 0
-        self.tpopc_non_comm = 0
-        self.tstep = 0

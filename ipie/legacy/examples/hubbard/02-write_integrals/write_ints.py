@@ -1,7 +1,7 @@
 import numpy
 from afqmctools.utils.qmcpack_utils import write_xml_input
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import write_qmcpack_dense, write_qmcpack_wfn

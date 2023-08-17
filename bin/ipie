@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 
-from mpi4py import MPI
+from ipie.config import MPI
 
 from ipie.config import config
 
@@ -74,7 +74,7 @@ def main(input_file):
     config.update_option("use_gpu", options.use_gpu)
     from ipie.qmc.calc import setup_calculation
     (afqmc, comm) = setup_calculation(options.remaining_options[0])
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
     afqmc.finalise(verbose=True)
 
 

@@ -70,7 +70,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian) -> None:
+    def half_rotate(self, hamiltonian, comm=None) -> None:
         ...
 
     @abstractmethod
