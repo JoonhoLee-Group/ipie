@@ -1182,8 +1182,10 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     walker_batch.Ga += numpy.einsum("w,wpq->wpq", ovlps, G0a, optimize=True)
     walker_batch.Gb += numpy.einsum("w,wpq->wpq", ovlps, G0b, optimize=True)
     # intermediates for contribution 2 (connected diagrams)
-    build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
-    build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
+    if trial.max_excite >= 1:
+        build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
+    if trial.max_excite >= 2:
+        build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     if trial.max_excite >= 3:
         build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     for iexcit in range(4, trial.max_excite + 1):

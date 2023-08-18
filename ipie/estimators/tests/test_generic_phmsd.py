@@ -138,17 +138,14 @@ def test_greens_function_wicks_opt():
 def test_greens_function_edge_cases():
     numpy.random.seed(7)
     nmo = 12
-    nelec = (7, 7)
+    nelec = (1, 1)
     nwalkers = 10
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
     # Test PH type wavefunction.
-    singles_doubles = ([10, 10] + [0] * system.nup, [10, 10] + [0] * system.ndown)
-    wfn, init = get_random_phmsd_opt(
-        system.nup, system.ndown, ham.nbasis, ndet=1, dist=singles_doubles, init=True
-    )
-    trial = ParticleHole(wfn, nelec, nmo)
+    wfn, init = get_random_phmsd_opt(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
+    trial = ParticleHole(wfn, nelec, nmo, verbose=False)
     trial.build()
     walkers_wick = UHFWalkersParticleHole(init, system.nup, system.ndown, ham.nbasis, nwalkers)
     walkers_wick.build(trial)
