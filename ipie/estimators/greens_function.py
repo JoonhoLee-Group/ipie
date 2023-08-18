@@ -18,7 +18,6 @@
 #
 
 from ipie.estimators.greens_function_multi_det import (
-    greens_function_multi_det,
     greens_function_multi_det_wicks_opt,
     greens_function_noci,
 )
