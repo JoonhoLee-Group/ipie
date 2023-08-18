@@ -30,25 +30,24 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt,
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
+from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.overlap import (
     get_cofactor_matrix_4_batched,
     get_cofactor_matrix_batched,
+    get_det_matrix_batched,
 )
-from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessGeneric
-from ipie.propagation.overlap import get_det_matrix_batched
 from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.particle_hole import (
+    ParticleHole,
+    ParticleHoleNaive,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
+)
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, get_random_phmsd_opt
 from ipie.walkers.uhf_walkers import UHFWalkersParticleHole
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
-from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
-    ParticleHoleNaive,
-)
 
 
 @pytest.mark.unit
@@ -69,7 +68,7 @@ def test_greens_function_wicks_opt():
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])
     # wfn_2 = (ci[:100], oa[:100], ob[:100])
-    trial = ParticleHoleWicksSlow(wfn_2, nelec, nmo, verbose=True)
+    trial = ParticleHoleSlow(wfn_2, nelec, nmo, verbose=True)
     trial.build()
     trial_slow = ParticleHoleNaive(
         wfn_2,
@@ -77,7 +76,7 @@ def test_greens_function_wicks_opt():
         nmo,
     )
     trial_slow.build()
-    trial_opt = ParticleHoleWicksNonChunked(
+    trial_opt = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -266,7 +265,7 @@ def test_det_matrix():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=3000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = ParticleHoleWicksNonChunked(
+    trial = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -334,7 +333,7 @@ def test_phmsd_local_energy():
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = ParticleHoleWicksSlow(
+    trial = ParticleHoleSlow(
         wfn_2,
         nelec,
         nmo,
@@ -347,7 +346,7 @@ def test_phmsd_local_energy():
     )
     trial_slow.build()
     trial_slow.half_rotate(ham)
-    trial_test = ParticleHoleWicksNonChunked(
+    trial_test = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -428,7 +427,7 @@ def test_kernels_energy():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = ParticleHoleWicksNonChunked(
+    trial = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -602,9 +601,7 @@ def test_kernels_energy():
     )
     ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import (
-        fill_same_spin_contribution_batched_contr,
-    )
+    from ipie.estimators.local_energy_wicks import fill_same_spin_contribution_batched_contr
 
     fill_same_spin_contribution_batched_contr(
         iexcit,
@@ -648,7 +645,7 @@ def test_kernels_gf():
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=5000, init=True)
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
-    trial = ParticleHoleWicksNonChunked(
+    trial = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -783,17 +780,17 @@ def test_kernels_gf_active_space():
     # Big hack due to new wavefunction separation, old unit test assumed
     # MultiSlater wavefunction built all the data structures but now they are
     # separate so need to copy cre_ex_a arrays over to old unoptimized wicks class.
-    trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
+    trial_ref = ParticleHoleSlow(wfn_no_act, nelec, nmo)
     trial_ref.optimized = False
     trial_ref.build()
-    trial_tmp = ParticleHoleWicksNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
+    trial_tmp = ParticleHoleNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # need cre_ex_a arrays for non-active space variant
     trial_ref.__dict__.update(trial_tmp.__dict__)
     trial_ref.optimized = False
 
     # Trial with active space optimization
-    trial_test = ParticleHoleWicksNonChunked(
+    trial_test = ParticleHoleNonChunked(
         wfn_act,
         nelec,
         nmo,
@@ -976,17 +973,17 @@ def test_kernels_energy_active_space():
     # Big hack due to new wavefunction separation, old unit test assumed
     # MultiSlater wavefunction built all the data structures but now they are
     # separate so need to copy cre_ex_a arrays over to old unoptimized wicks class.
-    trial_ref = ParticleHoleWicksSlow(wfn_no_act, nelec, nmo)
+    trial_ref = ParticleHoleSlow(wfn_no_act, nelec, nmo)
     trial_ref.optimized = False
     trial_ref.build()
-    trial_tmp = ParticleHoleWicksNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
+    trial_tmp = ParticleHoleNonChunked(wfn_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # need cre_ex_a arrays for non-active space variant
     trial_ref.__dict__.update(trial_tmp.__dict__)
     trial_ref.optimized = False
 
     # Trial with active space optimization
-    trial_test = ParticleHoleWicksNonChunked(
+    trial_test = ParticleHoleNonChunked(
         wfn_act,
         nelec,
         nmo,
@@ -1191,9 +1188,7 @@ def test_kernels_energy_active_space():
     assert numpy.allclose(ref, test)
     ref = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     test = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
-    from ipie.estimators.local_energy_wicks import (
-        fill_same_spin_contribution_batched_contr,
-    )
+    from ipie.estimators.local_energy_wicks import fill_same_spin_contribution_batched_contr
 
     cof_mat = numpy.zeros((nwalkers, ndets_level, iexcit - 1, iexcit - 1), dtype=numpy.complex128)
     wk.get_ss_nfold(
@@ -1253,7 +1248,7 @@ def test_phmsd_local_energy_active_space():
         [numpy.array(core + [orb + 2 for orb in ob], dtype=numpy.int32) for ob in occb]
     )
 
-    trial_ref = ParticleHoleWicksSlow(
+    trial_ref = ParticleHoleSlow(
         (ci, with_core_a, with_core_b),
         nelec,
         nmo,
@@ -1261,7 +1256,7 @@ def test_phmsd_local_energy_active_space():
     trial_ref.build()
     trial_ref.half_rotate(ham)
 
-    trial_test = ParticleHoleWicksNonChunked(
+    trial_test = ParticleHoleNonChunked(
         wfn_2,
         nelec,
         nmo,
@@ -1353,14 +1348,14 @@ def test_phmsd_local_energy_active_space_polarised():
     )
     trial.build()
     trial.half_rotate(ham)
-    trial_test = ParticleHoleWicksNonChunked(
+    trial_test = ParticleHoleNonChunked(
         wfn,
         nelec,
         nmo,
     )
     trial_test.build()
     trial_test.half_rotate(ham)
-    trial_test_chunked = ParticleHoleWicks(
+    trial_test_chunked = ParticleHole(
         wfn,
         nelec,
         nmo,
@@ -1479,10 +1474,10 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     )
     trial.build()
     trial.half_rotate(ham)
-    trial_tmp = ParticleHoleWicksNonChunked(wfn_2_no_act, nelec, nmo, use_active_space=False)
+    trial_tmp = ParticleHoleNonChunked(wfn_2_no_act, nelec, nmo, use_active_space=False)
     trial_tmp.build()
     # Original implementation
-    trial_ref = ParticleHoleWicksSlow(
+    trial_ref = ParticleHoleSlow(
         wfn_2_no_act,
         nelec,
         nmo,
@@ -1493,9 +1488,9 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     trial_ref.__dict__.update(trial_tmp.__dict__)
     trial_ref.optimized = False
     # Chunked wicks algorithm
-    trial_tmp = ParticleHoleWicksNonChunked(wfn_2, nelec, nmo, verbose=True)
+    trial_tmp = ParticleHoleNonChunked(wfn_2, nelec, nmo, verbose=True)
     trial_tmp.build()
-    trial_test = ParticleHoleWicks(wfn_2, nelec, nmo, num_det_chunks=10)
+    trial_test = ParticleHole(wfn_2, nelec, nmo, num_det_chunks=10)
     trial_test.build()
     trial_test.half_rotate(ham)
 

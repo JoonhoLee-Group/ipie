@@ -26,18 +26,16 @@ from ipie.estimators.local_energy_sd import (
     local_energy_single_det_uhf,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.legacy.hamiltonians._generic import Generic as HamGenericRef
 from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
-from ipie.utils.legacy_testing import build_legacy_test_case
+from ipie.trial_wavefunction.particle_hole import ParticleHole
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_energies
 from ipie.utils.misc import dotdict
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
-from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
-from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_energies
-
-from ipie.legacy.hamiltonians._generic import Generic as HamGenericRef
 
 
 @pytest.mark.unit
@@ -57,7 +55,7 @@ def test_greens_function_batch():
     )
     # Test PH type wavefunction.
     wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
-    trial = ParticleHoleWicks(wfn, nelec, nmo)
+    trial = ParticleHole(wfn, nelec, nmo)
     trial.build()
     trial.half_rotate(ham)
 

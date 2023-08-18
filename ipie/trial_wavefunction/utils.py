@@ -19,7 +19,7 @@
 import numpy as np
 
 from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks, ParticleHoleWicksNonChunked
+from ipie.trial_wavefunction.particle_hole import ParticleHole, ParticleHoleNonChunked
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.io import (
@@ -73,7 +73,7 @@ def get_trial_wavefunction(
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
         if ndet_chunks == 1:
-            trial = ParticleHoleWicksNonChunked(
+            trial = ParticleHoleNonChunked(
                 wfn,
                 system.nelec,
                 hamiltonian.nbasis,
@@ -82,7 +82,7 @@ def get_trial_wavefunction(
                 verbose=verbose,
             )
         else:
-            trial = ParticleHoleWicks(
+            trial = ParticleHole(
                 wfn,
                 system.nelec,
                 hamiltonian.nbasis,
@@ -142,7 +142,7 @@ def setup_qmcpack_wavefunction(
     if len(wfn) == 3:
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
         if ndet_chunks == 1:
-            trial = ParticleHoleWicksNonChunked(
+            trial = ParticleHoleNonChunked(
                 wfn,
                 nelec,
                 nbasis,
@@ -150,7 +150,7 @@ def setup_qmcpack_wavefunction(
                 num_dets_for_props=ndets_props,
             )
         else:
-            trial = ParticleHoleWicks(
+            trial = ParticleHole(
                 wfn,
                 nelec,
                 nbasis,

@@ -27,7 +27,7 @@ from ipie.estimators.greens_function_single_det import (
     greens_function_single_det_batch,
 )
 from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import ParticleHole, ParticleHoleWicks
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import is_cupy
 

@@ -28,7 +28,7 @@ except ImportError:
     _use_wicks_helper = False
 
 
-class ParticleHoleWicks(TrialWavefunctionBase):
+class ParticleHole(TrialWavefunctionBase):
     def __init__(
         self,
         wfn,
@@ -488,7 +488,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
 
 # No chunking no excitation data structure
-class ParticleHoleWicksNonChunked(ParticleHoleWicks):
+class ParticleHoleNonChunked(ParticleHole):
     def __init__(
         self,
         wfn,
@@ -519,7 +519,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
 
-class ParticleHoleWicksSlow(ParticleHoleWicks):
+class ParticleHoleSlow(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,
@@ -588,7 +588,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks(walkers, self)
 
 
-class ParticleHoleNaive(ParticleHoleWicks):
+class ParticleHoleNaive(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,

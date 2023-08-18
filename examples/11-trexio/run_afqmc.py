@@ -85,11 +85,9 @@ for i in range(ndets):
 
 wavefunction = (coeff, occa, occb)
 
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 
-trial = ParticleHoleWicks(
-    wavefunction, (nocca, noccb), nbasis, num_dets_for_props=len(wavefunction[0])
-)
+trial = ParticleHole(wavefunction, (nocca, noccb), nbasis, num_dets_for_props=len(wavefunction[0]))
 trial.build()
 trial.half_rotate(ham, comm=comm)
 

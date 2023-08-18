@@ -29,10 +29,10 @@ from ipie.qmc.options import QMCOpts
 from ipie.systems import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
+    ParticleHole,
     ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -327,9 +327,9 @@ def build_random_phmsd_trial(
 ):
     _classes = {
         "naive": ParticleHoleNaive,
-        "opt": ParticleHoleWicks,
-        "chunked": ParticleHoleWicksNonChunked,
-        "slow": ParticleHoleWicksSlow,
+        "opt": ParticleHole,
+        "chunked": ParticleHoleNonChunked,
+        "slow": ParticleHoleSlow,
     }
     wfn, init = get_random_phmsd_opt(
         num_elec[0],
