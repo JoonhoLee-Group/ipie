@@ -16,8 +16,6 @@
 #          Joonho Lee
 #
 
-import os
-
 import numpy
 import pytest
 
@@ -41,7 +39,8 @@ from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.propagation.overlap import get_det_matrix_batched
 from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd
+from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, get_random_phmsd_opt
+from ipie.walkers.uhf_walkers import UHFWalkersParticleHole
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
@@ -134,6 +133,27 @@ def test_greens_function_wicks_opt():
     CIb_full[:, trial_opt.act_orb_beta, trial_opt.occ_orb_beta] = walkers_opt.CIb
     assert numpy.allclose(CIa_full, walkers_wick.CIa)
     assert numpy.allclose(CIb_full, walkers_wick.CIb)
+
+
+@pytest.mark.unit
+def test_greens_function_edge_cases():
+    numpy.random.seed(7)
+    nmo = 12
+    nelec = (7, 7)
+    nwalkers = 10
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    system = Generic(nelec=nelec)
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
+    # Test PH type wavefunction.
+    singles_doubles = ([10, 10] + [0] * system.nup, [10, 10] + [0] * system.ndown)
+    wfn, init = get_random_phmsd_opt(
+        system.nup, system.ndown, ham.nbasis, ndet=1, dist=singles_doubles, init=True
+    )
+    trial = ParticleHole(wfn, nelec, nmo)
+    trial.build()
+    walkers_wick = UHFWalkersParticleHole(init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_wick.build(trial)
+    ovlps_ref_wick = greens_function_multi_det_wicks_opt(walkers_wick, trial)
 
 
 # Move to propagator tests

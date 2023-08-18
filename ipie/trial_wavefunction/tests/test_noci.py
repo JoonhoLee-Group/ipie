@@ -32,3 +32,4 @@ def test_noci():
     assert trial._rcholb.shape == (trial.num_dets, naux, nbasis * nbeta)
     assert trial._rH1a.shape == (trial.num_dets, nalpha, nbasis)
     assert trial._rH1b.shape == (trial.num_dets, nbeta, nbasis)
+    trial.calculate_energy(sys, ham)

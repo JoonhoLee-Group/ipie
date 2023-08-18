@@ -15,45 +15,32 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
+import plum
+
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.local_energy_batch import (
     local_energy_batch,
     local_energy_multi_det_trial_batch,
 )
-from ipie.utils.backend import arraylib as xp
-
-from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
-)
-from ipie.trial_wavefunction.single_det import SingleDet
-
+from ipie.estimators.local_energy_noci import local_energy_noci
+from ipie.estimators.local_energy_sd import local_energy_single_det_uhf
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
-from ipie.estimators.local_energy_sd import (
-    local_energy_single_det_uhf,
-)
-
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.systems.generic import Generic
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import (
+    ParticleHole,
+    ParticleHoleNaive,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
+)
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkers
-
-import plum
-
-
-# Single dispatch
-_dispatcher = {
-    ParticleHoleNaive: local_energy_multi_det_trial_batch,
-    ParticleHoleWicks: local_energy_multi_det_trial_wicks_batch_opt_chunked,
-    ParticleHoleWicksNonChunked: local_energy_multi_det_trial_wicks_batch_opt,
-    ParticleHoleWicksSlow: local_energy_multi_det_trial_wicks_batch,
-    SingleDet: local_energy_batch,
-}
 
 
 @plum.dispatch
@@ -88,7 +75,7 @@ def local_energy(
     system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
-    trial: ParticleHoleWicks,
+    trial: ParticleHole,
 ):
     return local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial)
 
@@ -98,7 +85,7 @@ def local_energy(
     system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
-    trial: ParticleHoleWicksNonChunked,
+    trial: ParticleHoleNonChunked,
 ):
     return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial)
 
@@ -108,9 +95,14 @@ def local_energy(
     system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
-    trial: ParticleHoleWicksSlow,
+    trial: ParticleHoleSlow,
 ):
     return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial)
+
+
+@plum.dispatch
+def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: NOCI):
+    return local_energy_noci(system, hamiltonian, walkers, trial)
 
 
 class EnergyEstimator(EstimatorBase):

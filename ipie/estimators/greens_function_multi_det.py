@@ -2,15 +2,16 @@ import numpy
 import scipy.linalg
 from numba import jit
 
-from ipie.propagation.overlap import (
-    compute_determinants_batched,
-    get_overlap_one_det_wicks,
-    get_cofactor_matrix_batched,
-)
-from ipie.utils.linalg import minor_mask
-from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
 from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.legacy.estimators.greens_function import gab_mod
+from ipie.propagation.overlap import (
+    compute_determinants_batched,
+    get_cofactor_matrix_batched,
+    get_det_matrix_batched,
+    get_overlap_one_det_wicks,
+    reduce_to_CI_tensor,
+)
+from ipie.utils.linalg import minor_mask
 
 
 def greens_function_multi_det(walker_batch, trial, build_full=False):
@@ -65,6 +66,64 @@ def greens_function_multi_det(walker_batch, trial, build_full=False):
 
             walker_batch.Ga[iw] += walker_batch.Gia[iw, ix, :, :] * ovlp * trial.coeffs[ix].conj()
             walker_batch.Gb[iw] += walker_batch.Gib[iw, ix, :, :] * ovlp * trial.coeffs[ix].conj()
+
+        walker_batch.Ga[iw] /= tot_ovlps[iw]
+        walker_batch.Gb[iw] /= tot_ovlps[iw]
+
+    return tot_ovlps
+
+
+def greens_function_noci(walker_batch, trial, build_full=False):
+    """Compute walker's green's function.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    Returns
+    -------
+    det : float64 / complex128
+        Determinant of overlap matrix.
+    """
+    nup = walker_batch.nup
+    walker_batch.Ga.fill(0.0)
+    walker_batch.Gb.fill(0.0)
+    tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
+    for iw in range(walker_batch.nwalkers):
+        for ix, detix in enumerate(trial.psi):
+            Oup = numpy.dot(walker_batch.phia[iw].T, detix[:, :nup].conj())
+            sign_a, logdet_a = numpy.linalg.slogdet(Oup)
+            ovlpa = sign_a * numpy.exp(logdet_a)
+            walker_batch.det_ovlpas[iw, ix] = ovlpa
+            if abs(ovlpa) < 1e-16:
+                continue
+
+            Odn = numpy.dot(walker_batch.phib[iw].T, detix[:, nup:].conj())
+            sign_b, logdet_b = numpy.linalg.slogdet(Odn)
+            ovlpb = sign_b * numpy.exp(logdet_b)
+            ovlp = ovlpa * ovlpb
+            walker_batch.det_ovlpbs[iw, ix] = ovlpb
+            if abs(ovlp) < 1e-16:
+                continue
+
+            inv_ovlp = scipy.linalg.inv(Oup)
+            walker_batch.Ghalfa[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phia[iw].T)
+            walker_batch.Gia[ix, iw, :, :] = numpy.dot(
+                detix[:, :nup].conj(), walker_batch.Ghalfa[ix, iw, :, :]
+            )
+
+            inv_ovlp = scipy.linalg.inv(Odn)
+            walker_batch.Ghalfa[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phib[iw].T)
+            walker_batch.Gib[ix, iw, :, :] = numpy.dot(
+                detix[:, nup:].conj(), walker_batch.Ghalfb[ix, iw, :, :]
+            )
+
+            tot_ovlps[iw] += trial.coeffs[ix].conj() * ovlp
+
+            walker_batch.Ga[iw] += walker_batch.Gia[ix, iw, :, :] * ovlp * trial.coeffs[ix].conj()
+            walker_batch.Gb[iw] += walker_batch.Gib[ix, iw, :, :] * ovlp * trial.coeffs[ix].conj()
 
         walker_batch.Ga[iw] /= tot_ovlps[iw]
         walker_batch.Gb[iw] /= tot_ovlps[iw]

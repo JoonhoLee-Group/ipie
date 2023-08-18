@@ -149,8 +149,8 @@ class AFQMC(object):
         # 2. Calculation objects.
         system = Generic(num_elec)
         # TODO: do logic and logging in the function.
-        trial_wavefunction.calculate_energy(system, hamiltonian)
         if trial_wavefunction.compute_trial_energy:
+            trial_wavefunction.calculate_energy(system, hamiltonian)
             trial_wavefunction.e1b = comm.bcast(trial_wavefunction.e1b, root=0)
             trial_wavefunction.e2b = comm.bcast(trial_wavefunction.e2b, root=0)
         comm.barrier()

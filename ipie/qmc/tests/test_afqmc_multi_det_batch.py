@@ -155,5 +155,57 @@ def test_generic_multi_det_batch():
         # )
 
 
+@pytest.mark.driver
+def test_generic_multi_det_batch_noci():
+    with tempfile.NamedTemporaryFile() as tmpf:
+        steps = 25
+        blocks = 5
+        seed = 7
+        nwalkers = 25
+        nmo = 3
+        nelec = (2, 1)
+        pop_control_freq = 1
+        ndets = 5
+        stabilise_freq = 10
+        options = {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "nwalkers_per_task": nwalkers,
+            "batched": True,
+            "hybrid": True,
+            "steps": steps,
+            "blocks": blocks,
+            "pop_control_freq": pop_control_freq,
+            "stabilise_freq": stabilise_freq,
+            "rng_seed": seed,
+        }
+        driver_options = {
+            "verbosity": 0,
+            "get_sha1": False,
+            "qmc": options,
+            "estimates": {
+                "filename": tmpf.name,
+                "observables": {
+                    "energy": {},
+                },
+            },
+            "walkers": {"population_control": "pair_branch"},
+        }
+
+        comm = MPI.COMM_WORLD
+        afqmc = build_driver_test_instance(
+            nelec,
+            nmo,
+            trial_type="noci",
+            wfn_type="naive",
+            options=driver_options,
+            seed=7,
+            num_dets=ndets,
+        )
+        afqmc.run(verbose=0, estimator_filename=tmpf.name)
+        afqmc.finalise(verbose=0)
+
+
 if __name__ == "__main__":
     test_generic_multi_det_batch()

@@ -1,10 +1,12 @@
 import numpy as np
+import scipy.linalg
 
-from ipie.propagation.overlap import calc_overlap_multi_det
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.estimators.greens_function_multi_det import greens_function_multi_det
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.estimators.greens_function_multi_det import greens_function_noci
+from ipie.estimators.local_energy import variational_energy_noci
 from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
+from ipie.propagation.overlap import calc_overlap_multi_det
+from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
 
 class NOCI(TrialWavefunctionBase):
@@ -27,13 +29,13 @@ class NOCI(TrialWavefunctionBase):
 
         self.psia = self.psi[:, :, : self.nalpha]
         self.psib = self.psi[:, :, self.nalpha :]
-        # self.G = self.compute_1rdm()
+        self.G = self.build_one_rdm()
 
     def build(self) -> None:
         ...
 
     def calculate_energy(self, system, hamiltonian):
-        raise NotImplementedError("Please implement!")
+        return variational_energy_noci(system, hamiltonian, self)
 
     def half_rotate(self, hamiltonian, comm=None):
         orbsa = self.psi[: self.num_dets, :, : self.nalpha]
@@ -52,11 +54,41 @@ class NOCI(TrialWavefunctionBase):
         self._rchola = rot_chol[0]
         self._rcholb = rot_chol[1]
 
+    def build_one_rdm(self):
+        G = np.zeros((2, self.nbasis, self.nbasis), dtype=np.complex128)
+        denom = 0.0j
+        for ix, (detixa, detixb) in enumerate(zip(self.psia, self.psib)):
+            c_ix = self.coeffs[ix]
+            # <ix|
+            for iy, (detiya, detiyb) in enumerate(zip(self.psia, self.psib)):
+                # |iy>
+                c_iy = self.coeffs[iy]
+                # Matrix(<ix|iy>_a)
+                omata = np.dot(detixa.T, detiya.conj())
+                sign_a, logdet_a = np.linalg.slogdet(omata)
+                # <ix|iy>_a
+                deta = sign_a * np.exp(logdet_a)
+                # Matrix(<ix|iy>_b)
+                omatb = np.dot(detixb.T, detiyb.conj())
+                sign_b, logdet_b = np.linalg.slogdet(omatb)
+                detb = sign_b * np.exp(logdet_b)
+                # <ix|iy>_a <ix|iy>_b
+                ovlp = deta * detb
+                # Matrix(<ix|iy>_a)^{-1}
+                inv_ovlp = scipy.linalg.inv(omata)
+                Ghalfa = np.dot(inv_ovlp, detixa.T)
+                G[0] += c_ix.conj() * c_iy * ovlp * np.dot(detiya.conj(), Ghalfa)
+                inv_ovlp = scipy.linalg.inv(omatb)
+                Ghalfb = np.dot(inv_ovlp, detixb.T)
+                G[1] += c_ix.conj() * c_iy * ovlp * np.dot(detiyb.conj(), Ghalfb)
+                denom += c_ix.conj() * c_iy * ovlp
+        return G / denom
+
     def calc_overlap(self, walkers) -> np.ndarray:
         return calc_overlap_multi_det(walkers, self)
 
     def calc_greens_function(self, walkers) -> np.ndarray:
-        return greens_function_multi_det(walkers, self)
+        return greens_function_noci(walkers, self)
 
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)

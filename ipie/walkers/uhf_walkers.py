@@ -20,8 +20,7 @@ import numpy
 
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import cast_to_device
-from ipie.utils.backend import synchronize, qr, qr_mode
+from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
 
 
@@ -224,6 +223,41 @@ class UHFWalkersParticleHole(UHFWalkers):
             shape=(self.nwalkers, trial.nact, trial.nocc_beta),
             dtype=numpy.complex128,
         )
+        self.ovlp = trial.calc_greens_function(self)
+
+
+class UHFWalkersNOCI(UHFWalkers):
+    """UHF style walker specialized for its use with NOCI trial.
+
+    Parameters
+    ----------
+    system : object
+        System object.
+    nwalkers : int
+        The number of walkers in this batch
+    """
+
+    def build(self, trial):
+        self.num_dets = trial.num_dets
+        # will be built only on request
+        self.Gia = numpy.zeros(
+            shape=(trial.num_dets, self.nwalkers, self.nbasis, self.nbasis),
+            dtype=numpy.complex128,
+        )
+        self.Gib = numpy.zeros(
+            shape=(trial.num_dets, self.nwalkers, self.nbasis, self.nbasis),
+            dtype=numpy.complex128,
+        )
+
+        self.Ghalfa = numpy.zeros(
+            shape=(trial.num_dets, self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128
+        )
+        self.Ghalfb = numpy.zeros(
+            shape=(trial.num_dets, self.nwalkers, self.ndown, self.nbasis),
+            dtype=numpy.complex128,
+        )
+        self.det_ovlpas = numpy.zeros((self.nwalkers, trial.num_dets), dtype=numpy.complex128)
+        self.det_ovlpbs = numpy.zeros((self.nwalkers, trial.num_dets), dtype=numpy.complex128)
         self.ovlp = trial.calc_greens_function(self)
 
 

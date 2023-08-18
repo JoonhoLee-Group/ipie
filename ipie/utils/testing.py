@@ -581,7 +581,10 @@ def build_driver_test_instance(
         rhf_trial=rhf_trial,
     )
     trial.half_rotate(ham)
-    trial.calculate_energy(system, ham)
+    try:
+        trial.calculate_energy(system, ham)
+    except NotImplementedError:
+        pass
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
