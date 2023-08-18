@@ -17,18 +17,18 @@
 #          linusjoonho <linusjoonho@gmail.com>
 #
 
-from ipie.utils.misc import is_cupy
-
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
-from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.single_det import SingleDet
-
-from ipie.estimators.greens_function_single_det import (
-    greens_function_single_det_batch,
-    greens_function_single_det,
+from ipie.estimators.greens_function_multi_det import (
+    greens_function_multi_det_wicks_opt,
+    greens_function_noci,
 )
-from ipie.estimators.greens_function_multi_det import greens_function_multi_det
-from ipie.estimators.greens_function_multi_det import greens_function_multi_det_wicks_opt
+from ipie.estimators.greens_function_single_det import (
+    greens_function_single_det,
+    greens_function_single_det_batch,
+)
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import ParticleHole
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.misc import is_cupy
 
 
 def compute_greens_function(walker_batch, trial):
@@ -59,8 +59,8 @@ def get_greens_function(trial):
         else:
             compute_greens_function = greens_function_single_det
     elif isinstance(trial, NOCI):
-        compute_greens_function = greens_function_multi_det
-    elif isinstance(trial, ParticleHoleWicks):
+        compute_greens_function = greens_function_noci
+    elif isinstance(trial, ParticleHole):
         compute_greens_function = greens_function_multi_det_wicks_opt
     else:
         compute_greens_function = None

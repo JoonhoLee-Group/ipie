@@ -15,7 +15,7 @@ except (ModuleNotFoundError, ImportError):
     raise ImportError
 
 from ipie.qmc.afqmc import AFQMC
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.utils.from_pyscf import generate_hamiltonian
 
 
@@ -260,7 +260,7 @@ def build_trial_from_shciscf(
     noons_thresh: float = 0.02,
     num_dets_for_trial: int = 1000000,
     convert_det_phase: bool = False,
-) -> Tuple[ParticleHoleWicks, shci.SHCI]:
+) -> Tuple[ParticleHole, shci.SHCI]:
     """Wrapper function to generate trial using SHCI to select the active space.
 
     No guarantees about if this works well or is a sensible thing to do. Users
@@ -301,7 +301,7 @@ def build_trial_from_shciscf(
         wfn = convert_phase(*wfn)
     nelec = mf.mol.nelec
     nmo = mf.mo_coeff.shape[-1]
-    trial = ParticleHoleWicks(wfn, nelec, nmo, num_dets_for_trial=num_dets_for_trial)
+    trial = ParticleHole(wfn, nelec, nmo, num_dets_for_trial=num_dets_for_trial)
     return trial, shci_inst
 
 

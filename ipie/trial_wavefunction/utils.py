@@ -19,10 +19,7 @@
 import numpy as np
 
 from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-)
+from ipie.trial_wavefunction.particle_hole import ParticleHole, ParticleHoleNonChunked
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.io import (
@@ -76,21 +73,23 @@ def get_trial_wavefunction(
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
         if ndet_chunks == 1:
-            trial = ParticleHoleWicksNonChunked(
+            trial = ParticleHoleNonChunked(
                 wfn,
                 system.nelec,
                 hamiltonian.nbasis,
                 num_dets_for_trial=ndets,
                 num_dets_for_props=ndets_props,
+                verbose=verbose,
             )
         else:
-            trial = ParticleHoleWicks(
+            trial = ParticleHole(
                 wfn,
                 system.nelec,
                 hamiltonian.nbasis,
                 num_dets_for_trial=ndets,
                 num_dets_for_props=ndets_props,
                 num_det_chunks=ndet_chunks,
+                verbose=verbose,
             )
     elif wfn_type == "noci":
         wfn, _ = read_noci_wavefunction(wfn_file)
@@ -122,6 +121,11 @@ def get_trial_wavefunction(
     if verbose:
         print(f"# Number of determinants in trial wavefunction: {trial.num_dets}")
     trial.half_rotate(hamiltonian, scomm)
+    trial.calculate_energy(system, hamiltonian)
+    if trial.compute_trial_energy:
+        trial.e1b = comm.bcast(trial.e1b, root=0)
+        trial.e2b = comm.bcast(trial.e2b, root=0)
+    comm.barrier()
 
     return trial
 
@@ -138,7 +142,7 @@ def setup_qmcpack_wavefunction(
     if len(wfn) == 3:
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
         if ndet_chunks == 1:
-            trial = ParticleHoleWicksNonChunked(
+            trial = ParticleHoleNonChunked(
                 wfn,
                 nelec,
                 nbasis,
@@ -146,7 +150,7 @@ def setup_qmcpack_wavefunction(
                 num_dets_for_props=ndets_props,
             )
         else:
-            trial = ParticleHoleWicks(
+            trial = ParticleHole(
                 wfn,
                 nelec,
                 nbasis,

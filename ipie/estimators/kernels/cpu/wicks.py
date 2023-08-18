@@ -258,7 +258,7 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
 # Green's function
 
 
-@jit(nopython=False, fastmath=False)
+@jit(nopython=True, fastmath=True)
 def reduce_CI_singles(cre, anh, mapping, phases, CI):
     """Reduction to CI intermediate for singles.
 
