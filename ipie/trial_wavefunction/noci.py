@@ -68,10 +68,14 @@ class NOCI(TrialWavefunctionBase):
                 sign_a, logdet_a = np.linalg.slogdet(omata)
                 # <ix|iy>_a
                 deta = sign_a * np.exp(logdet_a)
+                if deta < 1e-16:
+                    continue
                 # Matrix(<ix|iy>_b)
                 omatb = np.dot(detixb.T, detiyb.conj())
                 sign_b, logdet_b = np.linalg.slogdet(omatb)
                 detb = sign_b * np.exp(logdet_b)
+                if detb < 1e-16:
+                    continue
                 # <ix|iy>_a <ix|iy>_b
                 ovlp = deta * detb
                 # Matrix(<ix|iy>_a)^{-1}

@@ -115,7 +115,7 @@ def greens_function_noci(walker_batch, trial, build_full=False):
             )
 
             inv_ovlp = scipy.linalg.inv(Odn)
-            walker_batch.Ghalfa[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phib[iw].T)
+            walker_batch.Ghalfb[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phib[iw].T)
             walker_batch.Gib[ix, iw, :, :] = numpy.dot(
                 detix[:, nup:].conj(), walker_batch.Ghalfb[ix, iw, :, :]
             )
