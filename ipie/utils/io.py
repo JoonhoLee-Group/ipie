@@ -29,10 +29,7 @@ from ipie.utils.misc import merge_dicts, serialise
 
 
 def write_hamiltonian(
-    hcore: numpy.ndarray,
-    LXmn: numpy.ndarray,
-    e0: float,
-    filename: str = "hamiltonian.h5",
+    hcore: numpy.ndarray, LXmn: numpy.ndarray, e0: float, filename: str = "hamiltonian.h5"
 ) -> None:
     assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
@@ -219,10 +216,7 @@ def write_json_input_file(
 ):
     na, nb = nelec
     basic = {
-        "system": {
-            "nup": na,
-            "ndown": nb,
-        },
+        "system": {"nup": na, "ndown": nb},
         "hamiltonian": {"name": "Generic", "integrals": hamil_filename},
         "qmc": {
             "dt": timestep,
@@ -575,7 +569,7 @@ def from_qmcpack_sparse(filename):
         col_ix = numpy.zeros(nval, dtype=numpy.int32)
         s = 0
         for ic, bs in enumerate(block_sizes):
-            ixs = numpy.ndarray(fh5["Hamiltonian/Factorized/index_%i" % ic][:])
+            ixs = fh5["Hamiltonian/Factorized/index_%i" % ic][:]
             row_ix[s : s + bs] = ixs[::2]
             col_ix[s : s + bs] = ixs[1::2]
             if real_ints:
