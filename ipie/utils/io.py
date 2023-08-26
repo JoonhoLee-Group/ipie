@@ -29,10 +29,7 @@ from ipie.utils.misc import merge_dicts, serialise
 
 
 def write_hamiltonian(
-    hcore: numpy.ndarray,
-    LXmn: numpy.ndarray,
-    e0: float,
-    filename: str = "hamiltonian.h5",
+    hcore: numpy.ndarray, LXmn: numpy.ndarray, e0: float, filename: str = "hamiltonian.h5"
 ) -> None:
     assert len(hcore.shape) == 2, "Incorrect shape for hcore, expected 2-dimensional array"
     nmo = hcore.shape[0]
@@ -219,10 +216,7 @@ def write_json_input_file(
 ):
     na, nb = nelec
     basic = {
-        "system": {
-            "nup": na,
-            "ndown": nb,
-        },
+        "system": {"nup": na, "ndown": nb},
         "hamiltonian": {"name": "Generic", "integrals": hamil_filename},
         "qmc": {
             "dt": timestep,
@@ -554,8 +548,8 @@ def from_qmcpack_sparse(filename):
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = numpy.ndarray(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
-            idx = numpy.ndarray(fh5["Hamiltonian/H1_indx"][:])
+            hcore = numpy.array(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
+            idx = fh5["Hamiltonian/H1_indx"][:]
             row_ix = idx[::2]
             col_ix = idx[1::2]
             hcore = scipy.sparse.csr_matrix((hcore, (row_ix, col_ix))).toarray()
@@ -575,18 +569,14 @@ def from_qmcpack_sparse(filename):
         col_ix = numpy.zeros(nval, dtype=numpy.int32)
         s = 0
         for ic, bs in enumerate(block_sizes):
-            ixs = numpy.ndarray(fh5["Hamiltonian/Factorized/index_%i" % ic][:])
+            ixs = fh5["Hamiltonian/Factorized/index_%i" % ic][:]
             row_ix[s : s + bs] = ixs[::2]
             col_ix[s : s + bs] = ixs[1::2]
             if real_ints:
-                vals[s : s + bs] = numpy.real(
-                    numpy.ndarray(fh5["Hamiltonian/Factorized/vals_%i" % ic][:])
-                ).ravel()
+                vals[s : s + bs] = numpy.real(fh5["Hamiltonian/Factorized/vals_%i" % ic][:]).ravel()
             else:
                 vals[s : s + bs] = (
-                    numpy.ndarray(fh5["Hamiltonian/Factorized/vals_%i" % ic][:])
-                    .view(numpy.complex128)
-                    .ravel()
+                    fh5["Hamiltonian/Factorized/vals_%i" % ic][:].view(numpy.complex128).ravel()
                 )
             s += bs
         nalpha = dims[4]
