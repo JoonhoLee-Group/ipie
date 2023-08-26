@@ -548,7 +548,7 @@ def from_qmcpack_sparse(filename):
             hcore = hcore.view(numpy.complex128).reshape(nmo, nmo)
         except KeyError:
             # Old sparse format.
-            hcore = fh5["Hamiltonian/H1"][:].view(numpy.complex128).ravel()
+            hcore = np.array(fh5["Hamiltonian/H1"][:]).view(numpy.complex128).ravel()
             idx = fh5["Hamiltonian/H1_indx"][:]
             row_ix = idx[::2]
             col_ix = idx[1::2]
