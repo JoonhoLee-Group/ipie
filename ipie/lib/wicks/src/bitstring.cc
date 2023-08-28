@@ -1,5 +1,7 @@
 #include "bitstring.h"
 
+#include <sstream>
+
 namespace ipie {
 BitString::BitString(size_t nbits) : num_bits(nbits) {
     num_words = (nbits + 64 - 1) / 64;
@@ -11,7 +13,7 @@ uint64_t& BitString::operator[](const size_t indx) {
 }
 
 BitString& BitString::operator^=(const BitString& other) {
-    for (int w = 0; w < num_words; w++) {
+    for (size_t w = 0; w < num_words; w++) {
         bitstring[w] ^= other.bitstring[w];
     }
     return *this;
@@ -19,21 +21,21 @@ BitString& BitString::operator^=(const BitString& other) {
 
 BitString BitString::operator-(const BitString& other) {
     BitString result(other.num_bits);
-    for (int w = 0; w < num_words; w++) {
+    for (size_t w = 0; w < num_words; w++) {
         result[w] = bitstring[w] - other.bitstring[w];
     }
     return result;
 }
 
 BitString& BitString::operator&=(const BitString& other) {
-    for (int w = 0; w < num_words; w++) {
+    for (size_t w = 0; w < num_words; w++) {
         bitstring[w] &= other.bitstring[w];
     }
     return *this;
 }
 
 BitString& BitString::operator|=(const BitString& other) {
-    for (int w = 0; w < num_words; w++) {
+    for (size_t w = 0; w < num_words; w++) {
         bitstring[w] |= other.bitstring[w];
     }
     return *this;
@@ -96,7 +98,7 @@ size_t BitString::count_difference(const BitString& other) {
     return num_set / 2;
 }
 
-bool BitString::is_set(const size_t indx) {
+bool BitString::is_set(const size_t indx) const {
     size_t word = indx / 64;
     int offset = indx - word * 64;
     uint64_t one = 1;
@@ -134,5 +136,12 @@ void build_set_mask(size_t bit_indx, BitString& mask) {
     }
     mask[word_indx] = (one << word_bit_indx) - one;
 };
+
+std::ostream& operator<<(std::ostream& os, const BitString& bs) {
+    for (size_t bit = 0; bit < bs.num_bits; bit++) {
+        os << bs.is_set(bit) << " ";
+    }
+    return os;
+}
 
 }  // namespace ipie
