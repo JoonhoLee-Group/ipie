@@ -14,6 +14,8 @@ struct Excitation {
     std::vector<size_t> to;
 };
 
+std::ostream& operator<<(std::ostream& os, const Excitation& excit);
+
 void decode_single_excitation(BitString& bra, BitString& ket, Excitation& ia);
 void decode_double_excitation(BitString& bra, BitString& ket, Excitation& ijab);
 int single_excitation_permutation(BitString& ket, Excitation& ia);

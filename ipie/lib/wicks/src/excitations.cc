@@ -7,6 +7,18 @@ namespace ipie {
 Excitation::Excitation(size_t max_ex) : max_excit(max_ex), from(max_ex), to(max_ex) {
 }
 
+std::ostream &operator<<(std::ostream &os, const Excitation &excit) {
+    for (size_t e = 0; e < excit.max_excit; e++) {
+        os << excit.from[e] << " ";
+    }
+    os << " -> ";
+    for (size_t e = 0; e < excit.max_excit; e++) {
+        os << excit.to[e] << " ";
+    }
+    os << " \n";
+    return os;
+}
+
 void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
     std::vector<int> diff_bits(2);
     BitString delta(bra);
@@ -21,6 +33,7 @@ void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
     }
 }
 void decode_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) {
+    // delta = bra ^ ket.
     BitString delta(bra);
     delta ^= ket;
     std::vector<int> diff_bits(4);
@@ -28,7 +41,7 @@ void decode_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) 
     size_t ifrom = 0, ito = 0;
     for (size_t i = 0; i < 4; i++) {
         // |bra> = a^ b^ i j | ket>
-        // from should stor ij
+        // from should store ij
         // to should store ab
         if (ket.is_set(diff_bits[i])) {
             ijab.from[ifrom] = diff_bits[i];
