@@ -12,10 +12,12 @@ namespace ipie {
 
 class CIWavefunction {
    public:
-    CIWavefunction(std::vector<std::complex<double>> &ci_coeffs, std::vector<BitString> &determinants);
-    // factory method
-    CIWavefunction build_ci_wavefunction(
-        std::vector<std::complex<double>> &ci_coeffs, std::vector<int> &occa, std::vector<int> &occb);
+    CIWavefunction(
+        std::vector<std::complex<double>> &ci_coeffs,
+        std::vector<std::vector<int>> &occa,
+        std::vector<std::vector<int>> &occb,
+        size_t nspatial);
+    CIWavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants);
 
     std::complex<double> norm(size_t num_dets_to_use);
     std::vector<std::complex<double>> build_one_rdm(size_t num_dets_to_use);
@@ -28,6 +30,9 @@ class CIWavefunction {
         std::vector<std::complex<double>> &h1e,
         std::vector<std::complex<double>> &h2e);
     energy_t slater_condon2(Excitation &ijab, std::vector<std::complex<double>> &h2e);
+    size_t get_num_dets();
+    // comparitor
+    friend bool operator==(const CIWavefunction &lhs, const CIWavefunction &rhs);
 
    private:
     size_t flat_indx(size_t p, size_t q);

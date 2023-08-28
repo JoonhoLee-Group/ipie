@@ -12,15 +12,38 @@
 
 namespace ipie {
 
-CIWavefunction::CIWavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants)
-    : coeffs(ci_coeffs), dets(determinants) {
+CIWavefunction::CIWavefunction(
+    std::vector<ipie::complex_t> &ci_coeffs,
+    std::vector<std::vector<int>> &occa,
+    std::vector<std::vector<int>> &occb,
+    size_t nspatial)
+    : coeffs(ci_coeffs) {
     num_dets = ci_coeffs.size();
-    num_spatial = dets[0].num_bits / 2;
-    num_elec = dets[0].count_set_bits();
+    num_spatial = nspatial;
+    size_t num_occ_a = occa[0].size();
+    size_t num_occ_b = occb[0].size();
+    num_elec = num_occ_a + num_occ_b;
+    dets.resize(num_dets, BitString(num_spatial));
+    // std::cout << num_dets << " " << num_spatial << " " << num_occ_a << " " << num_occ_b << " " << num_elec << " "
+    //           << dets.size() << std::endl;
+    for (size_t i = 0; i < ci_coeffs.size(); i++) {
+        // std::cout << i << " " << std::endl;
+        BitString det_i(2 * num_spatial);
+        for (int a = 0; a < num_occ_a; a++) {
+            det_i.set_bit(2 * a);
+        }
+        for (int b = 0; b < num_occ_b; b++) {
+            det_i.set_bit(2 * b + 1);
+        }
+        dets[i] = det_i;
+    }
 }
 
-CIWavefunction CIWavefunction::build_ci_wavefunction(
-    std::vector<ipie::complex_t> &ci_coeffs, std::vector<int> &occa, std::vector<int> &occb) {
+CIWavefunction::CIWavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants)
+    : coeffs(ci_coeffs), dets(determinants) {
+    num_spatial = dets[0].num_bits / 2;
+    num_elec = dets[0].count_set_bits();
+    num_dets = ci_coeffs.size();
 }
 
 ipie::complex_t CIWavefunction::norm(size_t num_dets_to_use) {
@@ -31,12 +54,37 @@ ipie::complex_t CIWavefunction::norm(size_t num_dets_to_use) {
     return norm;
 }
 
+bool operator==(const CIWavefunction &lhs, const CIWavefunction &rhs) {
+    if (lhs.num_dets != rhs.num_dets) {
+        return false;
+    } else if (lhs.num_spatial != rhs.num_spatial) {
+        return false;
+    } else if (lhs.num_elec != rhs.num_elec) {
+        return false;
+    } else {
+        for (size_t idet = 0; idet < lhs.num_dets; idet++) {
+            if (lhs.dets[idet] != rhs.dets[idet]) {
+                return false;
+            }
+            if (abs(lhs.coeffs[idet] - rhs.coeffs[idet]) > 1e-12) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+
 size_t CIWavefunction::flat_indx(size_t p, size_t q) {
     return p * num_spatial + q;
 }
 
 size_t CIWavefunction::flat_indx(size_t p, size_t q, size_t r, size_t s) {
     return p * num_spatial * num_spatial * num_spatial + q * num_spatial * num_spatial + r * num_spatial + s;
+}
+
+size_t CIWavefunction::get_num_dets() {
+    // return num_dets;
+    return dets.size();
 }
 
 std::pair<size_t, size_t> CIWavefunction::map_orb_to_spat_spin(size_t p) {
