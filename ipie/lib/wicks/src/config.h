@@ -2,6 +2,7 @@
 #define _IPIE_CONFIG_H
 
 #include <complex>
+#include <tuple>
 #include <vector>
 
 namespace ipie {
