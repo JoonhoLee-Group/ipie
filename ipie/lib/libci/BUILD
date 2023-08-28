@@ -18,7 +18,7 @@ TEST_FILES = glob(
 
 
 cc_library(
-    name="libwicks",
+    name="libci",
     srcs=SOURCE_FILES,
     copts=[
         "-std=c++17",
@@ -27,7 +27,7 @@ cc_library(
 )
 
 cc_test(
-    name="libwicks_test",
+    name="libci_test",
     srcs=SOURCE_FILES + TEST_FILES,
     copts=[
         "-std=c++17",
@@ -42,7 +42,7 @@ cc_test(
 )
 
 cc_binary(
-    name="libwicks.so",
+    name="libci.so",
     srcs=SOURCE_FILES,
     copts=[
         "-O3",

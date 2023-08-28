@@ -93,4 +93,8 @@ ipie::energy_t slater_condon2(const Hamiltonian &ham, const Excitation &ijab) {
     return hmatel;
 }
 
+
+TEST(hamiltonian, flat_indx) {
+    auto ham = build_test_hamiltonian(14);
+}
 }  // namespace ipie

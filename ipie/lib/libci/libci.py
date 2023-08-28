@@ -77,5 +77,3 @@ def build_one_rdm(ci_coeffs, dets, norbs, nelec):
     occs = np.zeros((nelec), dtype=np.int32)
     fun(ci_coeffs, dets, opdm, occs, ci_coeffs.size, norbs, nelec)
     return opdm
-
-def compute_variational_energy(ci_coeffs, occa, occb):
