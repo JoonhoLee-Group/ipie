@@ -30,7 +30,6 @@ class CIWavefunction {
         std::vector<std::complex<double>> &h1e,
         std::vector<std::complex<double>> &h2e);
     ipie::energy_t slater_condon2(Excitation &ijab, std::vector<std::complex<double>> &h2e);
-    size_t get_num_dets();
     // comparitor
     friend bool operator==(const CIWavefunction &lhs, const CIWavefunction &rhs);
     friend std::ostream &operator<<(std::ostream &os, const CIWavefunction &wfn);

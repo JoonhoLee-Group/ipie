@@ -77,11 +77,6 @@ size_t CIWavefunction::flat_indx(size_t p, size_t q, size_t r, size_t s) {
     return p * num_spatial * num_spatial * num_spatial + q * num_spatial * num_spatial + r * num_spatial + s;
 }
 
-size_t CIWavefunction::get_num_dets() {
-    // return num_dets;
-    return dets.size();
-}
-
 std::pair<size_t, size_t> CIWavefunction::map_orb_to_spat_spin(size_t p) {
     std::pair<size_t, size_t> spat_spin = std::make_pair(p / 2, p % 2);
     return spat_spin;
