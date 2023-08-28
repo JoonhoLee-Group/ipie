@@ -20,19 +20,14 @@ CIWavefunction::CIWavefunction(
     : coeffs(ci_coeffs) {
     num_dets = ci_coeffs.size();
     num_spatial = nspatial;
-    size_t num_occ_a = occa[0].size();
-    size_t num_occ_b = occb[0].size();
-    num_elec = num_occ_a + num_occ_b;
+    num_elec = occa[0].size() + occb[0].size();
     dets.resize(num_dets, BitString(num_spatial));
-    // std::cout << num_dets << " " << num_spatial << " " << num_occ_a << " " << num_occ_b << " " << num_elec << " "
-    //           << dets.size() << std::endl;
     for (size_t i = 0; i < ci_coeffs.size(); i++) {
-        // std::cout << i << " " << std::endl;
         BitString det_i(2 * num_spatial);
-        for (int a = 0; a < num_occ_a; a++) {
+        for (size_t a = 0; a < occa[i].size(); a++) {
             det_i.set_bit(2 * a);
         }
-        for (int b = 0; b < num_occ_b; b++) {
+        for (size_t b = 0; b < occb[i].size(); b++) {
             det_i.set_bit(2 * b + 1);
         }
         dets[i] = det_i;
@@ -92,9 +87,9 @@ std::pair<size_t, size_t> CIWavefunction::map_orb_to_spat_spin(size_t p) {
     return spat_spin;
 }
 
-energy_t CIWavefunction::slater_condon0(
+ipie::energy_t CIWavefunction::slater_condon0(
     std::vector<int> &occs, std::vector<ipie::complex_t> &h1e, std::vector<ipie::complex_t> &h2e) {
-    energy_t hmatel;
+    ipie::energy_t hmatel;
     for (size_t p = 0; p < occs.size(); p++) {
         indx_t p_spat_spin = map_orb_to_spat_spin(occs[p]);
         size_t p_ind = flat_indx(p_spat_spin.first, p_spat_spin.first);
@@ -115,12 +110,12 @@ energy_t CIWavefunction::slater_condon0(
     return hmatel;
 }
 
-energy_t CIWavefunction::slater_condon1(
+ipie::energy_t CIWavefunction::slater_condon1(
     std::vector<int> &occs,
     Excitation &excit_ia,
     std::vector<ipie::complex_t> &h1e,
     std::vector<ipie::complex_t> &h2e) {
-    energy_t hmatel;
+    ipie::energy_t hmatel;
     indx_t i_spat_spin = map_orb_to_spat_spin(excit_ia.from[0]);
     indx_t a_spat_spin = map_orb_to_spat_spin(excit_ia.to[0]);
     size_t ia = flat_indx(i_spat_spin.first, a_spat_spin.first);
@@ -143,8 +138,8 @@ energy_t CIWavefunction::slater_condon1(
     }
     return hmatel;
 }
-energy_t CIWavefunction::slater_condon2(Excitation &ijab, std::vector<ipie::complex_t> &h2e) {
-    energy_t hmatel;
+ipie::energy_t CIWavefunction::slater_condon2(Excitation &ijab, std::vector<ipie::complex_t> &h2e) {
+    ipie::energy_t hmatel;
     indx_t i_spat_spin = map_orb_to_spat_spin(ijab.from[0]);
     indx_t j_spat_spin = map_orb_to_spat_spin(ijab.from[1]);
     indx_t a_spat_spin = map_orb_to_spat_spin(ijab.to[0]);
@@ -171,13 +166,13 @@ std::vector<ipie::complex_t> CIWavefunction::build_one_rdm(size_t num_dets_to_us
         ipie::complex_t coeff_ket = coeffs[idet];
         denom += conj(coeff_ket) * coeff_ket;
         det_ket.decode_bits(occs);
-        for (int iel = 0; iel < num_elec; iel++) {
+        for (size_t iel = 0; iel < num_elec; iel++) {
             int spatial = occs[iel] / 2;
             int spin_offset = num_spatial * num_spatial * (occs[iel] % 2);
             int pq = spatial * num_spatial + spatial + spin_offset;
             density_matrix[pq] += conj(coeff_ket) * coeff_ket;
         }
-        for (int jdet = idet + 1; jdet < num_dets; jdet++) {
+        for (size_t jdet = idet + 1; jdet < num_dets; jdet++) {
             BitString det_bra = dets[jdet];
             ipie::complex_t coeff_bra = coeffs[idet];
             int excitation = det_bra.count_difference(det_ket);
@@ -199,7 +194,7 @@ std::vector<ipie::complex_t> CIWavefunction::build_one_rdm(size_t num_dets_to_us
             }
         }
     }
-    for (int i = 0; i < num_spatial * num_spatial * 2; i++) {
+    for (size_t i = 0; i < num_spatial * num_spatial * 2; i++) {
         density_matrix[i] = density_matrix[i] / denom;
     }
     return density_matrix;
@@ -207,6 +202,13 @@ std::vector<ipie::complex_t> CIWavefunction::build_one_rdm(size_t num_dets_to_us
 std::vector<ipie::complex_t> CIWavefunction::compute_variational_energy(size_t num_dets_to_use) {
     std::vector<ipie::complex_t> x;
     return x;
+}
+
+std::ostream &operator<<(std::ostream &os, const CIWavefunction &wfn) {
+    for (size_t idet = 0; idet < wfn.num_dets; idet++) {
+        os << wfn.coeffs[idet] << " " << wfn.dets[idet] << " \n";
+    }
+    return os;
 }
 
 }  // namespace ipie

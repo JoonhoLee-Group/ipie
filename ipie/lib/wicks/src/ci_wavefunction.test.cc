@@ -114,13 +114,16 @@ TEST(ci_wavefunction, density_matrix_alt_constructor) {
         }
     }
     // <uuuu|p^q|uuuu> + <dddd|p^q|uuuu>
-    occa = {{0, 1, 2, 3}, {}};
-    occb = {{}, {0, 1, 2, 3}};
+    occa = {{}, {0, 1, 2, 3}};
+    occb = {{0, 1, 2, 3}, {}};
     ipie::CIWavefunction wfn2(coeffs, occa, occb, 7);
     dm = wfn2.build_one_rdm(2);
     std::vector<int> occsa = {0, 2, 4, 6};
     a.set_bits({1, 3, 5, 7});
     b.set_bits({0, 2, 4, 6});
+    std::vector<ipie::BitString> dets = {a, b};
+    ipie::CIWavefunction wfnb(coeffs, dets);
+    ASSERT_EQ(wfnb, wfn2);
     for (size_t p = 0; p < 7; p++) {
         for (size_t q = 0; q < 7; q++) {
             if (p == q && std::find(occsa.begin(), occsa.end(), 2 * p) != occsa.end()) {
@@ -181,8 +184,9 @@ TEST(ci_wavefunction, slater_condon2) {
     std::vector<std::complex<double>> coeffs = {std::complex<double>(1.0, -1.0), std::complex<double>(1.0, 1.0)};
     auto ham = build_test_hamiltonian(a.num_bits);
     ipie::CIWavefunction wfn(coeffs, dets);
-    ipie::Excitation excit_ijab(1);
-    decode_single_excitation(a, b, excit_ijab);
+    ipie::Excitation excit_ijab(2);
+    decode_double_excitation(a, b, excit_ijab);
     auto e2 = wfn.slater_condon2(excit_ijab, ham.second);
+    ASSERT_NEAR(0.0, std::real(std::get<1>(e2)), 1e-12);
     ASSERT_NEAR(std::real(std::get<0>(e2)), std::real(std::get<2>(e2)), 1e-12);
 }

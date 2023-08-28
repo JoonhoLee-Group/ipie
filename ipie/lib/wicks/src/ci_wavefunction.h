@@ -22,17 +22,18 @@ class CIWavefunction {
     std::complex<double> norm(size_t num_dets_to_use);
     std::vector<std::complex<double>> build_one_rdm(size_t num_dets_to_use);
     std::vector<std::complex<double>> compute_variational_energy(size_t num_dets_to_use);
-    energy_t slater_condon0(
+    ipie::energy_t slater_condon0(
         std::vector<int> &occs, std::vector<std::complex<double>> &h1e, std::vector<std::complex<double>> &h2e);
-    energy_t slater_condon1(
+    ipie::energy_t slater_condon1(
         std::vector<int> &occs,
         Excitation &excit_ia,
         std::vector<std::complex<double>> &h1e,
         std::vector<std::complex<double>> &h2e);
-    energy_t slater_condon2(Excitation &ijab, std::vector<std::complex<double>> &h2e);
+    ipie::energy_t slater_condon2(Excitation &ijab, std::vector<std::complex<double>> &h2e);
     size_t get_num_dets();
     // comparitor
     friend bool operator==(const CIWavefunction &lhs, const CIWavefunction &rhs);
+    friend std::ostream &operator<<(std::ostream &os, const CIWavefunction &wfn);
 
    private:
     size_t flat_indx(size_t p, size_t q);
@@ -45,6 +46,7 @@ class CIWavefunction {
     size_t num_elec;
     size_t num_spatial;
 };
+
 }  // namespace ipie
 
 #endif
