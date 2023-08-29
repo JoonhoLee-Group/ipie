@@ -9,11 +9,6 @@
 
 namespace ipie {
 std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn);
-// std::vector<ipie::complex_t> one_rdm_wrapper(
-//     std::vector<ipie::complex_t> &coeffs,
-//     std::vector<std::vector<int>> &occa,
-//     std::vector<std::vector<int>> &occb,
-//     size_t num_spatial);
 std::vector<ipie::complex_t> variational_energy(
     ipie::complex_t &ci_coeffs,
     std::vector<int> &occa,

@@ -22,6 +22,8 @@ PYBIND11_MODULE(libci, m) {
     m.doc() = "A lightweight ci utility library for computing properties of CI-like wavefunctions.";
     m.def(
         "one_rdm",
+        // this works but is not very idiomatic as we expect numpy arrays as input. it works because of the stl wrapper,
+        // but should probably cast internally.
         [](std::vector<std::complex<double>> &coeffs,
            std::vector<std::vector<int>> &occa,
            std::vector<std::vector<int>> &occb,
@@ -29,6 +31,8 @@ PYBIND11_MODULE(libci, m) {
             ipie::Wavefunction wfn(coeffs, occa, occb, num_spatial);
             std::vector<ipie::complex_t> opdm = ipie::build_one_rdm(wfn);
             // https://github.com/pybind/pybind11/issues/1299
+            // need to check if this is problematic with ownership.
+            // I can live with copying given the array is so small...
             return py::array_t<ipie::complex_t>(
                 std::vector<ptrdiff_t>{2, (py::ssize_t)num_spatial, (py::ssize_t)num_spatial}, &opdm[0]);
         },
