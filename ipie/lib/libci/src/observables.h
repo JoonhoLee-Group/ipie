@@ -8,7 +8,19 @@
 #include "wavefunction.h"
 
 namespace ipie {
-std::vector<std::complex<double>> one_rdm(Wavefunction &wfn);
-std::vector<std::complex<double>> variational_energy(Wavefunction &wfn, Hamiltonian &ham);
+std::vector<ipie::complex_t> one_rdm(Wavefunction &wfn);
+std::vector<ipie::complex_t> one_rdm_wrapper(
+    std::vector<ipie::complex_t> &coeffs,
+    std::vector<std::vector<int>> &occa,
+    std::vector<std::vector<int>> &occb,
+    size_t num_spatial);
+std::vector<ipie::complex_t> variational_energy(
+    ipie::complex_t &ci_coeffs,
+    std::vector<int> &occa,
+    std::vector<int> &occb,
+    std::vector<ipie::complex_t> &h1e,
+    std::vector<ipie::complex_t> &h2e,
+    ipie::complex_t e0);
+std::vector<ipie::complex_t> variational_energy(Wavefunction &wfn, Hamiltonian &ham);
 }  // namespace ipie
 #endif

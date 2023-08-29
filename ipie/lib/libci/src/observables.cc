@@ -51,6 +51,15 @@ std::vector<ipie::complex_t> one_rdm(Wavefunction &wfn) {
     return density_matrix;
 }
 
+std::vector<ipie::complex_t> one_rdm_wrapper(
+    std::vector<ipie::complex_t> &coeffs,
+    std::vector<std::vector<int>> &occa,
+    std::vector<std::vector<int>> &occb,
+    size_t num_spatial) {
+    Wavefunction wfn(coeffs, occa, occb, num_spatial);
+    return one_rdm(wfn);
+}
+
 std::vector<ipie::complex_t> variational_energy() {
     std::vector<ipie::complex_t> x;
     return x;
