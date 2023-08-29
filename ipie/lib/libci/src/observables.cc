@@ -8,7 +8,7 @@
 #include "wavefunction.h"
 namespace ipie {
 
-std::vector<ipie::complex_t> one_rdm(Wavefunction &wfn) {
+std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
     Excitation ia(1);
     std::vector<int> occs(wfn.num_elec);
     ipie::complex_t denom = 0.0;
@@ -57,7 +57,7 @@ std::vector<ipie::complex_t> one_rdm_wrapper(
     std::vector<std::vector<int>> &occb,
     size_t num_spatial) {
     Wavefunction wfn(coeffs, occa, occb, num_spatial);
-    return one_rdm(wfn);
+    return build_one_rdm(wfn);
 }
 
 std::vector<ipie::complex_t> variational_energy() {

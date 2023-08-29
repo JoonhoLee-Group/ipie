@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-from ipie.lib.libci import one_rdm
+from ipie.lib.libci import libci
 from ipie.utils.testing import get_random_phmsd_opt
 
 
@@ -28,4 +28,6 @@ def test_one_rdm():
     num_alpha = 2
     num_beta = 2
     (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat)
-    one_rdm(coeff, occa, occb, num_spat)
+    opdm = libci.one_rdm(coeff, occa, occb, num_spat)
+    print(opdm.shape)
+    print(opdm)

@@ -7,7 +7,14 @@ SOURCE_FILES = glob(
         "src/*.cc",
         "src/*.h",
     ],
-    exclude=glob(["src/*.test.cc"]),
+    exclude=glob(["src/*.test.cc", "src/*.pybind.cc", "src/*.pybind.h"]),
+)
+
+PYBIND_FILES = glob(
+    [
+        "src/*.pybind.cc",
+        "src/*.pybind.h",
+    ],
 )
 
 TEST_FILES = glob(
@@ -43,7 +50,7 @@ cc_test(
 
 cc_binary(
     name="libci.so",
-    srcs=SOURCE_FILES,
+    srcs=SOURCE_FILES + PYBIND_FILES,
     copts=[
         "-O3",
         "-std=c++17",
@@ -52,5 +59,5 @@ cc_binary(
     ],
     includes=["src/"],
     linkshared=1,
-    deps=["@gtest"],
+    deps=["@pybind11"],
 )

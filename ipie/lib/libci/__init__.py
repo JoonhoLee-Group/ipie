@@ -15,5 +15,3 @@
 #
 # Author: Fionn Malone <fionn.malone@gmail.com>
 #
-
-from .ci_lib import one_rdm

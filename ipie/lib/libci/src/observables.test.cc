@@ -17,7 +17,7 @@ TEST(observables, density_matrix) {
     std::vector<ipie::BitString> dets = {a, b};
     std::vector<std::complex<double>> coeffs = {std::complex<double>(1.0, -1.0), std::complex<double>(1.0, 1.0)};
     ipie::Wavefunction wfn(coeffs, dets);
-    auto dm = one_rdm(wfn);
+    auto dm = build_one_rdm(wfn);
     for (size_t p = 0; p < 7; p++) {
         for (size_t q = 0; q < 7; q++) {
             ASSERT_EQ(dm[p * 7 + q], 0.0);
@@ -39,7 +39,7 @@ TEST(observables, density_matrix) {
     // <uuuu|p^q|uuuu> + <dddd|p^q|uuuu>
     dets = {a, b};
     ipie::Wavefunction wfn2(coeffs, dets);
-    dm = one_rdm(wfn2);
+    dm = build_one_rdm(wfn2);
     std::vector<int> occsa = {0, 2, 4, 6};
     for (size_t p = 0; p < 7; p++) {
         for (size_t q = 0; q < 7; q++) {
@@ -70,7 +70,7 @@ TEST(observables, density_matrix_alt_constructor) {
     std::vector<std::vector<int>> occa = {{}, {}};
     std::vector<std::vector<int>> occb = {{0, 1, 2, 3}, {0, 1, 2, 3}};
     ipie::Wavefunction wfn(coeffs, occa, occb, 7);
-    auto dm = one_rdm(wfn);
+    auto dm = build_one_rdm(wfn);
     for (size_t p = 0; p < 7; p++) {
         for (size_t q = 0; q < 7; q++) {
             ASSERT_EQ(dm[p * 7 + q], 0.0);
@@ -89,7 +89,7 @@ TEST(observables, density_matrix_alt_constructor) {
     occa = {{}, {0, 1, 2, 3}};
     occb = {{0, 1, 2, 3}, {}};
     ipie::Wavefunction wfn2(coeffs, occa, occb, 7);
-    dm = one_rdm(wfn2);
+    dm = build_one_rdm(wfn2);
     std::vector<int> occsa = {0, 2, 4, 6};
     a.set_bits({1, 3, 5, 7});
     b.set_bits({0, 2, 4, 6});
