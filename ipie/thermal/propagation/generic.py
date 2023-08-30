@@ -86,7 +86,8 @@ class GenericContinuous(object):
             mf_shift = 1j * P[0].ravel() * system.chol_vecs
             mf_shift += 1j * P[1].ravel() * system.chol_vecs
         else:
-            mf_shift = 1j * numpy.einsum("lpq,spq->l", system.chol_vecs, P)
+            # mf_shift = 1j * numpy.einsum("lpq,spq->l", system.chol_vecs, P)
+            mf_shift = 1j * numpy.einsum("lpq,spq->l", system.hs_pot, P)
         return mf_shift
 
     def construct_one_body_propagator(self, system, dt):
@@ -149,14 +150,16 @@ class GenericContinuous(object):
         xbar : :class:`numpy.ndarray`
             Force bias.
         """
-        vbias = P[0].ravel() * system.hs_pot
-        vbias += P[1].ravel() * system.hs_pot
+        # vbias = P[0].ravel() * system.hs_pot
+        # vbias += P[1].ravel() * system.hs_pot
+        vbias = system.chol_vecs.T.dot(P[0].ravel())
+        vbias += system.chol_vecs.T.dot(P[1].ravel())
         return -self.sqrt_dt * (1j * vbias - self.mf_shift)
 
     def construct_VHS_slow(self, system, shifted):
         return self.isqrt_dt * numpy.einsum("l,lpq->pq", shifted, system.hs_pot)
 
     def construct_VHS_fast(self, system, xshifted):
-        VHS = system.hs_pot.dot(xshifted)
+        VHS = system.chol_vecs.dot(xshifted)
         VHS = VHS.reshape(system.nbasis, system.nbasis)
         return self.isqrt_dt * VHS

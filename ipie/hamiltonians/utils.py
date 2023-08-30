@@ -100,6 +100,13 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             ecore=enuc,
             verbose=verbose,
         )
+        ham._alt_convention = ham_opts["_alt_convention"]
+        ham.sparse = ham_opts["sparse"]
+        ham.name = ham_opts["name"]
+        ham.hs_pot = chol.T.reshape(nchol, nbsf, nbsf)
+        ham.chol_vecs = chol
+        ham.mu = ham_opts["mu"]
+
 
     elif isinstance(system, SysUEG):
         ham = UEG(
