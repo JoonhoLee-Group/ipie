@@ -69,7 +69,7 @@ TEST(observables, density_matrix_alt_constructor) {
     std::vector<std::complex<double>> coeffs = {std::complex<double>(1.0, -1.0), std::complex<double>(1.0, 1.0)};
     std::vector<std::vector<int>> occa = {{}, {}};
     std::vector<std::vector<int>> occb = {{0, 1, 2, 3}, {0, 1, 2, 3}};
-    ipie::Wavefunction wfn(coeffs, occa, occb, 7);
+    ipie::Wavefunction wfn = ipie::Wavefunction::build_wavefunction_from_occ_list(coeffs, occa, occb, 7);
     auto dm = build_one_rdm(wfn);
     for (size_t p = 0; p < 7; p++) {
         for (size_t q = 0; q < 7; q++) {
@@ -88,7 +88,7 @@ TEST(observables, density_matrix_alt_constructor) {
     // <uuuu|p^q|uuuu> + <dddd|p^q|uuuu>
     occa = {{}, {0, 1, 2, 3}};
     occb = {{0, 1, 2, 3}, {}};
-    ipie::Wavefunction wfn2(coeffs, occa, occb, 7);
+    ipie::Wavefunction wfn2 = ipie::Wavefunction::build_wavefunction_from_occ_list(coeffs, occa, occb, 7);
     dm = build_one_rdm(wfn2);
     std::vector<int> occsa = {0, 2, 4, 6};
     a.set_bits({1, 3, 5, 7});

@@ -12,14 +12,15 @@ namespace ipie {
 
 struct Wavefunction {
     // constructors
-    Wavefunction(
+    Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants);
+
+    static Wavefunction build_wavefunction_from_occ_list(
         std::vector<std::complex<double>> &ci_coeffs,
         std::vector<std::vector<int>> &occa,
         std::vector<std::vector<int>> &occb,
         size_t nspatial);
-    Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants);
 
-    std::complex<double> norm(size_t num_dets_to_use);
+    std::complex<double> norm();
     friend bool operator==(const Wavefunction &lhs, const Wavefunction &rhs);
     friend std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn);
     std::vector<std::complex<double>> coeffs;

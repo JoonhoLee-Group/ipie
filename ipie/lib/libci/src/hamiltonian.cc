@@ -29,6 +29,8 @@ std::pair<size_t, size_t> map_orb_to_spat_spin(size_t p) {
 
 ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &occs) {
     ipie::energy_t hmatel;
+    std::get<0>(hmatel) = ham.e0;
+    std::get<1>(hmatel) = ham.e0;
     for (size_t p = 0; p < occs.size(); p++) {
         indx_t p_spat_spin = map_orb_to_spat_spin(occs[p]);
         size_t p_ind = ham.flat_indx(p_spat_spin.first, p_spat_spin.first);
@@ -36,13 +38,13 @@ ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &oc
         std::get<1>(hmatel) += ham.h1e[p_ind];
         for (size_t q = p + 1; q < occs.size(); q++) {
             indx_t q_spat_spin = map_orb_to_spat_spin(occs[q]);
-            size_t ijij = ham.flat_indx(p_spat_spin.first, q_spat_spin.first, p_spat_spin.first, q_spat_spin.first);
-            std::get<0>(hmatel) += ham.h2e[ijij];
-            std::get<2>(hmatel) += ham.h2e[ijij];
+            size_t ppqq = ham.flat_indx(p_spat_spin.first, p_spat_spin.first, q_spat_spin.first, q_spat_spin.first);
+            std::get<0>(hmatel) += ham.h2e[ppqq];
+            std::get<2>(hmatel) += ham.h2e[ppqq];
             if (p_spat_spin.second == q_spat_spin.second) {
-                size_t ijji = ham.flat_indx(p_spat_spin.first, q_spat_spin.first, q_spat_spin.first, p_spat_spin.first);
-                std::get<0>(hmatel) -= ham.h2e[ijji];
-                std::get<2>(hmatel) -= ham.h2e[ijji];
+                size_t pqqp = ham.flat_indx(p_spat_spin.first, q_spat_spin.first, q_spat_spin.first, p_spat_spin.first);
+                std::get<0>(hmatel) -= ham.h2e[pqqp];
+                std::get<2>(hmatel) -= ham.h2e[pqqp];
             }
         }
     }
@@ -60,10 +62,10 @@ ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<int> &oc
         size_t occ_j = occs[j];
         indx_t occ_j_spat_spin = map_orb_to_spat_spin(occ_j);
         if (occ_j != excit_ia.from[0]) {
-            size_t ijaj =
-                ham.flat_indx(i_spat_spin.first, occ_j_spat_spin.first, a_spat_spin.first, occ_j_spat_spin.first);
-            std::get<0>(hmatel) += ham.h2e[ijaj];
-            std::get<2>(hmatel) += ham.h2e[ijaj];
+            size_t iajj =
+                ham.flat_indx(i_spat_spin.first, a_spat_spin.first, occ_j_spat_spin.first, occ_j_spat_spin.first);
+            std::get<0>(hmatel) += ham.h2e[iajj];
+            std::get<2>(hmatel) += ham.h2e[iajj];
             if (occ_j_spat_spin.second == i_spat_spin.second) {
                 size_t ijja =
                     ham.flat_indx(i_spat_spin.first, occ_j_spat_spin.first, occ_j_spat_spin.first, a_spat_spin.first);
@@ -82,12 +84,12 @@ ipie::energy_t slater_condon2(const Hamiltonian &ham, const Excitation &ijab) {
     indx_t a_spat_spin = map_orb_to_spat_spin(ijab.to[0]);
     indx_t b_spat_spin = map_orb_to_spat_spin(ijab.to[1]);
     if (i_spat_spin.second == a_spat_spin.second) {
-        size_t ijab = ham.flat_indx(i_spat_spin.first, j_spat_spin.first, a_spat_spin.first, b_spat_spin.first);
-        std::get<2>(hmatel) = ham.h2e[ijab];
+        size_t iajb = ham.flat_indx(i_spat_spin.first, a_spat_spin.first, j_spat_spin.first, b_spat_spin.first);
+        std::get<2>(hmatel) = ham.h2e[iajb];
     }
     if (i_spat_spin.second == b_spat_spin.second) {
-        size_t ijba = ham.flat_indx(i_spat_spin.first, j_spat_spin.first, b_spat_spin.first, a_spat_spin.first);
-        std::get<2>(hmatel) -= ham.h2e[ijba];
+        size_t ibja = ham.flat_indx(i_spat_spin.first, b_spat_spin.first, j_spat_spin.first, a_spat_spin.first);
+        std::get<2>(hmatel) -= ham.h2e[ibja];
     }
     std::get<0>(hmatel) = std::get<2>(hmatel);
     return hmatel;

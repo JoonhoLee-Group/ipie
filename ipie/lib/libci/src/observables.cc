@@ -25,8 +25,6 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
             int spin_offset = num_spatial * num_spatial * (occs[iel] % 2);
             int pq = spatial * num_spatial + spatial + spin_offset;
             density_matrix[pq] += conj(coeff_ket) * coeff_ket;
-            // std::cout << pq << " " << iel << " " << spatial << " " << occs[iel] % 2 << " " << occs[iel] << " "
-            //           << density_matrix[pq] << std::endl;
         }
         for (size_t jdet = idet + 1; jdet < wfn.num_dets; jdet++) {
             BitString det_bra = wfn.dets[jdet];
@@ -39,15 +37,8 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
                 indx_t a_spat_spin = map_orb_to_spat_spin(ia.to[0]);
                 if (i_spat_spin.second == a_spat_spin.second) {
                     int spin_offset = num_spatial * num_spatial * i_spat_spin.second;
-                    // std::cout << idet << " " << jdet << " " << a_spat_spin.first << " " << i_spat_spin.first << " "
-                    //           << perm << std::endl;
                     int pq = a_spat_spin.first * num_spatial + i_spat_spin.first + spin_offset;
                     int qp = i_spat_spin.first * num_spatial + a_spat_spin.first + spin_offset;
-                    // if (i_spat_spin.first == 0 && a_spat_spin.first == 4) {
-                    //     // std::cout << idet << " " << jdet << " " << coeff_bra << " " << coeff_ket <<
-                    //     density_matrix[pq]
-                    //     //           << " " << perm << " " << det_bra << " " << det_ket << std::endl;
-                    // }
                     ipie::complex_t val = (double)perm * conj(coeff_bra) * coeff_ket;
                     density_matrix[pq] += val;
                     density_matrix[qp] += conj(val);
@@ -55,25 +46,15 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
             }
         }
     }
-    // std::cout << "zero: " << density_matrix[0] << " " << denom << std::endl;
     for (size_t i = 0; i < num_spatial * num_spatial * 2; i++) {
         density_matrix[i] = density_matrix[i] / denom;
     }
     return density_matrix;
 }
 
-std::vector<ipie::complex_t> one_rdm_wrapper(
-    std::vector<ipie::complex_t> &coeffs,
-    std::vector<std::vector<int>> &occa,
-    std::vector<std::vector<int>> &occb,
-    size_t num_spatial) {
-    Wavefunction wfn(coeffs, occa, occb, num_spatial);
-    return build_one_rdm(wfn);
-}
-
-std::vector<ipie::complex_t> variational_energy() {
-    std::vector<ipie::complex_t> x;
-    return x;
+energy_t compute_variational_energy(Wavefunction &wfn, Hamiltonian &ham) {
+    energy_t tmp;
+    return tmp;
 }
 
 }  // namespace ipie

@@ -10,15 +10,21 @@
 
 namespace ipie {
 
-Wavefunction::Wavefunction(
+Wavefunction::Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants)
+    : coeffs(ci_coeffs), dets(determinants) {
+    num_spatial = dets[0].num_bits / 2;
+    num_elec = dets[0].count_set_bits();
+    num_dets = ci_coeffs.size();
+}
+
+Wavefunction Wavefunction::build_wavefunction_from_occ_list(
     std::vector<ipie::complex_t> &ci_coeffs,
     std::vector<std::vector<int>> &occa,
     std::vector<std::vector<int>> &occb,
-    size_t nspatial)
-    : coeffs(ci_coeffs) {
-    num_dets = ci_coeffs.size();
-    num_spatial = nspatial;
-    num_elec = occa[0].size() + occb[0].size();
+    size_t nspatial) {
+    size_t num_dets = ci_coeffs.size();
+    size_t num_spatial = nspatial;
+    std::vector<BitString> dets;
     dets.resize(num_dets, BitString(num_spatial));
     for (size_t i = 0; i < ci_coeffs.size(); i++) {
         BitString det_i(2 * num_spatial);
@@ -30,21 +36,15 @@ Wavefunction::Wavefunction(
         }
         dets[i] = det_i;
     }
+    return Wavefunction(ci_coeffs, dets);
 }
 
-Wavefunction::Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants)
-    : coeffs(ci_coeffs), dets(determinants) {
-    num_spatial = dets[0].num_bits / 2;
-    num_elec = dets[0].count_set_bits();
-    num_dets = ci_coeffs.size();
-}
-
-ipie::complex_t Wavefunction::norm(size_t num_dets_to_use) {
+ipie::complex_t Wavefunction::norm() {
     ipie::complex_t norm = 0.0;
     for (size_t idet = 0; idet < num_dets; idet++) {
         norm += conj(coeffs[idet]) * coeffs[idet];
     }
-    return norm;
+    return sqrt(norm);
 }
 
 bool operator==(const Wavefunction &lhs, const Wavefunction &rhs) {
