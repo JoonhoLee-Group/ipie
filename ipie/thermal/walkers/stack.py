@@ -3,6 +3,7 @@ import scipy.linalg
 
 from ipie.utils.misc import get_numeric_names
 
+
 class PropagatorStack:
     def __init__(
         self,

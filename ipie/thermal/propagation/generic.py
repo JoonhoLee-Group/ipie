@@ -1,14 +1,9 @@
-import cmath
-import math
-import sys
-import time
 
 import numpy
 import scipy.sparse.linalg
 
-from ipie.legacy.estimators.thermal import inverse_greens_function_qr, one_rdm_from_G
-from ipie.legacy.propagation.operations import kinetic_real
-from ipie.utils.linalg import exponentiate_matrix
+from ipie.legacy.estimators.thermal import one_rdm_from_G
+
 
 
 class GenericContinuous(object):

@@ -1,5 +1,5 @@
-from ipie.legacy.trial_density_matrices.mean_field import MeanField
-from ipie.legacy.trial_density_matrices.onebody import OneBody
+from ipie.thermal.trial.mean_field import MeanField
+from ipie.thermal.trial.onebody import OneBody
 
 
 def get_trial_density_matrix(system, hamiltonian, beta, dt, options={}, comm=None, verbose=False):

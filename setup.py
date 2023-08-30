@@ -22,6 +22,12 @@ if _build_legacy_extension:
             extra_compile_args=["-O3"],
             include_dirs=[numpy.get_include()],
         ),
+        Extension(
+            "ipie.thermal.estimators.ueg_kernels",
+            ["ipie/thermal/estimators/ueg_kernels.pyx"],
+            extra_compile_args=["-O3"],
+            include_dirs=[numpy.get_include()],
+        ),
     ]
     cythonized_extension = cythonize(
         extensions,

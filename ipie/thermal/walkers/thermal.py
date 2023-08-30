@@ -567,10 +567,10 @@ class ThermalWalker(Walker):
 
 
 def unit_test():
-    from ipie.legacy.systems.ueg import UEG
-    from ipie.legacy.thermal_propagation.planewave import PlaneWave
-    from ipie.legacy.trial_density_matrices.onebody import OneBody
-    from ipie.legacy.qmc.options import QMCOpts
+    from ipie.thermal.system.ueg import UEG
+    from ipie.thermal.propagation.planewave import PlaneWave
+    from ipie.thermal.trial.onebody import OneBody
+    from ipie.thermal.qmc.options import QMCOpts
 
     inputs = {
         "nup": 1,
@@ -683,9 +683,9 @@ def unit_test():
     # print(R)
 
     # Test walker green's function.
-    from ipie.legacy.estimators.hubbard import local_energy_hubbard
-    from ipie.legacy.estimators.thermal import one_rdm_from_G
-    from ipie.legacy.hamiltonians.hubbard import Hubbard
+    from ipie.thermal.estimators.hubbard import local_energy_hubbard
+    from ipie.thermal.estimators.thermal import one_rdm_from_G
+    from ipie.thermal.hamiltonians.hubbard import Hubbard
 
     sys_dict = {
         "name": "Hubbard",
