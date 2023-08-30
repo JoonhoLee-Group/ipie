@@ -10,6 +10,8 @@
 
 namespace ipie {
 
+typedef std::tuple<size_t, size_t, ipie::complex_t> hijkl_t;
+
 struct Hamiltonian {
     Hamiltonian(
         std::vector<ipie::complex_t> &h1e, std::vector<ipie::complex_t> &h2e, ipie::complex_t e0, size_t num_spat);
@@ -17,6 +19,19 @@ struct Hamiltonian {
     size_t flat_indx(size_t p, size_t q, size_t r, size_t s) const;
     std::vector<ipie::complex_t> h1e;
     std::vector<ipie::complex_t> h2e;
+    ipie::complex_t e0;
+    size_t num_spatial;
+};
+
+struct ScreenedHamiltonian {
+    Hamiltonian(std::vector<ipie::complex_t> &h1e, std::vector<hijkl_t> &h2e, ipie::complex_t e0, size_t num_spat);
+    static Hamiltonian build_screened_hamiltonian(std::vector<ipie::complex_t> &h1e,
+                                                  std::vector<ipie::complex_t> &h2e,
+                                                  ipie::complex_t e0,
+                                                  size_t num_spat;) size_t flat_indx(size_t p, size_t q) const;
+    size_t flat_indx(size_t p, size_t q, size_t r, size_t s) const;
+    std::vector<ipie::complex_t> h1e;
+    std::vector<hijkl_t> h2e;
     ipie::complex_t e0;
     size_t num_spatial;
 };

@@ -27,6 +27,30 @@ std::pair<size_t, size_t> map_orb_to_spat_spin(size_t p) {
     return spat_spin;
 }
 
+Hamiltonian::Hamiltonian(
+    std::vector<ipie::complex_t> &h1e, std::vector<ipie::hijkl_t> &h2e, ipie::complex_t e0, size_t num_spat)
+    : h1e(h1e), h2e(h2e), e0(e0), num_spatial(num_spat) {
+}
+
+Hamiltonian Hamiltonian::build_screened_hamiltonian(
+    std::vector<ipie::complex_t> &h1e,
+    std::vector<ipie::complex_t> &h2e,
+    ipie::complex_t e0,
+    size_t num_spat,
+    double threshold) {
+    std::vector<ipie::hijkl_t> ham_indx_matel;
+    for (size_t p = 0; p < num_spat; p++) {
+        for (size_t q = 0; q < num_spat; q++) {
+            for (size_t r = 0; r < num_spat; r++) {
+                for (size_t s = 0; s < num_spat; s++) {
+                    if (abs(h2e[h2e.flat_indx(p, q, r, s)]) > threshold) {
+                    }
+                }
+            }
+        }
+    }
+}
+
 ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &occs) {
     ipie::energy_t hmatel;
     std::get<0>(hmatel) = ham.e0;
