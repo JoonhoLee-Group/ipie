@@ -15,13 +15,13 @@
 # Author: Fionn Malone <fionn.malone@gmail.com>
 #
 
-import ctypes
-import os
+# import ctypes
+# import os
 
-import libci
-import numpy as np
-import numpy.typing as npt
-from numpy.ctypeslib import ndpointer
+# import libci
+# import numpy as np
+# import numpy.typing as npt
+# from numpy.ctypeslib import ndpointer
 
 # def one_rdm(ci_coeffs: npt.NDArray, occa: npt.NDArray, occb: npt.NDArray, num_spatial: int):
 #     """Compute one-particle reduced density matrix.

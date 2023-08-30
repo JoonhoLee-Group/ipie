@@ -39,12 +39,15 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
                 indx_t a_spat_spin = map_orb_to_spat_spin(ia.to[0]);
                 if (i_spat_spin.second == a_spat_spin.second) {
                     int spin_offset = num_spatial * num_spatial * i_spat_spin.second;
+                    // std::cout << idet << " " << jdet << " " << a_spat_spin.first << " " << i_spat_spin.first << " "
+                    //           << perm << std::endl;
                     int pq = a_spat_spin.first * num_spatial + i_spat_spin.first + spin_offset;
                     int qp = i_spat_spin.first * num_spatial + a_spat_spin.first + spin_offset;
-                    if (i_spat_spin.first == 0 && a_spat_spin.first == 4) {
-                        std::cout << idet << " " << jdet << " " << coeff_bra << " " << coeff_ket << density_matrix[pq]
-                                  << " " << perm << " " << det_bra << " " << det_ket << std::endl;
-                    }
+                    // if (i_spat_spin.first == 0 && a_spat_spin.first == 4) {
+                    //     // std::cout << idet << " " << jdet << " " << coeff_bra << " " << coeff_ket <<
+                    //     density_matrix[pq]
+                    //     //           << " " << perm << " " << det_bra << " " << det_ket << std::endl;
+                    // }
                     ipie::complex_t val = (double)perm * conj(coeff_bra) * coeff_ket;
                     density_matrix[pq] += val;
                     density_matrix[qp] += conj(val);

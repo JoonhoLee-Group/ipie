@@ -22,7 +22,39 @@ from ipie.lib.libci import libci
 from ipie.utils.testing import get_random_phmsd_opt
 
 
-def get_perm(from_orb, to_orb, di, dj):
+def convert_phase(occa, occb):
+    """Convert phase from abab to aabb ordering.
+
+    Parameters
+    ----------
+    occa : list
+        list of alpha occupations.
+    occb : list
+        list of beta occupations.
+
+    Returns
+    -------
+    phases : np.ndarray
+        phase factors.
+    """
+    ndet = len(occa)
+    phases = np.zeros(ndet)
+    for i in range(ndet):
+        doubles = list(set(occa[i]) & set(occb[i]))
+        occa0 = np.array(occa[i])
+        occb0 = np.array(occb[i])
+
+        count = 0
+        for ocb in occb0:
+            passing_alpha = np.where(occa0 > ocb)[0]
+            count += len(passing_alpha)
+
+        phases[i] = (-1) ** count
+
+    return phases
+
+
+def get_perm(from_orb, to_orb, bra, ket):
     """Determine sign of permutation needed to align two determinants.
 
     Stolen from HANDE.
@@ -30,12 +62,12 @@ def get_perm(from_orb, to_orb, di, dj):
     nmove = 0
     perm = 0
     for o in from_orb:
-        io = np.where(dj == o)[0]
+        io = np.where(ket == o)[0][0]
         perm += io - nmove
         nmove += 1
     nmove = 0
     for o in to_orb:
-        io = np.where(di == o)[0]
+        io = np.where(bra == o)[0][0]
         perm += io - nmove
         nmove += 1
     return perm % 2 == 1
@@ -63,21 +95,24 @@ def build_one_rdm_ref(coeffs, occa, occb, nbasis):
     num_dets = len(coeffs)
 
     for idet in range(num_dets):
-        di = spin_occs[idet]
+        det_ket = spin_occs[idet]
         # zero excitation case
-        for iorb in range(len(di)):
-            ii, spin_ii = map_orb(di[iorb], nbasis)
+        for iorb in range(len(det_ket)):
+            ii, spin_ii = map_orb(det_ket[iorb], nbasis)
             # print(ii, spin_ii)
             P[spin_ii][ii, ii] += coeffs[idet].conj() * coeffs[idet]
         for jdet in range(idet + 1, num_dets):
-            dj = spin_occs[jdet]
-            from_orb = list(set(dj) - set(di))
-            to_orb = list(set(di) - set(dj))
+            det_bra = spin_occs[jdet]
+            # Note there was a bug in mainline ipie in this function.
+            # There from_orb was det_bra - det_ket, it should be det_ket - det_bra to get the
+            # orbital occupied in the ket (idet)
+            from_orb = list(set(det_ket) - set(det_bra))
+            to_orb = list(set(det_bra) - set(det_ket))
             nex = len(from_orb)
             if nex > 1:
                 continue
             elif nex == 1:
-                perm = get_perm(from_orb, to_orb, di, dj)
+                perm = get_perm(from_orb, to_orb, det_bra, det_ket)
                 if perm:
                     phase = -1
                 else:
@@ -85,37 +120,23 @@ def build_one_rdm_ref(coeffs, occa, occb, nbasis):
                 ii, si = map_orb(from_orb[0], nbasis)
                 aa, sa = map_orb(to_orb[0], nbasis)
                 if si == sa:
-                    if aa == 0 and ii == 4:
-                        print(
-                            "this: ",
-                            idet,
-                            jdet,
-                            coeffs[jdet],
-                            coeffs[idet],
-                            P[si][ii, aa],
-                            perm,
-                            di,
-                            dj,
-                        )
                     P[si][aa, ii] += coeffs[jdet].conj() * coeffs[idet] * phase
                     P[si][ii, aa] += coeffs[jdet] * coeffs[idet].conj() * phase
     P[0] /= denom
     P[1] /= denom
-    # print(denom)
     return P
 
 
+@pytest.mark.parametrize(
+    "num_spat, num_elec, num_det",
+    ((13, 8, 9), (27, 2, 1_000), (79, 2, 23), (1023, 4, 100), (513, 67, 39)),
+)
 @pytest.mark.unit
-def test_one_rdm():
-    num_spat = 8
-    num_alpha = 2
-    num_beta = 2
-    np.random.seed(7)
-    (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat, ndet=10)
-    opdm = libci.one_rdm(coeff, occa, occb, num_spat)
+def test_one_rdm(num_spat, num_elec, num_det):
+    num_alpha = np.random.randint(0, num_elec + 1)
+    num_beta = num_elec - num_alpha
+    (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat, ndet=num_det)
+    phases = convert_phase(occa, occb)
+    opdm = libci.one_rdm(phases * coeff, occa, occb, num_spat)
     opdm_ref = build_one_rdm_ref(coeff, occa, occb, num_spat)
-    # print(opdm[0].diagonal())
-    # print(opdm_ref[0].diagonal())
-    assert np.allclose(opdm[0].diagonal(), opdm_ref[0].diagonal())
-    print(opdm[0][0, 4])
-    print(opdm_ref[0][0, 4])
+    assert np.allclose(opdm, opdm_ref)

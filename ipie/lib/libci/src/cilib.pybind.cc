@@ -22,7 +22,7 @@ PYBIND11_MODULE(libci, m) {
            std::vector<std::vector<int>> &occb,
            py::ssize_t num_spatial) {
             ipie::Wavefunction wfn(coeffs, occa, occb, num_spatial);
-            std::cout << "\n" << wfn << std::endl;
+            // std::cout << "\n" << wfn << std::endl;
             std::vector<ipie::complex_t> opdm = ipie::build_one_rdm(wfn);
             // https://github.com/pybind/pybind11/issues/1299
             // need to check if this is problematic with ownership.

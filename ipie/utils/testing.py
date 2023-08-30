@@ -199,10 +199,16 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
         init_wfn = None
     if dist is None:
         # want to evenly distribute determinants among N excitation levels
-        ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
-        dist_a = [ndet_level] * (nup + 1)
-        ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
-        dist_b = [ndet_level] * (ndown + 1)
+        if nup > 0:
+            ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
+            dist_a = [ndet_level] * (nup + 1)
+        else:
+            dist_a = [0]
+        if ndown > 0:
+            ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
+            dist_b = [ndet_level] * (ndown + 1)
+        else:
+            dist_b = [0]
     else:
         assert len(dist) == 2
         dist_a, dist_b = dist
@@ -218,6 +224,7 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
     vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
     # dets = [(d0a, d0b)]
     dets = []
+    # loop over excitation levels from reference for alpha / beta determinants
     for ialpha in range(0, nup + 1):
         oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
         if oa is None:
@@ -226,10 +233,15 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
             ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
             if ob is None:
                 continue
-            dets += list(itertools.product(oa, ob))
+            if nup == 0:
+                dets += [[[], a] for a in ob]
+            elif ndown == 0:
+                dets += [[[], b] for b in oa]
+            else:
+                dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = min(len(occ_a), ndet)
-    wfn = (coeffs, list(occ_a[:_ndet]), list(occ_b[:_ndet]))
+    wfn = (coeffs[:_ndet], list(occ_a[:_ndet]), list(occ_b[:_ndet]))
     return wfn, init_wfn
 
 
