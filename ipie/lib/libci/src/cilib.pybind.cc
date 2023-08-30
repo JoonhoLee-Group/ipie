@@ -11,13 +11,6 @@
 
 namespace py = pybind11;
 
-// PYBIND11_MAKE_OPAQUE(std::vector<ipie::complex_t>);
-// PYBIND11_MAKE_OPAQUE(std::vector<std::vector<int>>);
-
-// void test_function(std::vector<std::complex<double>> &vec) {
-//     std::cout << vec[1] << std::endl;
-// }
-
 PYBIND11_MODULE(libci, m) {
     m.doc() = "A lightweight ci utility library for computing properties of CI-like wavefunctions.";
     m.def(
@@ -29,6 +22,7 @@ PYBIND11_MODULE(libci, m) {
            std::vector<std::vector<int>> &occb,
            py::ssize_t num_spatial) {
             ipie::Wavefunction wfn(coeffs, occa, occb, num_spatial);
+            std::cout << "\n" << wfn << std::endl;
             std::vector<ipie::complex_t> opdm = ipie::build_one_rdm(wfn);
             // https://github.com/pybind/pybind11/issues/1299
             // need to check if this is problematic with ownership.

@@ -19,15 +19,18 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
         ipie::complex_t coeff_ket = wfn.coeffs[idet];
         denom += conj(coeff_ket) * coeff_ket;
         det_ket.decode_bits(occs);
+        // std::cout << det_ket << std::endl;
         for (size_t iel = 0; iel < wfn.num_elec; iel++) {
             int spatial = occs[iel] / 2;
             int spin_offset = num_spatial * num_spatial * (occs[iel] % 2);
             int pq = spatial * num_spatial + spatial + spin_offset;
             density_matrix[pq] += conj(coeff_ket) * coeff_ket;
+            // std::cout << pq << " " << iel << " " << spatial << " " << occs[iel] % 2 << " " << occs[iel] << " "
+            //           << density_matrix[pq] << std::endl;
         }
         for (size_t jdet = idet + 1; jdet < wfn.num_dets; jdet++) {
             BitString det_bra = wfn.dets[jdet];
-            ipie::complex_t coeff_bra = wfn.coeffs[idet];
+            ipie::complex_t coeff_bra = wfn.coeffs[jdet];
             int excitation = det_bra.count_difference(det_ket);
             if (excitation == 1) {
                 decode_single_excitation(det_bra, det_ket, ia);
@@ -38,6 +41,10 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
                     int spin_offset = num_spatial * num_spatial * i_spat_spin.second;
                     int pq = a_spat_spin.first * num_spatial + i_spat_spin.first + spin_offset;
                     int qp = i_spat_spin.first * num_spatial + a_spat_spin.first + spin_offset;
+                    if (i_spat_spin.first == 0 && a_spat_spin.first == 4) {
+                        std::cout << idet << " " << jdet << " " << coeff_bra << " " << coeff_ket << density_matrix[pq]
+                                  << " " << perm << " " << det_bra << " " << det_ket << std::endl;
+                    }
                     ipie::complex_t val = (double)perm * conj(coeff_bra) * coeff_ket;
                     density_matrix[pq] += val;
                     density_matrix[qp] += conj(val);
@@ -45,6 +52,7 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
             }
         }
     }
+    // std::cout << "zero: " << density_matrix[0] << " " << denom << std::endl;
     for (size_t i = 0; i < num_spatial * num_spatial * 2; i++) {
         density_matrix[i] = density_matrix[i] / denom;
     }

@@ -1,6 +1,7 @@
 #include "wavefunction.h"
 
 #include <complex>
+#include <iomanip>
 #include <vector>
 
 #include "bitstring.h"
@@ -22,10 +23,10 @@ Wavefunction::Wavefunction(
     for (size_t i = 0; i < ci_coeffs.size(); i++) {
         BitString det_i(2 * num_spatial);
         for (size_t a = 0; a < occa[i].size(); a++) {
-            det_i.set_bit(2 * a);
+            det_i.set_bit(2 * occa[i][a]);
         }
         for (size_t b = 0; b < occb[i].size(); b++) {
-            det_i.set_bit(2 * b + 1);
+            det_i.set_bit(2 * occb[i][b] + 1);
         }
         dets[i] = det_i;
     }
@@ -67,7 +68,7 @@ bool operator==(const Wavefunction &lhs, const Wavefunction &rhs) {
 };
 std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn) {
     for (size_t idet = 0; idet < wfn.num_dets; idet++) {
-        os << wfn.coeffs[idet] << " " << wfn.dets[idet] << " \n";
+        os << std::fixed << std::setprecision(4) << wfn.coeffs[idet] << " " << wfn.dets[idet] << " \n";
     }
     return os;
 }
