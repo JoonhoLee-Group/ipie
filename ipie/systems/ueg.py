@@ -1,8 +1,6 @@
 import math
 import numpy
 
-
-
 class UEG(object):
     """UEG system class (integrals read from fcidump)
     Parameters

@@ -4,13 +4,13 @@ import uuid
 
 from ipie.thermal.estimators.handler import Estimators
 from ipie.thermal.estimators.local_energy import local_energy
-from ipie.thermal.hamiltonians.utils import get_hamiltonian
+from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.propagation.utils import get_propagator
 from ipie.thermal.trial.utils import get_trial_density_matrix
 from ipie.thermal.walkers.handler import Walkers
 from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
-from ipie.thermal.system.utils import get_system
+from ipie.systems.utils import get_system
 from ipie.utils.io import get_input_value, to_json
 from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import get_shared_comm

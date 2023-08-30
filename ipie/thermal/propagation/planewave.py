@@ -618,14 +618,14 @@ class PlaneWave(object):
 def unit_test():
     import cProfile
 
-    from ipie.estimators.pw_fft import local_energy_pw_fft
+    from ipie.legacy.estimators.pw_fft import local_energy_pw_fft
     from ipie.legacy.estimators.ueg import local_energy_ueg
     from ipie.legacy.qmc.options import QMCOpts
     from ipie.legacy.systems.ueg import UEG
     from ipie.legacy.trial_density_matrices.onebody import OneBody
     from ipie.legacy.walkers.thermal import ThermalWalker
     from ipie.qmc.comm import FakeComm
-    from ipie.systems.pw_fft import PW_FFT
+    from ipie.legacy.systems.pw_fft import PW_FFT
 
     beta = 16.0
     dt = 0.005
