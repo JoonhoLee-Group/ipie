@@ -2,9 +2,9 @@ import sys
 import time
 
 from ipie.hamiltonians.utils import get_generic_integrals
-from ipie.thermal.hamiltonians._generic import Generic
-from ipie.thermal.hamiltonians.hubbard import Hubbard
-from ipie.thermal.hamiltonians.ueg import UEG
+from ipie.legacy.hamiltonians._generic import Generic
+from ipie.legacy.hamiltonians.hubbard import Hubbard
+from ipie.legacy.hamiltonians.ueg import UEG
 
 
 def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
