@@ -8,7 +8,7 @@ from ipie.thermal.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.propagation.utils import get_propagator
 from ipie.thermal.trial.utils import get_trial_density_matrix
 from ipie.thermal.walkers.handler import Walkers
-from ipie.thermal.qmc.options import QMCOpts
+from ipie.qmc.options import QMCOpts
 from ipie.qmc.utils import set_rng_seed
 from ipie.thermal.system.utils import get_system
 from ipie.utils.io import get_input_value, to_json
@@ -151,7 +151,7 @@ class ThermalAFQMC(object):
                 self.system, ham_opts, verbose=verbose, comm=self.shared_comm
             )
 
-        self.qmc = QMCOpts(qmc_opts, self.system, verbose)
+        self.qmc = QMCOpts(qmc_opts, verbose)
         self.qmc.rng_seed = set_rng_seed(self.qmc.rng_seed, comm)
         self.qmc.ntime_slices = int(round(self.qmc.beta / self.qmc.dt))
         # Overide whatever's in the input file due to structure of FT algorithm.

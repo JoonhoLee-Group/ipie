@@ -148,6 +148,12 @@ class QMCOpts(object):
             alias=["random_seed", "seed"],
             verbose=verbose,
         )
+        self.beta = get_input_value(
+            inputs,
+            "beta",
+            default=None,
+            verbose=verbose,
+        )
 
     def __str__(self, verbose=0):
         _str = ""

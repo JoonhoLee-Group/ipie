@@ -110,18 +110,9 @@ class Mixed(object):
         else:
             self.two_rdm = None
 
-        if qmc.gpu:
-            import cupy
-
-            self.estimates = cupy.zeros(self.nreg + dms_size, dtype=dtype)
-            self.names = get_estimator_enum(self.thermal)
-            self.estimates[self.names.time] = time.time()
-        #       self.global_estimates = cupy.zeros(self.nreg+dms_size,
-        #                                           dtype=dtype)
-        else:
-            self.estimates = numpy.zeros(self.nreg + dms_size, dtype=dtype)
-            self.names = get_estimator_enum(self.thermal)
-            self.estimates[self.names.time] = time.time()
+        self.estimates = numpy.zeros(self.nreg + dms_size, dtype=dtype)
+        self.names = get_estimator_enum(self.thermal)
+        self.estimates[self.names.time] = time.time()
         self.global_estimates = numpy.zeros(self.nreg + dms_size, dtype=dtype)
         self.key = {
             "Iteration": "Simulation iteration. iteration*dt = tau.",
