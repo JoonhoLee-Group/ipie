@@ -3,7 +3,6 @@ import time
 
 from ipie.hamiltonians.utils import get_generic_integrals
 from ipie.thermal.hamiltonians._generic import Generic
-from ipie.thermal.hamiltonians.hubbard import Hubbard
 from ipie.thermal.hamiltonians.ueg import UEG
 
 
@@ -22,9 +21,7 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     ham : object
         Hamiltonian class.
     """
-    if ham_opts["name"] == "Hubbard":
-        ham = Hubbard(ham_opts, verbose)
-    elif ham_opts["name"] == "UEG":
+    if ham_opts["name"] == "UEG":
         ham = UEG(system, ham_opts, verbose)
     elif ham_opts["name"] == "Generic":
         filename = ham_opts.get("integrals", None)

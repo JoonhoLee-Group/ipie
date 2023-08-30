@@ -6,7 +6,6 @@ import scipy.sparse.linalg
 
 from ipie.thermal.estimators.thermal import one_rdm_from_G
 from ipie.thermal.propagation.generic import GenericContinuous
-from ipie.thermal.propagation.hubbard import HubbardContinuous
 from ipie.thermal.propagation.planewave import PlaneWave
 
 
@@ -281,10 +280,6 @@ def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbo
     """
     if system.name == "UEG":
         propagator = PlaneWave(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
-    elif system.name == "Hubbard":
-        propagator = HubbardContinuous(
-            system, hamiltonian, trial, qmc, options=options, verbose=verbose
-        )
     elif system.name == "Generic":
         propagator = GenericContinuous(
             system, hamiltonian, trial, qmc, options=options, verbose=verbose

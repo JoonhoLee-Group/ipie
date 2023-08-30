@@ -42,7 +42,7 @@ test_id = comm.bcast(test_id, root=0)
 
 _data_dir = os.path.abspath(os.path.dirname(__file__)) + "/reference_data/"
 _legacy_test_dirs = [
-    "ft_4x4_hubbard_discrete",
+    #"ft_4x4_hubbard_discrete",
     "ft_ueg_ecut1.0_rs1.0",
 ]
 
