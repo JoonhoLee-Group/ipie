@@ -69,7 +69,6 @@ class UEG(object):
         # Volume
         self.vol = self.L**3.0
         # k-space grid spacing.
-        # self.kfac = 2*math.pi/self.L
         self.kfac = 2 * math.pi / self.L
         # Fermi Wavevector (infinite system).
         self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (1 / 3.0)

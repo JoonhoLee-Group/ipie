@@ -43,10 +43,8 @@ class UEG(object):
         if verbose:
             print("# Parsing input options.")
         self.name = "UEG"
-        self.mu = options.get("mu", None)
-        if self.mu is not None:
-            print(f"# mu: {self.mu:6.4e}")
-        self._alt_convention = options.get("alt_convention", False)
+        self.mu = system.mu
+        self._alt_convention = system._alt_convention
         self.sparse = True
 
         # core energy

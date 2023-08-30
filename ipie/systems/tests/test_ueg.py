@@ -21,123 +21,45 @@
 import os
 import tempfile
 
+import math
 import numpy
 import pytest
 
 from ipie.config import MPI
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.hamiltonians.utils import get_generic_integrals
-from ipie.systems.generic import Generic
-from ipie.utils.testing import generate_hamiltonian
+from ipie.systems.ueg import UEG
 
 
 @pytest.mark.unit
-def test_real():
+def test_ueg():
     numpy.random.seed(7)
-    nmo = 17
-    nelec = (4, 3)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=enuc,
-    )
-    assert sys.nup == 4
-    assert sys.ndown == 3
-    assert numpy.trace(h1e) == pytest.approx(9.38462274882365)
-
-
-@pytest.mark.unit
-def test_complex():
-    numpy.random.seed(7)
-    nmo = 17
-    nelec = (5, 3)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-    sys = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-        ecore=enuc,
-    )
-    assert sys.nup == 5
-    assert sys.ndown == 3
-    assert ham.nbasis == 17
-
-
-# @pytest.mark.unit
-# def test_write():
-#     numpy.random.seed(7)
-#     nmo = 13
-#     nelec = (4, 3)
-#     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-#     sys = Generic(nelec=nelec)
-#     ham = HamGeneric(
-#         h1e=numpy.array([h1e, h1e]),
-#         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-#         ecore=enuc,
-#     )
-#     ham.write_integrals(nelec, filename="hamil.test_write.h5")
-
-
-@pytest.mark.unit
-def test_read():
-    numpy.random.seed(7)
-    nmo = 13
-    nelec = (4, 3)
-    h1e_, chol_, enuc_, eri_ = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-    from ipie.utils.io import write_qmcpack_dense
-
-    chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
-    with tempfile.NamedTemporaryFile() as tmpf:
-        filename = tmpf.name
-        write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
-        nup, ndown = nelec
-        comm = None
-        hcore, chol, h1e_mod, enuc = get_generic_integrals(filename, comm=comm, verbose=False)
-        sys = Generic(nelec=nelec)
-        ham = HamGeneric(h1e=hcore, chol=chol, ecore=enuc)
-        assert ham.ecore == pytest.approx(0.4392816555570978)
-        assert ham.chol.shape == chol_.shape  # now two are transposed
-        assert len(ham.H1.shape) == 3
-        assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-        assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
-
-
-@pytest.mark.unit
-def test_shmem():
-    numpy.random.seed(7)
-    nmo = 13
-    nelec = (4, 3)
-    comm = MPI.COMM_WORLD
-    h1e_, chol_, enuc_, eri_ = generate_hamiltonian(nmo, nelec, cplx=True, sym=4)
-    from ipie.utils.io import write_qmcpack_dense
-
-    with tempfile.NamedTemporaryFile() as tmpf:
-        chol_ = chol_.reshape((-1, nmo * nmo)).T.copy()
-        filename = tmpf.name
-        write_qmcpack_dense(h1e_, chol_, nelec, nmo, enuc=enuc_, filename=filename, real_chol=False)
-        from ipie.utils.mpi import get_shared_comm
-
-        shared_comm = get_shared_comm(comm, verbose=True)
-        hcore, chol, _, enuc = get_generic_integrals(filename, comm=shared_comm, verbose=False)
-        # system = Generic(h1e=hcore, chol=chol, ecore=enuc,
-        #                  h1e_mod=h1e_mod, nelec=nelec,
-        #                  verbose=False)
-        # print("hcore.shape = ", hcore.shape)
-        sys = Generic(nelec=nelec)
-        ham = HamGeneric(h1e=hcore, chol=chol.copy(), ecore=enuc)
-
-        assert ham.ecore == pytest.approx(0.4392816555570978)
-        assert ham.chol.shape == chol_.shape  # now two are transposed
-        assert len(ham.H1.shape) == 3
-        assert numpy.linalg.norm(ham.H1[0] - h1e_) == pytest.approx(0.0)
-        assert numpy.linalg.norm(ham.chol - chol_) == pytest.approx(0.0)  # now two are transposed
+    nup = 7
+    ndown = 5
+    ne = nup + ndown
+    rs = 1.
+    mu = -1.
+    ecut = 1.
+    sys_opts = {
+                "nup": nup,
+                "ndown": ndown,
+                "rs": rs,
+                "mu": mu,
+                "ecut": ecut
+                }
+    sys = UEG(sys_opts, verbose=True)
+    assert sys.nup == nup
+    assert sys.ndown == ndown
+    assert sys.rs == rs
+    assert sys.mu == mu
+    assert sys.ecut == ecut
+    assert sys.ne == nup + ndown
+    assert sys.zeta == (nup - ndown) / ne
+    assert sys.rho == ((4.0 * math.pi) / 3.0 * rs**3.0)**(-1.0)
+    assert sys.L == rs * (4.0 * ne * math.pi / 3.0) ** (1.0 / 3.0)
+    assert sys.vol == sys.L**3.0
+    assert sys.kfac == 2 * math.pi / sys.L
+    assert sys.kf == (3 * (sys.zeta + 1) * math.pi**2 * ne / sys.L**3) ** (1.0 / 3.0)
+    assert sys.ef == 0.5 * sys.kf**2
 
 
 if __name__ == "__main__":
-    test_real()
-    test_complex()
-    # test_write()
-    test_read()
-    test_shmem()
+    test_ueg()
