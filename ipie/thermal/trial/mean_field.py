@@ -96,16 +96,6 @@ class MeanField(OneBody):
             change = numpy.linalg.norm(Pnew - Pold)
             if change < self.deps:
                 break
-            if self.verbose:
-                N = particle_number(P).real
-                E = local_energy(system, P)[0].real
-                S = entropy(beta, mu, HMF)
-                omega = E - mu * N - 1.0 / beta * S
-                print(
-                    " # Iteration: {:4d} dP: {:13.8e} Omega: {:13.8e}".format(
-                        it, change, omega.real
-                    )
-                )
             Pold = Pnew.copy()
         if self.verbose:
             N = particle_number(P).real

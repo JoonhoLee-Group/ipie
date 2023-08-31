@@ -91,6 +91,39 @@ options = {
 }
 
 
-afqmc = ThermalAFQMC(comm, options)
-afqmc.run(comm=comm)
-afqmc.finalise(comm)
+def compare_test_data(ref, test):
+    comparison = {}
+    for k, v in ref.items():
+        if k == "sys_info":
+            continue
+        try:
+            comparison[k] = (
+                numpy.array(ref[k]),
+                numpy.array(test[k]),
+                numpy.max(numpy.abs(numpy.array(ref[k]) - numpy.array(test[k]))) < 1e-10,
+            )
+        except KeyError:
+            print(f"# Issue with test data key {k}")
+    return comparison
+
+test_name = "generic"
+import tempfile
+import json
+from ipie.analysis.extraction import extract_test_data_hdf5
+with tempfile.NamedTemporaryFile() as tmpf:
+    options["estimators"]["filename"] = tmpf.name
+    afqmc = ThermalAFQMC(comm, options=options, parallel=comm.size > 1, verbose=1)
+    afqmc.run(comm=comm)
+    afqmc.finalise(comm)
+    test_data = extract_test_data_hdf5(tmpf.name)
+    with open("reference_data/generic_ref.json", "r") as fa:
+        ref_data = json.load(fa)
+    comparison = compare_test_data(ref_data, test_data)
+    local_err_count = 0
+    for k, v in comparison.items():
+        if not v[-1]:
+            local_err_count += 1
+            print(f" *** FAILED *** : mismatch between benchmark and test run: {test_name}")
+            print(f"name = {k}\n ref = {v[0]}\n test = {v[1]}\n delta = {v[0] - v[1]}\n")
+    if local_err_count == 0:
+        print(f"*** PASSED : {test_name} ***")
