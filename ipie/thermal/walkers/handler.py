@@ -130,48 +130,6 @@ class Walkers(object):
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
 
-    def orthogonalise(self, trial, free_projection):
-        """Orthogonalise all walkers.
-
-        Parameters
-        ----------
-        trial : object
-            Trial wavefunction object.
-        free_projection : bool
-            True if doing free projection.
-        """
-        for w in self.walkers:
-            detR = w.reortho(trial)
-            if free_projection:
-                (magn, dtheta) = cmath.polar(detR)
-                w.weight *= magn
-                w.phase *= cmath.exp(1j * dtheta)
-
-
-    def copy_historic_wfn(self):
-        """Copy current wavefunction to psi_n for next back propagation step."""
-        for i, w in enumerate(self.walkers):
-            numpy.copyto(self.walkers[i].phi_old, self.walkers[i].phi)
-
-    def copy_bp_wfn(self, phi_bp):
-        """Copy back propagated wavefunction.
-
-        Parameters
-        ----------
-        phi_bp : object
-            list of walker objects containing back propagated walkers.
-        """
-        for i, (w, wbp) in enumerate(zip(self.walkers, phi_bp)):
-            numpy.copyto(self.walkers[i].phi_bp, wbp.phi)
-
-    def copy_init_wfn(self):
-        """Copy current wavefunction to initial wavefunction.
-
-        The definition of the initial wavefunction depends on whether we are
-        calculating an ITCF or not.
-        """
-        for i, w in enumerate(self.walkers):
-            numpy.copyto(self.walkers[i].phi_right, self.walkers[i].phi)
 
     def pop_control(self, comm):
         if self.ntot_walkers == 1:
@@ -357,10 +315,6 @@ class Walkers(object):
                 self.walkers[iw].set_buffer(self.walker_buffer)
         for r in reqs:
             r.wait()
-
-    def recompute_greens_function(self, trial, time_slice=None):
-        for w in self.walkers:
-            w.greens_function(trial, time_slice)
 
     def set_total_weight(self, total_weight):
         for w in self.walkers:

@@ -27,6 +27,8 @@ import numpy as np
 from ipie.analysis.extraction import extract_test_data_hdf5
 from ipie.config import MPI
 from ipie.qmc.calc import get_driver, read_input
+from ipie.utils.io import get_input_value
+from ipie.thermal.qmc.thermal_afqmc import ThermalAFQMC
 
 _built_legacy = True
 
@@ -80,16 +82,11 @@ def run_test_system(input_file, benchmark_file, legacy_job=False):
     with tempfile.NamedTemporaryFile() as tmpf:
         input_dict["estimators"]["filename"] = tmpf.name
         if _built_legacy and legacy_job:
-            from ipie.thermal.qmc.calc import get_driver as get_legacy_driver
-
             input_dict["qmc"]["batched"] = False
-            afqmc = get_legacy_driver(input_dict, comm)
+            verbosity = input_dict.get("verbosity", 1)
+            afqmc = ThermalAFQMC(comm, options=input_dict, parallel=comm.size > 1, verbose=verbosity)
             afqmc.run(comm=comm)
             afqmc.finalise(comm)
-        else:
-            afqmc = get_driver(input_dict, comm)
-            afqmc.run(estimator_filename=tmpf.name)
-            afqmc.finalise()
         with open(benchmark_file, "r") as f:
             ref_data = json.load(f)
         skip_val = ref_data.get("extract_skip_value", 10)
