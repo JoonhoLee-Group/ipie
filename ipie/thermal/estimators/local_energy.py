@@ -1,7 +1,5 @@
-import numpy
 
 try:
-    from ipie.thermal.estimators.pw_fft import local_energy_pw_fft
     from ipie.thermal.estimators.ueg import local_energy_ueg
 except ImportError as e:
     print(e)
@@ -12,11 +10,6 @@ from ipie.thermal.estimators.generic import (
     local_energy_generic_cholesky_opt_stochastic,
     local_energy_generic_pno,
 )
-from ipie.thermal.estimators.hubbard import (
-    local_energy_hubbard,
-    local_energy_hubbard_ghf,
-    local_energy_hubbard_holstein,
-)
 from ipie.thermal.estimators.thermal import one_rdm_from_G
 
 
@@ -24,15 +17,8 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
     assert len(G) == 2
     ghf = G[0].shape[-1] == 2 * hamiltonian.nbasis
     # unfortunate interfacial problem for the HH model
-    if hamiltonian.name == "Hubbard":
-        if ghf:
-            return local_energy_hubbard_ghf(hamiltonian, G)
-        else:
-            return local_energy_hubbard(hamiltonian, G)
-    elif hamiltonian.name == "HubbardHolstein":
-        return local_energy_hubbard_holstein(hamiltonian, G, X, Lap, Ghalf)
-    elif hamiltonian.name == "PW_FFT":
-        return local_energy_pw_fft(system, G, Ghalf)
+    if hamiltonian.name in ["Hubbard", "HubbardHolstein", "PW_FFT"]:
+        raise NotImplementedError
     elif hamiltonian.name == "UEG":
         return local_energy_ueg(system, hamiltonian, G)
     else:
@@ -91,41 +77,12 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf=None, X=None, Lap=None):
 # this is a generic local_energy handler. So many possible combinations of local energy strategies...
 def local_energy(system, hamiltonian, walker, trial):
     if walker.name == "MultiDetWalker":
-        if hamiltonian.name == "HubbardHolstein":
-            return local_energy_multi_det_hh(
-                system, walker.Gi, walker.weights, walker.X, walker.Lapi
-            )
-        else:
-            return local_energy_multi_det(system, hamiltonian, trial, walker.Gi, walker.weights)
+        raise NotImplementedError
     elif walker.name == "ThermalWalker":
         return local_energy_G(system, hamiltonian, trial, one_rdm_from_G(walker.G), None)
     else:
         if hamiltonian.name == "HubbardHolstein":
-            return local_energy_G(
-                system, hamiltonian, trial, walker.G, walker.Ghalf, walker.X, walker.Lap
-            )
+            raise NotImplementedError
         else:
             return local_energy_G(system, hamiltonian, trial, walker.G, walker.Ghalf)
-
-
-def local_energy_multi_det(system, hamiltonian, trial, Gi, weights):
-    weight = 0
-    energies = 0
-    denom = 0
-    for idet, (w, G) in enumerate(zip(weights, Gi)):
-        energies += w * numpy.array(local_energy_G(system, hamiltonian, trial, G))
-        denom += w
-    return tuple(energies / denom)
-
-
-def local_energy_multi_det_hh(system, Gi, weights, X, Lapi):
-    weight = 0
-    energies = 0
-    denom = 0
-    for w, G, Lap in zip(weights, Gi, Lapi):
-        # construct "local" green's functions for each component of A
-        energies += w * numpy.array(local_energy_hubbard_holstein(system, G, X, Lap, Ghalf=None))
-        denom += w
-    return tuple(energies / denom)
-
 

@@ -1,5 +1,4 @@
 from ipie.estimators.generic import fock_generic
-from ipie.thermal.estimators.hubbard import fock_hubbard
 from ipie.thermal.estimators.ueg import fock_ueg
 
 
@@ -9,7 +8,7 @@ def fock_matrix(system, G):
     elif system.name == "Generic":
         return fock_generic(system, G)
     elif system.name == "Hubbard":
-        return fock_hubbard(system, G)
+        raise NotImplementedError
     else:
         print(f"# Fock matrix not implemented for {system.name}")
         return None
