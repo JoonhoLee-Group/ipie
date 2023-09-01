@@ -1,11 +1,13 @@
 from ipie.systems.generic import Generic
 from pyscf import gto, scf, lo
 from ipie.utils.from_pyscf import generate_hamiltonian
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.thermal.qmc.thermal_afqmc import ThermalAFQMC
+from ipie.thermal.trial.utils import get_trial_density_matrix
 import numpy
 import mpi4py.MPI as MPI
 import h5py
+from ipie.thermal.estimators.handler import Estimators
+from ipie.qmc.options import QMCOpts
+from ipie.utils.io import to_json
 
 comm = MPI.COMM_WORLD
 
@@ -31,37 +33,48 @@ mf.stability(return_status=True)
 s1e = mol.intor("int1e_ovlp_sph")
 ao_coeff = lo.orth.lowdin(s1e)
 
+# integrals = generate_hamiltonian(
+#         mol,
+#         mf.mo_coeff,
+#         mf.get_hcore(),
+#         ao_coeff,
+#         ortho_ao=True,
+#         chol_cut=1.e-8
+#     )
+# num_chol = integrals.chol.shape[1]
+# num_basis = integrals.nbasis
+# with h5py.File("reference_data/generic_integrals.h5", "w") as fa:
+#     fa["hcore"] = integrals.H1[0]
+#     fa["LXmn"] = integrals.chol.T.reshape(num_chol, num_basis, num_basis)
+#     fa["e0"] = integrals.ecore
+
+with h5py.File("reference_data/generic_integrals.h5", "r") as fa:
+    Lxmn = fa["LXmn"][:]
+    num_chol = Lxmn.shape[0]
+    num_basis = Lxmn.shape[1]
+
 system = Generic(nelec=mol.nelec)
 
-integrals = generate_hamiltonian(
-        mol,
-        mf.mo_coeff,
-        mf.get_hcore(),
-        ao_coeff,
-        ortho_ao=True,
-        chol_cut=1.e-8
-    )
-
-num_chol = integrals.chol.shape[1]
-num_basis = integrals.nbasis
-
-with h5py.File("generic_integrals.h5", "w") as fa:
-    fa["hcore"] = integrals.H1[0]
-    fa["LXmn"] = integrals.chol.T.reshape(num_chol, num_basis, num_basis)
-    fa["e0"] = integrals.ecore
-
 mu = -10.0
+beta = 0.1
+dt = 0.01
+num_walkers = 1
+seed = 7
+num_steps_per_block = 1
+blocks = 10
+stabilise_freq = 10
+pop_control_freq = 1
 
 options = {
     "qmc": {
-        "dt": 0.01,
-        "nwalkers": 1,
-        "blocks": 10,
+        "dt": dt,
+        "nwalkers": num_walkers,
+        "blocks": blocks,
         "nsteps": 10,
-        "beta": 0.1,
-        "rng_seed": 7,
-        "pop_control_freq": 1,
-        "stabilise_freq": 10,
+        "beta": beta,
+        "rng_seed": seed,
+        "pop_control_freq": pop_control_freq,
+        "stabilise_freq": stabilise_freq,
         "batched": False
     },
     "walkers": {
@@ -77,7 +90,7 @@ options = {
     },
     "hamiltonian": {
         "name": "Generic",
-        "integrals": "generic_integrals.h5",
+        "integrals": "reference_data/generic_integrals.h5",
         "_alt_convention": False,
         "sparse": False,
         "mu": mu
@@ -89,7 +102,6 @@ options = {
         "mu": mu
     }
 }
-
 
 def compare_test_data(ref, test):
     comparison = {}
@@ -106,13 +118,55 @@ def compare_test_data(ref, test):
             print(f"# Issue with test data key {k}")
     return comparison
 
+
+from ipie.thermal.qmc.thermal_afqmc_clean import ThermalAFQMC
+from ipie.hamiltonians.utils import get_hamiltonian
+system = Generic(mol.nelec)
+system.mu = mu
+hamiltonian = get_hamiltonian(system, options["hamiltonian"])
+trial = get_trial_density_matrix(system, hamiltonian, beta, dt, comm=comm, options=options["trial"])
+
+qmc = QMCOpts() # should be removed later after walker is cleaned up
+qmc.nwalkers = num_walkers
+qmc.ntot_walkers = num_walkers * comm.size
+qmc.beta = beta
+qmc.nsteps = 1
+
+
+afqmc = ThermalAFQMC(mol.nelec, mu, beta,
+                     hamiltonian,
+                     trial,
+                     num_walkers,
+                     seed,
+                     num_steps_per_block,
+                     blocks,
+                     dt,
+                     stabilise_freq,
+                     pop_control_freq
+                     )
+
 test_name = "generic"
 import tempfile
 import json
 from ipie.analysis.extraction import extract_test_data_hdf5
 with tempfile.NamedTemporaryFile() as tmpf:
     options["estimators"]["filename"] = tmpf.name
-    afqmc = ThermalAFQMC(comm, options=options, parallel=comm.size > 1, verbose=1)
+    estimators = Estimators(
+        options["estimators"],
+        comm.rank == 0,
+        qmc,
+        system,
+        hamiltonian,
+        trial,
+        None
+    )
+    afqmc.estimators = estimators
+    if comm.rank == 0:
+        json_string = to_json(afqmc)
+        afqmc.estimators.json_string = json_string
+        afqmc.estimators.dump_metadata()
+        afqmc.estimators.estimators["mixed"].print_key()
+        afqmc.estimators.estimators["mixed"].print_header()
     afqmc.run(comm=comm)
     afqmc.finalise(comm)
     test_data = extract_test_data_hdf5(tmpf.name)

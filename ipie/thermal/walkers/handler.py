@@ -73,19 +73,6 @@ class Walkers(object):
             self.buff_size = self.walkers[0].buff_size + self.walkers[0].stack.buff_size
             self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
             stack_size = self.walkers[0].stack_size
-            if hamiltonian.name == "Hubbard":
-                if stack_size % qmc.nstblz != 0 or qmc.nstblz < stack_size:
-                    if verbose:
-                        print("# Stabilisation frequency is not commensurate " "with stack size.")
-                        print("# Determining a better value.")
-                    if qmc.nstblz < stack_size:
-                        qmc.nstblz = stack_size
-                        if verbose:
-                            print(f"# Updated stabilization frequency:  {qmc.nstblz}")
-                    else:
-                        qmc.nstblz = update_stack(
-                            qmc.nstblz, stack_size, name="nstblz", verbose=verbose
-                        )
         else:
             raise NotImplementedError
         if hamiltonian.name == "Generic" or system.name == "UEG":

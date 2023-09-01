@@ -49,7 +49,7 @@ class Continuous(object):
             system, hamiltonian, trial, qmc, options=options, verbose=verbose
         )
         # Mean field shifted one-body propagator
-        self.mu = system.mu
+        self.mu = hamiltonian.mu
         self.propagator.construct_one_body_propagator(hamiltonian, qmc.dt)
 
         self.BH1 = self.propagator.BH1
