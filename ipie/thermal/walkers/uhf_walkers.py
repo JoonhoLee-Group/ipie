@@ -7,7 +7,6 @@ from ipie.thermal.walkers.stack import PropagatorStack
 from ipie.utils.misc import get_numeric_names, update_stack
 from ipie.walkers.base_walkers import BaseWalkers
 
-
 class ThermalWalkers(BaseWalkers):
     # def __init__(self, system, hamiltonian, trial, walker_opts={}, verbose=False):
     def __init__(
