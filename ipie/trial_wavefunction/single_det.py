@@ -149,7 +149,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericRealChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
@@ -163,7 +163,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericComplexChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
