@@ -4,7 +4,7 @@ import pytest
 from ipie.legacy.hamiltonians.ueg import UEG as HamUEG
 from ipie.legacy.systems.ueg import UEG
 from ipie.thermal.trial.onebody import OneBody
-from ipie.thermal.walkers.thermal import ThermalWalker
+from ipie.legacy.walkers.thermal import ThermalWalker
 
 
 @pytest.mark.unit

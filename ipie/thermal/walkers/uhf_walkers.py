@@ -5,13 +5,22 @@ from ipie.thermal.estimators.local_energy import local_energy_G
 from ipie.thermal.estimators.thermal import one_rdm_from_G, particle_number
 from ipie.thermal.walkers.stack import PropagatorStack
 from ipie.utils.misc import get_numeric_names, update_stack
-from ipie.walkers.base_walkers import Walker
+from ipie.walkers.base_walkers import BaseWalkers
 
 
-class ThermalWalker(BaseWalkers):
-    def __init__(self, system, hamiltonian, trial, walker_opts={}, verbose=False):
-        Walker.__init__(self, system, hamiltonian, trial, walker_opts=walker_opts)
-        self.name = "ThermalWalker"
+class ThermalWalkers(BaseWalkers):
+    # def __init__(self, system, hamiltonian, trial, walker_opts={}, verbose=False):
+    def __init__(
+        self,
+        initial_walker: numpy.ndarray,
+        nup: int,
+        ndown: int,
+        nbasis: int,
+        nwalkers: int,
+        mpi_handler=None,
+        verbose: bool = False,
+    ):
+        super().__init__(self, system, hamiltonian, trial, walker_opts=walker_opts)
         self.num_slices = trial.num_slices
         dtype = numpy.complex128
         self.G = numpy.zeros(trial.dmat.shape, dtype=dtype)

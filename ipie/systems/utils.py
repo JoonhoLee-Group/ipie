@@ -49,7 +49,7 @@ def get_system(sys_opts=None, verbose=0, comm=None):
 
         nelec = (nup, ndown)
         system = Generic(nelec, verbose)
-        system.mu = sys_opts["mu"]
+        #system.mu = sys_opts["mu"]
 
 
     elif sys_type == "UEG":
