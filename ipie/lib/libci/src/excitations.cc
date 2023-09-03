@@ -7,6 +7,11 @@ namespace ipie {
 Excitation::Excitation(size_t max_ex) : max_excit(max_ex), from(max_ex), to(max_ex) {
 }
 
+Excitation::Excitation(std::vector<size_t> from_orbs, std::vector<size_t> to_orbs)
+    : from(std::move(from_orbs)), to(std::move(to_orbs)) {
+    max_excit = from.size();
+}
+
 std::ostream &operator<<(std::ostream &os, const Excitation &excit) {
     for (size_t e = 0; e < excit.max_excit; e++) {
         os << excit.from[e] << " ";

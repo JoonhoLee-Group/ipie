@@ -21,3 +21,33 @@ TEST(wavefunction, constructor) {
     ipie::Wavefunction wfnb(coeffs, dets);
     ASSERT_EQ(wfna, wfnb);
 }
+
+TEST(wavefunction, constructor_map) {
+    std::default_random_engine generator;
+    generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> det_dist(0, 10000 - 1);
+    int ndets = det_dist(generator);
+    std::uniform_int_distribution<int> bit_dist(0, 100 - 1);
+    std::uniform_real_distribution<double> c_dist(0, 1);
+    int num_set = bit_dist(generator);
+    std::vector<ipie::BitString> dets;
+    std::vector<std::complex<double>> coeffs;
+    ipie::det_map dmap;
+    for (size_t idet = 0; idet < ndets; idet++) {
+        auto a = ipie::BitString(100);
+        for (size_t i = 0; i < num_set; i++) {
+            a.set_bit((size_t)bit_dist(generator));
+        }
+        std::complex<double> coeff = std::complex<double>(c_dist(generator), 0.0);
+        if (dmap.size() == 0 || dmap.find(a) == dmap.end()) {
+            // we don't want duplicate keys.
+            dmap.insert({a, coeff});
+            dets.push_back(a);
+            coeffs.push_back(coeff);
+        }
+    }
+    ipie::Wavefunction wfn(dmap);
+    for (size_t idet = 0; idet < ndets; idet++) {
+        ASSERT_EQ(coeffs[idet], wfn.map[dets[idet]]);
+    }
+}

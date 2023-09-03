@@ -22,34 +22,41 @@ size_t Hamiltonian::flat_indx(size_t p, size_t q, size_t r, size_t s) const {
     return p * num_spatial * num_spatial * num_spatial + q * num_spatial * num_spatial + r * num_spatial + s;
 }
 
+size_t flat_indx(size_t p, size_t q, size_t r, size_t s, size_t num_spatial) {
+    return p * num_spatial * num_spatial * num_spatial + q * num_spatial * num_spatial + r * num_spatial + s;
+}
+
 std::pair<size_t, size_t> map_orb_to_spat_spin(size_t p) {
     std::pair<size_t, size_t> spat_spin = std::make_pair(p / 2, p % 2);
     return spat_spin;
 }
 
-Hamiltonian::Hamiltonian(
-    std::vector<ipie::complex_t> &h1e, std::vector<ipie::hijkl_t> &h2e, ipie::complex_t e0, size_t num_spat)
-    : h1e(h1e), h2e(h2e), e0(e0), num_spatial(num_spat) {
-}
+// Hamiltonian::Hamiltonian(
+//     std::vector<ipie::complex_t> &h1e, std::vector<ipie::hijkl_t> &h2e, ipie::complex_t e0, size_t num_spat)
+//     : h1e(h1e), h2e(h2e), e0(e0), num_spatial(num_spat) {
+// }
 
-Hamiltonian Hamiltonian::build_screened_hamiltonian(
-    std::vector<ipie::complex_t> &h1e,
-    std::vector<ipie::complex_t> &h2e,
-    ipie::complex_t e0,
-    size_t num_spat,
-    double threshold) {
-    std::vector<ipie::hijkl_t> ham_indx_matel;
-    for (size_t p = 0; p < num_spat; p++) {
-        for (size_t q = 0; q < num_spat; q++) {
-            for (size_t r = 0; r < num_spat; r++) {
-                for (size_t s = 0; s < num_spat; s++) {
-                    if (abs(h2e[h2e.flat_indx(p, q, r, s)]) > threshold) {
-                    }
-                }
-            }
-        }
-    }
-}
+// ScreenedHamiltonian ScreenedHamiltonian::build_screened_hamiltonian(
+//     std::vector<ipie::complex_t> &h1e,
+//     std::vector<ipie::complex_t> &h2e,
+//     ipie::complex_t e0,
+//     size_t num_spat,
+//     double threshold) {
+//     std::vector<std::vector<ipie::hijkl_t>> ham_indx_matel(num_spat * num_spat);
+//     for (size_t p = 0; p < num_spat; p++) {
+//         for (size_t q = 0; q < num_spat; q++) {
+//             for (size_t r = 0; r < num_spat; r++) {
+//                 for (size_t s = 0; s < num_spat; s++) {
+//                     ipie::complex_t matel = h2e[flat_indx(p, q, r, s, num_spat)];
+//                     if (abs(matel) > threshold) {
+//                         ham_indx_matel[p * num_spat + q].push_back(std::make_tuple(r, s, matel));
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     return ScreenedHamiltonian()
+// }
 
 ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &occs) {
     ipie::energy_t hmatel;

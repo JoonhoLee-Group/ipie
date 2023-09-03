@@ -10,11 +10,14 @@
 
 namespace ipie {
 
-Wavefunction::Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants)
-    : coeffs(ci_coeffs), dets(determinants) {
+Wavefunction::Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> determinants)
+    : coeffs(std::move(ci_coeffs)), dets(std::move(determinants)) {
     num_spatial = dets[0].num_bits / 2;
     num_elec = dets[0].count_set_bits();
     num_dets = ci_coeffs.size();
+}
+Wavefunction::Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map)
+    : map(std::move(det_map)) {
 }
 
 Wavefunction Wavefunction::build_wavefunction_from_occ_list(
@@ -47,25 +50,26 @@ ipie::complex_t Wavefunction::norm() {
     return sqrt(norm);
 }
 
-bool operator==(const Wavefunction &lhs, const Wavefunction &rhs) {
-    if (lhs.num_dets != rhs.num_dets) {
+bool Wavefunction::operator==(const Wavefunction &other) const {
+    if (num_dets != other.num_dets) {
         return false;
-    } else if (lhs.num_spatial != rhs.num_spatial) {
+    } else if (num_spatial != other.num_spatial) {
         return false;
-    } else if (lhs.num_elec != rhs.num_elec) {
+    } else if (num_elec != other.num_elec) {
         return false;
     } else {
-        for (size_t idet = 0; idet < lhs.num_dets; idet++) {
-            if (lhs.dets[idet] != rhs.dets[idet]) {
+        for (size_t idet = 0; idet < num_dets; idet++) {
+            if (dets[idet] != other.dets[idet]) {
                 return false;
             }
-            if (abs(lhs.coeffs[idet] - rhs.coeffs[idet]) > 1e-12) {
+            if (abs(coeffs[idet] - other.coeffs[idet]) > 1e-12) {
                 return false;
             }
         }
     }
     return true;
-};
+}
+
 std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn) {
     for (size_t idet = 0; idet < wfn.num_dets; idet++) {
         os << std::fixed << std::setprecision(4) << wfn.coeffs[idet] << " " << wfn.dets[idet] << " \n";

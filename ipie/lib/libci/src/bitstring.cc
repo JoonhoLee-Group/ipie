@@ -3,6 +3,10 @@
 #include <sstream>
 
 namespace ipie {
+
+BitString::BitString() : num_bits(0) {
+}
+
 BitString::BitString(size_t nbits) : num_bits(nbits) {
     num_words = (nbits + 64 - 1) / 64;
     bitstring.resize(num_words);
@@ -42,11 +46,11 @@ BitString& BitString::operator|=(const BitString& other) {
 }
 bool BitString::operator==(const BitString& other) const {
     return bitstring == other.bitstring;
-};
+}
 
 bool BitString::operator!=(const BitString& other) const {
     return bitstring != other.bitstring;
-};
+}
 
 // Build a mask with all bits before bit indx set
 void BitString::encode_bits(std::vector<int>& set_bits) {
@@ -57,7 +61,7 @@ void BitString::encode_bits(std::vector<int>& set_bits) {
         size_t bit_pos = sb % 64;
         bitstring[word_indx] |= (mask << bit_pos);
     }
-};
+}
 
 void BitString::clear_bits() {
     for (size_t i = 0; i < num_words; i++) {
@@ -80,7 +84,7 @@ void BitString::decode_bits(std::vector<int>& set_bits) {
         if (num_set == set_bits.size())
             break;
     }
-};
+}
 
 size_t BitString::count_set_bits() {
     size_t num_set = 0;
@@ -135,7 +139,7 @@ void build_set_mask(size_t bit_indx, BitString& mask) {
         mask[w] = all_set;
     }
     mask[word_indx] = (one << word_bit_indx) - one;
-};
+}
 
 std::ostream& operator<<(std::ostream& os, const BitString& bs) {
     for (size_t bit = 0; bit < bs.num_bits; bit++) {

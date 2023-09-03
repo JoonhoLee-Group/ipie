@@ -10,6 +10,7 @@ namespace ipie {
 struct Excitation {
     size_t max_excit;
     Excitation(size_t max_ex);
+    Excitation(std::vector<size_t>, std::vector<size_t>);
     std::vector<size_t> from;
     std::vector<size_t> to;
 };

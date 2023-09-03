@@ -10,9 +10,14 @@
 
 namespace ipie {
 
+typedef std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map;
+
 struct Wavefunction {
     // constructors
-    Wavefunction(std::vector<ipie::complex_t> &ci_coeffs, std::vector<BitString> &determinants);
+    Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> dets);
+
+    Wavefunction(
+        std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> determinants);
 
     static Wavefunction build_wavefunction_from_occ_list(
         std::vector<std::complex<double>> &ci_coeffs,
@@ -21,10 +26,12 @@ struct Wavefunction {
         size_t nspatial);
 
     std::complex<double> norm();
-    friend bool operator==(const Wavefunction &lhs, const Wavefunction &rhs);
+    uint64_t operator()(const BitString &bitstring) const;
+    bool operator==(const Wavefunction &rhs) const;
     friend std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn);
     std::vector<std::complex<double>> coeffs;
     std::vector<BitString> dets;
+    std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> map;
     size_t num_dets;
     size_t num_elec;
     size_t num_spatial;

@@ -1,5 +1,7 @@
 #include "bitstring.h"
 
+#include <random>
+
 #include "gtest/gtest.h"
 
 TEST(bitstring, constructor) {
@@ -163,5 +165,30 @@ TEST(bitstring, set_clear_bit) {
     for (size_t i = 0; i < 100; i++) {
         a.clear_bit(i);
         ASSERT_EQ(a.count_set_bits(), 100 - (i + 1));
+    }
+}
+
+TEST(bitstring, hasher) {
+    auto a = ipie::BitString(100);
+    std::default_random_engine generator;
+    generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> idist(0, 100 - 1);
+    int num_set = idist(generator);
+    for (size_t i = 0; i < num_set; i++) {
+        // don't really care about trying to set the same bit twice here.
+        a.set_bit((size_t)idist(generator));
+    }
+    auto hash = ipie::BitStringHasher();
+    auto b = a;
+    ASSERT_EQ(hash(a), hash(b));
+    a.clear_bits();
+    num_set = idist(generator);
+    for (size_t i = 0; i < num_set; i++) {
+        // don't really care about trying to set the same bit twice here.
+        a.set_bit((size_t)idist(generator));
+    }
+    // Quite unlikely same random bits were generated!
+    if (a != b) {
+        ASSERT_NE(hash(a), hash(b));
     }
 }
