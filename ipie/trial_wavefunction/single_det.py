@@ -2,6 +2,7 @@ import time
 
 import numpy
 import plum
+import mpi4py
 
 from ipie.config import config
 from ipie.estimators.generic import half_rotated_cholesky_jk
