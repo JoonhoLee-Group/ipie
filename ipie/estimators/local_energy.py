@@ -17,10 +17,9 @@
 #
 
 from ipie.estimators.generic import local_energy_cholesky_opt, local_energy_generic_cholesky
+from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 from ipie.legacy.estimators.ci import get_hmatel
-
-# from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
-# from ipie.hamiltonians.generic import Generic
+from ipie.utils.backend import arraylib as xp
 
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf):
@@ -58,8 +57,6 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
         )
     else:
         return local_energy_generic_cholesky(system, hamiltonian, G)
-    # else:
-    # return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
 
 
 def local_energy(system, hamiltonian, walker, trial):
@@ -108,3 +105,22 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
                 one_body += e1b.conj()
                 two_body += e2b.conj()
     return evar / denom, one_body / denom, two_body / denom
+
+
+def variational_energy_noci(system, hamiltonian, trial):
+    weight = 0
+    energies = 0
+    denom = 0
+    for i, (Ba, Bb) in enumerate(zip(trial.psia, trial.psib)):
+        for j, (Aa, Ab) in enumerate(zip(trial.psia, trial.psib)):
+            # construct "local" green's functions for each component of A
+            Gup, _, inv_O_up = gab_mod_ovlp(Ba, Aa)
+            Gdn, _, inv_O_dn = gab_mod_ovlp(Bb, Ab)
+            ovlp = 1.0 / (xp.linalg.det(inv_O_up) * xp.linalg.det(inv_O_dn))
+            weight = (trial.coeffs[i].conj() * trial.coeffs[j]) * ovlp
+            G = xp.array([Gup, Gdn])
+            # Ghalf = [Ghalfa, Ghalfb]
+            e = xp.array(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
+            energies += weight * e
+            denom += weight
+    return tuple(energies / denom)

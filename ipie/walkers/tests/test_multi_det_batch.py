@@ -32,17 +32,13 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt,
 )
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.legacy.estimators.ci import simple_fci
 from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky
+from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.propagation.overlap import calc_overlap_multi_det_wicks
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
-from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksSlow,
-)
+from ipie.trial_wavefunction.particle_hole import ParticleHole, ParticleHoleNaive, ParticleHoleSlow
 from ipie.utils.linalg import reortho
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian, get_random_wavefunction
@@ -131,7 +127,7 @@ def test_walker_overlap_phmsd():
             assert numpy.linalg.norm(ga - walkers.Gia[iw, idet]) == pytest.approx(0)
             assert numpy.linalg.norm(gb - walkers.Gib[iw, idet]) == pytest.approx(0)
 
-    trial = ParticleHoleWicksSlow(wfn, nelec, ham.nbasis)
+    trial = ParticleHoleSlow(wfn, nelec, ham.nbasis)
     ovlp_wicks = calc_overlap_multi_det_wicks(walkers, trial)
 
     assert ovlp_sum == pytest.approx(walkers.ovlp)
@@ -162,7 +158,7 @@ def test_walker_energy():
     init = get_random_wavefunction(nelec, nmo)
     init[:, :na], R = reortho(init[:, :na])
     init[:, na:], R = reortho(init[:, na:])
-    trial = ParticleHoleWicksSlow(
+    trial = ParticleHoleSlow(
         (ev[:, 0], oa, ob),
         nelec,
         nmo,
@@ -172,7 +168,7 @@ def test_walker_energy():
     trial_slow = ParticleHoleNaive((ev[:, 0], oa, ob), nelec, nmo)
     trial_slow.calculate_energy(system, ham)
     trial_slow.half_rotate(ham)
-    trial_opt = ParticleHoleWicks(
+    trial_opt = ParticleHole(
         (ev[:, 0], oa, ob),
         nelec,
         nmo,

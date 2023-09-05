@@ -8,9 +8,9 @@ Usage: srun -n 144 -N 4 python find_chem_pot.py
 import sys
 
 import numpy
-from mpi4py import MPI
 
 from ipie.analysis.thermal import analyse_energy
+from ipie.config import MPI
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.trial_density_matrices.onebody import OneBody
@@ -20,7 +20,7 @@ from ipie.qmc.options import QMCOpts
 def determine_nav(comm, options, mu, target):
     options["system"]["mu"] = mu
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
     if comm.rank == 0:
         av = analyse_energy([afqmc.estimators.h5f_name])
         nav = av.Nav.values[0]
@@ -62,7 +62,7 @@ def find_mu_opt(options):
     qmc["nsteps"] = 50
     estim["basename"] = "optimal"
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
 
 
 if __name__ == "__main__":

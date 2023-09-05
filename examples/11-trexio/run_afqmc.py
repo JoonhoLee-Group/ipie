@@ -1,10 +1,17 @@
-import numpy
-from mpi4py import MPI
+import sys
 
+import numpy
+
+from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
-from ipie.utils.from_trexio import gen_ipie_from_trexio
+
+try:
+    from ipie.utils.from_trexio import gen_ipie_from_trexio
+except ImportError:
+    print("trexio required for this example.")
+    sys.exit(0)
 
 trexio_filename = "h2o_dz.h5"
 
@@ -78,11 +85,9 @@ for i in range(ndets):
 
 wavefunction = (coeff, occa, occb)
 
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 
-trial = ParticleHoleWicks(
-    wavefunction, (nocca, noccb), nbasis, num_dets_for_props=len(wavefunction[0])
-)
+trial = ParticleHole(wavefunction, (nocca, noccb), nbasis, num_dets_for_props=len(wavefunction[0]))
 trial.build()
 trial.half_rotate(ham, comm=comm)
 

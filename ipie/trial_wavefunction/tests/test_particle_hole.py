@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.trial_wavefunction.particle_hole import (
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
+    ParticleHole,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
 )
 from ipie.utils.testing import get_random_phmsd_opt, get_random_sys_ham
 
@@ -16,7 +16,7 @@ def test_wicks_slow():
     nalpha, nbeta = (5, 5)
     np.random.seed(7)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
-    trial = ParticleHoleWicksSlow(
+    trial = ParticleHoleSlow(
         wavefunction,
         (nalpha, nbeta),
         nbasis,
@@ -53,7 +53,7 @@ def test_wicks_opt():
     nbasis = 10
     nalpha, nbeta = (5, 5)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
-    trial = ParticleHoleWicksNonChunked(
+    trial = ParticleHoleNonChunked(
         wavefunction,
         (nalpha, nbeta),
         nbasis,
@@ -99,7 +99,7 @@ def test_wicks_opt_chunked():
     nbasis = 10
     nalpha, nbeta = (5, 5)
     wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100)
-    trial = ParticleHoleWicks(
+    trial = ParticleHole(
         wavefunction,
         (nalpha, nbeta),
         nbasis,

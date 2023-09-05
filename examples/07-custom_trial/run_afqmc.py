@@ -16,8 +16,18 @@
 #
 
 import numpy as np
-
 from pyscf import gto, scf
+
+from ipie.analysis.autocorr import reblock_by_autocorr
+
+# We can extract the qmc data as as a pandas data frame like so
+from ipie.analysis.extraction import extract_observable
+from ipie.estimators.energy import EnergyEstimator, local_energy_batch
+from ipie.qmc.afqmc import AFQMC
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.from_pyscf import generate_hamiltonian, generate_wavefunction_from_mo_coeff
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
@@ -28,9 +38,6 @@ mol = gto.M(
 mf = scf.RHF(mol)
 mf.chkfile = "scf.chk"
 mf.kernel()
-
-from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.utils.backend import arraylib as xp
 
 
 # Let's make a trial wavefunction than injects noise into the overlap evaluateio
@@ -66,10 +73,6 @@ class NoisySingleDet(SingleDet):
         return force_bias * (1 + noise)
 
 
-from ipie.estimators.energy import EnergyEstimator
-from ipie.estimators.energy import local_energy_batch
-
-
 # Need to define a custom energy estimator as currently we don't have multiple dispatch setup.
 # Just derive from the usual energy estimator and overwrite this in the driver.
 class NoisyEnergyEstimator(EnergyEstimator):
@@ -102,14 +105,6 @@ class NoisyEnergyEstimator(EnergyEstimator):
 
 # Checkpoint integrals and wavefunction
 # Running in serial but still need MPI World
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
-
-
-from mpi4py import MPI
-
-comm = MPI.COMM_WORLD
 
 # Now let's build our custom AFQMC algorithm
 num_walkers = 100
@@ -117,46 +112,22 @@ num_steps_per_block = 25
 num_blocks = 10
 timestep = 0.005
 
-from ipie.qmc.afqmc import AFQMC
 
-# 1. Build out system
-from ipie.systems.generic import Generic
-
-system = Generic(nelec=mol.nelec)
-
-# 2. Build Hamiltonian
-
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
-
-integrals = generate_hamiltonian(
+# 1. Build Hamiltonian
+ham = generate_hamiltonian(
     mol,
     mf.mo_coeff,
     mf.get_hcore(),
     mf.mo_coeff,  # should be optional
 )
-from ipie.hamiltonians.generic import Generic as HamGeneric
 
-num_basis = integrals.h1e.shape[0]
-num_chol = integrals.chol.shape[0]
-
-ham = HamGeneric(
-    np.array([integrals.h1e, integrals.h1e]),
-    integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-    integrals.e0,
-)
-
-# 3. Build trial wavefunction
-from ipie.utils.from_pyscf import generate_wavefunction_from_mo_coeff
-
+# 2. Build trial wavefunction
 orbs = generate_wavefunction_from_mo_coeff(
     mf.mo_coeff,
     mf.mo_occ,
     mf.mo_coeff,  # Make optional argument
     mol.nelec,
 )
-
 num_basis = mf.mo_coeff[0].shape[-1]
 trial = NoisySingleDet(
     np.hstack([orbs, orbs]),
@@ -164,43 +135,25 @@ trial = NoisySingleDet(
     num_basis,
     noise_level=1e-3,
 )
+# TODO: would be nice if we didn't need to do this.
 trial.build()
 trial.half_rotate(ham)
 
-# 4. Build walkers
-from ipie.walkers.uhf_walkers import UHFWalkers
-
-walkers = UHFWalkers(np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers)
-
-np.random.seed(7)
-afqmc = AFQMC(
-    comm,
-    system=system,
-    hamiltonian=ham,
-    trial=trial,
-    walkers=walkers,
-    nwalkers=num_walkers,
+afqmc = AFQMC.build(
+    mol.nelec,
+    ham,
+    trial,
+    num_walkers=num_walkers,
     num_steps_per_block=num_steps_per_block,
     num_blocks=num_blocks,
     timestep=timestep,
     seed=59306159,
 )
-estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
-afqmc.estimators.overwrite = True
-afqmc.estimators["energy"] = estimator
-afqmc.run(comm=comm)
-
-# We can extract the qmc data as as a pandas data frame like so
-from ipie.analysis.extraction import extract_observable
+add_est = {"energy": NoisyEnergyEstimator(system=Generic(mol.nelec), ham=ham, trial=trial)}
+afqmc.run(additional_estimators=add_est)
 
 qmc_data = extract_observable(afqmc.estimators.filename, "energy")
 y = qmc_data["ETotal"]
 y = y[1:]  # discard first 1 block
 
-from ipie.analysis.autocorr import reblock_by_autocorr
-
 df = reblock_by_autocorr(y, verbose=1)
-# print(df.to_csv(index=False))
-
-# assert np.isclose(df.at[0,'ETotal_ac'], -5.3360473872294305)
-# assert np.isclose(df.at[0,'ETotal_error_ac'], 0.011931730085308796)

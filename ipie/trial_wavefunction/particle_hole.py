@@ -28,7 +28,7 @@ except ImportError:
     _use_wicks_helper = False
 
 
-class ParticleHoleWicks(TrialWavefunctionBase):
+class ParticleHole(TrialWavefunctionBase):
     def __init__(
         self,
         wfn,
@@ -401,6 +401,11 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
             system, hamiltonian, self.spin_occs, self.coeffs
         )
+        if self.verbose:
+            print(f"# Variational energy of trial wavefunction: {self.energy.real}")
+            if abs(self.energy.imag) > 1e-10:
+                print(f"# Warning imaginary part of trial energy is not zero: {self.energy.imag}")
+        return self.energy, self.e1b, self.e2b
 
     def build_one_rdm(self):
         if self.verbose:
@@ -483,7 +488,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
 
 # No chunking no excitation data structure
-class ParticleHoleWicksNonChunked(ParticleHoleWicks):
+class ParticleHoleNonChunked(ParticleHole):
     def __init__(
         self,
         wfn,
@@ -514,7 +519,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
 
-class ParticleHoleWicksSlow(ParticleHoleWicks):
+class ParticleHoleSlow(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,
@@ -583,7 +588,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks(walkers, self)
 
 
-class ParticleHoleNaive(ParticleHoleWicks):
+class ParticleHoleNaive(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,

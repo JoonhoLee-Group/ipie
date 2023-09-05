@@ -1,8 +1,8 @@
 import time
 
 import numpy
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
 
 

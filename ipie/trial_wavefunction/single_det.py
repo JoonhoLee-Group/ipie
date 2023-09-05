@@ -1,6 +1,5 @@
 import time
 
-import mpi4py.MPI
 import numpy
 import plum
 

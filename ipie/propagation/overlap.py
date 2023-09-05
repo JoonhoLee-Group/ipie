@@ -681,12 +681,13 @@ def calc_overlap_multi_det(walker_batch, trial):
             sign_b, logdet_b = numpy.linalg.slogdet(Odn)
             walker_batch.det_ovlpas[iw, i] = sign_a * numpy.exp(logdet_a)
             walker_batch.det_ovlpbs[iw, i] = sign_b * numpy.exp(logdet_b)
-            walker_batch.det_weights[iw, i] = (
-                trial.coeffs[i].conj()
-                * walker_batch.det_ovlpas[iw, i]
-                * walker_batch.det_ovlpbs[iw, i]
-            )
-    return numpy.einsum("wi->w", walker_batch.det_weights)
+    return numpy.einsum(
+        "wi,wi,i->w",
+        walker_batch.det_ovlpas,
+        walker_batch.det_ovlpbs,
+        trial.coeffs.conj(),
+        optimize=True,
+    )
 
 
 ### Legacy overlap functions useful for testing.

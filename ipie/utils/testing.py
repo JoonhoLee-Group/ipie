@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
-from mpi4py import MPI
 
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
@@ -30,10 +29,10 @@ from ipie.qmc.options import QMCOpts
 from ipie.systems import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
+    ParticleHole,
     ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -42,7 +41,7 @@ from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -328,9 +327,9 @@ def build_random_phmsd_trial(
 ):
     _classes = {
         "naive": ParticleHoleNaive,
-        "opt": ParticleHoleWicks,
-        "chunked": ParticleHoleWicksNonChunked,
-        "slow": ParticleHoleWicksSlow,
+        "opt": ParticleHole,
+        "chunked": ParticleHoleNonChunked,
+        "slow": ParticleHoleSlow,
     }
     wfn, init = get_random_phmsd_opt(
         num_elec[0],
@@ -572,7 +571,7 @@ def build_driver_test_instance(
     )
     if density_diff:
         ham.density_diff = True
-    trial, init = build_random_trial(
+    trial, _ = build_random_trial(
         num_elec,
         num_basis,
         num_dets=num_dets,
@@ -582,33 +581,25 @@ def build_driver_test_instance(
         rhf_trial=rhf_trial,
     )
     trial.half_rotate(ham)
-    trial.calculate_energy(system, ham)
+    try:
+        trial.calculate_energy(system, ham)
+    except NotImplementedError:
+        pass
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
 
-    nwalkers = qmc.nwalkers
-
-    _, init = get_initial_walker(trial)  # Here we update init...
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial)  # any intermediates that require information from trial
-
-    comm = MPI.COMM_WORLD
-    afqmc = AFQMC(
-        comm=comm,
-        system=system,
-        hamiltonian=ham,
-        trial=trial,
-        walkers=walkers,
+    afqmc = AFQMC.build(
+        num_elec,
+        ham,
+        trial,
+        num_walkers=qmc.nwalkers,
         seed=qmc.rng_seed,
-        nwalkers=qmc.nwalkers,
         num_steps_per_block=qmc.nsteps,
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
-        stabilise_freq=qmc.nstblz,
+        stabilize_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
-        verbose=0,
-        filename=options["estimates"]["filename"],
     )
     return afqmc

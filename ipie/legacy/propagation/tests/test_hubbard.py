@@ -3,7 +3,7 @@ import pytest
 
 from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
+from ipie.legacy.hamiltonians.hubbard import decode_basis, Hubbard
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
@@ -15,7 +15,7 @@ from ipie.utils.misc import dotdict
 
 options = {"nx": 4, "ny": 4, "nup": 8, "ndown": 8, "U": 4}
 
-system = Generic(nelec=(8, 8), options=options)
+system = Generic(nelec=(8, 8))
 ham = Hubbard(options=options)
 eigs, eigv = numpy.linalg.eigh(ham.H1[0])
 coeffs = numpy.array([1.0 + 0j])
@@ -231,7 +231,7 @@ def total_energy(walkers, system, hamiltonian, trial, fp=False):
 @pytest.mark.unit
 def test_hubbard_ortho():
     options = {"nx": 4, "ny": 4, "nup": 5, "ndown": 5, "U": 4}
-    system = Generic(nelec=(5, 5), options=options)
+    system = Generic(nelec=(5, 5))
     ham = Hubbard(options=options)
     numpy.random.seed(7)
     wfn = numpy.zeros((1, ham.nbasis, system.ne), dtype=numpy.complex128)
@@ -242,7 +242,7 @@ def test_hubbard_ortho():
     options = {"free_projection": True}
     wopt = {"population_control": "pair_branch", "use_log_shift": True}
     walkers = Walkers(system, ham, trial, qmc, walker_opts=wopt)
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     # Discrete

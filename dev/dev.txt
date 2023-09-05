@@ -1,5 +1,5 @@
 pylint
 black
-pytest-mpi
 pytest-xdist
 flynt
+-r mpi.txt

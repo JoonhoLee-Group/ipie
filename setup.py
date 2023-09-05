@@ -1,10 +1,9 @@
-import sys
 import os
+import sys
 
 import numpy
 from setuptools import find_packages, setup
 from setuptools.extension import Extension
-
 
 try:
     from pip._internal.req import parse_requirements
@@ -12,7 +11,6 @@ except ImportError:
     from pip.req import parse_requirements
 
 from Cython.Build import cythonize
-
 
 # Giant hack to enable legacy code for CI
 _build_legacy_extension = os.environ.get("BUILD_LEGACY_IPIE", False)
@@ -67,5 +65,9 @@ setup(
     ],
     ext_modules=cythonized_extension,
     install_requires=load_requirements("requirements.txt"),
+    extras_require={
+        "mpi": load_requirements("dev/mpi.txt"),
+        "dev": load_requirements("dev/dev.txt"),
+    },
     long_description=open("README.rst").read(),
 )

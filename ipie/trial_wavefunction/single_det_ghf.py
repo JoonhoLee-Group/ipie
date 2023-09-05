@@ -1,7 +1,6 @@
 import time
 from typing import Tuple, Union
 
-import mpi4py.MPI
 import numpy
 import plum
 
@@ -11,7 +10,7 @@ from ipie.estimators.utils import gab_mod
 from ipie.hamiltonians.generic import GenericRealChol
 from ipie.propagation.overlap import calc_overlap_single_det_ghf
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.particle_hole import ParticleHoleWicks
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
@@ -23,7 +22,7 @@ from ipie.walkers.ghf_walkers import GHFWalkers
 class SingleDetGHF(TrialWavefunctionBase):
     # num_basis is # of spin-less AOs
     @plum.dispatch
-    def __init__(self, uhf_trial: Union[SingleDet, ParticleHoleWicks], verbose: bool = False):
+    def __init__(self, uhf_trial: Union[SingleDet, ParticleHole], verbose: bool = False):
         psi = numpy.hstack([uhf_trial.psi0a, uhf_trial.psi0b])
         nalpha = uhf_trial.psi0a.shape[-1]
         nbeta = uhf_trial.psi0b.shape[-1]
@@ -113,7 +112,7 @@ class SingleDetGHF(TrialWavefunctionBase):
             print(f"# Time to evaluate local energy: {time.time() - start}")
 
     @plum.dispatch
-    def half_rotate(self, hamiltonian: GenericRealChol, comm: mpi4py.MPI.Intracomm = None):
+    def half_rotate(self, hamiltonian: GenericRealChol, comm):
         print("# Half rotation not implemented for GHF with GenericRealChol")
         print("# Will use full greens function")
         # Half rotation does not quite make sense for spin-split integrals.

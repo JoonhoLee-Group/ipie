@@ -27,9 +27,9 @@ estimates = {"mixed": {"thermal": True}}
 trial = {"name": "one_body", "mu": 0.4}
 options = {"model": sys, "qmc_options": qmc, "estimates": estimates, "trial": trial}
 (afqmc, comm) = setup_calculation(options)
-# afqmc.run(comm=comm)
+# afqmc.run()
 scan = numpy.linspace(0.5, 1.5, 10)
-# afqmc.run(comm=comm)
+# afqmc.run()
 # scan = numpy.linspace(0.5, 1.5, 10)
 for mu in [0.5]:
     afqmc.trial = OneBody({"mu": mu}, afqmc.system, afqmc.qmc.beta, afqmc.qmc.dt)
@@ -37,7 +37,7 @@ for mu in [0.5]:
     afqmc.psi.reset(afqmc.trial)
     afqmc.estimators.json_string = to_json(afqmc)
     afqmc.estimators.reset(comm.rank == 0)
-    afqmc.run(comm=comm)
+    afqmc.run()
 
 # if comm.rank == 0:
 # files = glob.glob('*.h5')
