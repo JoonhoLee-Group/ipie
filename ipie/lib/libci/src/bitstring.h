@@ -27,14 +27,14 @@ struct BitString {
     uint64_t &operator[](const size_t indx);
 
     void encode_bits(std::vector<int> &set_bits);
-    void decode_bits(std::vector<int> &set_bits);
+    void decode_bits(std::vector<int> &set_bits) const;
     void clear_bits();
     void clear_bit(const size_t bit_indx);
     bool is_set(const size_t bit_indx) const;
     void set_bit(const size_t bit_indx);
     void set_bits(const std::vector<size_t> &bit_indx);
-    size_t count_set_bits();
-    size_t count_difference(const BitString &other);
+    size_t count_set_bits() const;
+    size_t count_difference(const BitString &other) const;
 };
 
 struct BitStringHasher {

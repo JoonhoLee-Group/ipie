@@ -24,7 +24,7 @@ std::ostream &operator<<(std::ostream &os, const Excitation &excit) {
     return os;
 }
 
-void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
+void decode_single_excitation(const BitString &bra, const BitString &ket, Excitation &ia) {
     std::vector<int> diff_bits(2);
     BitString delta(bra);
     delta ^= ket;
@@ -37,7 +37,7 @@ void decode_single_excitation(BitString &bra, BitString &ket, Excitation &ia) {
         ia.to[0] = diff_bits[0];
     }
 }
-void decode_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) {
+void decode_double_excitation(const BitString &bra, const BitString &ket, Excitation &ijab) {
     // delta = bra ^ ket.
     BitString delta(bra);
     delta ^= ket;
@@ -58,7 +58,7 @@ void decode_double_excitation(BitString &bra, BitString &ket, Excitation &ijab) 
     }
 }
 
-int single_excitation_permutation(BitString &ket, Excitation &ia) {
+int single_excitation_permutation(const BitString &ket, Excitation &ia) {
     BitString and_mask(ket.num_bits), mask_i(ket.num_bits), mask_a(ket.num_bits);
     BitString occ_to_count(ket);
     // check bit a is occupied or bit i is unoccupied.
@@ -90,7 +90,7 @@ int single_excitation_permutation(BitString &ket, Excitation &ia) {
     }
 }
 
-int double_excitation_permutation(BitString &ket, Excitation &ijab) {
+int double_excitation_permutation(const BitString &ket, Excitation &ijab) {
     BitString mask(ket.num_bits);
     BitString tmp(ket);
     BitString occ_to_count(ket);

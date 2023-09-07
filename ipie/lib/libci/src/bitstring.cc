@@ -70,7 +70,7 @@ void BitString::clear_bits() {
     }
 }
 
-void BitString::decode_bits(std::vector<int>& set_bits) {
+void BitString::decode_bits(std::vector<int>& set_bits) const {
     size_t num_set = 0;
     uint64_t mask = 1;
     for (size_t w = 0; w < bitstring.size(); w++) {
@@ -87,7 +87,7 @@ void BitString::decode_bits(std::vector<int>& set_bits) {
     }
 }
 
-size_t BitString::count_set_bits() {
+size_t BitString::count_set_bits() const {
     size_t num_set = 0;
     for (size_t w = 0; w < bitstring.size(); w++) {
         num_set += __builtin_popcountll(bitstring[w]);
@@ -95,7 +95,7 @@ size_t BitString::count_set_bits() {
     return num_set;
 }
 
-size_t BitString::count_difference(const BitString& other) {
+size_t BitString::count_difference(const BitString& other) const {
     size_t num_set = 0;
     for (size_t w = 0; w < bitstring.size(); w++) {
         num_set += __builtin_popcountll(bitstring[w] ^ other.bitstring[w]);
@@ -144,7 +144,7 @@ void build_set_mask(size_t bit_indx, BitString& mask) {
 
 std::ostream& operator<<(std::ostream& os, const BitString& bs) {
     for (size_t bit = 0; bit < bs.num_bits; bit++) {
-        os << bs.is_set(bit) << " ";
+        os << bs.is_set(bit);
     }
     return os;
 }

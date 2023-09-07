@@ -18,6 +18,9 @@ Wavefunction::Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<B
 }
 Wavefunction::Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map)
     : map(std::move(det_map)) {
+    num_spatial = map.begin()->first.num_bits / 2;
+    num_elec = map.begin()->first.count_set_bits();
+    num_dets = map.size();
 }
 
 Wavefunction Wavefunction::build_wavefunction_from_occ_list(
@@ -71,8 +74,8 @@ bool Wavefunction::operator==(const Wavefunction &other) const {
 }
 
 std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn) {
-    for (size_t idet = 0; idet < wfn.num_dets; idet++) {
-        os << std::fixed << std::setprecision(4) << wfn.coeffs[idet] << " " << wfn.dets[idet] << " \n";
+    for (const auto &[key, val] : wfn.map) {
+        os << std::fixed << std::setprecision(4) << key << " " << val << " \n";
     }
     return os;
 }

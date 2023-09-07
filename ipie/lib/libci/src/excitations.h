@@ -17,9 +17,10 @@ struct Excitation {
 
 std::ostream& operator<<(std::ostream& os, const Excitation& excit);
 
-void decode_single_excitation(BitString& bra, BitString& ket, Excitation& ia);
-void decode_double_excitation(BitString& bra, BitString& ket, Excitation& ijab);
-int single_excitation_permutation(BitString& ket, Excitation& ia);
+void decode_single_excitation(const BitString& bra, const BitString& ket, Excitation& ia);
+void decode_double_excitation(const BitString& bra, const BitString& ket, Excitation& ijab);
+int single_excitation_permutation(const BitString& ket, Excitation& ia);
+int double_excitation_permutation(const BitString& ket, Excitation& ijab);
 
 }  // namespace ipie
 #endif
