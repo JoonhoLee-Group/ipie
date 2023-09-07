@@ -23,6 +23,7 @@ BitString& BitString::operator^=(const BitString& other) {
     return *this;
 }
 
+// This is wrong, only for subtracting 1?
 BitString BitString::operator-(const BitString& other) {
     BitString result(other.num_bits);
     for (size_t w = 0; w < num_words; w++) {

@@ -11,7 +11,7 @@
 namespace ipie {
 
 Wavefunction::Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> determinants)
-    : coeffs(std::move(ci_coeffs)), dets(std::move(determinants)) {
+    : coeffs(ci_coeffs), dets(determinants) {
     num_spatial = dets[0].num_bits / 2;
     num_elec = dets[0].count_set_bits();
     num_dets = ci_coeffs.size();
