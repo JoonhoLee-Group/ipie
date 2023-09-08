@@ -43,21 +43,23 @@ class UEG(object):
         if verbose:
             print("# Parsing input options.")
         self.name = "UEG"
-        self.mu = system.mu
-        self._alt_convention = system._alt_convention
-        self.sparse = True
 
-        # core energy
+        # Inherit from system.
+        self.mu = system.mu
+        self.kfac = system.kfac
+        self.vol = system.vol
+        self._alt_convention = system._alt_convention
+
+        self.sparse = True
+        skip_cholesky = options.get("skip_cholesky", False)
+
+        # Core energy
         self.ecore = 0.5 * system.ne * self.madelung(system)
         self.diagH1 = True
 
-        skip_cholesky = options.get("skip_cholesky", False)
-
-        self.kfac = system.kfac
-        self.vol = system.vol
-        # Single particle eigenvalues and corresponding kvectors
+        # Get plane wave basis vectors and corresponding eigenvalues.
         (self.sp_eigv, self.basis, self.nmax) = self.sp_energies(
-            system.ktwist, system.kfac, system.ecut
+            system.ktwist, self.kfac, system.ecut
         )
 
         self.shifted_nmax = 2 * self.nmax
@@ -72,11 +74,14 @@ class UEG(object):
         self.ncore = 0
         self.nfv = 0
         self.mo_coeff = None
-        # Allowed momentum transfers (4*ecut)
-        (eigs, qvecs, self.qnmax) = self.sp_energies(system.ktwist, system.kfac, 4 * system.ecut)
+
+        # Allowed momentum transfers (4*ecut).
+        (eigs, qvecs, self.qnmax) = self.sp_energies(system.ktwist, self.kfac, 4 * system.ecut)
+
         # Omit Q = 0 term.
         self.qvecs = numpy.copy(qvecs[1:])
-        self.vqvec = numpy.array([self.vq(system.kfac * q) for q in self.qvecs])
+        self.vqvec = numpy.array([self.vq(self.kfac * q) for q in self.qvecs])
+
         # Number of momentum transfer vectors / auxiliary fields.
         # Can reduce by symmetry but be stupid for the moment.
         self.nchol = len(self.qvecs)
@@ -84,6 +89,7 @@ class UEG(object):
         if verbose:
             print(f"# Number of plane waves: {self.nbasis:d}")
             print(f"# Number of Cholesky vectors: {self.nchol:d}.")
+
         # For consistency with frozen core molecular code.
         self.orbs = None
         self.frozen_core = False
@@ -93,14 +99,15 @@ class UEG(object):
         if skip_cholesky == False:
             h1e_mod = self.mod_one_body(T, system)
             self.h1e_mod = numpy.array([h1e_mod, h1e_mod])
+
         self.orbs = None
         self._opt = True
 
         nlimit = system.nup
-
         if system.thermal:
             nlimit = self.nbasis
 
+        # Get arrays of plane wave basis vectors connected by momentum transfers Q.
         self.ikpq_i = []
         self.ikpq_kpq = []
         for iq, q in enumerate(self.qvecs):
@@ -114,7 +121,7 @@ class UEG(object):
                     idxkpq_list_kpq += [idxkpq]
             self.ikpq_i += [idxkpq_list_i]
             self.ikpq_kpq += [idxkpq_list_kpq]
-
+        
         self.ipmq_i = []
         self.ipmq_pmq = []
         for iq, q in enumerate(self.qvecs):
@@ -138,10 +145,13 @@ class UEG(object):
         if skip_cholesky == False:
             if verbose:
                 print("# Constructing two-body potentials incore.")
+
             (self.chol_vecs, self.iA, self.iB) = self.two_body_potentials_incore()
             write_ints = options.get("write_integrals", False)
+
             if write_ints:
                 self.write_integrals(system)
+
             if verbose:
                 print(
                     "# Approximate memory required for "
@@ -255,7 +265,8 @@ class UEG(object):
         return 4 * math.pi / numpy.dot(q, q)
 
     def mod_one_body(self, T, system):
-        """Add a diagonal term of two-body Hamiltonian to the one-body term
+        """Absorb the diagonal term of the two-body Hamiltonian to the one-body term.
+        Essentially adding the third term in Eq.(11b) of Phys. Rev. B 75, 245123.
         Parameters
         ----------
         T : float
@@ -276,7 +287,7 @@ class UEG(object):
         return h1e_mod
 
     def density_operator(self, iq):
-        """Density operator as defined in Eq.(6) of PRB(75)245123
+        """Density operator as defined in Eq.(6) of Phys. Rev. B 75, 245123.
         Parameters
         ----------
         q : float
@@ -366,7 +377,8 @@ class UEG(object):
         return rho_q
 
     def two_body_potentials_incore(self):
-        """Calculatate A and B of Eq.(13) of PRB(75)245123 for a given plane-wave vector q
+        """Calculate A and B of Eq.(13) of PRB(75)245123 for a given plane-wave vector q
+
         Parameters
         ----------
         system :

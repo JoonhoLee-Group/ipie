@@ -29,7 +29,7 @@ from ipie.utils.io import (
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
-    # Eqn (17) of [Motta17]_
+    # Eqn (17) of [Motta17].
     nbasis = h1e.shape[-1]
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis * nchol))
