@@ -14,8 +14,8 @@ from ipie.utils.misc import update_stack
 class OneBody(object):
     def __init__(
         self,
-        system,
         hamiltonian,
+        nelec,
         beta,
         dt,
         options={},
@@ -50,7 +50,7 @@ class OneBody(object):
         else:
             self.nav = options.get("nav", None)
             if self.nav is None:
-                self.nav = system.nup + system.ndown
+                self.nav = nelec[0] + nelec[1]
         if verbose:
             print(f"# Target average electron number: {self.nav}")
 
