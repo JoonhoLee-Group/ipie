@@ -25,7 +25,7 @@ std::ostream &operator<<(std::ostream &os, const Excitation &excit) {
 }
 
 void decode_single_excitation(const BitString &bra, const BitString &ket, Excitation &ia) {
-    std::vector<int> diff_bits(2);
+    std::vector<size_t> diff_bits(2);
     BitString delta(bra);
     delta ^= ket;
     delta.decode_bits(diff_bits);
@@ -41,7 +41,7 @@ void decode_double_excitation(const BitString &bra, const BitString &ket, Excita
     // delta = bra ^ ket.
     BitString delta(bra);
     delta ^= ket;
-    std::vector<int> diff_bits(4);
+    std::vector<size_t> diff_bits(4);
     delta.decode_bits(diff_bits);
     size_t ifrom = 0, ito = 0;
     for (size_t i = 0; i < 4; i++) {

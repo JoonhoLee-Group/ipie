@@ -25,8 +25,8 @@ struct Hamiltonian {
 };
 
 std::pair<size_t, size_t> map_orb_to_spat_spin(size_t p);
-ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &occs);
-ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<int> &occs, const Excitation &excit_ia);
+ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<size_t> &occs);
+ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<size_t> &occs, const Excitation &excit_ia);
 ipie::energy_t slater_condon2(const Hamiltonian &ham, const Excitation &ijab);
 
 }  // namespace ipie

@@ -26,8 +26,8 @@ struct BitString {
     bool operator!=(const BitString &other) const;
     uint64_t &operator[](const size_t indx);
 
-    void encode_bits(std::vector<int> &set_bits);
-    void decode_bits(std::vector<int> &set_bits) const;
+    void encode_bits(std::vector<size_t> &set_bits);
+    void decode_bits(std::vector<size_t> &set_bits) const;
     void clear_bits();
     void clear_bit(const size_t bit_indx);
     bool is_set(const size_t bit_indx) const;

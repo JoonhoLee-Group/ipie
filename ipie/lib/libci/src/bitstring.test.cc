@@ -100,7 +100,7 @@ TEST(bitstring, build_set_mask) {
 
 TEST(bitstring, encode_bits) {
     auto a = ipie::BitString(100);
-    std::vector<int> bit_indxs = {1, 37, 66, 73};
+    std::vector<size_t> bit_indxs = {1, 37, 66, 73};
     a.encode_bits(bit_indxs);
     for (auto i : bit_indxs) {
         ASSERT_EQ(a.is_set(i), true);
@@ -108,9 +108,9 @@ TEST(bitstring, encode_bits) {
 }
 TEST(bitstring, decode_bits) {
     auto a = ipie::BitString(100);
-    std::vector<int> bit_indxs = {1, 37, 66, 73};
+    std::vector<size_t> bit_indxs = {1, 37, 66, 73};
     a.encode_bits(bit_indxs);
-    std::vector<int> test(4);
+    std::vector<size_t> test(4);
     a.decode_bits(test);
     for (int i = 0; i < 4; i++) {
         ASSERT_EQ(test[i], bit_indxs[i]);
@@ -119,7 +119,7 @@ TEST(bitstring, decode_bits) {
 
 TEST(bitstring, count_set_bits) {
     auto a = ipie::BitString(100);
-    std::vector<int> bit_indxs = {1, 37, 66, 73};
+    std::vector<size_t> bit_indxs = {1, 37, 66, 73};
     a.encode_bits(bit_indxs);
     ASSERT_EQ(a.count_set_bits(), 4);
     a[0] = 0xFFFFFFFFFFFFFFFF;
@@ -130,11 +130,11 @@ TEST(bitstring, count_set_bits) {
 TEST(bitstring, count_difference) {
     auto a = ipie::BitString(100);
     auto b = ipie::BitString(100);
-    std::vector<int> bit_indxs = {1, 37, 66, 73};
+    std::vector<size_t> bit_indxs = {1, 37, 66, 73};
     a.encode_bits(bit_indxs);
     b.encode_bits(bit_indxs);
     ASSERT_EQ(a.count_difference(b), 0);
-    std::vector<int> other_indxs = {2, 37, 66, 73};
+    std::vector<size_t> other_indxs = {2, 37, 66, 73};
     b.encode_bits(other_indxs);
     ASSERT_EQ(a.count_difference(b), 1);
     other_indxs = {2, 38, 66, 73};

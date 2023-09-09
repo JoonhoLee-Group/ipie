@@ -47,8 +47,8 @@ Wavefunction Wavefunction::build_wavefunction_from_occ_list(
 
 ipie::complex_t Wavefunction::norm() {
     ipie::complex_t norm = 0.0;
-    for (size_t idet = 0; idet < num_dets; idet++) {
-        norm += conj(coeffs[idet]) * coeffs[idet];
+    for (const auto &[det_ket, coeff_ket] : map) {
+        norm += conj(coeff_ket) * coeff_ket;
     }
     return sqrt(norm);
 }

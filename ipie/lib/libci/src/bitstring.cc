@@ -54,7 +54,7 @@ bool BitString::operator!=(const BitString& other) const {
 }
 
 // Build a mask with all bits before bit indx set
-void BitString::encode_bits(std::vector<int>& set_bits) {
+void BitString::encode_bits(std::vector<size_t>& set_bits) {
     clear_bits();
     uint64_t mask = 1;
     for (auto sb : set_bits) {
@@ -70,7 +70,7 @@ void BitString::clear_bits() {
     }
 }
 
-void BitString::decode_bits(std::vector<int>& set_bits) const {
+void BitString::decode_bits(std::vector<size_t>& set_bits) const {
     size_t num_set = 0;
     uint64_t mask = 1;
     for (size_t w = 0; w < bitstring.size(); w++) {

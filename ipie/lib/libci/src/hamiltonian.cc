@@ -32,7 +32,7 @@ std::pair<size_t, size_t> map_orb_to_spat_spin(size_t p) {
     return spat_spin;
 }
 
-ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &occs) {
+ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<size_t> &occs) {
     ipie::energy_t hmatel{0, ham.e0, 0};
     for (size_t p = 0; p < occs.size(); p++) {
         indx_t p_spat_spin = map_orb_to_spat_spin(occs[p]);
@@ -52,7 +52,7 @@ ipie::energy_t slater_condon0(const Hamiltonian &ham, const std::vector<int> &oc
     return hmatel;
 }
 
-ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<int> &occs, const Excitation &excit_ia) {
+ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<size_t> &occs, const Excitation &excit_ia) {
     ipie::energy_t hmatel;
     indx_t i_spat_spin = map_orb_to_spat_spin(excit_ia.from[0]);
     indx_t a_spat_spin = map_orb_to_spat_spin(excit_ia.to[0]);

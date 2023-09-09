@@ -23,6 +23,13 @@ energy_t &energy_t::operator*=(const ipie::complex_t &scale) {
     e2b *= scale;
     return *this;
 }
+
+energy_t &energy_t::operator/=(const ipie::complex_t &scale) {
+    etot /= scale;
+    e1b /= scale;
+    e2b /= scale;
+    return *this;
+}
 bool energy_t::operator==(const energy_t &other) {
     bool result = abs(e1b.real() - other.e1b.real()) < 1e-12;
     result &= abs(e1b.imag() - other.e1b.imag()) < 1e-12;

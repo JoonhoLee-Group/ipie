@@ -63,20 +63,20 @@ PYBIND11_MODULE(libci, m) {
         [](py::array_t<ipie::complex_t> &h1e,
            py::array_t<ipie::complex_t> &h2e,
            ipie::complex_t e0,
-           py::array_t<int> &occs) {
+           py::array_t<size_t> &occs) {
             auto ham = build_hamiltonian_from_numpy_ndarray(h1e, h2e, e0);
-            std::vector<int> _occs(occs.data(), occs.data() + occs.size());
+            std::vector<size_t> _occs(occs.data(), occs.data() + occs.size());
             return ipie::slater_condon0(ham, _occs);
         });
     m.def(
         "slater_condon1",
         [](py::array_t<ipie::complex_t> &h1e,
            py::array_t<ipie::complex_t> &h2e,
-           py::array_t<int> &occs,
+           py::array_t<size_t> &occs,
            py::ssize_t i,
            py::ssize_t a) {
             auto ham = build_hamiltonian_from_numpy_ndarray(h1e, h2e, ipie::complex_t{0});
-            std::vector<int> _occs(occs.data(), occs.data() + occs.size());
+            std::vector<size_t> _occs(occs.data(), occs.data() + occs.size());
             auto excit_ia = ipie::Excitation(1);
             excit_ia.from[0] = i;
             excit_ia.to[0] = a;

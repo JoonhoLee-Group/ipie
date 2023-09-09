@@ -11,6 +11,7 @@ struct energy_t {
     energy_t &operator+=(const energy_t &other);
     energy_t &operator*=(const double &scale);
     energy_t &operator*=(const ipie::complex_t &scale);
+    energy_t &operator/=(const ipie::complex_t &scale);
     // approximate equality
     bool operator==(const energy_t &other);
     friend std::ostream &operator<<(std::ostream &os, energy_t &energy);

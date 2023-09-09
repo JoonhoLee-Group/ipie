@@ -14,7 +14,7 @@ TEST(hamiltonian, constructor) {
 }
 
 TEST(hamiltonian, slater_condon0) {
-    std::vector<int> occs = {1, 3, 5, 7};
+    std::vector<size_t> occs = {1, 3, 5, 7};
     auto ham = build_test_hamiltonian(14);
     auto e0 = slater_condon0(ham, occs);
     ASSERT_NEAR(e0.etot.real(), e0.e1b.real() + e0.e2b.real(), 1e-12);
@@ -23,7 +23,7 @@ TEST(hamiltonian, slater_condon0) {
 TEST(hamiltonian, slater_condon1) {
     ipie::BitString a = ipie::BitString(14);
     ipie::BitString b = ipie::BitString(14);
-    std::vector<int> occs = {1, 3, 5, 7};
+    std::vector<size_t> occs = {1, 3, 5, 7};
     a.set_bits({1, 3, 5, 7});
     b.set_bits({1, 3, 5, 9});
     auto ham = build_test_hamiltonian(a.num_bits);

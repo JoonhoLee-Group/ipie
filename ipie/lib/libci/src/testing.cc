@@ -26,18 +26,58 @@ ipie::Wavefunction build_test_wavefunction(size_t num_dets_max, size_t num_spat_
     std::uniform_int_distribution<int> spat_dist(1, num_spat_max);
     std::uniform_real_distribution<double> c_dist(0, 1);
     int num_spin = 2 * spat_dist(generator);
-    std::uniform_int_distribution<int> elec_dist(1, (int)num_spin);
-    int num_elec = elec_dist(generator);
+    ipie::det_map dmap;
     std::vector<ipie::BitString> dets;
     std::vector<std::complex<double>> coeffs;
-    ipie::det_map dmap;
+    int num_elec;
+    std::uniform_int_distribution<int> elec_dist(1, (int)num_spin);
+    num_elec = elec_dist(generator);
     std::vector<size_t> range(num_spin);
     for (size_t idet = 0; idet < ndets; idet++) {
         auto a = ipie::BitString(num_spin);
+        std::iota(range.begin(), range.end(), 0);
+        std::shuffle(range.begin(), range.end(), generator);
         for (size_t i = 0; i < num_elec; i++) {
-            std::iota(range.begin(), range.end(), 0);
-            std::shuffle(range.begin(), range.end(), generator);
             a.set_bit(range[i]);
+        }
+        std::complex<double> coeff = std::complex<double>(c_dist(generator), 0.0);
+        if (dmap.size() == 0 || dmap.find(a) == dmap.end()) {
+            // we don't want duplicate keys.
+            dmap.insert({a, coeff});
+            dets.push_back(a);
+            coeffs.push_back(coeff);
+        }
+    }
+    ipie::Wavefunction wfn(dmap);
+    return wfn;
+}
+
+ipie::Wavefunction build_test_wavefunction_restricted(size_t num_dets_max, size_t num_spat_max) {
+    std::default_random_engine generator;
+    generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> det_dist(1, num_dets_max);
+    int ndets = det_dist(generator);
+    std::uniform_int_distribution<int> spat_dist(1, num_spat_max);
+    std::uniform_real_distribution<double> c_dist(0, 1);
+    int num_spin = 2 * spat_dist(generator);
+    ipie::det_map dmap;
+    std::vector<ipie::BitString> dets;
+    std::vector<std::complex<double>> coeffs;
+    int num_alpha;
+    std::uniform_int_distribution<int> elec_dist(1, (int)num_spin / 2);
+    num_alpha = elec_dist(generator);
+    std::vector<size_t> range(num_spin / 2);
+    for (size_t idet = 0; idet < ndets; idet++) {
+        auto a = ipie::BitString(num_spin);
+        std::iota(range.begin(), range.end(), 0);
+        std::shuffle(range.begin(), range.end(), generator);
+        for (size_t i = 0; i < num_alpha; i++) {
+            a.set_bit(2 * range[i]);
+        }
+        std::iota(range.begin(), range.end(), 0);
+        std::shuffle(range.begin(), range.end(), generator);
+        for (size_t i = 0; i < num_alpha; i++) {
+            a.set_bit(2 * range[i] + 1);
         }
         std::complex<double> coeff = std::complex<double>(c_dist(generator), 0.0);
         if (dmap.size() == 0 || dmap.find(a) == dmap.end()) {

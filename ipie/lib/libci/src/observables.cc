@@ -9,14 +9,11 @@
 namespace ipie {
 
 std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
-    Excitation ia(1);
-    std::vector<int> occs(wfn.num_elec);
+    std::vector<size_t> occs(wfn.num_elec);
     ipie::complex_t denom = 0.0;
     size_t num_spatial = wfn.num_spatial;
     std::vector<ipie::complex_t> density_matrix(2 * num_spatial * num_spatial);
-    for (size_t idet = 0; idet < wfn.num_dets; idet++) {
-        BitString det_ket = wfn.dets[idet];
-        ipie::complex_t coeff_ket = wfn.coeffs[idet];
+    for (const auto &[det_ket, coeff_ket] : wfn.map) {
         denom += conj(coeff_ket) * coeff_ket;
         det_ket.decode_bits(occs);
         for (size_t iel = 0; iel < wfn.num_elec; iel++) {
@@ -25,22 +22,29 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
             int pq = spatial * num_spatial + spatial + spin_offset;
             density_matrix[pq] += conj(coeff_ket) * coeff_ket;
         }
-        for (size_t jdet = idet + 1; jdet < wfn.num_dets; jdet++) {
-            BitString det_bra = wfn.dets[jdet];
-            ipie::complex_t coeff_bra = wfn.coeffs[jdet];
-            int excitation = det_bra.count_difference(det_ket);
-            if (excitation == 1) {
-                decode_single_excitation(det_bra, det_ket, ia);
-                int perm = single_excitation_permutation(det_ket, ia);
-                indx_t i_spat_spin = map_orb_to_spat_spin(ia.from[0]);
-                indx_t a_spat_spin = map_orb_to_spat_spin(ia.to[0]);
-                if (i_spat_spin.second == a_spat_spin.second) {
-                    int spin_offset = num_spatial * num_spatial * i_spat_spin.second;
-                    int pq = a_spat_spin.first * num_spatial + i_spat_spin.first + spin_offset;
-                    int qp = i_spat_spin.first * num_spatial + a_spat_spin.first + spin_offset;
-                    ipie::complex_t val = (double)perm * conj(coeff_bra) * coeff_ket;
-                    density_matrix[pq] += val;
-                    density_matrix[qp] += conj(val);
+        BitString det_bra(det_ket);
+        for (size_t i = 0; i < occs.size(); i++) {
+            indx_t i_spat_spin = map_orb_to_spat_spin(occs[i]);
+            for (size_t a = 0; a < det_bra.num_bits; a++) {
+                if (!det_ket.is_set(a) && a != occs[i]) {
+                    indx_t a_spat_spin = map_orb_to_spat_spin(a);
+                    if (i_spat_spin.second == a_spat_spin.second) {
+                        det_bra.set_bit(a);
+                        det_bra.clear_bit(occs[i]);
+                        Excitation excit_ia{{occs[i]}, {a}};
+                        if (wfn.map.find(det_bra) != wfn.map.end()) {
+                            ipie::complex_t bra_coeff = wfn.map[det_bra];
+                            ipie::complex_t perm{(double)single_excitation_permutation(det_ket, excit_ia), 0.0};
+                            ipie::complex_t val = ipie::complex_t{perm} * conj(bra_coeff) * coeff_ket;
+                            int spin_offset = num_spatial * num_spatial * i_spat_spin.second;
+                            int pq = a_spat_spin.first * num_spatial + i_spat_spin.first + spin_offset;
+                            int qp = i_spat_spin.first * num_spatial + a_spat_spin.first + spin_offset;
+                            density_matrix[pq] += val;
+                            density_matrix[qp] += conj(val);
+                        }
+                        det_bra.set_bit(occs[i]);
+                        det_bra.clear_bit(a);
+                    }
                 }
             }
         }
@@ -53,7 +57,7 @@ std::vector<ipie::complex_t> build_one_rdm(Wavefunction &wfn) {
 
 energy_t compute_variational_energy(Wavefunction &wfn, Hamiltonian &ham) {
     energy_t var_eng;
-    std::vector<int> occs(wfn.num_elec);
+    std::vector<size_t> occs(wfn.num_elec);
     ipie::complex_t norm;
     for (const auto &[det_ket, coeff_ket] : wfn.map) {
         det_ket.decode_bits(occs);
@@ -63,41 +67,51 @@ energy_t compute_variational_energy(Wavefunction &wfn, Hamiltonian &ham) {
         var_eng += sc0;
         norm += fac;
         BitString det_bra(det_ket);
+        // initially |bra> = |ket>
+        // build a^i|ket>
+        // followed by b^ja^i|ket>
         for (size_t i = 0; i < occs.size(); i++) {
             for (size_t a = 0; a < det_bra.num_bits; a++) {
-                if (det_ket.is_set(i) && det_bra.is_set(a)) {
-                    det_bra.set_bit(i);
-                    det_bra.clear_bit(a);
-                    Excitation excit_ia{{i}, {a}};
-                    ipie::complex_t bra_coeff = wfn.map[det_bra];
-                    ipie::complex_t perm{(double)single_excitation_permutation(det_ket, excit_ia), 0.0};
-                    fac = ipie::complex_t{perm} * conj(bra_coeff) * coeff_ket;
-                    energy_t sc1 = slater_condon1(ham, occs, excit_ia);
-                    sc1 *= fac;
-                    var_eng += sc1;
-                    // reset to det_ket
-                    for (size_t j = 0; i < occs.size(); i++) {
-                        for (size_t b = 0; a < det_bra.num_bits; a++) {
-                            if (det_ket.is_set(j) && det_bra.is_set(b)) {
-                                det_bra.set_bit(j);
-                                det_bra.clear_bit(b);
-                                Excitation excit_ijab({i, j}, {a, b});
-                                ipie::complex_t perm{(double)double_excitation_permutation(det_ket, excit_ijab), 0.0};
-                                fac = perm * conj(wfn.map[det_bra]) * coeff_ket;
-                                energy_t sc2 = slater_condon2(ham, excit_ijab);
-                                sc2 *= fac;
-                                var_eng += sc2;
-                                det_bra.clear_bit(j);
+                if (!det_ket.is_set(a)) {
+                    det_bra.clear_bit(occs[i]);
+                    det_bra.set_bit(a);
+                    Excitation excit_ia{{occs[i]}, {a}};
+                    auto bra_it = wfn.map.find(det_bra);
+                    if (bra_it != wfn.map.end()) {
+                        ipie::complex_t perm{(double)single_excitation_permutation(det_ket, excit_ia), 0.0};
+                        fac = ipie::complex_t{perm} * conj(bra_it->second) * coeff_ket;
+                        energy_t sc1 = slater_condon1(ham, occs, excit_ia);
+                        sc1 *= fac;
+                        var_eng += sc1;
+                    }
+                    for (size_t j = 0; j < occs.size(); j++) {
+                        for (size_t b = 0; b < det_bra.num_bits; b++) {
+                            if (!det_ket.is_set(b)) {
+                                det_bra.clear_bit(occs[j]);
                                 det_bra.set_bit(b);
+                                bra_it = wfn.map.find(det_bra);
+                                if (bra_it != wfn.map.end()) {
+                                    Excitation excit_ijab({occs[i], occs[j]}, {a, b});
+                                    ipie::complex_t perm{
+                                        (double)double_excitation_permutation(det_ket, excit_ijab), 0.0};
+                                    fac = perm * conj(bra_it->second) * coeff_ket;
+                                    energy_t sc2 = slater_condon2(ham, excit_ijab);
+                                    sc2 *= fac;
+                                    var_eng += sc2;
+                                }
+                                det_bra.set_bit(occs[j]);
+                                det_bra.clear_bit(b);
                             }
                         }
                     }
-                    det_bra.clear_bit(i);
-                    det_bra.set_bit(a);
+                    det_bra.clear_bit(a);
+                    det_bra.set_bit(occs[i]);
                 }
             }
         }
+        // std::cout << std::endl;
     }
+    var_eng /= norm;
     return var_eng;
 }
 
