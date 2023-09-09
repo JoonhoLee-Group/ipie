@@ -28,7 +28,7 @@ TEST(hamiltonian, slater_condon1) {
     b.set_bits({1, 3, 5, 9});
     auto ham = build_test_hamiltonian(a.num_bits);
     ipie::Excitation excit_ia(1);
-    decode_double_excitation(a, b, excit_ia);
+    decode_single_excitation(a, b, excit_ia);
     auto e1 = slater_condon1(ham, occs, excit_ia);
     ASSERT_NEAR(e1.etot.real(), e1.e1b.real() + e1.e2b.real(), 1e-12);
 }
