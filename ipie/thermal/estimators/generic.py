@@ -312,7 +312,7 @@ def local_energy_generic_cholesky_opt_stochastic(
         control = False
 
     # Element wise multiplication.
-    e1b = numpy.sum(hamilltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
     if rchol is None:
         rchol = hamiltonian.rchol
     nalpha, nbeta = nelec
