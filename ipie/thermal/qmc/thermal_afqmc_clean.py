@@ -116,7 +116,6 @@ class ThermalAFQMC(AFQMC):
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators["mixed"].update(
             self.qmc,
-            self.system,
             self.hamiltonian,
             self.trial,
             self.walkers,
@@ -145,7 +144,6 @@ class ThermalAFQMC(AFQMC):
             start = time.time()
             self.estimators.update(
                 self.qmc,
-                self.system,
                 self.hamiltonian,
                 self.trial,
                 self.walkers,

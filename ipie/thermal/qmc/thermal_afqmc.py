@@ -2,7 +2,7 @@
 import time
 import uuid
 
-from ipie.thermal.estimators.handler import Estimators
+from ipie.thermal.estimators.estimators import Estimators
 from ipie.thermal.estimators.local_energy import local_energy
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.propagation.utils import get_propagator
@@ -177,9 +177,6 @@ class ThermalAFQMC(object):
                 verbose=self.verbosity > 1,
             )
             self.trial = get_trial_density_matrix(
-                self.system,
-                self.hamiltonian,
-                self.qmc.beta,
                 self.qmc.dt,
                 comm=comm,
                 options=trial_opts,
@@ -279,13 +276,12 @@ class ThermalAFQMC(object):
         self.setup_timers()
         # (E_T, ke, pe) = self.walk.walkers[0].local_energy(self.system)
         (E_T, ke, pe) = local_energy(
-            self.system, self.hamiltonian, self.walk.walkers[0], self.trial
+            self.hamiltonian, self.walk.walkers[0], self.trial
         )
         # (E_T, ke, pe) = self.walk.walkers[0].local_energy(self.system)
         # Calculate estimates for initial distribution of walkers.
         self.estimators.estimators["mixed"].update(
             self.qmc,
-            self.system,
             self.hamiltonian,
             self.trial,
             self.walk,
@@ -314,7 +310,6 @@ class ThermalAFQMC(object):
             start = time.time()
             self.estimators.update(
                 self.qmc,
-                self.system,
                 self.hamiltonian,
                 self.trial,
                 self.walk,

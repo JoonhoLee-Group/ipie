@@ -10,7 +10,7 @@ except ImportError:
 import time
 
 from ipie.estimators.greens_function import greens_function
-from ipie.estimators.local_energy_batch import local_energy_batch
+#from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.thermal.estimators.local_energy import local_energy
 from ipie.thermal.estimators.thermal import one_rdm_from_G, particle_number
@@ -58,7 +58,7 @@ class Mixed(object):
         Class for outputting rdm data to HDF5 group.
     """
 
-    def __init__(self, mixed_opts, system, hamiltonian, root, filename, qmc, trial, dtype):
+    def __init__(self, mixed_opts, hamiltonian, root, filename, qmc, trial, dtype):
         self.average_gf = mixed_opts.get("average_gf", False)
         self.eval_energy = mixed_opts.get("evaluate_energy", True)
         self.calc_one_rdm = mixed_opts.get("one_rdm", False)
@@ -131,87 +131,87 @@ class Mixed(object):
         if root:
             self.setup_output(filename)
 
-    def update_batch(
-        self, qmc, system, hamiltonian, trial, walker_batch, step, free_projection=False
-    ):
+
+#    def update_batch(
+#        self, qmc, system, hamiltonian, trial, walker_batch, step, free_projection=False
+#    ):
+#        """Update mixed estimates for walkers.
+#
+#        Parameters
+#        ----------
+#        qmc : :class:`ipie.state.QMCOpts` object.
+#            Container for qmc input options.
+#        system : system object.
+#            Container for model input options.
+#        hamiltonian : hamiltonian object.
+#            Container for hamiltonian input options.
+#        trial : :class:`ipie.trial_wavefunction.X' object
+#            Trial wavefunction class.
+#        psi : :class:`ipie.legacy.walkers.Walkers` object
+#            CPMC wavefunction.
+#        step : int
+#            Current simulation step
+#        free_projection : bool
+#            True if doing free projection.
+#        """
+#        assert free_projection == False
+#        assert self.thermal == False
+#        if is_cupy(
+#            walker_batch.weight
+#        ):  # if even one array is a cupy array we should assume the rest is done with cupy
+#            import cupy
+#
+#            assert cupy.is_available()
+#            array = cupy.array
+#            zeros = cupy.zeros
+#            sum = cupy.sum
+#            abs = cupy.abs
+#        else:
+#            array = numpy.array
+#            zeros = numpy.zeros
+#            sum = numpy.sum
+#            abs = numpy.abs
+#
+#        # When using importance sampling we only need to know the current
+#        # walkers weight as well as the local energy, the walker's overlap
+#        # with the trial wavefunction is not needed.
+#        if step % self.energy_eval_freq == 0:
+#            greens_function(walker_batch, trial)
+#            if self.eval_energy:
+#                energy = local_energy_batch(system, hamiltonian, walker_batch, trial)
+#            else:
+#                energy = zeros(walker_batch.nwalkers, 3, dtype=numpy.complex128)
+#            self.estimates[self.names.enumer] += sum(walker_batch.weight * energy[:, 0].real)
+#            self.estimates[self.names.e1b : self.names.e2b + 1] += array(
+#                [
+#                    sum(walker_batch.weight * energy[:, 1].real),
+#                    sum(walker_batch.weight * energy[:, 2].real),
+#                ]
+#            )
+#            self.estimates[self.names.edenom] += sum(walker_batch.weight)
+#
+#        self.estimates[self.names.uweight] += sum(walker_batch.unscaled_weight)
+#        self.estimates[self.names.weight] += sum(walker_batch.weight)
+#        self.estimates[self.names.ovlp] += sum(walker_batch.weight * abs(walker_batch.ovlp))
+#        self.estimates[self.names.ehyb] += sum(walker_batch.weight * walker_batch.hybrid_energy)
+#
+#        if self.calc_one_rdm:
+#            start = self.names.time + 1
+#            end = self.names.time + 1 + w.G.size
+#            self.estimates[start:end] += w.weight * w.G.flatten().real
+#        if self.calc_two_rdm is not None:
+#            start = end
+#            end = end + self.two_rdm.size
+#            self.estimates[start:end] += w.weight * self.two_rdm.flatten().real
+
+
+    def update(self, qmc, hamiltonian, trial, psi, step, free_projection=False):
         """Update mixed estimates for walkers.
 
         Parameters
         ----------
         qmc : :class:`ipie.state.QMCOpts` object.
             Container for qmc input options.
-        system : system object.
-            Container for model input options.
-        hamiltonian : hamiltonian object.
-            Container for hamiltonian input options.
-        trial : :class:`ipie.trial_wavefunction.X' object
-            Trial wavefunction class.
-        psi : :class:`ipie.legacy.walkers.Walkers` object
-            CPMC wavefunction.
-        step : int
-            Current simulation step
-        free_projection : bool
-            True if doing free projection.
-        """
-        assert free_projection == False
-        assert self.thermal == False
-        if is_cupy(
-            walker_batch.weight
-        ):  # if even one array is a cupy array we should assume the rest is done with cupy
-            import cupy
-
-            assert cupy.is_available()
-            array = cupy.array
-            zeros = cupy.zeros
-            sum = cupy.sum
-            abs = cupy.abs
-        else:
-            array = numpy.array
-            zeros = numpy.zeros
-            sum = numpy.sum
-            abs = numpy.abs
-
-        # When using importance sampling we only need to know the current
-        # walkers weight as well as the local energy, the walker's overlap
-        # with the trial wavefunction is not needed.
-        if step % self.energy_eval_freq == 0:
-            greens_function(walker_batch, trial)
-            if self.eval_energy:
-                energy = local_energy_batch(system, hamiltonian, walker_batch, trial)
-            else:
-                energy = zeros(walker_batch.nwalkers, 3, dtype=numpy.complex128)
-            self.estimates[self.names.enumer] += sum(walker_batch.weight * energy[:, 0].real)
-            self.estimates[self.names.e1b : self.names.e2b + 1] += array(
-                [
-                    sum(walker_batch.weight * energy[:, 1].real),
-                    sum(walker_batch.weight * energy[:, 2].real),
-                ]
-            )
-            self.estimates[self.names.edenom] += sum(walker_batch.weight)
-
-        self.estimates[self.names.uweight] += sum(walker_batch.unscaled_weight)
-        self.estimates[self.names.weight] += sum(walker_batch.weight)
-        self.estimates[self.names.ovlp] += sum(walker_batch.weight * abs(walker_batch.ovlp))
-        self.estimates[self.names.ehyb] += sum(walker_batch.weight * walker_batch.hybrid_energy)
-
-        if self.calc_one_rdm:
-            start = self.names.time + 1
-            end = self.names.time + 1 + w.G.size
-            self.estimates[start:end] += w.weight * w.G.flatten().real
-        if self.calc_two_rdm is not None:
-            start = end
-            end = end + self.two_rdm.size
-            self.estimates[start:end] += w.weight * self.two_rdm.flatten().real
-
-    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
-        """Update mixed estimates for walkers.
-
-        Parameters
-        ----------
-        qmc : :class:`ipie.state.QMCOpts` object.
-            Container for qmc input options.
-        system : system object.
-            Container for model input options.
         hamiltonian : hamiltonian object.
             Container for hamiltonian input options.
         trial : :class:`ipie.trial_wavefunction.X' object
@@ -231,10 +231,9 @@ class Mixed(object):
                     w.greens_function(trial)
                     if self.eval_energy:
                         if self.thermal:
-                            E, T, V = local_energy(system, hamiltonian, w, trial)
+                            E, T, V = local_energy(hamiltonian, w, trial)
                         else:
                             E, T, V = local_energy(
-                                system,
                                 hamiltonian,
                                 w,
                                 rchol=trial._rchol,
@@ -267,7 +266,7 @@ class Mixed(object):
                         nav = 0
                         for ts in range(w.stack_length):
                             w.greens_function(trial, slice_ix=ts * w.stack_size)
-                            E, T, V = local_energy(system, hamiltonian, w, trial)
+                            E, T, V = local_energy(hamiltonian, w, trial)
                             E_sum += E
                             T_sum += T
                             V_sum += V
@@ -279,7 +278,7 @@ class Mixed(object):
                         )
                     else:
                         w.greens_function(trial)
-                        E, T, V = local_energy(system, hamiltonian, w, trial)
+                        E, T, V = local_energy(hamiltonian, w, trial)
                         nav = particle_number(one_rdm_from_G(w.G))
                         self.estimates[self.names.nav] += w.weight * nav
                         self.estimates[self.names.enumer] += w.weight * E.real
@@ -291,7 +290,7 @@ class Mixed(object):
                     if step % self.energy_eval_freq == 0:
                         w.greens_function(trial)
                         if self.eval_energy:
-                            E, T, V = local_energy(system, hamiltonian, w, trial)
+                            E, T, V = local_energy(hamiltonian, w, trial)
                         else:
                             E, T, V = 0, 0, 0
 

@@ -5,7 +5,7 @@ from ipie.thermal.trial.utils import get_trial_density_matrix
 import numpy
 import mpi4py.MPI as MPI
 import h5py
-from ipie.thermal.estimators.handler import Estimators
+from ipie.thermal.estimators.estimators import Estimators
 from ipie.qmc.options import QMCOpts
 from ipie.utils.io import to_json
 
@@ -52,8 +52,6 @@ with h5py.File("reference_data/generic_integrals.h5", "r") as fa:
     Lxmn = fa["LXmn"][:]
     num_chol = Lxmn.shape[0]
     num_basis = Lxmn.shape[1]
-
-system = Generic(nelec=mol.nelec)
 
 mu = -10.0
 beta = 0.1
@@ -121,6 +119,7 @@ def compare_test_data(ref, test):
 
 from ipie.thermal.qmc.thermal_afqmc_clean import ThermalAFQMC
 from ipie.hamiltonians.utils import get_hamiltonian
+
 system = Generic(mol.nelec)
 system.mu = mu
 hamiltonian = get_hamiltonian(system, options["hamiltonian"])
@@ -155,7 +154,6 @@ with tempfile.NamedTemporaryFile() as tmpf:
         options["estimators"],
         comm.rank == 0,
         qmc,
-        system,
         hamiltonian,
         trial,
         None

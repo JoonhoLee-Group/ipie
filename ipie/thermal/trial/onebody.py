@@ -44,13 +44,14 @@ class OneBody(object):
         cond = numpy.linalg.cond(self.dmat[0])
         if verbose:
             print(f"# condition number of BT: {cond: 10e}")
-
+        
+        self.nelec = nelec
         if nav is not None:
             self.nav = nav
         else:
             self.nav = options.get("nav", None)
             if self.nav is None:
-                self.nav = nelec[0] + nelec[1]
+                self.nav = numpy.sum(nelec)
         if verbose:
             print(f"# Target average electron number: {self.nav}")
 

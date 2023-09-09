@@ -5,7 +5,8 @@ from ipie.utils.misc import is_cupy
 
 
 def local_energy_generic_pno(
-    system,
+    hamiltonian,
+    nelec,
     G,
     Ghalf=None,
     eri=None,
@@ -15,9 +16,8 @@ def local_energy_generic_pno(
     exxb0=None,
     UVT=None,
 ):
-    na = system.nup
-    nb = system.ndown
-    M = system.nbasis
+    na, nb = nelec
+    M = hamiltonian.nbasis
 
     UVT_aa = UVT[0]
     UVT_bb = UVT[1]
@@ -26,7 +26,7 @@ def local_energy_generic_pno(
     Ga, Gb = Ghalf[0], Ghalf[1]
 
     # Element wise multiplication.
-    e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
 
     eJaa = 0.0
     eKaa = 0.0
@@ -39,7 +39,7 @@ def local_energy_generic_pno(
     GTa = CT[:na, :]  # hard-coded to do single slater
     GTb = CT[na:, :]  # hard-coded to do single slater
 
-    for (i, j), (U, VT) in zip(system.ij_list_aa, UVT_aa):
+    for (i, j), (U, VT) in zip(hamiltonian.ij_list_aa, UVT_aa):
         if i == j:
             c = 0.5
         else:
@@ -68,7 +68,7 @@ def local_energy_generic_pno(
     eJbb = 0.0
     eKbb = 0.0
 
-    for (i, j), (U, VT) in zip(system.ij_list_bb, UVT_bb):
+    for (i, j), (U, VT) in zip(hamiltonian.ij_list_bb, UVT_bb):
         if i == j:
             c = 0.5
         else:
@@ -92,7 +92,7 @@ def local_energy_generic_pno(
         eKbb -= c * (numpy.dot(thetaU, thetaV) - numpy.dot(thetaTU, thetaTV))
 
     eJab = 0.0
-    for (i, j), (U, VT) in zip(system.ij_list_ab, UVT_ab):
+    for (i, j), (U, VT) in zip(hamiltonian.ij_list_ab, UVT_ab):
         theta_i = Ga[i, :]
         theta_j = Gb[j, :]
         thetaT_i = GTa[i, :]
@@ -104,8 +104,7 @@ def local_energy_generic_pno(
         eJab += numpy.dot(thetaU, thetaV) - numpy.dot(thetaTU, thetaTV)
 
     e2b = 0.5 * (ecoul0 - exxa0 - exxb0) + eJaa + eJbb + eJab + eKaa + eKbb
-
-    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
 def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
@@ -223,11 +222,10 @@ def local_energy_generic_cholesky_opt_batched(
         lwalker=nwalker,
     )
     e2b_vec = 0.5 * (ecoul_vec - exx_vec)
-
     return (e1_vec + e2b_vec + ham.ecore, e1_vec + ham.ecore, e2b_vec)
 
 
-def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
+def local_energy_generic_cholesky(ham, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -287,19 +285,16 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
 
     e2b = 0.5 * (ecoul - exx)
-
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
 
 def local_energy_generic_cholesky_opt_stochastic(
-    system, G, nsamples, Ghalf, rchol=None, C0=None, ecoul0=None, exxa0=None, exxb0=None
+    hamiltonian, nelec, nsamples, G, Ghalf=None, rchol=None, C0=None, ecoul0=None, exxa0=None, exxb0=None
 ):
     r"""Calculate local for generic two-body hamiltonian.
     This uses the cholesky decomposed two-electron integrals.
     Parameters
     ----------
-    system : :class:`hubbard`
-        System information for the hubbard model.
     G : :class:`numpy.ndarray`
         Walker's "green's function"
     Returns
@@ -317,18 +312,18 @@ def local_energy_generic_cholesky_opt_stochastic(
         control = False
 
     # Element wise multiplication.
-    e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
+    e1b = numpy.sum(hamilltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
     if rchol is None:
-        rchol = system.rchol
-    nalpha, nbeta = system.nup, system.ndown
-    nbasis = system.nbasis
+        rchol = hamiltonian.rchol
+    nalpha, nbeta = nelec
+    nbasis = hamiltonian.nbasis
     Ga, Gb = Ghalf[0], Ghalf[1]
     Xa = rchol[0].T.dot(Ga.ravel())
     Xb = rchol[1].T.dot(Gb.ravel())
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
     ecoul += 2 * numpy.dot(Xa, Xb)
-    if system.sparse:
+    if hamiltonian.sparse:
         rchol_a, rchol_b = [rchol[0].toarray(), rchol[1].toarray()]
     else:
         rchol_a, rchol_b = rchol[0], rchol[1]
@@ -352,8 +347,8 @@ def local_energy_generic_cholesky_opt_stochastic(
         Ta = numpy.zeros((nsamples, nalpha, nalpha), dtype=rchol_a.dtype)
         Tb = numpy.zeros((nsamples, nbeta, nbeta), dtype=rchol_b.dtype)
 
-        G0aT = C0[:, : system.nup]
-        G0bT = C0[:, system.nup :]
+        G0aT = C0[:, :nalpha]
+        G0bT = C0[:, nalpha:]
 
         GaT = Ga.T
         GbT = Gb.T
@@ -394,18 +389,16 @@ def local_energy_generic_cholesky_opt_stochastic(
     # pr.disable()
     # pr.print_stats(sort='tottime')
 
-    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
-def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
+def local_energy_generic_cholesky_opt(ham, nelec, Ga, Gb, Ghalfa=None, Ghalfb=None, rchola=None, rcholb=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
     ham : :class:`Abinitio`
         Contains necessary hamiltonian information
     G : :class:`numpy.ndarray`
@@ -446,8 +439,9 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     complex128 = numpy.complex128
 
     e1b = sum(ham.H1[0] * Ga) + sum(ham.H1[1] * Gb)
-    nalpha, nbeta = system.nup, system.ndown
+    nalpha, nbeta = nelec
     nbasis = ham.nbasis
+
     if rchola is not None:
         naux = rchola.shape[0]
 
@@ -489,6 +483,36 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     e2b = 0.5 * (ecoul - exx)
 
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+
+
+# FDM: deprecated remove?
+def local_energy_generic_opt(hamiltonian, nelec, G, Ghalf=None, eri=None):
+    """Compute local energy using half-rotated eri tensor."""
+    na, nb = nelec
+    M = hamiltonian.nbasis
+    assert eri is not None
+
+    vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
+    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape(
+        (nb, M, nb, M)
+    )
+    vipjq_ab = eri[0, na**2 * M**2 + nb**2 * M**2 :].reshape((na, M, nb, M))
+
+    Ga, Gb = Ghalf[0], Ghalf[1]
+    # Element wise multiplication.
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    # Coulomb
+    eJaa = 0.5 * numpy.einsum("irjs,ir,js", vipjq_aa, Ga, Ga)
+    eJbb = 0.5 * numpy.einsum("irjs,ir,js", vipjq_bb, Gb, Gb)
+    eJab = numpy.einsum("irjs,ir,js", vipjq_ab, Ga, Gb)
+
+    eKaa = -0.5 * numpy.einsum("irjs,is,jr", vipjq_aa, Ga, Ga)
+    eKbb = -0.5 * numpy.einsum("irjs,is,jr", vipjq_bb, Gb, Gb)
+
+    e2b = eJaa + eJbb + eJab + eKaa + eKbb
+
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
+
 
 def fock_generic(hamiltonian, P):
     nbasis = hamiltonian.nbasis

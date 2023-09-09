@@ -21,8 +21,6 @@ class Estimators(object):
         True if on root/master processor.
     qmc : :class:`ipie.state.QMCOpts` object.
         Container for qmc input options.
-    system : :class:`ipie.hubbard.Hubbard` / system object in general.
-        Container for model input options.
     trial : :class:`ipie.trial_wavefunction.X' object
         Trial wavefunction class.
     BT2 : :class:`numpy.ndarray`
@@ -47,7 +45,7 @@ class Estimators(object):
         True if calculating imaginary time correlation functions (ITCFs).
     """
 
-    def __init__(self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False):
+    def __init__(self, estimates, root, qmc, hamiltonian, trial, BT2, verbose=False):
         if verbose:
             print("# Setting up estimator object.")
         if root:
@@ -73,7 +71,7 @@ class Estimators(object):
         self.estimators = {}
         dtype = complex
         self.estimators["mixed"] = Mixed(
-            mixed, system, hamiltonian, root, self.filename, qmc, trial, dtype
+            mixed, hamiltonian, root, self.filename, qmc, trial, dtype
         )
         self.nprop_tot = None
         self.nbp = None
@@ -113,13 +111,11 @@ class Estimators(object):
         for k, e in self.estimators.items():
             e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
-    def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
+    def update(self, qmc, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators
 
         Parameters
         ----------
-        system : system object in general.
-            Container for model input options.
         qmc : :class:`ipie.state.QMCOpts` object.
             Container for qmc input options.
         trial : :class:`ipie.trial_wavefunction.X' object
@@ -132,4 +128,4 @@ class Estimators(object):
             True if doing free projection.
         """
         for k, e in self.estimators.items():
-            e.update(qmc, system, hamiltonian, trial, psi, step, free_projection)
+            e.update(qmc, hamiltonian, trial, psi, step, free_projection)
