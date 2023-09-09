@@ -14,7 +14,7 @@ struct BitString {
 
     std::vector<uint64_t> bitstring;
 
-    BitString();
+    BitString() = default;
     BitString(size_t num_bits);
 
     BitString &operator^=(const BitString &other);

@@ -14,10 +14,10 @@ typedef std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHash
 
 struct Wavefunction {
     // constructors
+    // Wavefunction(){};
     Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> dets);
 
-    Wavefunction(
-        std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> determinants);
+    Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> determinants);
 
     static Wavefunction build_wavefunction_from_occ_list(
         std::vector<std::complex<double>> &ci_coeffs,

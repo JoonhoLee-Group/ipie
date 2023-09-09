@@ -29,6 +29,11 @@ cc_library(
     srcs=SOURCE_FILES,
     copts=[
         "-std=c++17",
+        "-fsanitize=address",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "-O2",
     ],
     includes=["src/"],
 )
@@ -37,9 +42,14 @@ cc_test(
     name="libci_test",
     srcs=SOURCE_FILES + TEST_FILES,
     copts=[
+        "-g",
         "-std=c++17",
         "-march=native",
+        "-fsanitize=address",
         "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "-O2",
     ],
     includes=["src/"],
     deps=[

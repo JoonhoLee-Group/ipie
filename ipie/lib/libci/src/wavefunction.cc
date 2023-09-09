@@ -12,15 +12,19 @@ namespace ipie {
 
 Wavefunction::Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> determinants)
     : coeffs(ci_coeffs), dets(determinants) {
-    num_spatial = dets[0].num_bits / 2;
-    num_elec = dets[0].count_set_bits();
-    num_dets = ci_coeffs.size();
+    if (dets.size() > 0) {
+        num_spatial = dets[0].num_bits / 2;
+        num_elec = dets[0].count_set_bits();
+        num_dets = ci_coeffs.size();
+    }
 }
 Wavefunction::Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map)
-    : map(std::move(det_map)) {
-    num_spatial = map.begin()->first.num_bits / 2;
-    num_elec = map.begin()->first.count_set_bits();
-    num_dets = map.size();
+    : map(det_map) {
+    if (map.size() > 0) {
+        num_spatial = map.begin()->first.num_bits / 2;
+        num_elec = map.begin()->first.count_set_bits();
+        num_dets = map.size();
+    }
 }
 
 Wavefunction Wavefunction::build_wavefunction_from_occ_list(

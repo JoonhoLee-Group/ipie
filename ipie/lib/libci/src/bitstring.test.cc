@@ -173,7 +173,7 @@ TEST(bitstring, hasher) {
     std::default_random_engine generator;
     generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<int> idist(0, 100 - 1);
-    int num_set = idist(generator);
+    size_t num_set = (size_t)idist(generator);
     for (size_t i = 0; i < num_set; i++) {
         // don't really care about trying to set the same bit twice here.
         a.set_bit((size_t)idist(generator));
@@ -182,7 +182,7 @@ TEST(bitstring, hasher) {
     auto b = a;
     ASSERT_EQ(hash(a), hash(b));
     a.clear_bits();
-    num_set = idist(generator);
+    num_set = (size_t)idist(generator);
     for (size_t i = 0; i < num_set; i++) {
         // don't really care about trying to set the same bit twice here.
         a.set_bit((size_t)idist(generator));

@@ -4,9 +4,6 @@
 
 namespace ipie {
 
-BitString::BitString() : num_bits(0) {
-}
-
 BitString::BitString(size_t nbits) : num_bits(nbits) {
     num_words = (nbits + 64 - 1) / 64;
     bitstring.resize(num_words);
