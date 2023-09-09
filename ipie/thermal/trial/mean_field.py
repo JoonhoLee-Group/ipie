@@ -2,16 +2,15 @@ import numpy
 import scipy.linalg
 
 from ipie.thermal.estimators.fock import fock_matrix
-from ipie.thermal.estimators.local_energy import local_energy
-from ipie.thermal.estimators.thermal import entropy, greens_function, one_rdm_stable, particle_number
+from ipie.thermal.estimators.thermal import greens_function, one_rdm_stable, particle_number
 from ipie.thermal.trial.chem_pot import compute_rho, find_chemical_potential
 from ipie.thermal.trial.onebody import OneBody
 
 
 class MeanField(OneBody):
-    def __init__(self, system, hamiltonian, beta, dt, options={}, H1=None, verbose=False):
+    def __init__(self, hamiltonian, nelec, beta, dt, options={}, H1=None, verbose=False):
         OneBody.__init__(
-            self, system, hamiltonian, beta, dt, options=options, H1=H1, verbose=verbose
+            self, hamiltonian, nelec, beta, dt, options=options, H1=H1, verbose=verbose
         )
         if verbose:
             print(" # Building THF density matrix.")
@@ -36,7 +35,7 @@ class MeanField(OneBody):
         self.G = numpy.array([greens_function(self.dmat[0]), greens_function(self.dmat[1])])
         self.nav = particle_number(self.P).real
 
-    def thermal_hartree_fock(self, system, beta):
+    def thermal_hartree_fock(self, hamiltonian, beta):
         dt = self.dtau
         mu_old = self.mu
         P = self.P.copy()
@@ -45,11 +44,11 @@ class MeanField(OneBody):
         for it in range(self.max_macro_it):
             if self.verbose:
                 print(f"# Macro iteration: {it}")
-            HMF = self.scf(system, beta, mu_old, P)
+            HMF = self.scf(hamiltonian, beta, mu_old, P)
             rho = numpy.array([scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                    system,
+                    hamiltonian._alt_convention,
                     rho,
                     dt,
                     self.num_bins,
@@ -70,11 +69,11 @@ class MeanField(OneBody):
             mu_old = mu
         return P, HMF, mu
 
-    def scf(self, system, beta, mu, P):
+    def scf(self, hamiltonian, beta, mu, P):
         # 1. Compute HMF
-        HMF = fock_matrix(system, P)
+        HMF = fock_matrix(hamiltonian, P)
         dt = self.dtau
-        muN = mu * numpy.eye(system.nbasis, dtype=self.G.dtype)
+        muN = mu * numpy.eye(hamiltonian.nbasis, dtype=self.G.dtype)
         rho = numpy.array(
             [
                 scipy.linalg.expm(-dt * (HMF[0] - muN)),
@@ -85,7 +84,7 @@ class MeanField(OneBody):
         if self.verbose:
             print(" # Running Thermal SCF.")
         for it in range(self.max_scf_it):
-            HMF = fock_matrix(system, Pold)
+            HMF = fock_matrix(hamiltonian, Pold)
             rho = numpy.array(
                 [
                     scipy.linalg.expm(-dt * (HMF[0] - muN)),

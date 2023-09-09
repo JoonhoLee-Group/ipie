@@ -124,7 +124,7 @@ from ipie.hamiltonians.utils import get_hamiltonian
 system = Generic(mol.nelec)
 system.mu = mu
 hamiltonian = get_hamiltonian(system, options["hamiltonian"])
-trial = get_trial_density_matrix(system, hamiltonian, beta, dt, comm=comm, options=options["trial"])
+trial = get_trial_density_matrix(hamiltonian, mol.nelec, beta, dt, comm=comm, options=options["trial"])
 
 qmc = QMCOpts() # should be removed later after walker is cleaned up
 qmc.nwalkers = num_walkers

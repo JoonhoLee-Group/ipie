@@ -156,7 +156,6 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
 
 
 def local_energy_generic_cholesky_opt_batched(
-    system,
     ham,
     Ga_batch: numpy.ndarray,
     Gb_batch: numpy.ndarray,
@@ -173,8 +172,6 @@ def local_energy_generic_cholesky_opt_batched(
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
     ham : :class:`Abinitio`
         Contains necessary hamiltonian information
     Ga_batched : :class:`numpy.ndarray`
@@ -203,7 +200,6 @@ def local_energy_generic_cholesky_opt_batched(
     for widx in range(nwalker):
         e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(ham.H1[1] * Gb_batch[widx])
         e1_vec[widx] = e1b
-        nalpha, nbeta = system.nup, system.ndown
         nbasis = ham.nbasis
         if rchola is not None:
             naux = rchola.shape[0]
@@ -238,12 +234,12 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
     Parameters
     ----------
-    system : :class:`Generic`
-        generic system information
     ham : :class:`Generic`
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
+    Ghalf : :class:`numpy.ndarray`
+        Walker's "half-rotated" "green's function"
 
     Returns
     -------
@@ -252,36 +248,20 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     """
     # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
 
-    # Xa = numpy.dot(ham.chol_vecs, Ga.ravel())
-    # Xb = numpy.dot(ham.chol_vecs, Gb.ravel())
-
-    if numpy.isrealobj(ham.chol_vecs):
-        # Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
-        # Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
-        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(Ga.imag.ravel())
-        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(Gb.imag.ravel())
+    if numpy.isrealobj(ham.chol):
+        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
+        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol_vecs.T.dot(Ga.ravel())
-        Xb = ham.chol_vecs.T.dot(Gb.ravel())
+        Xa = ham.chol.T.dot(Ga.ravel())
+        Xb = ham.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
     ecoul += 2 * numpy.dot(Xa, Xb)
-
-    # T[l,k,n] = \sum_i L[i,k,n] G[i,l]
-    # exx  = \sum_{nlk} T[l,k,n] T[k,l,n]
-    # cv = ham.chol_vecs.T.reshape((nbasis,nbasis,-1))
-    # Ta = numpy.tensordot(Ga, cv, axes=((0),(0)))
-    # exxa = numpy.tensordot(Ta, Ta, axes=((0,1,2),(1,0,2)))
-    # Tb = numpy.tensordot(Gb, cv, axes=((0),(0)))
-    # exxb = numpy.tensordot(Tb, Tb, axes=((0,1,2),(1,0,2)))
-    # exx = exxa + exxb
-    # e2b = 0.5 * (ecoul - exx)
 
     T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
 
@@ -289,9 +269,9 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol_vecs):
+    if numpy.isrealobj(ham.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -300,7 +280,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
@@ -509,3 +489,16 @@ def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchol
     e2b = 0.5 * (ecoul - exx)
 
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+
+def fock_generic(hamiltonian, P):
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
+    hs_pot = hamiltonian.chol.T.reshape(nchol, nbasis, nbasis)
+    if hamiltonian.sparse:
+        mf_shift = 1j * P[0].ravel() * hs_pot
+        mf_shift += 1j * P[1].ravel() * hs_pot
+        VMF = 1j * hs_pot.dot(mf_shift).reshape(nbasis, nbasis)
+    else:
+        mf_shift = 1j * numpy.einsum("lpq,spq->l", hs_pot, P)
+        VMF = 1j * numpy.einsum("lpq,l->pq", hs_pot, mf_shift)
+    return hamiltonian.h1e_mod - VMF
