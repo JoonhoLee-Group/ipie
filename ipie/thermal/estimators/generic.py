@@ -156,6 +156,7 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
 
 
 def local_energy_generic_cholesky_opt_batched(
+    system,
     ham,
     Ga_batch: numpy.ndarray,
     Gb_batch: numpy.ndarray,
