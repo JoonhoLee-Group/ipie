@@ -29,7 +29,6 @@ cc_library(
     srcs=SOURCE_FILES,
     copts=[
         "-std=c++17",
-        "-fsanitize=address",
         "-Wall",
         "-Wextra",
         "-pedantic",
@@ -45,11 +44,13 @@ cc_test(
         "-g",
         "-std=c++17",
         "-march=native",
-        "-fsanitize=address",
+        # "-fsanitize=address",
+        # "-fsanitize=undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-strict-aliasing",
         "-Wall",
         "-Wextra",
         "-pedantic",
-        "-O2",
     ],
     includes=["src/"],
     deps=[

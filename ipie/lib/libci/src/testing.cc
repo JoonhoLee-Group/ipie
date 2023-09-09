@@ -1,5 +1,7 @@
 #include "testing.h"
 
+#include <algorithm>
+#include <chrono>
 #include <random>
 
 namespace ipie {

@@ -2,6 +2,7 @@
 #define _Wavefunction_H
 
 #include <complex>
+#include <unordered_map>
 #include <vector>
 
 #include "bitstring.h"

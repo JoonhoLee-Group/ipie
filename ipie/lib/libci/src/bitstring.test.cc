@@ -1,5 +1,6 @@
 #include "bitstring.h"
 
+#include <chrono>
 #include <random>
 
 #include "gtest/gtest.h"
