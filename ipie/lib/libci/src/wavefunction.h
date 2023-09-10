@@ -15,9 +15,6 @@ typedef std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHash
 
 struct Wavefunction {
     // constructors
-    // Wavefunction(){};
-    Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> dets);
-
     Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> determinants);
 
     static Wavefunction build_wavefunction_from_occ_list(
@@ -29,6 +26,7 @@ struct Wavefunction {
     std::complex<double> norm();
     uint64_t operator()(const BitString &bitstring) const;
     bool operator==(const Wavefunction &rhs) const;
+    bool operator!=(const Wavefunction &rhs) const;
     friend std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn);
     std::vector<std::complex<double>> coeffs;
     std::vector<BitString> dets;

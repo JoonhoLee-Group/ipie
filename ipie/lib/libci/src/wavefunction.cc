@@ -10,16 +10,8 @@
 
 namespace ipie {
 
-Wavefunction::Wavefunction(std::vector<ipie::complex_t> ci_coeffs, std::vector<BitString> determinants)
-    : coeffs(ci_coeffs), dets(determinants) {
-    if (dets.size() > 0) {
-        num_spatial = dets[0].num_bits / 2;
-        num_elec = dets[0].count_set_bits();
-        num_dets = ci_coeffs.size();
-    }
-}
 Wavefunction::Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map)
-    : map(det_map) {
+    : map(std::move(det_map)) {
     if (map.size() > 0) {
         num_spatial = map.begin()->first.num_bits / 2;
         num_elec = map.begin()->first.count_set_bits();
@@ -32,10 +24,8 @@ Wavefunction Wavefunction::build_wavefunction_from_occ_list(
     std::vector<std::vector<int>> &occa,
     std::vector<std::vector<int>> &occb,
     size_t nspatial) {
-    size_t num_dets = ci_coeffs.size();
     size_t num_spatial = nspatial;
-    std::vector<BitString> dets;
-    dets.resize(num_dets, BitString(num_spatial));
+    ipie::det_map dmap;
     for (size_t i = 0; i < ci_coeffs.size(); i++) {
         BitString det_i(2 * num_spatial);
         for (size_t a = 0; a < occa[i].size(); a++) {
@@ -44,9 +34,14 @@ Wavefunction Wavefunction::build_wavefunction_from_occ_list(
         for (size_t b = 0; b < occb[i].size(); b++) {
             det_i.set_bit(2 * occb[i][b] + 1);
         }
-        dets[i] = det_i;
+        if (dmap.size() == 0 || dmap.find(det_i) == dmap.end()) {
+            // we don't want duplicate keys.
+            dmap.insert({det_i, ci_coeffs[i]});
+        } else if (dmap.find(det_i) != dmap.end()) {
+            std::cout << "LIBCI::WARNING:: Found duplicate determinants during wavefunction construction." << std::endl;
+        }
     }
-    return Wavefunction(ci_coeffs, dets);
+    return Wavefunction(dmap);
 }
 
 ipie::complex_t Wavefunction::norm() {
@@ -65,16 +60,14 @@ bool Wavefunction::operator==(const Wavefunction &other) const {
     } else if (num_elec != other.num_elec) {
         return false;
     } else {
-        for (size_t idet = 0; idet < num_dets; idet++) {
-            if (dets[idet] != other.dets[idet]) {
-                return false;
-            }
-            if (abs(coeffs[idet] - other.coeffs[idet]) > 1e-12) {
-                return false;
-            }
+        if (map != other.map) {
+            return false;
         }
     }
     return true;
+}
+bool Wavefunction::operator!=(const Wavefunction &other) const {
+    return !(*this == other);
 }
 
 std::ostream &operator<<(std::ostream &os, const Wavefunction &wfn) {
