@@ -32,7 +32,9 @@ cc_library(
         "-Wall",
         "-Wextra",
         "-pedantic",
-        "-O2",
+        "-O3",
+        "-flto",
+       "-march=native",
     ],
     includes=["src/"],
 )
@@ -71,6 +73,7 @@ cc_binary(
         "-std=c++17",
         "-fvisibility=hidden",
         "-march=native",
+        "-flto",
     ],
     includes=["src/"],
     linkshared=1,

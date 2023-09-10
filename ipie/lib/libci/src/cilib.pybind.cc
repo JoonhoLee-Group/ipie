@@ -7,7 +7,6 @@
 
 #include "config.h"
 #include "hamiltonian.h"
-#include "observables.h"
 #include "wavefunction.h"
 
 namespace py = pybind11;
@@ -23,7 +22,6 @@ ipie::Hamiltonian build_hamiltonian_from_numpy_ndarray(
 
 PYBIND11_MODULE(libci, m) {
     m.doc() = "A lightweight ci utility library for computing properties of CI-like wavefunctions.";
-    m.def("variational_energy", &ipie::compute_variational_energy, "Compute the variational energy.");
 
     py::class_<ipie::Hamiltonian>(m, "Hamiltonian")
         .def(py::init(&build_hamiltonian_from_numpy_ndarray))
@@ -34,10 +32,19 @@ PYBIND11_MODULE(libci, m) {
     py::class_<ipie::Wavefunction>(m, "Wavefunction")
         .def(py::init(&ipie::Wavefunction::build_wavefunction_from_occ_list))
         .def("norm", &ipie::Wavefunction::norm)
+        .def(
+            "energy",
+            [](ipie::Wavefunction &self, ipie::Hamiltonian &ham) {
+                auto etot = self.energy(ham);
+                return std::vector<ipie::complex_t>{etot.etot, etot.e1b, etot.e2b};
+            })
         .def("one_rdm", &ipie::Wavefunction::build_one_rdm)
         .def_readonly("num_dets", &ipie::Wavefunction::num_dets)
         .def_readonly("num_elec", &ipie::Wavefunction::num_elec)
         .def_readonly("num_spatial", &ipie::Wavefunction::num_spatial);
+    // .def("__str__", [](ipie::Wavefunction wfn) {
+    //     std::cout << wfn << std::endl;
+    // });
 
     // these are just for testing purposes so ignore inneficiencies.
     m.def(

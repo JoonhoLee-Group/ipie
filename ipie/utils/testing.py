@@ -48,6 +48,7 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
     h1e = numpy.random.random((nmo, nmo))
     if cplx:
         h1e = h1e + 1j * numpy.random.random((nmo, nmo))
+    h1e = 0.5 * (h1e + h1e.conj().T)
     eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
     if cplx:
         eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
@@ -234,9 +235,9 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
             if ob is None:
                 continue
             if nup == 0:
-                dets += [[[], a] for a in ob]
+                dets += [[[], b] for b in ob]
             elif ndown == 0:
-                dets += [[[], b] for b in oa]
+                dets += [[a, []] for a in oa]
             else:
                 dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)

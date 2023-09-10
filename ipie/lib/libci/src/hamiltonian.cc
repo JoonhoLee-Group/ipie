@@ -57,7 +57,9 @@ ipie::energy_t slater_condon1(const Hamiltonian &ham, const std::vector<size_t> 
     indx_t i_spat_spin = map_orb_to_spat_spin(excit_ia.from[0]);
     indx_t a_spat_spin = map_orb_to_spat_spin(excit_ia.to[0]);
     size_t ia = ham.flat_indx(i_spat_spin.first, a_spat_spin.first);
-    hmatel.e1b = ham.h1e[ia];
+    if (i_spat_spin.second == a_spat_spin.second) {
+        hmatel.e1b = ham.h1e[ia];
+    }
     for (size_t j = 0; j < occs.size(); j++) {
         size_t occ_j = occs[j];
         indx_t occ_j_spat_spin = map_orb_to_spat_spin(occ_j);

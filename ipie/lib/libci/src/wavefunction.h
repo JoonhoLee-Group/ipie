@@ -8,6 +8,7 @@
 #include "bitstring.h"
 #include "config.h"
 #include "excitations.h"
+#include "hamiltonian.h"
 
 namespace ipie {
 
@@ -27,6 +28,7 @@ struct Wavefunction {
     std::complex<double> norm();
     // one particle reduced density matrix
     std::vector<ipie::complex_t> build_one_rdm();
+    ipie::energy_t energy(Hamiltonian &ham);
 
     uint64_t operator()(const BitString &bitstring) const;
     bool operator==(const Wavefunction &rhs) const;

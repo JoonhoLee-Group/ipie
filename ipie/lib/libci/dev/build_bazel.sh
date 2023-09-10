@@ -1,5 +1,6 @@
 #!/bin/bash
 
+bazel build :libci
 bazel build :libci.so
 bazel build :libci_test
 

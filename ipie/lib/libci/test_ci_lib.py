@@ -18,7 +18,10 @@
 import numpy as np
 import pytest
 
+from ipie.estimators.local_energy import variational_energy_ortho_det
+from ipie.hamiltonians.generic import GenericRealChol
 from ipie.lib.libci import libci
+from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd_opt
 
 
@@ -244,7 +247,7 @@ def test_wavefunction():
 
 @pytest.mark.parametrize(
     "num_spat, num_elec, num_det",
-    ((4, 2, 9), (27, 2, 1_000), (79, 2, 23), (1023, 4, 100), (513, 67, 39)),
+    ((9, 2, 2), (27, 2, 1_000), (79, 2, 23), (1023, 4, 100), (513, 67, 39)),
 )
 @pytest.mark.unit
 def test_one_rdm(num_spat, num_elec, num_det):
@@ -254,12 +257,9 @@ def test_one_rdm(num_spat, num_elec, num_det):
     phases = convert_phase(occa, occb)
     wfn = libci.Wavefunction(phases * coeff, occa, occb, num_spat)
     opdm = np.array(wfn.one_rdm()).reshape((2, num_spat, num_spat))
-    print(num_alpha, num_beta, opdm[0].trace(), opdm[1].trace())
     assert np.isclose(opdm[0].trace(), num_alpha, atol=1e-12)
     assert np.isclose(opdm[1].trace(), num_beta, atol=1e-12)
     opdm_ref = build_one_rdm_ref(coeff, occa, occb, num_spat)
-    print(opdm)
-    print(opdm_ref)
     assert np.allclose(opdm, opdm_ref)
 
 
@@ -271,3 +271,46 @@ def test_hamiltonian():
     assert ham.num_spatial == num_spat
     assert np.allclose(h1e.ravel(), ham.h1e)
     assert np.allclose(h2e.ravel(), ham.h2e)
+
+
+@pytest.mark.parametrize(
+    "num_spat, num_elec, num_det",
+    ((9, 2, 2), (27, 4, 100), (34, 24, 10000)),
+)
+@pytest.mark.unit
+def test_variational_energy(num_spat, num_elec, num_det):
+    np.random.seed(7)
+    num_alpha = np.random.randint(0, num_elec + 1)
+    num_beta = num_elec - num_alpha
+    (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat, ndet=num_det)
+    phases = convert_phase(occa, occb)
+    h1e, chol, e0, h2e = generate_hamiltonian(num_spat, num_elec)
+    h1e[:] = 0
+    # h2e[:] = 0
+    import time
+
+    ham = libci.Hamiltonian(h1e, h2e, e0)
+    start = time.time()
+    wfn = libci.Wavefunction(phases * coeff, occa, occb, num_spat)
+    print(time.time() - start)
+    # start = time.time()
+    # energy = wfn.energy(ham)
+    # print(time.time() - start)
+    # # ipie refernece implementation
+    # # this routine assumes aaaabbbb ordering of electrons.
+    # dets = [list(a) + [i + num_spat for i in c] for (a, c) in zip(occa, occb)]
+    # spin_occs = [np.sort(d) for d in dets]
+    # sys = Generic((num_alpha, num_beta))
+    # chol = chol.reshape((-1, num_spat * num_spat)).T.copy()
+    # # chol[:] = 0
+    # h1e[:] = 0
+    # ham_ipie = GenericRealChol(np.array([h1e, h1e]), chol, ecore=e0)
+    # start = time.time()
+    # energy_ref = variational_energy_ortho_det(sys, ham_ipie, spin_occs, coeff)
+    # print(time.time() - start)
+    # # print(energy)
+    # # print(energy_ref)
+    # assert np.isclose(energy_ref[1], energy[1])
+    # assert np.isclose(energy_ref[2], energy[2])
+    # assert np.isclose(energy_ref[0], energy[0])
+    # assert np.allclose(energy, energy_ref)
