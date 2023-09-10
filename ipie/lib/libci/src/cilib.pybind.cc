@@ -23,25 +23,6 @@ ipie::Hamiltonian build_hamiltonian_from_numpy_ndarray(
 
 PYBIND11_MODULE(libci, m) {
     m.doc() = "A lightweight ci utility library for computing properties of CI-like wavefunctions.";
-    m.def(
-        "one_rdm",
-        // this works but is not very idiomatic as we expect numpy arrays as input. it works because of the stl wrapper,
-        // but should probably cast internally.
-        [](std::vector<std::complex<double>> &coeffs,
-           std::vector<std::vector<int>> &occa,
-           std::vector<std::vector<int>> &occb,
-           size_t num_spatial) {
-            ipie::Wavefunction wfn =
-                ipie::Wavefunction::build_wavefunction_from_occ_list(coeffs, occa, occb, num_spatial);
-            // std::cout << "\n" << wfn << std::endl;
-            std::vector<ipie::complex_t> opdm = ipie::build_one_rdm(wfn);
-            // https://github.com/pybind/pybind11/issues/1299
-            // need to check if this is problematic with ownership.
-            // I can live with copying given the array is so small...
-            return py::array_t<ipie::complex_t>(
-                std::vector<ptrdiff_t>{2, (py::ssize_t)num_spatial, (py::ssize_t)num_spatial}, &opdm[0]);
-        },
-        "Compute the one-particle reduced density matrix.");
     m.def("variational_energy", &ipie::compute_variational_energy, "Compute the variational energy.");
 
     py::class_<ipie::Hamiltonian>(m, "Hamiltonian")
@@ -53,6 +34,7 @@ PYBIND11_MODULE(libci, m) {
     py::class_<ipie::Wavefunction>(m, "Wavefunction")
         .def(py::init(&ipie::Wavefunction::build_wavefunction_from_occ_list))
         .def("norm", &ipie::Wavefunction::norm)
+        .def("one_rdm", &ipie::Wavefunction::build_one_rdm)
         .def_readonly("num_dets", &ipie::Wavefunction::num_dets)
         .def_readonly("num_elec", &ipie::Wavefunction::num_elec)
         .def_readonly("num_spatial", &ipie::Wavefunction::num_spatial);
@@ -66,7 +48,8 @@ PYBIND11_MODULE(libci, m) {
            py::array_t<size_t> &occs) {
             auto ham = build_hamiltonian_from_numpy_ndarray(h1e, h2e, e0);
             std::vector<size_t> _occs(occs.data(), occs.data() + occs.size());
-            return ipie::slater_condon0(ham, _occs);
+            ipie::energy_t matel = ipie::slater_condon0(ham, _occs);
+            return std::vector<ipie::complex_t>{matel.etot, matel.e1b, matel.e2b};
         });
     m.def(
         "slater_condon1",
@@ -80,7 +63,8 @@ PYBIND11_MODULE(libci, m) {
             auto excit_ia = ipie::Excitation(1);
             excit_ia.from[0] = i;
             excit_ia.to[0] = a;
-            return ipie::slater_condon1(ham, _occs, excit_ia);
+            ipie::energy_t matel = ipie::slater_condon1(ham, _occs, excit_ia);
+            return std::vector<ipie::complex_t>{matel.etot, matel.e1b, matel.e2b};
         });
     m.def(
         "slater_condon2",
@@ -90,6 +74,7 @@ PYBIND11_MODULE(libci, m) {
             auto excit_ijab = ipie::Excitation(2);
             excit_ijab.from = {(size_t)i, (size_t)j};
             excit_ijab.to = {(size_t)a, (size_t)b};
-            return ipie::slater_condon2(ham, excit_ijab);
+            ipie::energy_t matel = ipie::slater_condon2(ham, excit_ijab);
+            return std::vector<ipie::complex_t>{matel.etot, matel.e1b, matel.e2b};
         });
 }

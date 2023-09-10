@@ -186,21 +186,6 @@ def slater_condon2(h2e, i, j, a, b):
     return hmatel
 
 
-@pytest.mark.parametrize(
-    "num_spat, num_elec, num_det",
-    ((13, 8, 9), (27, 2, 1_000), (79, 2, 23), (1023, 4, 100), (513, 67, 39)),
-)
-@pytest.mark.unit
-def test_one_rdm(num_spat, num_elec, num_det):
-    num_alpha = np.random.randint(0, num_elec + 1)
-    num_beta = num_elec - num_alpha
-    (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat, ndet=num_det)
-    phases = convert_phase(occa, occb)
-    opdm = libci.one_rdm(phases * coeff, occa, occb, num_spat)
-    opdm_ref = build_one_rdm_ref(coeff, occa, occb, num_spat)
-    assert np.allclose(opdm, opdm_ref)
-
-
 @pytest.mark.parametrize("num_spat, num_elec", ((8, 4), (23, 12), (11, 1)))
 @pytest.mark.unit
 def test_slater_condon0(num_spat, num_elec):
@@ -255,6 +240,27 @@ def test_wavefunction():
     assert wfn.num_dets == len(coeff)
     assert wfn.num_spatial == num_spat
     assert wfn.num_elec == num_alpha + num_beta
+
+
+@pytest.mark.parametrize(
+    "num_spat, num_elec, num_det",
+    ((4, 2, 9), (27, 2, 1_000), (79, 2, 23), (1023, 4, 100), (513, 67, 39)),
+)
+@pytest.mark.unit
+def test_one_rdm(num_spat, num_elec, num_det):
+    num_alpha = np.random.randint(0, num_elec + 1)
+    num_beta = num_elec - num_alpha
+    (coeff, occa, occb), _ = get_random_phmsd_opt(num_alpha, num_beta, num_spat, ndet=num_det)
+    phases = convert_phase(occa, occb)
+    wfn = libci.Wavefunction(phases * coeff, occa, occb, num_spat)
+    opdm = np.array(wfn.one_rdm()).reshape((2, num_spat, num_spat))
+    print(num_alpha, num_beta, opdm[0].trace(), opdm[1].trace())
+    assert np.isclose(opdm[0].trace(), num_alpha, atol=1e-12)
+    assert np.isclose(opdm[1].trace(), num_beta, atol=1e-12)
+    opdm_ref = build_one_rdm_ref(coeff, occa, occb, num_spat)
+    print(opdm)
+    print(opdm_ref)
+    assert np.allclose(opdm, opdm_ref)
 
 
 @pytest.mark.unit

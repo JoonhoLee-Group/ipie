@@ -23,7 +23,11 @@ struct Wavefunction {
         std::vector<std::vector<int>> &occb,
         size_t nspatial);
 
+    // wavefunction norm
     std::complex<double> norm();
+    // one particle reduced density matrix
+    std::vector<ipie::complex_t> build_one_rdm();
+
     uint64_t operator()(const BitString &bitstring) const;
     bool operator==(const Wavefunction &rhs) const;
     bool operator!=(const Wavefunction &rhs) const;

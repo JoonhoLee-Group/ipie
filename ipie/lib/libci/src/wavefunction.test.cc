@@ -34,3 +34,33 @@ TEST(wavefunction, constructor_map) {
         }
     }
 }
+
+TEST(wavefunction, density_matrix_restricted) {
+    auto wfn = ipie::build_test_wavefunction_restricted(100, 50);
+    auto dm = wfn.build_one_rdm();
+    ipie::complex_t trace{0.0};
+    for (size_t p = 0; p < wfn.num_spatial; p++) {
+        trace += dm[p * wfn.num_spatial + p];
+    }
+    ASSERT_NEAR(trace.real(), wfn.num_elec / 2, 1e-12);
+    trace = 0;
+    for (size_t p = 0; p < wfn.num_spatial; p++) {
+        trace += dm[p * wfn.num_spatial + p + wfn.num_spatial * wfn.num_spatial];
+    }
+    ASSERT_NEAR(trace.real(), wfn.num_elec / 2, 1e-12);
+    ASSERT_NEAR(trace.imag(), 0.0, 1e-12);
+}
+
+TEST(wavefunction, density_matrix_polarized) {
+    auto wfn = ipie::build_test_wavefunction(1000, 50);
+    auto dm = wfn.build_one_rdm();
+    ipie::complex_t trace{0.0};
+    for (size_t p = 0; p < wfn.num_spatial; p++) {
+        trace += dm[p * wfn.num_spatial + p];
+    }
+    for (size_t p = 0; p < wfn.num_spatial; p++) {
+        trace += dm[p * wfn.num_spatial + p + wfn.num_spatial * wfn.num_spatial];
+    }
+    ASSERT_NEAR(trace.real(), wfn.num_elec, 1e-12);
+    ASSERT_NEAR(trace.imag(), 0.0, 1e-12);
+}
