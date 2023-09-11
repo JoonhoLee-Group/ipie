@@ -67,22 +67,22 @@ void BitString::clear_bits() {
     }
 }
 
-void BitString::decode_bits(std::vector<size_t>& set_bits) const {
-    size_t num_set = 0;
-    uint64_t mask = 1;
-    for (size_t w = 0; w < bitstring.size(); w++) {
-        for (int bit_pos = 0; bit_pos < 64; bit_pos++) {
-            if (bitstring[w] & (mask << bit_pos)) {
-                set_bits[num_set] = bit_pos + w * 64;
-                num_set++;
-            }
-            if (num_set == set_bits.size())
-                break;
-        }
-        if (num_set == set_bits.size())
-            break;
-    }
-}
+// void BitString::decode_bits(std::vector<size_t>& set_bits) const {
+//     size_t num_set = 0;
+//     uint64_t mask = 1;
+//     for (size_t w = 0; w < bitstring.size(); w++) {
+//         for (int bit_pos = 0; bit_pos < 64; bit_pos++) {
+//             if (bitstring[w] & (mask << bit_pos)) {
+//                 set_bits[num_set] = bit_pos + w * 64;
+//                 num_set++;
+//             }
+//             if (num_set == set_bits.size())
+//                 break;
+//         }
+//         if (num_set == set_bits.size())
+//             break;
+//     }
+// }
 
 size_t BitString::count_set_bits() const {
     size_t num_set = 0;
@@ -100,19 +100,12 @@ size_t BitString::count_difference(const BitString& other) const {
     return num_set / 2;
 }
 
-bool BitString::is_set(const size_t indx) const {
-    size_t word = indx / 64;
-    int offset = indx - word * 64;
-    uint64_t one = 1;
-    return bitstring[word] & (one << offset);
-}
-
-void BitString::set_bit(const size_t indx) {
-    size_t word = indx / 64;
-    int offset = indx - word * 64;
-    uint64_t one = 1;
-    bitstring[word] |= (one << offset);
-}
+// void BitString::set_bit(const size_t indx) {
+//     size_t word = indx / 64;
+//     int offset = indx - word * 64;
+//     uint64_t one = 1;
+//     bitstring[word] |= (one << offset);
+// }
 
 void BitString::set_bits(const std::vector<size_t>& bit_indxs) {
     for (auto i : bit_indxs) {

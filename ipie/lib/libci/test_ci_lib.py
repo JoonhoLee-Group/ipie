@@ -275,7 +275,7 @@ def test_hamiltonian():
 
 @pytest.mark.parametrize(
     "num_spat, num_elec, num_det",
-    ((9, 2, 2), (27, 4, 100), (34, 24, 10000)),
+    ((9, 2, 2), (27, 4, 100), (34, 24, 1_000_00)),
 )
 @pytest.mark.unit
 def test_variational_energy(num_spat, num_elec, num_det):
@@ -292,7 +292,7 @@ def test_variational_energy(num_spat, num_elec, num_det):
     ham = libci.Hamiltonian(h1e, h2e, e0)
     start = time.time()
     wfn = libci.Wavefunction(phases * coeff, occa, occb, num_spat)
-    print(time.time() - start)
+    print("time: ", (time.time() - start))
     # start = time.time()
     # energy = wfn.energy(ham)
     # print(time.time() - start)

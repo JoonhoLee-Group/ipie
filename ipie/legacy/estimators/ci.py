@@ -211,6 +211,7 @@ def get_hmatel(ham, nel, di, dj):
         j, sj = map_orb(from_orb[1], ham.nbasis)
         a, sa = map_orb(to_orb[0], ham.nbasis)
         b, sb = map_orb(to_orb[1], ham.nbasis)
+        # print(from_orb[0], from_orb[1], to_orb[0], to_orb[1])
         hmatel = slater_condon2(ham, (i, si), (j, sj), (a, sa), (b, sb), perm)
         e1b = 0
         e2b = hmatel

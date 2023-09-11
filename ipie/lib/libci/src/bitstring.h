@@ -27,11 +27,37 @@ struct BitString {
     uint64_t &operator[](const size_t indx);
 
     void encode_bits(std::vector<size_t> &set_bits);
-    void decode_bits(std::vector<size_t> &set_bits) const;
+    void decode_bits(std::vector<size_t> &set_bits) const {
+        size_t num_set = 0;
+        uint64_t mask = 1;
+        for (size_t w = 0; w < bitstring.size(); w++) {
+            for (int bit_pos = 0; bit_pos < 64; bit_pos++) {
+                if (bitstring[w] & (mask << bit_pos)) {
+                    set_bits[num_set] = bit_pos + w * 64;
+                    num_set++;
+                }
+                if (num_set == set_bits.size())
+                    break;
+            }
+            if (num_set == set_bits.size())
+                break;
+        }
+    }
     void clear_bits();
     void clear_bit(const size_t bit_indx);
-    bool is_set(const size_t bit_indx) const;
-    void set_bit(const size_t bit_indx);
+    inline bool is_set(const size_t bit_indx) const {
+        size_t word = bit_indx / 64;
+        int offset = bit_indx - word * 64;
+        uint64_t one = 1;
+        return bitstring[word] & (one << offset);
+    };
+    // void set_bit(const size_t bit_indx);
+    inline void set_bit(const size_t bit_indx) {
+        size_t word = bit_indx / 64;
+        int offset = bit_indx - word * 64;
+        uint64_t one = 1;
+        bitstring[word] |= (one << offset);
+    }
     void set_bits(const std::vector<size_t> &bit_indx);
     size_t count_set_bits() const;
     size_t count_difference(const BitString &other) const;

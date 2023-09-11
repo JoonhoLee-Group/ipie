@@ -11,6 +11,15 @@
 
 namespace ipie {
 
+struct Det {
+    Det(BitString a, BitString b) : alpha(std::move(a)), beta(std::move(b)) {
+        num_spatial = a.num_bits;
+    }
+    BitString alpha;
+    BitString beta;
+    size_t num_spatial;
+}
+
 Wavefunction::Wavefunction(std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map)
     : map(std::move(det_map)) {
     if (map.size() > 0) {
@@ -27,6 +36,13 @@ Wavefunction Wavefunction::build_wavefunction_from_occ_list(
     size_t nspatial) {
     size_t num_spatial = nspatial;
     ipie::det_map dmap;
+    // dmap_a dmap_b
+    // dmap_a[alpha_bs] = {c_0, c_1, .., c_l} : ci coefficients of determinants with common alpha_bs
+    // 1RDM:
+    // Epq|alpha> -> Either loop over alpha and check for singles OR store singles and build this way
+    // RDM[p, q] =>  p, q = diff{alpha, alpha'}; rdm_pq = sum_{c,c"} c* c
+    // Epq Ers |alpha>, find doubles and sames as above
+    // Epa^a Ers^b|beta> -> Epq^a {|beta'>}, check if corresponding  alpha is a single and decode
     for (size_t i = 0; i < ci_coeffs.size(); i++) {
         BitString det_i(2 * num_spatial);
         for (size_t a = 0; a < occa[i].size(); a++) {
@@ -50,34 +66,24 @@ Wavefunction Wavefunction::build_wavefunction_from_occ_list(
         det_ket.decode_bits(occs);
         BitString ex_det(det_ket);
         for (size_t i = 0; i < occs.size(); i++) {
+            size_t spin_i == occs[i] % 2;
             for (size_t a = 0; a < det_ket.num_bits; a++) {
-                for (size_t j = i + 1; j < occs.size(); j++) {
-                    for (size_t b = a + 1; b < det_ket.num_bits; b++) {
-                        // if (!det_ket.is_set(a) && !det_ket.is_set(b)) {
-                        //     if ((occs[i] % 2 == a % 2 && occs[j] % 2 == b % 2) ||
-                        //         (occs[j] % 2 == a % 2 && occs[i] % 2 == b % 2)) {
-                        //         mean_conn++;
-                        //         // ex_det.clear_bit(occs[i]);
-                        //         // ex_det.clear_bit(occs[j]);
-                        //         // ex_det.set_bit(a);
-                        //         // ex_det.set_bit(b);
-                        //         // if (dmap.find(ex_det) != dmap.end()) {
-                        //         //     mean_conn += 1;
-                        //         // }
-                        //         // ex_det.set_bit(occs[i]);
-                        //         // ex_det.set_bit(occs[j]);
-                        //         // ex_det.clear_bit(a);
-                        //         // ex_det.clear_bit(b);
-                        //     }
-                        // }
-                        mean_conn++;
+                if (!det_ket.is_set(a)) {
+                    if ((spin_i == a % 2) && spin_i == 0) {
+                        ex_det.clear_bit(occs[i]);
+                        ex_det.set_bit(a);
+                        if (dmap.find(ex_det) != dmap.end()) {
+                            mean_conn += 1;
+                        }
+                        ex_det.clear_bit(a);
+                        ex_det.set_bit(occs[i]);
                     }
                 }
             }
         }
         idet++;
     }
-    std::cout << mean_conn << std::endl;
+    std::cout << mean_conn / 10000 << std::endl;
     return Wavefunction(dmap);
 }
 

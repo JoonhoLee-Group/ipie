@@ -13,6 +13,7 @@
 namespace ipie {
 
 typedef std::unordered_map<ipie::BitString, ipie::complex_t, ipie::BitStringHasher> det_map;
+typedef std::unordered_map<ipie::BitString, std::pair<ipie::BitString, size_t>, ipie::BitStringHasher> det_map_spin;
 
 struct Wavefunction {
     // constructors

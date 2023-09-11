@@ -96,6 +96,7 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
             cj = coeffs[j]
             occj = occs[j]
             etot, e1b, e2b = ci.conj() * cj * get_hmatel(ham, nel, occi, occj)
+            # print(i, j, etot, e1b, e2b)
             evar += etot
             one_body += e1b
             two_body += e2b
