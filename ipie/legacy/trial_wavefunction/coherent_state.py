@@ -38,7 +38,7 @@ except (ModuleNotFoundError, ImportError):
 import math
 
 
-@jit
+# @jit
 def gab(A, B):
     r"""One-particle Green's function.
 
@@ -143,7 +143,7 @@ def hessian_product(x, p, nbasis, nup, ndown, T, U, g, m, w0, c0):
 
 @jit
 def compute_exp(Ua, tmp, theta_a):
-    for i in range(1, 50):
+    for i in range(1, 20):
         tmp = np.einsum("ij,jk->ik", theta_a, tmp)
         Ua += tmp / math.factorial(i)
 
@@ -225,16 +225,16 @@ def objective_function(x, nbasis, nup, ndown, T, U, g, m, w0, c0, restricted, re
     daib = daib.reshape((nvirb, noccb))
 
     if restricted:
-        daib = jax.ops.index_update(daib, jax.ops.index[:, :], daia)
+        daib = daib.at[:, :].set(daia)
 
     theta_a = np.zeros((nbsf, nbsf), dtype=np.float64)
     theta_b = np.zeros((nbsf, nbsf), dtype=np.float64)
 
-    theta_a = jax.ops.index_update(theta_a, jax.ops.index[nocca:nbsf, :nocca], daia)
-    theta_a = jax.ops.index_update(theta_a, jax.ops.index[:nocca, nocca:nbsf], -np.transpose(daia))
+    theta_a = theta_a.at[nocca:nbsf, :nocca].set( daia)
+    theta_a = theta_a.at[:nocca, nocca:nbsf].set( -np.transpose(daia))
 
-    theta_b = jax.ops.index_update(theta_b, jax.ops.index[noccb:nbsf, :noccb], daib)
-    theta_b = jax.ops.index_update(theta_b, jax.ops.index[:noccb, noccb:nbsf], -np.transpose(daib))
+    theta_b = theta_b.at[noccb:nbsf, :noccb].set(daib)
+    theta_b = theta_b.at[:noccb, noccb:nbsf].set(-np.transpose(daib))
 
     Ua = np.eye(nbsf, dtype=np.float64)
     tmp = np.eye(nbsf, dtype=np.float64)
@@ -257,7 +257,7 @@ def objective_function(x, nbasis, nup, ndown, T, U, g, m, w0, c0, restricted, re
     G = np.array([Ga, Gb], dtype=np.float64)
 
     if restricted_shift:
-        shift = jax.ops.index_update(shift, jax.ops.index[:nbasis], x[0])
+        shift = shift.at[:nbasis].set(x[0])
 
     phi = HarmonicOscillator(m, w0, order=0, shift=shift)
     Lap = phi.laplacian(shift)
@@ -370,7 +370,13 @@ class CoherentState(object):
             if free_electron:
                 trial_elec = FreeElectron(system, trial=options, verbose=self.verbose)
             else:
-                trial_elec = UHF(system, trial=options, verbose=self.verbose)
+                trial_options = {}
+                trial_options["t"] = system.t
+                trial_options["U"] = system.U
+                trial_options["nx"] = system.nx
+                trial_options["ny"] = system.ny
+                hubbard_ham = Hubbard(options=trial_options, verbose=self.verbose)
+                trial_elec = HubbardUHF(system, hamiltonian=hubbard_ham, trial=options, verbose=self.verbose)
 
             self.psi[:, : system.nup] = trial_elec.psi[:, : system.nup]
             if system.ndown > 0:
@@ -397,7 +403,6 @@ class CoherentState(object):
             self.virt[:, nvira:] = numpy.real(vb[:, system.ndown :])
 
             self.G = trial_elec.G.copy()
-
             gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T
             if system.ndown > 0:
                 gdown = gab(self.psi[:, system.nup :], self.psi[:, system.nup :]).T
@@ -864,6 +869,7 @@ class CoherentState(object):
                         system.w0,
                         c0,
                         self.restricted,
+                        self.restricted_shift,
                     ),
                     jac=gradient,
                     tol=1e-10,
@@ -906,24 +912,21 @@ class CoherentState(object):
         theta_a[nocca:nbsf, :nocca] = daia.copy()
         theta_a[:nocca, nocca:nbsf] = -daia.T.copy()
 
-        theta_b = numpy.zeros((nbsf, nbsf))
-        theta_b[noccb:nbsf, :noccb] = daib.copy()
-        theta_b[:noccb, noccb:nbsf] = -daib.T.copy()
-
         Ua = expm(theta_a)
         C0a = c0[: nbsf * nbsf].reshape((nbsf, nbsf))
         Ca = C0a.dot(Ua)
+        Cocca, detpsi = reortho(Ca[:, :nocca])
+        self.psi[:, :nocca] = Cocca
 
         if noccb > 0:
+            theta_b = numpy.zeros((nbsf, nbsf))
+            theta_b[noccb:nbsf, :noccb] = daib.copy()
+            theta_b[:noccb, noccb:nbsf] = -daib.T.copy()
             C0b = c0[nbsf * nbsf :].reshape((nbsf, nbsf))
             Ub = expm(theta_b)
             Cb = C0b.dot(Ub)
-
-        Cocca, detpsi = reortho(Ca[:, :nocca])
-        Coccb, detpsi = reortho(Cb[:, :noccb])
-
-        self.psi[:, :nocca] = Cocca
-        self.psi[:, nocca:] = Coccb
+            Coccb, detpsi = reortho(Cb[:, :noccb])
+            self.psi[:, nocca:] = Coccb
 
         self.update_electronic_greens_function(system)
 
