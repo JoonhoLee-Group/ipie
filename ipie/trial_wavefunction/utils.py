@@ -57,8 +57,9 @@ def get_trial_wavefunction(
     wfn_type = determine_wavefunction_type(wfn_file)
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
+        print(wfn[1])
         na = len(wfn[1][0])
-        nb = len(wfn[1][0])
+        nb = len(wfn[2][0])
         nelec = (na, nb)
         if ndet_chunks == 1:
             trial = ParticleHoleNonChunked(
@@ -81,17 +82,21 @@ def get_trial_wavefunction(
             )
     elif wfn_type == "noci":
         wfn, _ = read_noci_wavefunction(wfn_file)
-        assert len(wfn) == 3
-        na = wfn[1].shape[-1]
-        nb = wfn[2].shape[-1]
-        _nbasis = wfn[1].shape[0]
+        ci, (wfna, wfnb) = wfn
+        assert len(wfn) == 2
+        na = wfna.shape[-1]
+        nb = wfnb.shape[-1]
+        _nbasis = wfna.shape[0]
         assert nbasis == _nbasis
-        trial = NOCI(wfn, (na, nb), nbasis)
+        outwfn = np.zeros((wfna.shape[0], wfna.shape[1], na + nb), dtype=wfna.dtype)
+        outwfn[:, :, :na] = wfna.copy()
+        outwfn[:, :, na:] = wfnb.copy()
+        trial = NOCI((ci, outwfn), (na, nb), nbasis)
     elif wfn_type == "single_determinant":
         wfn, _ = read_single_det_wavefunction(wfn_file)
         assert len(wfn) == 2
         na = wfn[0].shape[-1]
-        nb = wfn[0].shape[-1]
+        nb = wfn[1].shape[-1]
         _nbasis = wfn[0].shape[0]
         assert nbasis == _nbasis
         trial = SingleDet(np.hstack(wfn), (na, nb), nbasis)

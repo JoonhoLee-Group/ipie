@@ -169,10 +169,8 @@ def read_noci_wavefunction(
 ) -> Tuple[Tuple[numpy.ndarray, List[numpy.ndarray]], Optional[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
         ci_coeffs = fh5["ci_coeffs"][:]
-        ndets = len(ci_coeffs)
-        for _ in range(ndets):
-            psia = fh5[f"psi_T_alpha"][:]
-            psib = fh5[f"psi_T_beta"][:]
+        psia = fh5[f"psi_T_alpha"][:]
+        psib = fh5[f"psi_T_beta"][:]
     return (ci_coeffs, [psia, psib]), None
 
 
