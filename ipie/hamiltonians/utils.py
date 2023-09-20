@@ -21,20 +21,22 @@ import time
 
 import numpy
 
-from ipie.systems.generic import Generic as SysGeneric
-from ipie.hamiltonians.generic import Generic, construct_h1e_mod, read_integrals
-from ipie.utils.io import get_input_value
+from ipie.hamiltonians.generic import construct_h1e_mod, Generic, read_integrals
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 from ipie.utils.pack_numba import pack_cholesky
 
 
-def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
-    """Wrapper to select hamiltonian class
+def get_hamiltonian(filename, scomm, verbose=False, pack_chol=True):
+    """Wrapper to select hamiltonian class with integrals in shared memory.
 
     Parameters
     ----------
-    ham_opts : dict
-        Hamiltonian input options.
+    filename : str
+        Hamiltonian filename.
+    scomm : MPI.COMM_WORLD
+        MPI split communicator (shared memory).
+    pack_chol : bool
+        Only store minimum amount of information required by integrals.
     verbose : bool
         Output verbosity.
 
@@ -43,65 +45,47 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
     ham : object
         Hamiltonian class.
     """
-    if isinstance(system, SysGeneric):
-        filename = ham_opts.get("integrals", None)
-        if filename is None:
-            if comm.rank == 0:
-                print("# Error: integrals not specfied.")
-                sys.exit()
-        start = time.time()
-        hcore, chol, _, enuc = get_generic_integrals(filename, comm=comm, verbose=verbose)
-        if verbose:
-            print(f"# Time to read integrals: {time.time() - start:.6f}")
+    start = time.time()
+    hcore, chol, _, enuc = get_generic_integrals(filename, comm=scomm, verbose=verbose)
+    if verbose:
+        print(f"# Time to read integrals: {time.time() - start:.6f}")
 
-        start = time.time()
+    start = time.time()
 
-        nbsf = hcore.shape[-1]
-        nchol = chol.shape[-1]
-        idx = numpy.triu_indices(nbsf)
+    nbsf = hcore.shape[-1]
+    nchol = chol.shape[-1]
+    idx = numpy.triu_indices(nbsf)
 
-        chol = chol.reshape((nbsf, nbsf, nchol))
+    chol = chol.reshape((nbsf, nbsf, nchol))
 
-        shmem = have_shared_mem(comm)
-        pack_chol = get_input_value(
-            ham_opts, "symmetry", default=True, verbose=verbose, alias=["pack_cholesky"]
-        )
-        if shmem:
-            if comm.rank == 0:
-                cp_shape = (nbsf * (nbsf + 1) // 2, nchol)
-                dtype = chol.dtype
-            else:
-                cp_shape = None
-                dtype = None
-
-            shape = comm.bcast(cp_shape, root=0)
-            dtype = comm.bcast(dtype, root=0)
-            chol_packed = get_shared_array(comm, shape, dtype)
-            if comm.rank == 0 and pack_chol:
-                pack_cholesky(idx[0], idx[1], chol_packed, chol)
-            comm.Barrier()
-        else:
-            dtype = chol.dtype
+    shmem = have_shared_mem(scomm)
+    if shmem:
+        if scomm.rank == 0:
             cp_shape = (nbsf * (nbsf + 1) // 2, nchol)
-            chol_packed = numpy.zeros(cp_shape, dtype=dtype)
-            if pack_chol:
-                pack_cholesky(idx[0], idx[1], chol_packed, chol)
+            dtype = chol.dtype
+        else:
+            cp_shape = None
+            dtype = None
 
-        chol = chol.reshape((nbsf * nbsf, nchol))
-
-        if verbose:
-            print(f"# Time to pack Cholesky vectors: {time.time() - start:.6f}")
-
-        ham = Generic(
-            h1e=hcore,
-            chol=chol,
-            ecore=enuc,
-            verbose=verbose,
-        )
+        shape = scomm.bcast(cp_shape, root=0)
+        dtype = scomm.bcast(dtype, root=0)
+        chol_packed = get_shared_array(scomm, shape, dtype)
+        if scomm.rank == 0 and pack_chol:
+            pack_cholesky(idx[0], idx[1], chol_packed, chol)
+        scomm.Barrier()
     else:
-        if comm.rank == 0:
-            print(f"# Error: unrecognized hamiltonian name {ham_opts['name']}.")
-            sys.exit()
+        dtype = chol.dtype
+        cp_shape = (nbsf * (nbsf + 1) // 2, nchol)
+        chol_packed = numpy.zeros(cp_shape, dtype=dtype)
+        if pack_chol:
+            pack_cholesky(idx[0], idx[1], chol_packed, chol)
+
+    chol = chol.reshape((nbsf * nbsf, nchol))
+
+    if verbose:
+        print(f"# Time to pack Cholesky vectors: {time.time() - start:.6f}")
+
+    ham = Generic(h1e=hcore, chol=chol, ecore=enuc, verbose=verbose)
 
     return ham
 
