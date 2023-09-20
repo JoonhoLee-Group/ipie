@@ -84,11 +84,11 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         system = get_system(
             sys_opts, verbose=verbosity, comm=comm
         )  # Have to deal with shared comm in the future. I think we will remove this...
-        ham_file = get_input_value(ham_opts, 'integrals', None, verbose=verbosity)
+        ham_file = get_input_value(ham_opts, "integrals", None, verbose=verbosity)
         if ham_file is None:
             raise ValueError("Hamiltonian filename not specified.")
         pack_chol = get_input_value(
-            ham_opts, 'symmetry', True, alias=['pack_chol', 'pack_cholesky'], verbose=verbosity
+            ham_opts, "symmetry", True, alias=["pack_chol", "pack_cholesky"], verbose=verbosity
         )
         hamiltonian = get_hamiltonian(
             ham_file, mpi_handler.scomm, pack_chol=pack_chol, verbose=verbosity
