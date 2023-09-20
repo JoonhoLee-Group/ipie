@@ -66,6 +66,7 @@ def write_wavefunction(
         write_single_det_wavefunction(wfn, filename, phi0=phi0)
     else:
         if len(wfn) == 3:
+            len(wfn[1][0])
             write_particle_hole_wavefunction(wfn, filename, phi0=phi0)
         elif len(wfn) == 2:
             write_noci_wavefunction(wfn, filename, phi0=phi0)
@@ -158,9 +159,9 @@ def read_particle_hole_wavefunction(
     filename: str,
 ) -> Tuple[Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray], Optional[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        ci_coeffs = fh5["ci_coeffs"][:]
-        occ_alpha = fh5["occ_alpha"][:]
-        occ_beta = fh5["occ_beta"][:]
+        ci_coeffs = numpy.array(fh5["ci_coeffs"][:])
+        occ_alpha = numpy.array(fh5["occ_alpha"][:])
+        occ_beta = numpy.array(fh5["occ_beta"][:])
     return (ci_coeffs, occ_alpha, occ_beta), None
 
 
@@ -168,19 +169,19 @@ def read_noci_wavefunction(
     filename: str,
 ) -> Tuple[Tuple[numpy.ndarray, List[numpy.ndarray]], Optional[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        ci_coeffs = fh5["ci_coeffs"][:]
-        psia = fh5[f"psi_T_alpha"][:]
-        psib = fh5[f"psi_T_beta"][:]
+        ci_coeffs = numpy.array(fh5["ci_coeffs"][:])
+        psia = numpy.array(fh5[f"psi_T_alpha"][:])
+        psib = numpy.array(fh5[f"psi_T_beta"][:])
     return (ci_coeffs, [psia, psib]), None
 
 
 def read_single_det_wavefunction(filename: str) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        psia = fh5["psi_T_alpha"][:]
-        phi0a = fh5["phi0_alpha"][:]
+        psia = numpy.array(fh5["psi_T_alpha"][:])
+        phi0a = numpy.array(fh5["phi0_alpha"][:])
         try:
-            psib = fh5["psi_T_beta"][:]
-            phi0b = fh5["phi0_beta"][:]
+            psib = numpy.array(fh5["psi_T_beta"][:])
+            phi0b = numpy.array(fh5["phi0_beta"][:])
             wfn = [psia, psib]
             phi0 = [phi0a, phi0b]
         except KeyError:

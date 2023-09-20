@@ -292,6 +292,7 @@ class AFQMC(object):
                 sha1, branch, local_mods, this_uuid, self.mpi_handler.size
             )
             mem_avail = get_host_memory()
+            print(f"# MPI communicator : {type(self.mpi_handler.comm)}")
             print(f"# Available memory on the node is {mem_avail:4.3f} GB")
 
     def setup_estimators(

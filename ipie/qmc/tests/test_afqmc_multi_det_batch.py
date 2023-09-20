@@ -26,7 +26,7 @@ from ipie.config import MPI
 from ipie.qmc.calc import AFQMC
 from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.legacy_testing import build_legacy_driver_instance
-from ipie.utils.testing import build_driver_test_instance
+from ipie.utils.testing import build_driver_test_instance, get_random_phmsd_opt
 
 
 @pytest.mark.driver
@@ -226,10 +226,7 @@ def test_factory_method_particle_hole():
         nalpha = nelec[0]
         nbeta = nelec[1]
         ndet = 10
-        occa = numpy.random.randint((ndet, nalpha))
-        occb = numpy.random.randint((ndet, nbeta))
-        ci_coeffs = numpy.random.random((ndet))
-        wfn = (ci_coeffs, occa, occb)
+        wfn, _ = get_random_phmsd_opt(nalpha, nbeta, nmo, ndet=ndet)
         write_wavefunction(wfn, filename=wfnf.name)
         AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
 

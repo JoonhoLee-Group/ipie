@@ -57,7 +57,6 @@ def get_trial_wavefunction(
     wfn_type = determine_wavefunction_type(wfn_file)
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
-        print(wfn[1])
         na = len(wfn[1][0])
         nb = len(wfn[2][0])
         nelec = (na, nb)
@@ -115,8 +114,6 @@ def setup_qmcpack_wavefunction(
     wfn, psi0, nelec = read_qmcpack_wfn_hdf(wfn_file, get_nelec=True)
     nbasis = psi0.shape[0]
     if len(wfn) == 3:
-        na = len(wfn[1])
-        nb = len(wfn[2])
         if ndet_chunks == 1:
             trial = ParticleHoleNonChunked(
                 wfn, nelec, nbasis, num_dets_for_trial=ndets, num_dets_for_props=ndets_props
@@ -135,8 +132,6 @@ def setup_qmcpack_wavefunction(
             nbasis = wfn[1][0].shape[0]
             trial = SingleDet(wfn[1][0], nelec, nbasis)
         else:
-            na = wfn[1][0].shape[-1]
-            nb = wfn[1][0].shape[-1]
             nbasis = wfn[1][0].shape[0]
             trial = NOCI(wfn, nelec, nbasis)
     else:

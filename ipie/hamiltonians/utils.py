@@ -16,7 +16,6 @@
 #          Joonho Lee
 #
 
-import sys
 import time
 
 import numpy
