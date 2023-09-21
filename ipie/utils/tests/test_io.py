@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 
 from ipie.utils.io import read_hamiltonian, read_wavefunction, write_hamiltonian, write_wavefunction
+from ipie.utils.testing import get_random_phmsd_opt
 
 
 @pytest.mark.unit
@@ -89,10 +90,7 @@ def test_read_write_particle_hole_wavefunction():
     nmo = 10
     nalpha = 5
     nbeta = 7
-    occa = np.random.randint((ndet, nalpha))
-    occb = np.random.randint((ndet, nbeta))
-    ci_coeffs = np.random.random((ndet))
-    wfn = (ci_coeffs, occa, occb)
+    wfn, _ = get_random_phmsd_opt(nalpha, nbeta, nmo, ndet=ndet)
     with tempfile.NamedTemporaryFile() as tmpfile:
         write_wavefunction(wfn, filename=tmpfile.name)
         wfn_read, _ = read_wavefunction(tmpfile.name)

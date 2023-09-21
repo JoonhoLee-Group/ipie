@@ -38,18 +38,9 @@ def test_constructor():
                 "stabilise_freq": 10,
             },
             "walkers": {"pop_control": "comb"},
-            "estimates": {
-                "filename": tmpf.name,
-                "mixed": {"energy_eval_freq": 1},
-            },
+            "estimates": {"filename": tmpf.name, "mixed": {"energy_eval_freq": 1}},
         }
-        model = {
-            "name": "UEG",
-            "rs": 2.44,
-            "ecut": 4,
-            "nup": 7,
-            "ndown": 7,
-        }
+        model = {"name": "UEG", "rs": 2.44, "ecut": 4, "nup": 7, "ndown": 7}
         from ipie.legacy.systems.ueg import UEG
 
         system = UEG(model)
@@ -78,21 +69,10 @@ def test_ueg():
                 "pop_control_freq": 1,
                 "stabilise_freq": 10,
             },
-            "system": {
-                "name": "UEG",
-                "rs": 2.44,
-                "ecut": 2,
-                "nup": 7,
-                "ndown": 7,
-            },
-            "hamiltonian": {
-                "name": "UEG",
-            },
+            "system": {"name": "UEG", "rs": 2.44, "ecut": 2, "nup": 7, "ndown": 7},
+            "hamiltonian": {"name": "UEG"},
             "walkers": {"pop_control": "comb"},
-            "estimates": {
-                "filename": tmpf.name,
-                "mixed": {"energy_eval_freq": 1},
-            },
+            "estimates": {"filename": tmpf.name, "mixed": {"energy_eval_freq": 1}},
             "trial": {"name": "hartree_fock"},
         }
         comm = MPI.COMM_WORLD
@@ -136,23 +116,11 @@ def test_hubbard():
                 "pop_control_freq": 1,
                 "stabilise_freq": 10,
             },
-            "system": {
-                "name": "Generic",
-                "nup": 7,
-                "ndown": 7,
-            },
+            "system": {"name": "Generic", "nup": 7, "ndown": 7},
             "walkers": {"pop_control": "comb"},
-            "hamiltonian": {
-                "name": "Hubbard",
-                "nx": 4,
-                "ny": 4,
-                "U": 4,
-            },
+            "hamiltonian": {"name": "Hubbard", "nx": 4, "ny": 4, "U": 4},
             "trial": {"name": "hubbard_uhf"},
-            "estimates": {
-                "filename": tmpf.name,
-                "mixed": {"energy_eval_freq": 1},
-            },
+            "estimates": {"filename": tmpf.name, "mixed": {"energy_eval_freq": 1}},
             "propagator": {"hubbard_stratonovich": "discrete"},
         }
         comm = MPI.COMM_WORLD
@@ -187,23 +155,11 @@ def test_hubbard_complex():
                 "pop_control_freq": 1,
                 "stabilise_freq": 10,
             },
-            "system": {
-                "name": "Generic",
-                "nup": 7,
-                "ndown": 7,
-            },
+            "system": {"name": "Generic", "nup": 7, "ndown": 7},
             "walkers": {"pop_control": "comb"},
-            "hamiltonian": {
-                "name": "Hubbard",
-                "nx": 4,
-                "ny": 4,
-                "U": 4,
-            },
+            "hamiltonian": {"name": "Hubbard", "nx": 4, "ny": 4, "U": 4},
             "trial": {"name": "hubbard_UHF"},
-            "estimates": {
-                "filename": tmpf.name,
-                "mixed": {"energy_eval_freq": 1},
-            },
+            "estimates": {"filename": tmpf.name, "mixed": {"energy_eval_freq": 1}},
             "propagator": {"hubbard_stratonovich": "continuous"},
         }
         comm = MPI.COMM_WORLD
@@ -240,19 +196,14 @@ def test_generic():
                 "stabilise_freq": 10,
             },
             "walkers": {"pop_control": "comb"},
-            "estimates": {
-                "filename": tmpf.name,
-                "mixed": {"energy_eval_freq": 1},
-            },
+            "estimates": {"filename": tmpf.name, "mixed": {"energy_eval_freq": 1}},
             "trial": {"name": "MultiSlater"},
         }
         numpy.random.seed(7)
         h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
         sys = Generic(nelec=nelec)
         ham = HamGeneric(
-            h1e=numpy.array([h1e, h1e]),
-            chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-            ecore=enuc,
+            h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy(), ecore=enuc
         )
         comm = MPI.COMM_WORLD
         afqmc = AFQMC(comm=comm, system=sys, hamiltonian=ham, options=options)
@@ -299,9 +250,7 @@ def test_generic_single_det():
         sys_opts = {"sparse": True}
         sys = Generic(nelec=nelec)
         ham = HamGeneric(
-            h1e=numpy.array([h1e, h1e]),
-            chol=chol.reshape((-1, nmo * nmo)).T.copy(),
-            ecore=enuc,
+            h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy(), ecore=enuc
         )
         comm = MPI.COMM_WORLD
         afqmc = AFQMC(comm=comm, system=sys, hamiltonian=ham, options=options)

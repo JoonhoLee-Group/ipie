@@ -25,10 +25,12 @@ from typing import Dict, Optional, Tuple
 from ipie.config import config
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.handler import EstimatorHandler
+from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCParams
 from ipie.qmc.utils import set_rng_seed
 from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
 from ipie.utils.io import to_json
@@ -67,14 +69,7 @@ class AFQMC(object):
     """
 
     def __init__(
-        self,
-        system,
-        hamiltonian,
-        trial,
-        walkers,
-        propagator,
-        params: QMCParams,
-        verbose: int = 0,
+        self, system, hamiltonian, trial, walkers, propagator, params: QMCParams, verbose: int = 0
     ):
         self.system = system
         self.hamiltonian = hamiltonian
@@ -103,6 +98,7 @@ class AFQMC(object):
         stabilize_freq=5,
         pop_control_freq=5,
         verbose=True,
+        mpi_handler=None,
     ) -> "AFQMC":
         """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
 
@@ -134,8 +130,11 @@ class AFQMC(object):
         verbose : bool
             Log verbosity. Default True i.e. print information to stdout.
         """
-        mpi_handler = MPIHandler()
-        comm = mpi_handler.comm
+        if mpi_handler is None:
+            mpi_handler = MPIHandler()
+            comm = mpi_handler.comm
+        else:
+            comm = mpi_handler.comm
         params = QMCParams(
             num_walkers=num_walkers,
             total_num_walkers=num_walkers * comm.size,
@@ -179,6 +178,80 @@ class AFQMC(object):
             verbose=(verbose and comm.rank == 0),
         )
 
+    @staticmethod
+    # TODO: wavefunction type, trial type, hamiltonian type
+    def build_from_hdf5(
+        ham_file,
+        wfn_file,
+        num_walkers: int = 100,
+        seed: int = None,
+        num_steps_per_block: int = 25,
+        num_blocks: int = 100,
+        timestep: float = 0.005,
+        stabilize_freq=5,
+        pop_control_freq=5,
+        num_dets_chunk=1,
+        pack_cholesky=True,
+        verbose=True,
+    ) -> "AFQMC":
+        """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
+
+        Parameters
+        ----------
+        num_elec: tuple(int, int)
+            Number of alpha and beta electrons.
+        ham_file : str
+            Path to Hamiltonian describing the system.
+        wfn_file : str
+            Path to Trial wavefunction
+        num_walkers : int
+            Number of walkers per MPI process used in the simulation. The TOTAL
+                number of walkers is num_walkers * number of processes.
+        num_steps_per_block : int
+            Number of Monte Carlo steps before estimators are evaluatied.
+                Default 25.
+        num_blocks : int
+            Number of blocks to perform. Total number of steps = num_blocks *
+                num_steps_per_block.
+        timestep : float
+            Imaginary timestep. Default 0.005.
+        stabilize_freq : float
+            Frequency at which to perform QR factorization of walkers (in units
+                of steps.) Default 25.
+        pop_control_freq : int
+            Frequency at which to perform population control (in units of
+                steps.) Default 25.
+        num_det_chunks : int
+            Size of chunks of determinants to process during batching. Default=1 (no batching).
+        pack_cholesky : bool
+            Use symmetry to reduce memory consumption of integrals. Default True.
+        verbose : bool
+            Log verbosity. Default True i.e. print information to stdout.
+        """
+        mpi_handler = MPIHandler()
+        _verbose = verbose and mpi_handler.comm.rank == 0
+        ham = get_hamiltonian(
+            ham_file, mpi_handler.scomm, verbose=_verbose, pack_chol=pack_cholesky
+        )
+        trial = get_trial_wavefunction(
+            ham.nbasis, wfn_file, ndet_chunks=num_dets_chunk, verbose=_verbose
+        )
+        trial.half_rotate(ham, mpi_handler.scomm)
+        return AFQMC.build(
+            trial.nelec,
+            ham,
+            trial,
+            num_walkers=num_walkers,
+            seed=seed,
+            num_steps_per_block=num_steps_per_block,
+            num_blocks=num_blocks,
+            timestep=timestep,
+            stabilize_freq=stabilize_freq,
+            pop_control_freq=pop_control_freq,
+            verbose=verbose,
+            mpi_handler=mpi_handler,
+        )
+
     def distribute_hamiltonian(self):
         if self.mpi_handler.nmembers > 1:
             if self.mpi_handler.comm.rank == 0:
@@ -216,19 +289,14 @@ class AFQMC(object):
             local_mods = []
         if self.verbose:
             self.sys_info = print_env_info(
-                sha1,
-                branch,
-                local_mods,
-                this_uuid,
-                self.mpi_handler.size,
+                sha1, branch, local_mods, this_uuid, self.mpi_handler.size
             )
             mem_avail = get_host_memory()
+            print(f"# MPI communicator : {type(self.mpi_handler.comm)}")
             print(f"# Available memory on the node is {mem_avail:4.3f} GB")
 
     def setup_estimators(
-        self,
-        filename,
-        additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
+        self, filename, additional_estimators: Optional[Dict[str, EstimatorBase]] = None
     ):
         self.accumulators = WalkerAccumulator(
             ["Weight", "WeightFactor", "HybridEnergy"], self.params.num_steps_per_block
@@ -254,11 +322,7 @@ class AFQMC(object):
         self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
         self.estimators.compute_estimators(
-            comm,
-            self.system,
-            self.hamiltonian,
-            self.trial,
-            self.walkers,
+            comm, self.system, self.hamiltonian, self.trial, self.walkers
         )
         self.accumulators.update(self.walkers)
         self.estimators.print_block(comm, 0, self.accumulators)
@@ -344,12 +408,7 @@ class AFQMC(object):
                 self.tortho += time.time() - start
             start = time.time()
 
-            self.propagator.propagate_walkers(
-                self.walkers,
-                self.hamiltonian,
-                self.trial,
-                eshift,
-            )
+            self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
 
             self.tprop_fbias = self.propagator.timer.tfbias
             self.tprop_ovlp = self.propagator.timer.tovlp
@@ -362,10 +421,7 @@ class AFQMC(object):
             if step > 1:
                 wbound = self.pcontrol.total_weight * 0.10
                 xp.clip(
-                    self.walkers.weight,
-                    a_min=-wbound,
-                    a_max=wbound,
-                    out=self.walkers.weight,
+                    self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
 
             synchronize()
@@ -396,11 +452,7 @@ class AFQMC(object):
             start = time.time()
             if step % self.params.num_steps_per_block == 0:
                 self.estimators.compute_estimators(
-                    comm,
-                    self.system,
-                    self.hamiltonian,
-                    self.trial,
-                    self.walkers,
+                    comm, self.system, self.hamiltonian, self.trial, self.walkers
                 )
                 self.estimators.print_block(
                     comm, step // self.params.num_steps_per_block, self.accumulators
@@ -470,9 +522,7 @@ class AFQMC(object):
                 )
                 print(
                     "#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        (self.tprop_update + self.tprop_clip) / (nblocks * nsteps),
-                        nsteps,
-                        nblocks,
+                        (self.tprop_update + self.tprop_clip) / (nblocks * nsteps), nsteps, nblocks
                     )
                 )
                 print(

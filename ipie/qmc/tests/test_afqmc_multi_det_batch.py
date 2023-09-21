@@ -23,8 +23,10 @@ import pytest
 
 from ipie.analysis.extraction import extract_mixed_estimates, extract_observable
 from ipie.config import MPI
+from ipie.qmc.calc import AFQMC
+from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.legacy_testing import build_legacy_driver_instance
-from ipie.utils.testing import build_driver_test_instance
+from ipie.utils.testing import build_driver_test_instance, get_random_phmsd_opt
 
 
 @pytest.mark.driver
@@ -56,12 +58,7 @@ def test_generic_multi_det_batch():
             "verbosity": 0,
             "get_sha1": False,
             "qmc": options,
-            "estimates": {
-                "filename": tmpf.name,
-                "observables": {
-                    "energy": {},
-                },
-            },
+            "estimates": {"filename": tmpf.name, "observables": {"energy": {}}},
             "walkers": {"population_control": "pair_branch"},
         }
 
@@ -78,11 +75,7 @@ def test_generic_multi_det_batch():
         afqmc.run(verbose=0, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)
         afqmc.estimators.compute_estimators(
-            comm,
-            afqmc.system,
-            afqmc.hamiltonian,
-            afqmc.trial,
-            afqmc.walkers,
+            comm, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.walkers
         )
         numer_batch = afqmc.estimators["energy"]["ENumer"]
         denom_batch = afqmc.estimators["energy"]["EDenom"]
@@ -96,12 +89,7 @@ def test_generic_multi_det_batch():
         }
         driver_options["qmc"]["batched"] = False
         legacy_afqmc = build_legacy_driver_instance(
-            nelec,
-            nmo,
-            trial_type="phmsd",
-            options=driver_options,
-            seed=7,
-            num_dets=ndets,
+            nelec, nmo, trial_type="phmsd", options=driver_options, seed=7, num_dets=ndets
         )
         legacy_afqmc.estimators.estimators["mixed"].print_header()
         legacy_afqmc.run(comm=comm, verbose=1)
@@ -184,12 +172,7 @@ def test_generic_multi_det_batch_noci():
             "verbosity": 0,
             "get_sha1": False,
             "qmc": options,
-            "estimates": {
-                "filename": tmpf.name,
-                "observables": {
-                    "energy": {},
-                },
-            },
+            "estimates": {"filename": tmpf.name, "observables": {"energy": {}}},
             "walkers": {"population_control": "pair_branch"},
         }
 
@@ -205,6 +188,47 @@ def test_generic_multi_det_batch_noci():
         )
         afqmc.run(verbose=0, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)
+
+
+@pytest.mark.driver
+def test_factory_method_noci():
+    with tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
+        numpy.random.seed(7)
+        nmo = 17
+        nelec = (7, 3)
+        nmo = 10
+        naux = 100
+        hcore = numpy.random.random((nmo, nmo))
+        LXmn = numpy.random.random((naux, nmo, nmo))
+        write_hamiltonian(hcore, LXmn, 0.0, filename=hamilf.name)
+        nalpha = nelec[0]
+        nbeta = nelec[1]
+        ndet = 10
+        wfna = numpy.random.random((ndet, nmo, nalpha))
+        wfnb = numpy.random.random((ndet, nmo, nbeta))
+        ci_coeffs = numpy.random.random((ndet))
+        wfn = (ci_coeffs, [wfna, wfnb])
+        write_wavefunction(wfn, filename=wfnf.name)
+        AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
+
+
+@pytest.mark.driver
+def test_factory_method_particle_hole():
+    with tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
+        numpy.random.seed(7)
+        nmo = 17
+        nelec = (7, 3)
+        nmo = 10
+        naux = 100
+        hcore = numpy.random.random((nmo, nmo))
+        LXmn = numpy.random.random((naux, nmo, nmo))
+        write_hamiltonian(hcore, LXmn, 0.0, filename=hamilf.name)
+        nalpha = nelec[0]
+        nbeta = nelec[1]
+        ndet = 10
+        wfn, _ = get_random_phmsd_opt(nalpha, nbeta, nmo, ndet=ndet)
+        write_wavefunction(wfn, filename=wfnf.name)
+        AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
 
 
 if __name__ == "__main__":
