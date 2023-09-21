@@ -82,10 +82,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -r dev/dev.txt
+          pip install -r pytest-xdist
       - name: No mpi4py
         run: |
-          pip uninstall mpi4py
           python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
           python -m pytest -n=auto
       # - name: Codecov
