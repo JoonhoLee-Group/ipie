@@ -72,6 +72,7 @@ jobs:
         mpirun -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
         python dev/run_tests.py --examples
     - name: No mpi4py
+      run: |
         pip uninstall mpi4py
         python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
         python -m pytest -n=auto
