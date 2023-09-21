@@ -167,7 +167,9 @@ class AFQMC(object):
                 num_walkers,
                 mpi_handler=mpi_handler,
             )
-            walkers.build(trial_wavefunction)  # any intermediates that require information from trial
+            walkers.build(
+                trial_wavefunction
+            )  # any intermediates that require information from trial
         # TODO: this is a factory not a class
         propagator = Propagator[type(hamiltonian)](params.timestep)
         propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
