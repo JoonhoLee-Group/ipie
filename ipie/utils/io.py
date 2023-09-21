@@ -270,7 +270,7 @@ def get_input_value(inputs, key, default, alias=None, verbose=False):
     return val
 
 
-def read_qmcpack_wfn_hdf(filename, nelec=None, get_nelec=True):
+def read_qmcpack_wfn_hdf(filename, nelec=None, get_nelec=False):
     try:
         with h5py.File(filename, "r") as fh5:
             wgroup = fh5["Wavefunction/NOMSD"]
@@ -288,7 +288,10 @@ def read_qmcpack_wfn_hdf(filename, nelec=None, get_nelec=True):
     except KeyError:
         print("Wavefunction not found.")
         sys.exit()
-    return wfn, psi0, nelec
+    if get_nelec:
+        return wfn, psi0, nelec
+    else:
+        return wfn, psi0
 
 
 def read_qmcpack_nomsd_hdf5(wgroup, nelec=None):
