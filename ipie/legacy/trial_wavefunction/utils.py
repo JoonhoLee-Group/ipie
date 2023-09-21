@@ -44,7 +44,7 @@ def get_trial_wavefunction(
         if wfn_file is not None:
             if verbose:
                 print(f"# Reading wavefunction from {wfn_file}.")
-            read, psi0, _ = read_qmcpack_wfn_hdf(wfn_file)
+            read, psi0 = read_qmcpack_wfn_hdf(wfn_file)
             thresh = options.get("threshold", None)
             if thresh is not None:
                 coeff = read[0]
