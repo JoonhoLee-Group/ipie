@@ -95,6 +95,7 @@ class AFQMC(object):
         num_elec: Tuple[int, int],
         hamiltonian,
         trial_wavefunction,
+        walkers=None,
         num_walkers: int = 100,
         seed: int = None,
         num_steps_per_block: int = 25,
@@ -154,18 +155,19 @@ class AFQMC(object):
             trial_wavefunction.e1b = comm.bcast(trial_wavefunction.e1b, root=0)
             trial_wavefunction.e2b = comm.bcast(trial_wavefunction.e2b, root=0)
         comm.barrier()
-        _, initial_walker = get_initial_walker(trial_wavefunction)
-        # TODO this is a factory method not a class
-        walkers = UHFWalkersTrial(
-            trial_wavefunction,
-            initial_walker,
-            system.nup,
-            system.ndown,
-            hamiltonian.nbasis,
-            num_walkers,
-            mpi_handler=mpi_handler,
-        )
-        walkers.build(trial_wavefunction)  # any intermediates that require information from trial
+        if walkers is None:
+            _, initial_walker = get_initial_walker(trial_wavefunction)
+            # TODO this is a factory method not a class
+            walkers = UHFWalkersTrial(
+                trial_wavefunction,
+                initial_walker,
+                system.nup,
+                system.ndown,
+                hamiltonian.nbasis,
+                num_walkers,
+                mpi_handler=mpi_handler,
+            )
+            walkers.build(trial_wavefunction)  # any intermediates that require information from trial
         # TODO: this is a factory not a class
         propagator = Propagator[type(hamiltonian)](params.timestep)
         propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
