@@ -120,6 +120,7 @@ def run_test_system(input_file, benchmark_file, legacy_job=False):
 
 if __name__ == "__main__":
     err_count = 0
+    err_msg = []
     for test_name, (ind, outd) in zip(_test_dirs, _tests):
         comparison = run_test_system(ind, outd)
         local_err_count = 0
@@ -130,6 +131,9 @@ if __name__ == "__main__":
                     print(
                         f" *** FAILED **** : mismatch between benchmark and test run: {test_name}"
                     )
+                    err_msg.append(
+                        f" *** FAILED **** : mismatch between benchmark and test run: {test_name}"
+                    )
                     err_count += 1
                     print(f"name = {k}\n ref = {v[0]}\n test = {v[1]}\n delta = {v[0]-v[1]}\n")
         else:
@@ -137,6 +141,7 @@ if __name__ == "__main__":
         if local_err_count == 0 and comm.rank == 0:
             print(f"*** PASSED : {test_name} ***")
     err_count = comm.bcast(err_count)
+    err_msg = comm.bcast(err_msg)
     for test_name, (ind, outd) in zip(_legacy_test_dirs, _legacy_tests):
         comparison = run_test_system(ind, outd, legacy_job=True)
         local_err_count = 0
@@ -145,6 +150,9 @@ if __name__ == "__main__":
                 if not v[-1]:
                     local_err_count += 1
                     print(f" *** FAILED *** : mismatch between benchmark and test run: {test_name}")
+                    err_msg.append(
+                        f" *** FAILED **** : mismatch between benchmark and test run: {test_name}"
+                    )
                     err_count += 1
                     print(f"name = {k}\n ref = {v[0]}\n test = {v[1]}\n delta = {v[0]-v[1]}\n")
         else:
@@ -152,4 +160,8 @@ if __name__ == "__main__":
         if local_err_count == 0 and comm.rank == 0:
             print(f"*** PASSED : {test_name} ***")
     err_count = comm.bcast(err_count)
+    err_msg = comm.bcast(err_msg)
+    if local_err_count > 0 and comm.rank == 0:
+        for msg in err_msg:
+            print(msg)
     sys.exit(err_count)
