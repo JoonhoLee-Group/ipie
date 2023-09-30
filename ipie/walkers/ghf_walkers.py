@@ -67,7 +67,7 @@ class GHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler: MPIHandler = None,
+        mpi_handler,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2

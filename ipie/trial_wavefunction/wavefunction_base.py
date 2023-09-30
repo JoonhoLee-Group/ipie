@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from ipie.config import CommType, config, MPI
+from ipie.config import CommType, MPI
 from ipie.utils.backend import cast_to_device
 
 _wfn_type = Union[

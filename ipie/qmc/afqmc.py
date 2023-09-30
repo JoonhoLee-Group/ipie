@@ -164,7 +164,7 @@ class AFQMC(object):
                 system.ndown,
                 hamiltonian.nbasis,
                 num_walkers,
-                mpi_handler=mpi_handler,
+                mpi_handler,
             )
             walkers.build(
                 trial_wavefunction
