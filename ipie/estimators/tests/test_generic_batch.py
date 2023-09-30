@@ -70,7 +70,9 @@ def test_greens_function_batch():
 
     legacy_walkers = build_legacy_test_case(wfn, init, system, legacy_ham, nsteps, nwalkers, dt)
     numpy.random.seed(7)
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     for iw in range(nwalkers):
         walkers.phia[iw] = legacy_walkers[iw].phi[:, : nelec[0]].copy()
@@ -130,7 +132,9 @@ def test_local_energy_single_det_batch():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": 10})
     prop = PhaselessGeneric(time_step=qmc["dt"])
     prop.build(ham, trial)
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     for i in range(nsteps):
         prop.propagate_walkers(walkers, ham, trial, 0)
@@ -207,7 +211,9 @@ def test_local_energy_single_det_batch_packed():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     prop = PhaselessGeneric(time_step=qmc["dt"])
     prop.build(ham, trial)
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     for i in range(nsteps):
         prop.propagate_walkers(walkers, ham, trial, 0.0)
@@ -272,7 +278,9 @@ def test_local_energy_single_det_batch_rhf():
     # walkers = SingleDetWalkerBatch(
     #     system, ham, trial, nwalkers, init, walker_opts={"rhf": True}
     # )
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     walkers.rhf = True
     for i in range(nsteps):
@@ -350,7 +358,9 @@ def test_local_energy_single_det_batch_rhf_packed():
     # walkers = SingleDetWalkerBatch(
     #     system, ham, trial, nwalkers, init, walker_opts=walker_opts
     # )
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     walkers.rhf = True
 
