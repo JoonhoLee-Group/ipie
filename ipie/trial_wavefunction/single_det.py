@@ -1,10 +1,10 @@
 import time
+from typing import Optional
 
 import numpy
 import plum
-import mpi4py
 
-from ipie.config import config
+from ipie.config import CommType, config, MPI
 from ipie.estimators.generic import half_rotated_cholesky_jk
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
@@ -82,7 +82,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm: mpi4py.MPI.Intracomm = mpi4py.MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -108,7 +108,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm: mpi4py.MPI.Intracomm = mpi4py.MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))

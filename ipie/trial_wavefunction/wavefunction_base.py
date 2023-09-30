@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
-import mpi4py
 
+from ipie.config import CommType, config, MPI
 from ipie.utils.backend import cast_to_device
 
 _wfn_type = Union[
@@ -71,7 +71,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian, comm=mpi4py.MPI.COMM_WORLD) -> None:
+    def half_rotate(self, hamiltonian, comm: Optional[CommType] = MPI.COMM_WORLD) -> None:
         ...
 
     @abstractmethod
