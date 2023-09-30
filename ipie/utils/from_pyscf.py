@@ -86,7 +86,7 @@ def gen_ipie_input_from_pyscf_chk(
         ci_coeffs = scf_data["ci_coeffs"]
         occa = scf_data["occa"]
         occb = scf_data["occb"]
-        write_wavefunction((ci_coeffs, occa, occb), wfn_file, nelec)
+        write_wavefunction((ci_coeffs, occa, occb), wfn_file)
     else:
         wfn = generate_wavefunction_from_mo_coeff(
             mo_coeffs,

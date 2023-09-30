@@ -93,7 +93,7 @@ def test_generic_chunked():
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walkers = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
     walkers.build(trial)
 

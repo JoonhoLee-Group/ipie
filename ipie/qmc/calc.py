@@ -120,7 +120,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             system.ndown,
             hamiltonian.nbasis,
             qmc.nwalkers,
-            mpi_handler=mpi_handler,
+            mpi_handler,
         )
         walkers.build(trial)  # any intermediates that require information from trial
         params = QMCParams(

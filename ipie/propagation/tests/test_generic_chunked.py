@@ -89,7 +89,7 @@ def test_generic_propagation_chunked():
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
 
     walker_batch = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
     walker_batch.build(trial)
 
