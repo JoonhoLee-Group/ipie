@@ -1223,10 +1223,92 @@ def build_CI_nfold_excitation_opt(
         cof_mat = numpy.zeros(
             (nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128
         )
+        wk.reduce_CI_nfold(
+            trial.cre_ex_a[nexcit],
+            trial.anh_ex_a[nexcit],
+            trial.occ_map_a,
+            trial.nfrozen,
+            phases,
+            det_mat,
+            cof_mat,
+            walker_batch.CIa,
+        )
+    ndets_b = len(trial.cre_ex_b[nexcit])
+    if ndets_b == 0:
+        pass
+    else:
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
+        det_mat = numpy.zeros(
+            (nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128
+        )
+        wk.build_det_matrix(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
+            trial.nfrozen,
+            walker_batch.Ghalfb,
+            det_mat,
+        )
+        cof_mat = numpy.zeros(
+            (nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128
+        )
+        wk.reduce_CI_nfold(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
+            trial.nfrozen,
+            phases,
+            det_mat,
+            cof_mat,
+            walker_batch.CIb,
+        )
+
+def build_CI_quadruple_excitation_opt(
+    walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
+):
+    """N-fold excitation contributions to CI intermediate for wicks.
+
+    Optimized using numba.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    c_phasea_ovlpb : np.ndarray
+        ci coeffs and phases of alpha dets * overlaps of beta determinants.
+    c_phaseb_ovlpa : np.ndarray
+        ci coeffs and phases of beta dets * overlaps of alpha determinants.
+    Returns
+    -------
+    None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
+    """
+    nexcit = 4
+    ndets_a = len(trial.cre_ex_a[nexcit])
+    nwalkers = walker_batch.G0a.shape[0]
+    if ndets_a == 0:
+        pass
+    else:
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+        det_mat = numpy.zeros(
+            (nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128
+        )
+        wk.build_det_matrix(
+            trial.cre_ex_a[nexcit],
+            trial.anh_ex_a[nexcit],
+            trial.occ_map_a,
+            trial.nfrozen,
+            walker_batch.Ghalfa,
+            det_mat,
+        )
+        cof_mat = numpy.zeros(
+            (nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128
+        )
         dets_mat = numpy.zeros(
             (nwalkers, ndets_a), dtype=numpy.complex128
         )
-        wk.reduce_CI_nfold(
+        wk.reduce_CI_quadruples(
             trial.cre_ex_a[nexcit],
             trial.anh_ex_a[nexcit],
             trial.occ_map_a,
@@ -1259,7 +1341,7 @@ def build_CI_nfold_excitation_opt(
         dets_mat = numpy.zeros(
             (nwalkers, ndets_b), dtype=numpy.complex128
         )
-        wk.reduce_CI_nfold(
+        wk.reduce_CI_quadruples(
             trial.cre_ex_b[nexcit],
             trial.anh_ex_b[nexcit],
             trial.occ_map_b,
@@ -1382,8 +1464,11 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
         build_CI_triple_excitation_opt(
             walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
         )
-    for iexcit in range(4, trial.max_excite + 1):
-        start = time.time()
+    if trial.max_excite >= 4:
+        build_CI_quadruple_excitation_opt(
+            walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
+        )
+    for iexcit in range(5, trial.max_excite + 1):
         build_CI_nfold_excitation_opt(
             iexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa
         )

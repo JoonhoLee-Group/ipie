@@ -469,6 +469,40 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 
 @jit(nopython=True, fastmath=True)
 def _reduce_nfold_cofactor_contribution(
+    ps, qs, mapping, sign, phases, cof_mat, CI
+):
+    """Reduction to CI intermediate from cofactor contributions.
+
+    Parameters
+    ----------
+    ps : np.ndarray
+        Array containing orbitals excitations of occupied.
+    qs : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    signs : int
+        Phase factor arrising from excitation level.
+    det_cofactor_matrix : np.ndarray
+        Det Cofactor matrix previously constructed.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
+    nwalkers = cof_mat.shape[0]
+    ndets = cof_mat.shape[1]
+    for iw in range(nwalkers):
+        for idet in range(ndets):
+            p = mapping[ps[idet]]
+            q = qs[idet]
+            rhs = sign * numpy.linalg.det(cof_mat[iw, idet]) * phases[iw, idet]
+            CI[iw, q, p] += rhs
+
+@jit(nopython=True, fastmath=True)
+def _reduce_quad_cofactor_contribution(
     ps, qs, mapping, sign, phases, det_cof_mat, CI
 ):
     """Reduction to CI intermediate from cofactor contributions.
@@ -503,7 +537,7 @@ def _reduce_nfold_cofactor_contribution(
 
 
 @jit(nopython=True, fastmath=True)
-def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat,
+def reduce_CI_quadruples(cre, anh, mapping, offset, phases, det_mat, cof_mat,
                     dets_mat, CI):
     """Reduction to CI intermediate for n-fold excitations.
 
@@ -530,8 +564,6 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat,
     -------
     None
     """
-    ndets = len(cre)
-    nwalkers = CI.shape[0]
     nexcit = det_mat.shape[-1]
     for iex in range(nexcit):
         p = cre[:, iex]
@@ -540,8 +572,47 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat,
             build_cofactor_matrix(iex, jex, det_mat, cof_mat)
             get_dets_rank_3(cof_mat, dets_mat)
             sign = (-1 + 0.0j) ** (iex + jex)
-            _reduce_nfold_cofactor_contribution(
+            _reduce_quad_cofactor_contribution(
                 p, q, mapping, sign, phases, dets_mat, CI
+            )
+
+@jit(nopython=True, fastmath=True)
+def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat,
+                    CI):
+    """Reduction to CI intermediate for n-fold excitations.
+
+    Parameters
+    ----------
+    cre : np.ndarray
+        Array containing orbitals excitations of occupied.
+    anh : np.ndarray
+        Array containing orbitals excitations to virtuals.
+    mapping : np.ndarray
+        Map original (occupied) orbital to index in compressed form.
+    offset : int
+        Offset for frozen core.
+    phases : np.ndarray
+        Phase factors.
+    det_mat: np.ndarray
+        Array of determinants <D_I|phi>.
+    cof_mat: np.ndarray
+        Cofactor matrix previously constructed.
+    CI : np.ndarray
+        Output array for CI intermediate.
+
+    Returns
+    -------
+    None
+    """
+    nexcit = det_mat.shape[-1]
+    for iex in range(nexcit):
+        p = cre[:, iex]
+        for jex in range(nexcit):
+            q = anh[:, jex]
+            build_cofactor_matrix(iex, jex, det_mat, cof_mat)
+            sign = (-1 + 0.0j) ** (iex + jex)
+            _reduce_nfold_cofactor_contribution(
+                p, q, mapping, sign, phases, cof_mat, CI
             )
 
 
