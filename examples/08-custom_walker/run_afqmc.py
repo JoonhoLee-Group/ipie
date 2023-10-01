@@ -174,7 +174,12 @@ class CustomUHFWalkers(UHFWalkers):
 
 
 walkers = CustomUHFWalkers(
-    np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers  # initial_walkers
+    np.hstack([orbs, orbs]),
+    system.nup,
+    system.ndown,
+    ham.nbasis,
+    num_walkers,
+    mpi_handler,  # initial_walkers
 )
 params = QMCParams(
     num_walkers=num_walkers,
