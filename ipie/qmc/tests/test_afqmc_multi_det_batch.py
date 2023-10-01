@@ -209,7 +209,7 @@ def test_factory_method_noci():
         ci_coeffs = numpy.random.random((ndet))
         wfn = (ci_coeffs, [wfna, wfnb])
         write_wavefunction(wfn, filename=wfnf.name)
-        AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
+        AFQMC.build_from_hdf5(nelec, hamilf.name, wfnf.name)
 
 
 @pytest.mark.driver
@@ -228,7 +228,7 @@ def test_factory_method_particle_hole():
         ndet = 10
         wfn, _ = get_random_phmsd_opt(nalpha, nbeta, nmo, ndet=ndet)
         write_wavefunction(wfn, filename=wfnf.name)
-        AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
+        AFQMC.build_from_hdf5(nelec, hamilf.name, wfnf.name)
 
 
 if __name__ == "__main__":

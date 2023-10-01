@@ -94,7 +94,9 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             ham_file, mpi_handler.scomm, pack_chol=pack_chol, verbose=verbosity
         )
         wfn_file = get_input_value(twf_opt, "filename", default="", alias=["wfn_file"])
+        num_elec = (system.nup, system.ndown)
         trial = get_trial_wavefunction(
+            num_elec,
             hamiltonian.nbasis,
             wfn_file,
             verbose=verbosity,
