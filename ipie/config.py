@@ -28,14 +28,18 @@ def _select_mpi():
     try:
         from mpi4py import MPI
 
-        return MPI
+        comm_type = MPI.Intracomm
+
+        return MPI, comm_type
     except (ModuleNotFoundError, ImportError):
-        from ipie.qmc.comm import MPI
+        from ipie.qmc.comm import FakeComm, MPI
 
-        return MPI
+        comm_type = FakeComm
+
+        return MPI, comm_type
 
 
-MPI = _select_mpi()
+MPI, CommType = _select_mpi()
 
 
 class Config:

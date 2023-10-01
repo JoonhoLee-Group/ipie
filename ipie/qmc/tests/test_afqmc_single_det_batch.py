@@ -251,7 +251,7 @@ def test_factory_method():
         wfnb = numpy.random.random((nmo, nbeta))
         wfn = [wfna, wfnb]
         write_wavefunction(wfn, filename=wfnf.name)
-        AFQMC.build_from_hdf5(hamilf.name, wfnf.name)
+        AFQMC.build_from_hdf5(nelec, hamilf.name, wfnf.name)
 
 
 if __name__ == "__main__":

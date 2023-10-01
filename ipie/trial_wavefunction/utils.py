@@ -16,6 +16,8 @@
 #          Joonho Lee
 #
 
+from typing import Tuple
+
 import numpy as np
 
 from ipie.trial_wavefunction.noci import NOCI
@@ -32,6 +34,7 @@ from ipie.utils.io import (
 
 
 def get_trial_wavefunction(
+    num_elec: Tuple[int, int],
     nbasis: int,
     wfn_file: str,
     ndets: int = -1,
@@ -57,13 +60,10 @@ def get_trial_wavefunction(
     wfn_type = determine_wavefunction_type(wfn_file)
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
-        na = len(wfn[1][0])
-        nb = len(wfn[2][0])
-        nelec = (na, nb)
         if ndet_chunks == 1:
             trial = ParticleHoleNonChunked(
                 wfn,
-                nelec,
+                num_elec,
                 nbasis,
                 num_dets_for_trial=ndets,
                 num_dets_for_props=ndets_props,
@@ -72,7 +72,7 @@ def get_trial_wavefunction(
         else:
             trial = ParticleHole(
                 wfn,
-                nelec,
+                num_elec,
                 nbasis,
                 num_dets_for_trial=ndets,
                 num_dets_for_props=ndets_props,

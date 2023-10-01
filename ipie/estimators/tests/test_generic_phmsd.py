@@ -45,6 +45,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.utils.misc import dotdict
+from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, get_random_phmsd_opt
 from ipie.walkers.uhf_walkers import UHFWalkersParticleHole
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
@@ -84,13 +85,19 @@ def test_greens_function_wicks_opt():
     trial_opt.build()
     numpy.random.seed(7)
 
-    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_wick = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
 
-    walkers_slow = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_slow = UHFWalkersTrial(
+        trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers_slow.build(trial_slow)
 
-    walkers_opt = UHFWalkersTrial(trial_opt, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_opt = UHFWalkersTrial(
+        trial_opt, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers_opt.build(trial_opt)
 
     options = {"hybrid": True}
@@ -147,7 +154,9 @@ def test_greens_function_edge_cases():
     wfn, init = get_random_phmsd_opt(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
     trial = ParticleHole(wfn, nelec, nmo, verbose=False)
     trial.build()
-    walkers_wick = UHFWalkersParticleHole(init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_wick = UHFWalkersParticleHole(
+        init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
     ovlps_ref_wick = greens_function_multi_det_wicks_opt(walkers_wick, trial)
 
@@ -275,7 +284,9 @@ def test_det_matrix():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -351,21 +362,25 @@ def test_phmsd_local_energy():
     trial_test.build()
     trial_test.half_rotate(ham)
     numpy.random.seed(7)
-    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers_wick = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial_slow, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial_slow)
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
     walker_batch_test2 = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test2.build(trial)
 
@@ -436,7 +451,9 @@ def test_kernels_energy():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
     numpy.random.seed(7)
     for i in range(nsteps):
@@ -654,7 +671,9 @@ def test_kernels_gf():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(ham, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -805,12 +824,12 @@ def test_kernels_gf_active_space():
     init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
@@ -997,12 +1016,12 @@ def test_kernels_energy_active_space():
     prop.build(ham, trial_ref)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
@@ -1269,12 +1288,24 @@ def test_phmsd_local_energy_active_space():
     prop.build(ham, trial_ref)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_ref,
+        init,
+        system.nup,
+        system.ndown,
+        ham.nbasis,
+        nwalkers,
+        MPIHandler(),
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test,
+        init,
+        system.nup,
+        system.ndown,
+        ham.nbasis,
+        nwalkers,
+        MPIHandler(),
     )
     walker_batch_test.build(trial_test)
 
@@ -1363,16 +1394,18 @@ def test_phmsd_local_energy_active_space_polarised():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
     walker_batch_test_chunked = UHFWalkersTrial(
-        trial_test_chunked, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test_chunked, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test_chunked.build(trial_test_chunked)
 
@@ -1494,16 +1527,18 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 

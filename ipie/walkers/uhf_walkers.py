@@ -40,7 +40,7 @@ class UHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler=None,
+        mpi_handler,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -178,7 +178,7 @@ class UHFWalkersParticleHole(UHFWalkers):
         ndown,
         nbasis,
         nwalkers,
-        mpi_handler=None,
+        mpi_handler,
         verbose=False,
     ):
         super().__init__(
@@ -279,7 +279,7 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
         ndown,
         nbasis,
         nwalkers,
-        mpi_handler=None,
+        mpi_handler,
         verbose=False,
     ):
         super().__init__(

@@ -28,6 +28,7 @@ from ipie.trial_wavefunction.particle_hole import (
 )
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.utils.mpi import MPIHandler
 from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.walkers.uhf_walkers import (
     UHFWalkers,
@@ -64,7 +65,7 @@ def GHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return GHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
@@ -78,7 +79,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
@@ -92,7 +93,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkersParticleHole(
@@ -108,7 +109,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkersParticleHole(
@@ -124,7 +125,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkersParticleHoleNaive(
@@ -140,7 +141,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkersParticleHoleNaive(
@@ -156,7 +157,7 @@ def UHFWalkersTrial(
     ndown: int,
     nbasis: int,
     nwalkers: int,
-    mpi_handler=None,
+    mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
     return UHFWalkersNOCI(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)

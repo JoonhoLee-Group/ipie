@@ -304,6 +304,7 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         system.ndown,
         ham.nbasis,
         nwalkers,
+        MPIHandler(),
     )
     walkers.build(trial)
 
@@ -463,7 +464,7 @@ def build_test_case_handlers_mpi(
     reconf_freq = get_input_value(options, "reconfiguration_freq", default=50)
 
     walkers = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers.build(trial)
     pcontrol = PopController(
@@ -528,7 +529,9 @@ def build_test_case_handlers(
         numpy.random.seed(seed)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)  # any intermediates that require information from trial
 
     prop = PhaselessGeneric(time_step=options["dt"])

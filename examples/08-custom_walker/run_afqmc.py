@@ -161,10 +161,12 @@ trial.half_rotate(ham)
 np.random.seed(7)
 from ipie.walkers.uhf_walkers import UHFWalkers
 
+mpi_handler = MPIHandler()
+
 
 class CustomUHFWalkers(UHFWalkers):
-    def __init__(self, initial_walker, nup, ndown, nbasis, nwalkers):
-        super().__init__(initial_walker, nup, ndown, nbasis, nwalkers)
+    def __init__(self, initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler):
+        super().__init__(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler)
 
     def reortho(self):
         print("customized reortho called")
@@ -172,7 +174,12 @@ class CustomUHFWalkers(UHFWalkers):
 
 
 walkers = CustomUHFWalkers(
-    np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers  # initial_walkers
+    np.hstack([orbs, orbs]),
+    system.nup,
+    system.ndown,
+    ham.nbasis,
+    num_walkers,
+    mpi_handler,  # initial_walkers
 )
 params = QMCParams(
     num_walkers=num_walkers,
@@ -183,7 +190,6 @@ params = QMCParams(
     rng_seed=7,
 )
 
-mpi_handler = MPIHandler()
 propagator = PhaselessGeneric(params.timestep)
 propagator.build(ham, trial, walkers, mpi_handler)
 

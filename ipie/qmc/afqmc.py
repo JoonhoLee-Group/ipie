@@ -164,7 +164,7 @@ class AFQMC(object):
                 system.ndown,
                 hamiltonian.nbasis,
                 num_walkers,
-                mpi_handler=mpi_handler,
+                mpi_handler,
             )
             walkers.build(
                 trial_wavefunction
@@ -185,6 +185,7 @@ class AFQMC(object):
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type
     def build_from_hdf5(
+        num_elec: Tuple[int, int],
         ham_file,
         wfn_file,
         num_walkers: int = 100,
@@ -238,7 +239,7 @@ class AFQMC(object):
             ham_file, mpi_handler.scomm, verbose=_verbose, pack_chol=pack_cholesky
         )
         trial = get_trial_wavefunction(
-            ham.nbasis, wfn_file, ndet_chunks=num_dets_chunk, verbose=_verbose
+            num_elec, ham.nbasis, wfn_file, ndet_chunks=num_dets_chunk, verbose=_verbose
         )
         trial.half_rotate(ham, mpi_handler.scomm)
         return AFQMC.build(
