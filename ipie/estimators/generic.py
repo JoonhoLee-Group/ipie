@@ -116,7 +116,6 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
 
     e2b = 0.5 * (ecoul - exx)
-
     return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
 

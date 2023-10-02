@@ -22,6 +22,7 @@ from ipie.estimators.local_energy_batch import (
 )
 from ipie.utils.backend import arraylib as xp
 
+from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleNaive,
     ParticleHoleWicks,
@@ -49,6 +50,7 @@ import plum
 # Single dispatch
 _dispatcher = {
     ParticleHoleNaive: local_energy_multi_det_trial_batch,
+    NOCI:local_energy_multi_det_trial_batch,
     ParticleHoleWicks: local_energy_multi_det_trial_wicks_batch_opt_chunked,
     ParticleHoleWicksNonChunked: local_energy_multi_det_trial_wicks_batch_opt,
     ParticleHoleWicksSlow: local_energy_multi_det_trial_wicks_batch,
@@ -79,6 +81,15 @@ def local_energy(
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
     trial: ParticleHoleNaive,
+):
+    return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
+
+@plum.dispatch
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericRealChol,
+    walkers: UHFWalkers,
+    trial: NOCI,
 ):
     return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
 
