@@ -53,11 +53,9 @@ class UHFThermalWalkers(BaseWalkers):
         self.Ga = numpy.zeros(
                     shape=(self.nwalkers, self.nbasis, self.nbasis),
                     dtype=numpy.complex128)
-                )
         self.Gb = numpy.zeros(
                     shape=(self.nwalkers, self.nbasis, self.nbasis),
                     dtype=numpy.complex128)
-                )
         self.Ghalf = None
         max_diff_diag = numpy.linalg.norm(
                             (numpy.diag(

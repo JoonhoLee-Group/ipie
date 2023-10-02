@@ -11,8 +11,6 @@ class UHFThermalWalkers(BaseWalkers):
     def __init__(
         self,
         trial: OneBody,
-        nup: int,
-        ndown: int,
         nbasis: int,
         nwalkers: int,
         nstack = None,
@@ -24,8 +22,8 @@ class UHFThermalWalkers(BaseWalkers):
         """UHF style walker.
         """
         assert isinstance(trial, OneBody)
-        self.nup = nup
-        self.ndown = ndown
+        super().__init__(nwalkers, verbose=verbose)
+
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
         self.nslice = trial.nslice
@@ -48,10 +46,15 @@ class UHFThermalWalkers(BaseWalkers):
         self.lowrank = lowrank
         self.lowrank_thresh = lowrank_thresh
 
-        super().__init__(nwalkers, verbose=verbose)
-
-        self.G = numpy.zeros(trial.dmat.shape, dtype=numpy.complex128)
+        self.Ga = numpy.zeros(
+                    shape=(self.nwalkers, self.nbasis, self.nbasis),
+                    dtype=numpy.complex128)
+        self.Gb = numpy.zeros(
+                    shape=(self.nwalkers, self.nbasis, self.nbasis),
+                    dtype=numpy.complex128)
+        
         self.Ghalf = None
+
         max_diff_diag = numpy.linalg.norm(
                             (numpy.diag(
                                 trial.dmat[0].diagonal()) - trial.dmat[0]))
@@ -69,7 +72,7 @@ class UHFThermalWalkers(BaseWalkers):
             print(f"# Walker stack size: {self.nstack}")
             print(f"# Using low rank trick: {self.lowrank}")
 
-        self.stack = PropagatorStack(
+        self.stack = [PropagatorStack(
             self.nstack,
             self.nslice,
             self.nbasis,
@@ -79,35 +82,45 @@ class UHFThermalWalkers(BaseWalkers):
             diagonal=self.diagonal_trial,
             lowrank=self.lowrank,
             thresh=self.lowrank_thresh,
-        )
+        ) for iw in range(self.nwalkers)]
 
         # Initialise all propagators to the trial density matrix.
-        self.stack.set_all(trial.dmat)
-        self.greens_function_qr_strat(trial)
-        self.stack.G = self.G
-        self.M0 = numpy.array(
+        for iw in range(self.nwalkers):
+            self.stack[iw].set_all(trial.dmat)
+            self.greens_function_qr_strat(iw)
+            self.stack[iw].Ga = self.Ga[iw]
+            self.stack[iw].Gb = self.Gb[iw]
+        self.M0a = numpy.array(
             [
-                scipy.linalg.det(self.G[0], check_finite=False),
-                scipy.linalg.det(self.G[1], check_finite=False),
+                scipy.linalg.det(self.Ga[iw], check_finite=False) for iw in range(self.nwalkers)
             ]
         )
-        self.stack.ovlp = numpy.array([1.0 / self.M0[0], 1.0 / self.M0[1]])
+        self.M0b = numpy.array(
+            [
+                scipy.linalg.det(self.Gb[iw], check_finite=False) for iw in range(self.nwalkers)
+            ]
+        )
+        for iw in range(self.nwalkers):
+            self.stack[iw].ovlp = numpy.array([1.0 / self.M0a[iw], 1.0 / self.M0b[iw]])
 
-        # Temporary storage for stacks...
-        I = numpy.identity(self.nbasis, dtype=numpy.complex128)
-        One = numpy.ones(self.nbasis, dtype=numpy.complex128)
-        self.Tl = numpy.array([I, I])
-        self.Ql = numpy.array([I, I])
-        self.Dl = numpy.array([One, One])
-        self.Tr = numpy.array([I, I])
-        self.Qr = numpy.array([I, I])
-        self.Dr = numpy.array([One, One])
+        # # Temporary storage for stacks...
+        # We should kill these here and store them in stack (10/02/2023)
+        # I = numpy.identity(self.nbasis, dtype=numpy.complex128)
+        # One = numpy.ones(self.nbasis, dtype=numpy.complex128)
+        # self.Tl = numpy.array([I, I])
+        # self.Ql = numpy.array([I, I])
+        # self.Dl = numpy.array([One, One])
+        # self.Tr = numpy.array([I, I])
+        # self.Qr = numpy.array([I, I])
+        # self.Dr = numpy.array([One, One])
 
         self.hybrid_energy = 0.0
         if verbose:
-            P = one_rdm_from_G(self.G)
-            nav = particle_number(P)
-            print(f"# Trial electron number: {nav}")
+            for iw in range(self.nwalkers):
+                G = numpy.array([self.Ga[iw],self.Gb[iw]])
+                P = one_rdm_from_G(G)
+                nav = particle_number(P)
+                print(f"# Trial electron number for {iw}-th walker: {nav}")
 
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
@@ -500,15 +513,15 @@ class UHFThermalWalkers(BaseWalkers):
                 )
         return G
 
-    def greens_function_qr_strat(self, trial, slice_ix=None, inplace=True):
+    def greens_function_qr_strat(self, iw, slice_ix=None, inplace=True):
         # Use Stratification method (DOI 10.1109/IPDPS.2012.37)
         if slice_ix == None:
-            slice_ix = self.stack.time_slice
+            slice_ix = self.stack[iw].time_slice
 
-        bin_ix = slice_ix // self.stack.nstack
+        bin_ix = slice_ix // self.stack[iw].nstack
         # For final time slice want first block to be the rightmost (for energy
         # evaluation).
-        if bin_ix == self.stack.nbins:
+        if bin_ix == self.stack[iw].nbins:
             bin_ix = -1
 
         if not inplace:
@@ -520,7 +533,7 @@ class UHFThermalWalkers(BaseWalkers):
             # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1} in
             # stable way. Iteratively construct column pivoted QR decompositions
             # (A = QDT) starting from the rightmost (product of) propagator(s).
-            B = self.stack.get((bin_ix + 1) % self.stack.nbins)
+            B = self.stack[iw].get((bin_ix + 1) % self.stack[iw].nbins)
 
             (Q1, R1, P1) = scipy.linalg.qr(B[spin], pivoting=True, check_finite=False)
             # Form D matrices
@@ -530,9 +543,9 @@ class UHFThermalWalkers(BaseWalkers):
             # permute them
             T1[:, P1] = T1[:, range(self.nbasis)]
 
-            for i in range(2, self.stack.nbins + 1):
-                ix = (bin_ix + i) % self.stack.nbins
-                B = self.stack.get(ix)
+            for i in range(2, self.stack[iw].nbins + 1):
+                ix = (bin_ix + i) % self.stack[iw].nbins
+                B = self.stack[iw].get(ix)
                 C2 = numpy.dot(numpy.dot(B[spin], Q1), D1)
                 (Q1, R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
                 # Compute D matrices
@@ -564,9 +577,14 @@ class UHFThermalWalkers(BaseWalkers):
             # Then G = T^{-1} C^{-1} Db Q^{-1}
             # Q is unitary.
             if inplace:
-                self.G[spin] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
-                )
+                if spin == 0:
+                    self.Ga[iw] = numpy.dot(
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                    )
+                else:
+                    self.Gb[iw] = numpy.dot(
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                    )
             else:
                 G[spin] = numpy.dot(
                     numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)

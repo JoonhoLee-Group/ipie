@@ -24,10 +24,12 @@ def coulomb_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gkpq, Gpmq, G):
             Gpmq[iq] += G[i, idxpmq]
 
 
-def local_energy_ueg(ham, G, Ghalf=None, two_rdm=None):
+def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None):
     """Local energy computation for uniform electron gas
     Parameters
     ----------
+    system :
+        system class
     ham :
         hamiltonian class
     G :
@@ -49,6 +51,8 @@ def local_energy_ueg(ham, G, Ghalf=None, two_rdm=None):
     Gkpq = numpy.zeros((2, len(ham.qvecs)), dtype=numpy.complex128)
     Gpmq = numpy.zeros((2, len(ham.qvecs)), dtype=numpy.complex128)
     Gprod = numpy.zeros((2, len(ham.qvecs)), dtype=numpy.complex128)
+
+    ne = [system.nup, system.ndown]
     nq = numpy.shape(ham.qvecs)[0]
 
     for s in [0, 1]:
@@ -77,6 +81,7 @@ def local_energy_ueg(ham, G, Ghalf=None, two_rdm=None):
     ) * ham.vqvec.dot(two_rdm[1, 0])
 
     pe = essa + essb + eos
+
     return (ke + pe, ke, pe)
 
 

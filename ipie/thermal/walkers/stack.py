@@ -46,8 +46,11 @@ class PropagatorStack:
         self.left = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
         self.right = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
 
-        self.G = numpy.asarray(
-            [numpy.eye(self.nbasis, dtype=dtype), numpy.eye(self.nbasis, dtype=dtype)]
+        self.Ga = numpy.asarray(
+            numpy.eye(self.nbasis, dtype=dtype)
+        )
+        self.Gb = numpy.asarray(
+            numpy.eye(self.nbasis, dtype=dtype)
         )
 
         if self.lowrank:
