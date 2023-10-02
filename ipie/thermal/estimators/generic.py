@@ -155,7 +155,7 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
 
 
 def local_energy_generic_cholesky_opt_batched(
-    ham,
+    hamiltonian,
     Ga_batch: numpy.ndarray,
     Gb_batch: numpy.ndarray,
     Ghalfa_batch: numpy.ndarray,
@@ -171,7 +171,7 @@ def local_energy_generic_cholesky_opt_batched(
 
     Parameters
     ----------
-    ham : :class:`Abinitio`
+    hamiltonian : :class:`Abinitio`
         Contains necessary hamiltonian information
     Ga_batched : :class:`numpy.ndarray`
         alpha-spin Walker's "green's function" 3-tensor (nwalker, nbasis, nbasis)
@@ -197,9 +197,9 @@ def local_energy_generic_cholesky_opt_batched(
     ecoul_vec = numpy.zeros(nwalker, dtype=numpy.complex128)
     # simple loop because this part isn't the slow bit
     for widx in range(nwalker):
-        e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(ham.H1[1] * Gb_batch[widx])
+        e1b = numpy.sum(hamiltonian.H1[0] * Ga_batch[widx]) + numpy.sum(hamiltonian.H1[1] * Gb_batch[widx])
         e1_vec[widx] = e1b
-        nbasis = ham.nbasis
+        nbasis = hamiltonian.nbasis
         if rchola is not None:
             naux = rchola.shape[0]
 
@@ -222,17 +222,17 @@ def local_energy_generic_cholesky_opt_batched(
         lwalker=nwalker,
     )
     e2b_vec = 0.5 * (ecoul_vec - exx_vec)
-    return (e1_vec + e2b_vec + ham.ecore, e1_vec + ham.ecore, e2b_vec)
+    return (e1_vec + e2b_vec + hamiltonian.ecore, e1_vec + hamiltonian.ecore, e2b_vec)
 
 
-def local_energy_generic_cholesky(ham, G, Ghalf=None):
+def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    ham : :class:`Generic`
+    hamiltonian : :class:`Generic`
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
@@ -245,17 +245,17 @@ def local_energy_generic_cholesky(ham, G, Ghalf=None):
         Local, kinetic and potential energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nbasis = ham.nbasis
-    nchol = ham.nchol
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(ham.chol):
-        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
-        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
+    if numpy.isrealobj(hamiltonian.chol):
+        Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Ga.imag.ravel())
+        Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol.T.dot(Ga.ravel())
-        Xb = ham.chol.T.dot(Gb.ravel())
+        Xa = hamiltonian.chol.T.dot(Ga.ravel())
+        Xb = hamiltonian.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -267,9 +267,9 @@ def local_energy_generic_cholesky(ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol):
+    if numpy.isrealobj(hamiltonian.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -278,14 +278,14 @@ def local_energy_generic_cholesky(ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
 
     e2b = 0.5 * (ecoul - exx)
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
 def local_energy_generic_cholesky_opt_stochastic(
@@ -392,14 +392,14 @@ def local_energy_generic_cholesky_opt_stochastic(
     return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
-def local_energy_generic_cholesky_opt(ham, nelec, Ga, Gb, Ghalfa=None, Ghalfb=None, rchola=None, rcholb=None):
+def local_energy_generic_cholesky_opt(hamiltonian, nelec, Ga, Gb, Ghalfa=None, Ghalfb=None, rchola=None, rcholb=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    ham : :class:`Abinitio`
+    hamiltonian : :class:`Abinitio`
         Contains necessary hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
@@ -438,9 +438,9 @@ def local_energy_generic_cholesky_opt(ham, nelec, Ga, Gb, Ghalfa=None, Ghalfb=No
 
     complex128 = numpy.complex128
 
-    e1b = sum(ham.H1[0] * Ga) + sum(ham.H1[1] * Gb)
+    e1b = sum(hamiltonian.H1[0] * Ga) + sum(hamiltonian.H1[1] * Gb)
     nalpha, nbeta = nelec
-    nbasis = ham.nbasis
+    nbasis = hamiltonian.nbasis
 
     if rchola is not None:
         naux = rchola.shape[0]
@@ -482,7 +482,7 @@ def local_energy_generic_cholesky_opt(ham, nelec, Ga, Gb, Ghalfa=None, Ghalfb=No
 
     e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
 # FDM: deprecated remove?

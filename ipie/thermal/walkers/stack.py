@@ -3,12 +3,11 @@ import scipy.linalg
 
 from ipie.utils.misc import get_numeric_names
 
-
 class PropagatorStack:
     def __init__(
         self,
-        stack_size,
-        ntime_slices,
+        nstack,
+        nslice,
         nbasis,
         dtype,
         BT=None,
@@ -19,26 +18,24 @@ class PropagatorStack:
         thresh=1e-6,
     ):
         self.time_slice = 0
-        self.stack_size = stack_size
-        self.ntime_slices = ntime_slices
-        self.nbins = ntime_slices // self.stack_size
+        self.nstack = nstack
+        self.nslice = nslice
+        self.nbins = nslice // self.nstack
+        self.nbasis = nbasis
         self.diagonal_trial = diagonal
         self.averaging = averaging
         self.thresh = thresh
-
         self.lowrank = lowrank
         self.ovlp = numpy.asarray([1.0, 1.0])
+        self.reortho = 1
 
         if self.lowrank:
             assert diagonal
 
-        self.reortho = 1
+        if self.nbins * self.nstack < self.nslice:
+            print("nstack must divide the total path length")
+            assert self.nbins * self.nstack == self.nslice
 
-        if self.nbins * self.stack_size < self.ntime_slices:
-            print("stack_size must divide the total path length")
-            assert self.nbins * self.stack_size == self.ntime_slices
-
-        self.nbasis = nbasis
         self.dtype = dtype
         self.BT = BT
         self.BTinv = BTinv
@@ -112,8 +109,8 @@ class PropagatorStack:
     def set_all(self, BT):
         # Diagonal = True assumes BT is diagonal and left is also diagonal
         if self.diagonal_trial:
-            for i in range(0, self.ntime_slices):
-                ix = i // self.stack_size  # bin index
+            for i in range(0, self.nslice):
+                ix = i // self.nstack  # bin index
                 # Commenting out these two. It is only useful for Hubbard
                 self.left[ix, 0] = numpy.diag(
                     numpy.multiply(BT[0].diagonal(), self.left[ix, 0].diagonal())
@@ -124,8 +121,8 @@ class PropagatorStack:
                 self.stack[ix, 0] = self.left[ix, 0].copy()
                 self.stack[ix, 1] = self.left[ix, 1].copy()
         else:
-            for i in range(0, self.ntime_slices):
-                ix = i // self.stack_size  # bin index
+            for i in range(0, self.nslice):
+                ix = i // self.nstack  # bin index
                 self.left[ix, 0] = numpy.dot(BT[0], self.left[ix, 0])
                 self.left[ix, 1] = numpy.dot(BT[1], self.left[ix, 1])
                 self.stack[ix, 0] = self.left[ix, 0].copy()
@@ -180,8 +177,8 @@ class PropagatorStack:
         self.stack[self.block, 0] = B[0].dot(self.stack[self.block, 0])
         self.stack[self.block, 1] = B[1].dot(self.stack[self.block, 1])
         self.time_slice = self.time_slice + 1
-        self.block = self.time_slice // self.stack_size
-        self.counter = (self.counter + 1) % self.stack_size
+        self.block = self.time_slice // self.nstack
+        self.counter = (self.counter + 1) % self.nstack
 
     def update_full_rank(self, B):
         # Diagonal = True assumes BT is diagonal and left is also diagonal
@@ -215,8 +212,8 @@ class PropagatorStack:
             self.stack[self.block, 1] = self.left[self.block, 1].dot(self.right[self.block, 1])
 
         self.time_slice = self.time_slice + 1  # Count the time slice
-        self.block = self.time_slice // self.stack_size  # move to the next block if necessary
-        self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack
+        self.block = self.time_slice // self.nstack  # move to the next block if necessary
+        self.counter = (self.counter + 1) % self.nstack  # Counting within a stack
 
     def update_low_rank(self, B):
         assert not self.averaging
@@ -230,7 +227,7 @@ class PropagatorStack:
         mR = B.shape[-1]  # initial mR
         mL = B.shape[-1]  # initial mR
         mT = B.shape[-1]  # initial mR
-        next_block = (self.time_slice + 1) // self.stack_size  # move to the next block if necessary
+        next_block = (self.time_slice + 1) // self.nstack  # move to the next block if necessary
         # print("next_block", next_block)
         # print("self.block", self.block)
         if next_block > self.block:  # Do QR and update here?
@@ -390,5 +387,5 @@ class PropagatorStack:
         # print("ovlp = {}".format(self.ovlp))
         self.mT = mT
         self.time_slice = self.time_slice + 1  # Count the time slice
-        self.block = self.time_slice // self.stack_size  # move to the next block if necessary
-        self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack
+        self.block = self.time_slice // self.nstack  # move to the next block if necessary
+        self.counter = (self.counter + 1) % self.nstack  # Counting within a stack

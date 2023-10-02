@@ -59,10 +59,10 @@ class OneBody(object):
         self.deps = options.get("threshold", 1e-6)
         self.mu = options.get("mu", None)
 
-        self.num_slices = int(beta / dt)
-        self.stack_size = options.get("stack_size", None)
+        self.nslice = int(beta / dt)
+        self.nstack = options.get("nstack", None)
 
-        if self.stack_size == None:
+        if self.nstack == None:
             if verbose:
                 print("# Estimating stack size from BT.")
             eigs, ev = scipy.linalg.eigh(self.dmat[0])
@@ -74,17 +74,17 @@ class OneBody(object):
             # the product will scale roughly as cond(BT)^(number of products).
             # We can determine a conservative stack size by requiring that the
             # condition number of the product does not exceed 1e3.
-            self.stack_size = min(self.num_slices, int(3.0 / numpy.log10(self.cond)))
+            self.nstack = min(self.nslice, int(3.0 / numpy.log10(self.cond)))
             if verbose:
                 print(
                     "# Initial stack size, # of slices: {}, {}".format(
-                        self.stack_size, self.num_slices
+                        self.nstack, self.nslice
                     )
                 )
 
         # adjust stack size
-        self.stack_size = update_stack(self.stack_size, self.num_slices, verbose=verbose)
-        self.num_bins = int(beta / (self.stack_size * dt))
+        self.nstack = update_stack(self.nstack, self.nslice, verbose=verbose)
+        self.num_bins = int(beta / (self.nstack * dt))
 
         if verbose:
             print(f"# Number of stacks: {self.num_bins}")
@@ -94,7 +94,7 @@ class OneBody(object):
             if verbose:
                 print("# Using alternate sign convention for chemical potential.")
             sign = -1
-        dtau = self.stack_size * dt
+        dtau = self.nstack * dt
         self.dtau = dtau
 
         if self.mu is None:

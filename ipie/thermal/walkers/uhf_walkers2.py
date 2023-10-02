@@ -50,7 +50,14 @@ class UHFThermalWalkers(BaseWalkers):
 
         super().__init__(nwalkers, verbose=verbose)
 
-        self.G = numpy.zeros(trial.dmat.shape, dtype=numpy.complex128)
+        self.Ga = numpy.zeros(
+                    shape=(self.nwalkers, self.nbasis, self.nbasis),
+                    dtype=numpy.complex128)
+                )
+        self.Gb = numpy.zeros(
+                    shape=(self.nwalkers, self.nbasis, self.nbasis),
+                    dtype=numpy.complex128)
+                )
         self.Ghalf = None
         max_diff_diag = numpy.linalg.norm(
                             (numpy.diag(
@@ -69,28 +76,33 @@ class UHFThermalWalkers(BaseWalkers):
             print(f"# Walker stack size: {self.nstack}")
             print(f"# Using low rank trick: {self.lowrank}")
 
-        self.stack = PropagatorStack(
-            self.nstack,
-            self.nslice,
-            self.nbasis,
-            numpy.complex128,
-            trial.dmat,
-            trial.dmat_inv,
-            diagonal=self.diagonal_trial,
-            lowrank=self.lowrank,
-            thresh=self.lowrank_thresh,
-        )
+        self.stacks = [
+                PropagatorStack(
+                    self.nstack,
+                    self.nslice,
+                    self.nbasis,
+                    numpy.complex128,
+                    trial.dmat,
+                    trial.dmat_inv,
+                    diagonal=self.diagonal_trial,
+                    lowrank=self.lowrank,
+                    thresh=self.lowrank_thresh,
+                ) for i in range(nwalkers)
+                ]
 
-        # Initialise all propagators to the trial density matrix.
-        self.stack.set_all(trial.dmat)
-        self.greens_function_qr_strat(trial)
-        self.stack.G = self.G
-        self.M0 = numpy.array(
+        self.M0a = numpy.array(
             [
                 scipy.linalg.det(self.G[0], check_finite=False),
                 scipy.linalg.det(self.G[1], check_finite=False),
             ]
         )
+
+        # Initialise all propagators to the trial density matrix.
+        for i, stack in enumerate(self.stacks):
+            stack.set_all(trial.dmat)
+            self.greens_function_qr_strat(trial)
+            stack.G = self.G[i]
+
         self.stack.ovlp = numpy.array([1.0 / self.M0[0], 1.0 / self.M0[1]])
 
         # Temporary storage for stacks...

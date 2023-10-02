@@ -5,7 +5,7 @@ import time
 import h5py
 import numpy
 
-from ipie.thermal.walkers.uhf_walkers import ThermalWalker
+from ipie.thermal.walkers.uhf_walkers import ThermalWalkers
 from ipie.utils.io import get_input_value
 from ipie.utils.misc import update_stack
 
@@ -61,7 +61,7 @@ class Walkers(object):
         elif trial.name == "thermal":
             self.walker_type = "thermal"
             self.walkers = [
-                ThermalWalker(
+                ThermalWalkers(
                     system,
                     hamiltonian,
                     trial,

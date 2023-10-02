@@ -67,7 +67,7 @@ class GenericContinuous(object):
             )
 
         # Mean field shifted one-body propagator
-        self.mu = hamiltonian.mu
+        self.mu = options.get("mu", -1.0)
 
         self.BT = trial.dmat
         self.BTinv = trial.dmat_inv

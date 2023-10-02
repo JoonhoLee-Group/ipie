@@ -6,7 +6,6 @@ from ipie.thermal.estimators.thermal import greens_function, one_rdm_stable, par
 from ipie.thermal.trial.chem_pot import compute_rho, find_chemical_potential
 from ipie.thermal.trial.onebody import OneBody
 
-
 class MeanField(OneBody):
     def __init__(self, hamiltonian, nelec, beta, dt, options={}, H1=None, verbose=False):
         OneBody.__init__(
