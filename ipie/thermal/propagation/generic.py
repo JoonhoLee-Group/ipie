@@ -2,7 +2,7 @@
 import numpy
 import scipy.sparse.linalg
 
-from ipie.legacy.estimators.thermal import one_rdm_from_G
+from ipie.thermal.estimators.thermal import one_rdm_from_G
 
 
 

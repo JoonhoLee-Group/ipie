@@ -46,12 +46,8 @@ class PropagatorStack:
         self.left = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
         self.right = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
 
-        self.Ga = numpy.asarray(
-            numpy.eye(self.nbasis, dtype=dtype)
-        )
-        self.Gb = numpy.asarray(
-            numpy.eye(self.nbasis, dtype=dtype)
-        )
+        self.G = numpy.asarray([numpy.eye(self.nbasis, dtype=dtype),  # Ga
+                                numpy.eye(self.nbasis, dtype=dtype)]) # Gb
 
         if self.lowrank:
             self.update_new = self.update_low_rank
@@ -310,9 +306,8 @@ class PropagatorStack:
                 self.theta[s][:, :] = 0.0
                 self.theta[s][:mT, :] = Qlcr_pad[:, :mT].dot(numpy.diag(Dlcr[:mT])).T
                 # self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.CT[s][:,:mT].dot(self.theta[s][:mT,:])
-                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][:mT, :].T.dot(
-                    self.CT[s][:, :mT].T.conj()
-                )
+                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) -\
+                            self.theta[s][:mT, :].T.dot(self.CT[s][:, :mT].T.conj())
                 # self.CT[s][:,:mT] = self.CT[s][:,:mT].conj()
 
                 # print("# mL, mR, mT = {}, {}, {}".format(mL, mR, mT))
@@ -379,9 +374,8 @@ class PropagatorStack:
                 self.theta[s][:, :] = 0.0
                 self.theta[s][:mT, :] = Qlcr_pad[:, :mT].dot(numpy.diag(Dlcr[:mT])).T
                 # self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.CT[s][:,:mT].dot(self.theta[s][:mT,:])
-                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) - self.theta[s][:mT, :].T.dot(
-                    self.CT[s][:, :mT].T.conj()
-                )
+                self.G[s] = numpy.eye(self.nbasis, dtype=B[s].dtype) -\
+                            self.theta[s][:mT, :].T.dot(self.CT[s][:, :mT].T.conj())
 
             # self.CT = numpy.zeros(shape=(2, nbasis, nbasis),dtype=dtype)
             # self.theta = numpy.zeros(shape=(2, nbasis, nbasis),dtype=dtype)

@@ -102,7 +102,7 @@ class GenericComplexChol(GenericBase):
 
         self.chol = numpy.array(chol, dtype=numpy.complex128)  # [M^2, nchol]
         self.nchol = self.chol.shape[-1]
-        self.nfields = self.nchol * 2
+        self.nfields = 2 * self.nchol
         assert self.nbasis**2 == chol.shape[0]
 
         self.chunked = False

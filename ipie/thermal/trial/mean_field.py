@@ -4,7 +4,7 @@ import scipy.linalg
 from ipie.thermal.estimators.fock import fock_matrix
 from ipie.thermal.estimators.thermal import greens_function, one_rdm_stable, particle_number
 from ipie.thermal.trial.chem_pot import compute_rho, find_chemical_potential
-from ipie.thermal.trial.onebody import OneBody
+from ipie.thermal.trial.one_body import OneBody
 
 class MeanField(OneBody):
     def __init__(self, hamiltonian, nelec, beta, dt, options={}, H1=None, verbose=False):

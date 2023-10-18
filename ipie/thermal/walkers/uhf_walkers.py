@@ -52,7 +52,6 @@ class UHFThermalWalkers(BaseWalkers):
         self.Gb = numpy.zeros(
                     shape=(self.nwalkers, self.nbasis, self.nbasis),
                     dtype=numpy.complex128)
-        
         self.Ghalf = None
 
         max_diff_diag = numpy.linalg.norm(
@@ -88,18 +87,15 @@ class UHFThermalWalkers(BaseWalkers):
         for iw in range(self.nwalkers):
             self.stack[iw].set_all(trial.dmat)
             self.greens_function_qr_strat(iw)
-            self.stack[iw].Ga = self.Ga[iw]
-            self.stack[iw].Gb = self.Gb[iw]
-        self.M0a = numpy.array(
-            [
-                scipy.linalg.det(self.Ga[iw], check_finite=False) for iw in range(self.nwalkers)
-            ]
-        )
-        self.M0b = numpy.array(
-            [
-                scipy.linalg.det(self.Gb[iw], check_finite=False) for iw in range(self.nwalkers)
-            ]
-        )
+            self.stack[iw].G[0] = self.Ga[iw]
+            self.stack[iw].G[1] = self.Gb[iw]
+        
+        # Shape (nwalkers,).
+        self.M0a = numpy.array([
+                    scipy.linalg.det(self.Ga[iw], check_finite=False) for iw in range(self.nwalkers)])
+        self.M0b = numpy.array([
+                    scipy.linalg.det(self.Gb[iw], check_finite=False) for iw in range(self.nwalkers)])
+
         for iw in range(self.nwalkers):
             self.stack[iw].ovlp = numpy.array([1.0 / self.M0a[iw], 1.0 / self.M0b[iw]])
 
@@ -117,423 +113,48 @@ class UHFThermalWalkers(BaseWalkers):
         self.hybrid_energy = 0.0
         if verbose:
             for iw in range(self.nwalkers):
-                G = numpy.array([self.Ga[iw],self.Gb[iw]])
+                G = numpy.array([self.Ga[iw], self.Gb[iw]])
                 P = one_rdm_from_G(G)
                 nav = particle_number(P)
                 print(f"# Trial electron number for {iw}-th walker: {nav}")
 
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
 
-    def greens_function(self, trial, slice_ix=None, inplace=True):
+
+    def greens_function(self, iw, slice_ix=None, inplace=True):
+        """Return the Green's function for walker `iw`.
+        """
         if self.lowrank:
-            return self.stack.G
+            return self.stack[iw].G # G[0] = Ga, G[1] = Gb
         else:
-            return self.greens_function_qr_strat(trial, slice_ix=slice_ix, inplace=inplace)
+            return self.greens_function_qr_strat(iw, slice_ix=slice_ix, inplace=inplace)
 
-    def greens_function_svd(self, trial, slice_ix=None, inplace=True):
-        if slice_ix == None:
-            slice_ix = self.stack.time_slice
-        bin_ix = slice_ix // self.stack.nstack
-        # For final time slice want first block to be the rightmost (for energy
-        # evaluation).
-        if bin_ix == self.stack.nbins:
-            bin_ix = -1
-        if inplace:
-            G = None
-        else:
-            G = numpy.zeros(self.G.shape, self.G.dtype)
-        for spin in [0, 1]:
-            # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1}
-            # in stable way. Iteratively construct SVD decompositions starting
-            # from the rightmost (product of) propagator(s).
-            B = self.stack.get((bin_ix + 1) % self.stack.nbins)
-            (U1, S1, V1) = scipy.linalg.svd(B[spin])
-            for i in range(2, self.stack.nbins + 1):
-                ix = (bin_ix + i) % self.stack.nbins
-                B = self.stack.get(ix)
-                T1 = numpy.dot(B[spin], U1)
-                # todo optimise
-                T2 = numpy.dot(T1, numpy.diag(S1))
-                (U1, S1, V) = scipy.linalg.svd(T2)
-                V1 = numpy.dot(V, V1)
-            A = numpy.dot(U1.dot(numpy.diag(S1)), V1)
-            # Final SVD decomposition to construct G(l) = [I + A(l)]^{-1}.
-            # Care needs to be taken when adding the identity matrix.
-            T3 = numpy.dot(U1.conj().T, V1.conj().T) + numpy.diag(S1)
-            (U2, S2, V2) = scipy.linalg.svd(T3)
-            U3 = numpy.dot(U1, U2)
-            D3 = numpy.diag(1.0 / S2)
-            V3 = numpy.dot(V2, V1)
-            # G(l) = (U3 S2 V3)^{-1}
-            #      = V3^{\dagger} D3 U3^{\dagger}
-            if inplace:
-                # self.G[spin] = (V3inv).dot(U3.conj().T)
-                self.G[spin] = (V3.conj().T).dot(D3).dot(U3.conj().T)
-            else:
-                # G[spin] = (V3inv).dot(U3.conj().T)
-                G[spin] = (V3.conj().T).dot(D3).dot(U3.conj().T)
-        return G
-
-    def greens_function_qr(self, trial, slice_ix=None, inplace=True):
-        if slice_ix == None:
-            slice_ix = self.stack.time_slice
-
-        bin_ix = slice_ix // self.stack.nstack
-        # For final time slice want first block to be the rightmost (for energy
-        # evaluation).
-        if bin_ix == self.stack.nbins:
-            bin_ix = -1
-        if not inplace:
-            G = numpy.zeros(self.G.shape, self.G.dtype)
-        else:
-            G = None
-        for spin in [0, 1]:
-            # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1}
-            # in stable way. Iteratively construct SVD decompositions starting
-            # from the rightmost (product of) propagator(s).
-            B = self.stack.get((bin_ix + 1) % self.stack.nbins)
-            (U1, V1) = scipy.linalg.qr(B[spin], pivoting=False, check_finite=False)
-
-            for i in range(2, self.stack.nbins + 1):
-                ix = (bin_ix + i) % self.stack.nbins
-                B = self.stack.get(ix)
-                T1 = numpy.dot(B[spin], U1)
-                (U1, V) = scipy.linalg.qr(T1, pivoting=False, check_finite=False)
-                V1 = numpy.dot(V, V1)
-
-            # Final SVD decomposition to construct G(l) = [I + A(l)]^{-1}.
-            # Care needs to be taken when adding the identity matrix.
-            V1inv = scipy.linalg.solve_triangular(V1, numpy.identity(V1.shape[0]))
-
-            T3 = numpy.dot(U1.conj().T, V1inv) + numpy.identity(V1.shape[0])
-            (U2, V2) = scipy.linalg.qr(T3, pivoting=False, check_finite=False)
-
-            U3 = numpy.dot(U1, U2)
-            V3 = numpy.dot(V2, V1)
-            V3inv = scipy.linalg.solve_triangular(V3, numpy.identity(V3.shape[0]))
-            # G(l) = (U3 S2 V3)^{-1}
-            #      = V3^{\dagger} D3 U3^{\dagger}
-            if inplace:
-                self.G[spin] = (V3inv).dot(U3.conj().T)
-            else:
-                G[spin] = (V3inv).dot(U3.conj().T)
-        return G
-
-    def compute_left_right(self, center_ix):
-        # Use Stratification method (DOI 10.1109/IPDPS.2012.37)
-        # B(L) .... B(1)
-        for spin in [0, 1]:
-            # right bit
-            # B(right) ... B(1)
-            if center_ix > 0:
-                # print ("center_ix > 0")
-                B = self.stack.get(0)
-                (self.Qr[spin], R1, P1) = scipy.linalg.qr(
-                    B[spin], pivoting=True, check_finite=False
-                )
-                # Form D matrices
-                self.Dr[spin] = R1.diagonal()
-                D1inv = 1.0 / R1.diagonal()
-                self.Tr[spin] = numpy.einsum("i,ij->ij", D1inv, R1)
-                # now permute them
-                self.Tr[spin][:, P1] = self.Tr[spin][:, range(self.nbasis)]
-
-                for ix in range(1, center_ix):
-                    B = self.stack.get(ix)
-                    C2 = numpy.einsum("ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin])
-                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
-                    # Compute D matrices
-                    D1inv = 1.0 / R1.diagonal()
-                    self.Dr[spin] = R1.diagonal()
-                    # smarter permutation
-                    # D^{-1} * R
-                    tmp = numpy.einsum("i,ij->ij", D1inv, R1)
-                    # D^{-1} * R * P^T
-                    tmp[:, P1] = tmp[:, range(self.nbasis)]
-                    # D^{-1} * R * P^T * T
-                    self.Tr[spin] = numpy.dot(tmp, self.Tr[spin])
-
-            # left bit
-            # B(l) ... B(left)
-            if center_ix < self.stack.nbins - 1:
-                # print("center_ix < self.stack.nbins-1 first")
-                # We will assume that B matrices are all diagonal for left....
-                B = self.stack.get(center_ix + 1)
-                self.Dl[spin] = B[spin].diagonal()
-                D1inv = 1.0 / B[spin].diagonal()
-                self.Ql[spin] = numpy.identity(B[spin].shape[0])
-                self.Tl[spin] = numpy.identity(B[spin].shape[0])
-
-                for ix in range(center_ix + 2, self.stack.nbins):
-                    # print("center_ix < self.stack.nbins-1 first inner loop")
-                    B = self.stack.get(ix)
-                    C2 = numpy.einsum("ii,i->i", B[spin], self.Dl[spin])
-                    self.Dl[spin] = C2
-
-    def compute_right(self, center_ix):
-        # Use Stratification method (DOI 10.1109/IPDPS.2012.37)
-        # B(L) .... B(1)
-        for spin in [0, 1]:
-            # right bit
-            # B(right) ... B(1)
-            if center_ix > 0:
-                # print ("center_ix > 0")
-                B = self.stack.get(0)
-                (self.Qr[spin], R1, P1) = scipy.linalg.qr(
-                    B[spin], pivoting=True, check_finite=False
-                )
-                # Form D matrices
-                self.Dr[spin] = R1.diagonal()
-                D1inv = 1.0 / R1.diagonal()
-                self.Tr[spin] = numpy.einsum("i,ij->ij", D1inv, R1)
-                # now permute them
-                self.Tr[spin][:, P1] = self.Tr[spin][:, range(self.nbasis)]
-
-                for ix in range(1, center_ix):
-                    B = self.stack.get(ix)
-                    C2 = numpy.einsum("ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin])
-                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
-                    # Compute D matrices
-                    D1inv = 1.0 / R1.diagonal()
-                    self.Dr[spin] = R1.diagonal()
-                    # smarter permutation
-                    # D^{-1} * R
-                    tmp = numpy.einsum("i,ij->ij", D1inv, R1)
-                    # D^{-1} * R * P^T
-                    tmp[:, P1] = tmp[:, range(self.nbasis)]
-                    # D^{-1} * R * P^T * T
-                    self.Tr[spin] = numpy.dot(tmp, self.Tr[spin])
-
-    def compute_left(self, center_ix):
-        # Use Stratification method (DOI 10.1109/IPDPS.2012.37)
-        # B(L) .... B(1)
-        for spin in [0, 1]:
-            # left bit
-            # B(l) ... B(left)
-            if center_ix < self.stack.nbins - 1:
-                # print("center_ix < self.stack.nbins-1 first")
-                # We will assume that B matrices are all diagonal for left....
-                B = self.stack.get(center_ix + 1)
-                self.Dl[spin] = B[spin].diagonal()
-                self.Ql[spin] = numpy.identity(B[spin].shape[0])
-                self.Tl[spin] = numpy.identity(B[spin].shape[0])
-
-                for ix in range(center_ix + 2, self.stack.nbins):
-                    # print("center_ix < self.stack.nbins-1 first inner loop")
-                    B = self.stack.get(ix)
-                    C2 = numpy.einsum("ii,i->i", B[spin], self.Dl[spin])
-                    self.Dl[spin] = C2.diagonal()
-
-    def greens_function_left_right(self, center_ix, inplace=False, thresh=1e-6):
-        assert self.diagonal_trial
-
-        if not inplace:
-            G = numpy.zeros(self.G.shape, self.G.dtype)
-        else:
-            G = None
-
-        mL = self.G.shape[1]
-        mR = self.G.shape[1]
-        mT = self.G.shape[1]
-
-        Bc = self.stack.get(center_ix)
-
-        nbsf = Bc.shape[1]
-
-        #       It goes to right to left and we sample (I + L*B*R) in the end
-        for spin in [0, 1]:
-            if center_ix > 0:  # there exists right bit
-                mR = len(self.Dr[spin][numpy.abs(self.Dr[spin]) > thresh])
-
-                Ccr = numpy.einsum(
-                    "ij,j->ij",
-                    numpy.dot(Bc[spin], self.Qr[spin][:, :mR]),
-                    self.Dr[spin][:mR],
-                )  # N x mR
-
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
-                Dlcr = Rlcr[:mR, :mR].diagonal()  # mR
-                Dinv = 1.0 / Dlcr  # mR
-                tmp = numpy.einsum("i,ij->ij", Dinv[:mR], Rlcr[:mR, :mR])  # mR, mR x mR -> mR x mR
-                tmp[:, Plcr] = tmp[:, range(mR)]
-                Tlcr = numpy.dot(tmp, self.Tr[spin][:mR, :])  # mR x N
-            else:
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Bc[spin], pivoting=True, check_finite=False)
-                # Form D matrices
-                Dlcr = Rlcr.diagonal()
-
-                mR = len(Dlcr[numpy.abs(Dlcr) > thresh])
-
-                Dinv = 1.0 / Rlcr.diagonal()
-                Tlcr = numpy.einsum("i,ij->ij", Dinv[:mR], Rlcr[:mR, :])  # mR x N
-                Tlcr[:, Plcr] = Tlcr[:, range(self.nbasis)]  # mR x N
-
-            if center_ix < self.stack.nbins - 1:  # there exists left bit
-                # assume left stack is all diagonal (i.e., QDT = diagonal -> Q and T are identity)
-                Clcr = numpy.einsum(
-                    "i,ij->ij",
-                    self.Dl[spin],
-                    numpy.einsum("ij,j->ij", Qlcr[:, :mR], Dlcr[:mR]),
-                )  # N x mR
-
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Clcr, pivoting=True, check_finite=False
-                )  # N x N, mR x mR
-                Dlcr = Rlcr.diagonal()
-                Dinv = 1.0 / Dlcr
-
-                mT = len(Dlcr[numpy.abs(Dlcr) > thresh])
-
-                tmp = numpy.einsum("i,ij->ij", Dinv[:mT], Rlcr[:mT, :])
-                tmp[:, Plcr] = tmp[:, range(mR)]  # mT x mR
-                Tlcr = numpy.dot(tmp, Tlcr)  # mT x N
-            else:
-                mT = mR
-
-            # D = Ds Db^{-1}
-            Db = numpy.zeros(mT, Bc[spin].dtype)
-            Ds = numpy.zeros(mT, Bc[spin].dtype)
-            for i in range(mT):
-                absDlcr = abs(Dlcr[i])
-                if absDlcr > 1.0:
-                    Db[i] = 1.0 / absDlcr
-                    Ds[i] = numpy.sign(Dlcr[i])
-                else:
-                    Db[i] = 1.0
-                    Ds[i] = Dlcr[i]
-
-            if mT == nbsf:  # No need for Woodbury
-                T1inv = scipy.linalg.inv(Tlcr, check_finite=False)
-                # C = (Db Q^{-1}T^{-1}+Ds)
-                C = numpy.dot(numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv) + numpy.diag(Ds)
-                Cinv = scipy.linalg.inv(C, check_finite=False)
-
-                # Then G = T^{-1} C^{-1} Db Q^{-1}
-                # Q is unitary.
-                if inplace:
-                    self.G[spin] = numpy.dot(
-                        numpy.dot(T1inv, Cinv),
-                        numpy.einsum("i,ij->ij", Db, Qlcr.conj().T),
-                    )
-                    # return # This seems to change the answer WHY??
-                else:
-                    G[spin] = numpy.dot(
-                        numpy.dot(T1inv, Cinv),
-                        numpy.einsum("i,ij->ij", Db, Qlcr.conj().T),
-                    )
-            else:  # Use Woodbury
-                TQ = Tlcr.dot(Qlcr[:, :mT])
-                TQinv = scipy.linalg.inv(TQ, check_finite=False)
-                tmp = scipy.linalg.inv(
-                    numpy.einsum("ij,j->ij", TQinv, Db) + numpy.diag(Ds),
-                    check_finite=False,
-                )
-                A = numpy.einsum("i,ij->ij", Db, tmp.dot(TQinv))
-                if inplace:
-                    self.G[spin] = numpy.eye(nbsf, dtype=Bc[spin].dtype) - Qlcr[:, :mT].dot(
-                        numpy.diag(Dlcr[:mT])
-                    ).dot(A).dot(Tlcr)
-                else:
-                    G[spin] = numpy.eye(nbsf, dtype=Bc[spin].dtype) - Qlcr[:, :mT].dot(
-                        numpy.diag(Dlcr[:mT])
-                    ).dot(A).dot(Tlcr)
-            # print(mR,mT,nbsf)
-            # print("ref: mL, mR, mT = {}, {}, {}".format(mL, mR, mT))
-        return G
-
-    def greens_function_left_right_no_truncation(self, center_ix, inplace=False):
-        if not inplace:
-            G = numpy.zeros(self.G.shape, self.G.dtype)
-        else:
-            G = None
-
-        Bc = self.stack.get(center_ix)
-        for spin in [0, 1]:
-            if center_ix > 0:  # there exists right bit
-                # print("center_ix > 0 second")
-                Ccr = numpy.einsum("ij,j->ij", numpy.dot(Bc[spin], self.Qr[spin]), self.Dr[spin])
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
-                Dlcr = Rlcr.diagonal()
-                Dinv = 1.0 / Rlcr.diagonal()
-                tmp = numpy.einsum("i,ij->ij", Dinv, Rlcr)
-                tmp[:, Plcr] = tmp[:, range(self.nbasis)]
-                Tlcr = numpy.dot(tmp, self.Tr[spin])
-            else:
-                # print("center_ix > 0 else second")
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Bc[spin], pivoting=True, check_finite=False)
-                # Form D matrices
-                Dlcr = Rlcr.diagonal()
-                Dinv = 1.0 / Rlcr.diagonal()
-                Tlcr = numpy.einsum("i,ij->ij", Dinv, Rlcr)
-                Tlcr[:, Plcr] = Tlcr[:, range(self.nbasis)]
-
-            if center_ix < self.stack.nbins - 1:  # there exists left bit
-                # print("center_ix < self.stack.nbins-1 second")
-                # assume left stack is all diagonal
-                Clcr = numpy.einsum("i,ij->ij", self.Dl[spin], numpy.einsum("ij,j->ij", Qlcr, Dlcr))
-
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Clcr, pivoting=True, check_finite=False)
-                Dlcr = Rlcr.diagonal()
-                Dinv = 1.0 / Rlcr.diagonal()
-
-                tmp = numpy.einsum("i,ij->ij", Dinv, Rlcr)
-                tmp[:, Plcr] = tmp[:, range(self.nbasis)]
-                Tlcr = numpy.dot(tmp, Tlcr)
-
-            # print("Dlcr = {}".format(Dlcr))
-
-            # G^{-1} = 1+A = 1+QDT = Q (Q^{-1}T^{-1}+D) T
-            # Write D = Db^{-1} Ds
-            # Then G^{-1} = Q Db^{-1}(Db Q^{-1}T^{-1}+Ds) T
-            Db = numpy.zeros(Bc[spin].shape[-1], Bc[spin].dtype)
-            Ds = numpy.zeros(Bc[spin].shape[-1], Bc[spin].dtype)
-            for i in range(Db.shape[0]):
-                absDlcr = abs(Dlcr[i])
-                if absDlcr > 1.0:
-                    Db[i] = 1.0 / absDlcr
-                    Ds[i] = numpy.sign(Dlcr[i])
-                else:
-                    Db[i] = 1.0
-                    Ds[i] = Dlcr[i]
-
-            T1inv = scipy.linalg.inv(Tlcr, check_finite=False)
-            # C = (Db Q^{-1}T^{-1}+Ds)
-            C = numpy.dot(numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv) + numpy.diag(Ds)
-            Cinv = scipy.linalg.inv(C, check_finite=False)
-
-            # Then G = T^{-1} C^{-1} Db Q^{-1}
-            # Q is unitary.
-            if inplace:
-                self.G[spin] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("i,ij->ij", Db, Qlcr.conj().T)
-                )
-            else:
-                G[spin] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("i,ij->ij", Db, Qlcr.conj().T)
-                )
-        return G
 
     def greens_function_qr_strat(self, iw, slice_ix=None, inplace=True):
-        # Use Stratification method (DOI 10.1109/IPDPS.2012.37)
-        if slice_ix == None:
-            slice_ix = self.stack[iw].time_slice
+        """Compute the Green's function for walker with index `iw` at time 
+        `slice_ix`. Uses the Stratification method (DOI 10.1109/IPDPS.2012.37)
+        """
+        stack_iw = self.stack[iw]
 
-        bin_ix = slice_ix // self.stack[iw].nstack
+        if slice_ix == None:
+            slice_ix = stack_iw.time_slice
+
+        bin_ix = slice_ix // stack_iw.nstack
         # For final time slice want first block to be the rightmost (for energy
         # evaluation).
-        if bin_ix == self.stack[iw].nbins:
+        if bin_ix == stack_iw.nbins:
             bin_ix = -1
 
+        Ga_iw, Gb_iw = None, None
         if not inplace:
-            G = numpy.zeros(self.G.shape, self.G.dtype)
-        else:
-            G = None
+            Ga_iw = numpy.zeros(self.Ga[iw].shape, self.Ga.dtype)
+            Gb_iw = numpy.zeros(self.Gb[iw].shape, self.Gb.dtype)
 
         for spin in [0, 1]:
             # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1} in
             # stable way. Iteratively construct column pivoted QR decompositions
             # (A = QDT) starting from the rightmost (product of) propagator(s).
-            B = self.stack[iw].get((bin_ix + 1) % self.stack[iw].nbins)
+            B = stack_iw.get((bin_ix + 1) % stack_iw.nbins)
 
             (Q1, R1, P1) = scipy.linalg.qr(B[spin], pivoting=True, check_finite=False)
             # Form D matrices
@@ -543,9 +164,9 @@ class UHFThermalWalkers(BaseWalkers):
             # permute them
             T1[:, P1] = T1[:, range(self.nbasis)]
 
-            for i in range(2, self.stack[iw].nbins + 1):
-                ix = (bin_ix + i) % self.stack[iw].nbins
-                B = self.stack[iw].get(ix)
+            for i in range(2, stack_iw.nbins + 1):
+                ix = (bin_ix + i) % stack_iw.nbins
+                B = stack_iw.get(ix)
                 C2 = numpy.dot(numpy.dot(B[spin], Q1), D1)
                 (Q1, R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
                 # Compute D matrices
@@ -579,17 +200,22 @@ class UHFThermalWalkers(BaseWalkers):
             if inplace:
                 if spin == 0:
                     self.Ga[iw] = numpy.dot(
-                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
-                    )
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
                 else:
                     self.Gb[iw] = numpy.dot(
-                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
-                    )
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+
             else:
-                G[spin] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
-                )
-        return G
+                if spin == 0:
+                    Ga_iw = numpy.dot(
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+
+                else:
+                    Gb_iw = numpy.dot(
+                        numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+
+        return Ga_iw, Gb_iw
+
     
     # For compatibiltiy with BaseWalkers class.
     def reortho(self):
