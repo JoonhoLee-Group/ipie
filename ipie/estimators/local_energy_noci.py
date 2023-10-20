@@ -87,8 +87,11 @@ def local_energy_noci_rchol(
     energy[1] += hamiltonian.ecore
     return energy
 
+
 from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 from ipie.estimators.local_energy import local_energy_G
+
+
 def local_energy_noci(
     system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkersNOCI, trial: NOCI
 ):
@@ -132,8 +135,8 @@ def local_energy_noci(
             energies += weight * e
             denom += weight
         eloc = tuple(energies / denom)
-        energy[iw,0] = eloc[0]
-        energy[iw,1] = eloc[1]
-        energy[iw,2] = eloc[2]
+        energy[iw, 0] = eloc[0]
+        energy[iw, 1] = eloc[1]
+        energy[iw, 2] = eloc[2]
 
     return energy
