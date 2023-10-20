@@ -26,12 +26,12 @@ from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkersNOCI
 
 
-def local_energy_noci(
+def local_energy_noci_rchol(
     system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkersNOCI, trial: NOCI
 ):
     """Compute local energy for walker batch (all walkers at once).
 
-    Multi determinant NOCI trial case.
+    Multi determinant NOCI trial case using rchol.
 
     Parameters
     ----------
@@ -85,4 +85,55 @@ def local_energy_noci(
     energy /= xp.einsum("iw->w", ovlp_fac)[:, None]  # broadcasting
     energy[0] += hamiltonian.ecore
     energy[1] += hamiltonian.ecore
+    return energy
+
+from ipie.estimators.greens_function_single_det import gab_mod_ovlp
+from ipie.estimators.local_energy import local_energy_G
+def local_energy_noci(
+    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkersNOCI, trial: NOCI
+):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Multi determinant NOCI trial case without using half-rotated Cholesky.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walkers : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
+    energy = xp.zeros((walkers.nwalkers, 3), dtype=xp.complex128)
+    ndets = trial._num_dets
+    for iw in range(walkers.nwalkers):
+        phia = walkers.phia[iw]
+        phib = walkers.phib[iw]
+        energies = 0
+        denom = 0
+        for idet in range(ndets):
+            psia = trial.psia[idet]
+            psib = trial.psib[idet]
+            Gup, _, inv_O_up = gab_mod_ovlp(psia, phia)
+            Gdn, _, inv_O_dn = gab_mod_ovlp(psib, phib)
+
+            ovlp = 1.0 / (xp.linalg.det(inv_O_up) * xp.linalg.det(inv_O_dn))
+            weight = (trial.coeffs[idet].conj()) * ovlp
+            G = xp.array([Gup, Gdn])
+            e = xp.array(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
+            energies += weight * e
+            denom += weight
+        eloc = tuple(energies / denom)
+        energy[iw,0] = eloc[0]
+        energy[iw,1] = eloc[1]
+        energy[iw,2] = eloc[2]
+
     return energy
