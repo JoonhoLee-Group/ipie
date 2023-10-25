@@ -55,9 +55,13 @@ Once the scf converges we need to generate the wavefunction and integrals using 
 Important here is the `--mcscf` flag which will tell the converter to read the mcscf
 mo_coefficients and also look for the msd wavefunction.
 
-You should find a file called `afqmc.h5` and ipie input file `input.json` created from
-information in `afqmc.h5`.
+You should find a file called `wavefunction.h5` which defines the multi-Slater expansion, `hamiltonian.h5` and ipie input file `input.json` shown as below.
+We can run AFQMC with
+.. code-block:: bash
 
+    mpirun -np N python /path/to/ipie/bin/ipie input.json > output.dat
+
+or, by running the `run_afqmc.py` of the current folder.
 .. code-block:: json
 
     {
@@ -80,17 +84,17 @@ information in `afqmc.h5`.
         },
         "trial": {
             "filename": "wavefunction.h5",
-            "calculate_variational_energy": true
+            "compute_trial_energy": true
         },
         "estimators": {
             "filename": "estimates.0.h5"
         }
     }
 
-Note we added the option `calculate_variational_energy` to the input file. It is **always
+Note we added the option `compute_trial_energy` to the input file. It is **always
 recommended** to check the variational energy of the trial wavefunction you use to ensure
 there is no translation errors. Currently the algorithm to compute this variational energy
 is sub-optimal so this option is defaulted to false. One can control the number of
-determinants used to compute the variational energy with the `ndets_for_trial_props`
+determinants used to compute the variational energy with the `ndets`
 option. It can be helpful to set this to a value smaller than the number of determinants
-in the trial wavefunction.
+in the trial wavefunction. One should also add the `ndets_props` which is the number od dets used for propagation.
