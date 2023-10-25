@@ -93,7 +93,7 @@ def run_pytest():
 def run_examples() -> List[str]:
     examples = sorted(glob.glob("examples/*"))
     # Legacy
-    legacy = {"01": "", "02": "--mcscf", "05": "--frozen-core 5"}
+    legacy = {"01": "", "05": "--frozen-core 5"}
     legacy_dirs = list(legacy.keys())
     err = 0
     failed_tests = []
