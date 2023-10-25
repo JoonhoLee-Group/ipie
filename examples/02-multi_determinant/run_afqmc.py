@@ -1,14 +1,15 @@
 import numpy
 from mpi4py import MPI
-from ipie.analysis.extraction import extract_observable
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 import h5py
-
+from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
+from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
+import scf
 
 comm = MPI.COMM_WORLD
-
+gen_ipie_input_from_pyscf_chk("scf.chk", mcscf=True)
 mol_nelec = [8, 6]
 
 with h5py.File("hamiltonian.h5") as fa:
@@ -26,17 +27,12 @@ ham = HamGeneric(
     e0
 )
 
-# Build Trial
-
-# 4. Build walkers
+# Build trial wavefunction
 with h5py.File("wavefunction.h5", 'r') as fh5:
     coeff = fh5['ci_coeffs'][:]
     occa = fh5['occ_alpha'][:]
     occb = fh5["occ_beta"][:]
-
-# 3. Build trial wavefunction
 wavefunction = (coeff, occa, occb)
-from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 trial = ParticleHoleNonChunked(
     wavefunction,
     mol_nelec,
@@ -61,8 +57,4 @@ afqmc_msd = AFQMC.build(
 )
 afqmc_msd.run()
 afqmc_msd.finalise(verbose=True)
-
-qmc_data = extract_observable(afqmc_msd.estimators.filename, "energy")
-y2 = qmc_data["ETotal"]
-y2 = y2[1:]
 
