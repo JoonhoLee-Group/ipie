@@ -62,6 +62,7 @@ We can run AFQMC with
     mpirun -np N python /path/to/ipie/bin/ipie input.json > output.dat
 
 or, by running the `run_afqmc.py` of the current folder.
+
 .. code-block:: json
 
     {
