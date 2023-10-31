@@ -95,7 +95,7 @@ def get_trial_wavefunction(
         trial = HartreeFock(system, hamiltonian, options, verbose=verbose)
     elif wfn_type == "free_electron":
         if comm.rank == 0:
-            wfn = FreeElectron(system, options, verbose)
+            wfn = FreeElectron(system, hamiltonian, options, verbose)
             psi = wfn.psi
         else:
             psi = None

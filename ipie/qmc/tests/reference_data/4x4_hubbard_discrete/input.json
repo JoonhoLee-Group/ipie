@@ -1,7 +1,7 @@
 {
     "system": {
-        "nup": 7,
-        "ndown": 7,
+        "nup": 1,
+        "ndown": 0,
         "name": "Hubbard",
         "nx": 4,
         "ny": 4,
@@ -10,7 +10,7 @@
     "qmc": {
         "dt": 0.005,
         "nwalkers": 50,
-        "blocks": 10,
+        "blocks": 1000,
         "nsteps": 10,
         "rng_seed": 7,
         "pop_control_freq": 5,
@@ -18,7 +18,7 @@
         "batched": false
     },
     "trial": {
-        "name": "UHF"
+        "name": "free_electron"
     },
     "walkers": {
         "pop_control": "comb"

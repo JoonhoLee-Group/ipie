@@ -139,8 +139,9 @@ class Hirsch(object):
         walker.G[0][i, i] = numpy.dot(vup, q)
         vdown = trial.psi.conj()[i, nup:]
         udown = walker.phi[i, nup:]
-        q = numpy.dot(walker.inv_ovlp[1].T, udown)
-        walker.G[1][i, i] = numpy.dot(vdown, q)
+        if walker.phi[:, nup:].shape[-1] > 0:
+            q = numpy.dot(walker.inv_ovlp[1].T, udown)
+            walker.G[1][i, i] = numpy.dot(vdown, q)
 
     def update_greens_function_ghf(self, walker, trial, i, nup):
         """Update of walker's Green's function for UHF walker.

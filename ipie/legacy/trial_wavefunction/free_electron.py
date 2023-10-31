@@ -9,7 +9,7 @@ from ipie.utils.linalg import diagonalise_sorted
 
 
 class FreeElectron(object):
-    def __init__(self, system, trial, verbose=False):
+    def __init__(self, system, hamiltonian, trial, verbose=False):
         self.verbose = verbose
         if verbose:
             print("# Parsing free electron input options.")
@@ -19,13 +19,17 @@ class FreeElectron(object):
         self.initial_wavefunction = trial.get("initial_wavefunction", "free_electron")
         if verbose:
             print("# Diagonalising one-body Hamiltonian.")
-        (self.eigs_up, self.eigv_up) = diagonalise_sorted(system.T[0])
-        (self.eigs_dn, self.eigv_dn) = diagonalise_sorted(system.T[1])
+        (self.eigs_up, self.eigv_up) = diagonalise_sorted(hamiltonian.T[0])
+        (self.eigs_dn, self.eigv_dn) = diagonalise_sorted(hamiltonian.T[1])
+        nb = hamiltonian.nbasis
+        Q, R = numpy.linalg.qr(numpy.random.random((nb, nb)))
+        self.eigv_up = Q @ self.eigv_up
+        self.eigv_up = Q @ self.eigv_dn
         self.reference = trial.get("reference", None)
         self.trial_type = complex
         self.read_in = trial.get("read_in", None)
         self.psi = numpy.zeros(
-            shape=(system.nbasis, system.nup + system.ndown), dtype=self.trial_type
+            shape=(hamiltonian.nbasis, system.nup + system.ndown), dtype=self.trial_type
         )
         if self.read_in is not None:
             if verbose:
@@ -38,12 +42,12 @@ class FreeElectron(object):
                     print("# Trial wavefunction is not in native numpy form.")
                     print("# Assuming Fortran GHF format.")
                 orbitals = read_fortran_complex_numbers(self.read_in)
-                tmp = orbitals.reshape((2 * system.nbasis, system.ne), order="F")
+                tmp = orbitals.reshape((2 * hamiltonian.nbasis, system.ne), order="F")
                 ups = []
                 downs = []
                 # deal with potential inconsistency in ghf format...
                 for i, c in enumerate(tmp.T):
-                    if all(abs(c[: system.nbasis]) > 1e-10):
+                    if all(abs(c[: hamiltonian.nbasis]) > 1e-10):
                         ups.append(i)
                     else:
                         downs.append(i)
@@ -59,7 +63,9 @@ class FreeElectron(object):
                 self.psi[:, : system.nup] = self.eigv_up[:, : system.nup]
                 self.psi[:, system.nup :] = self.eigv_dn[:, : system.ndown]
         gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T
-        gdown = gab(self.psi[:, system.nup :], self.psi[:, system.nup :]).T
+        gdown = numpy.zeros_like(gup)
+        if system.ndown > 0:
+            gdown = gab(self.psi[:, system.nup :], self.psi[:, system.nup :]).T
         self.G = numpy.array([gup, gdown])
         # For interface compatability
         self.init = self.psi
