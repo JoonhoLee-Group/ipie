@@ -51,7 +51,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r dev/dev.txt
         pip install pyblock
-        https://github.com/JoonhoLee-Group/ipie/issues/278
+        # https://github.com/JoonhoLee-Group/ipie/issues/278
         pip install "pyscf<=2.3.0"
     - name: Install package
       run: |
@@ -124,7 +124,7 @@ jobs:
           pip install -r requirements.txt 
           pip install -r dev/dev.txt
           pip install pyblock
-          https://github.com/JoonhoLee-Group/ipie/issues/278
+          # https://github.com/JoonhoLee-Group/ipie/issues/278
           pip install "pyscf<=2.3.0"
       - name: Install package
         run: |
