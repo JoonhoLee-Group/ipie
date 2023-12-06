@@ -30,6 +30,7 @@ jobs:
           python dev/run_tests.py --flynt
   pytest-mpi4py:
     strategy:
+      fail-fast: false
       matrix:
         python-version: [ '3.8', '3.9', '3.10' ]
         mpi:
@@ -63,8 +64,8 @@ jobs:
         pip install pytest-xdist
         python -m pytest -n=auto
     - name: mpi test
+      timeout-minutes: 10
       run: |
-        timeout-minutes: 10
         mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
         mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
         mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
@@ -85,6 +86,8 @@ jobs:
           python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
           python -m pytest -n=auto
   integration:
+    strategy:
+      fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
