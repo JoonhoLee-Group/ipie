@@ -80,8 +80,9 @@ afqmc_msd = AFQMC.build(
     num_blocks=10,
     timestep=0.005,
     stabilize_freq=5,
+    seed=96264512,
     pop_control_freq=5,
     verbose=True,
 )
-afqmc_msd.run()
-afqmc_msd.finalise(verbose=True)
+# afqmc_msd.run()
+# afqmc_msd.finalise(verbose=True)
