@@ -297,7 +297,7 @@ def get_node_mem():
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
     import ipie
 
-    version = getattr(ipie, '__version__', 'Unknown')
+    version = getattr(ipie, "__version__", "Unknown")
     print(f"# ipie version: {version}")
     if sha1 is not None:
         print(f"# Git hash: {sha1:s}.")
