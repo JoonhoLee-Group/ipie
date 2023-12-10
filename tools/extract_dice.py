@@ -87,8 +87,8 @@ if __name__ == "__main__":
         occa0 = occa0[: options.ndets]
         occb0 = occb0[: options.ndets]
     if options.convert_phase:
-        coeffs, occa, occb = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
+        coeffs0, occa0, occb0 = convert_phase(coeffs0, occa0, occb0, verbose=options.verbose)
     write_wavefunction(
-        (coeffs, occa, occb),
+        (coeffs0, occa0, occb0),
         filename=options.filename,
     )
