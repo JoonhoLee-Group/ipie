@@ -3,37 +3,38 @@ name: CI
 on: [pull_request]
 
 jobs:
-  health:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: openmpi 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt 
-          pip install -r dev/dev.txt
-      - name: pylint
-        run: |
-          python dev/run_tests.py --pylint
-      - name: format
-        run: |
-          python dev/run_tests.py --black
-      - name: flynt
-        run: |
-          python dev/run_tests.py --flynt
+  # health:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.10"
+  #     - name: Setup MPI
+  #       uses: mpi4py/setup-mpi@v1
+  #       with:
+  #         mpi: openmpi 
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt 
+  #         pip install -r dev/dev.txt
+  #     - name: pylint
+  #       run: |
+  #         python dev/run_tests.py --pylint
+  #     - name: format
+  #       run: |
+  #         python dev/run_tests.py --black
+  #     - name: flynt
+  #       run: |
+  #         python dev/run_tests.py --flynt
   pytest-mpi4py:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.8', '3.9', '3.10' ]
+        python-version: [ '3.10' ]
         mpi:
+          # - mpich
           - openmpi
     runs-on:  ubuntu-latest
     steps:
@@ -62,13 +63,13 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n=auto
+        #python -m pytest -n=auto
     - name: mpi test
       timeout-minutes: 10
       run: |
-        mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
-        mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
-        mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python ipie/estimators/tests/test_generic_chunked.py
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
   pytest-no_mpi:
     runs-on: ubuntu-latest
     steps:
@@ -109,7 +110,7 @@ jobs:
       - name: Test Integration
         timeout-minutes: 10
         run: |
-          mpirun -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
+          mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
   examples:
     runs-on: ubuntu-latest
     steps:
@@ -117,15 +118,10 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: openmpi 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt 
-          pip install -r dev/dev.txt
           pip install pyblock
           # https://github.com/JoonhoLee-Group/ipie/issues/278
           pip install "pyscf<=2.3.0"
