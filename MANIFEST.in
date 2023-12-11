@@ -1,2 +1,8 @@
-include versioneer.py
-include ipie/_version.py
+include requirements.txt
+include dev/mpi.txt
+include dev/dev.txt
+include setup.py
+include NOTICE
+include README.rst
+include LICENSE
+include pyproject.toml
