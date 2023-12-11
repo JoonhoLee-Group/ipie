@@ -13,7 +13,5 @@
 # limitations under the License.
 #
 # Authors: Fionn Malone <fmalone@google.com>
-#          Joonho Lee
-#
 
-from ._version import __version__
+__version__ = "0.7.0"
