@@ -1,4 +1,5 @@
 include requirements.txt
+include ipie/_version.py
 include dev/mpi.txt
 include dev/dev.txt
 include setup.py
