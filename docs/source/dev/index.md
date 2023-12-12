@@ -71,7 +71,7 @@ export IPIE_USE_GPU=1; mpirun -np 1 pytest -m gpu -sv
 
 1. Change the version from 'X.Y.Z.dev0' to 'X.Y.Z'
 2. Merge develop into main. Do not squash the merge (enables sensible release notes.)
-3. Push tag 'X.Y.Z'.
+3. Push tag 'vX.Y.Z' (no dev0).
 4. Check actions and ensure build and publish steps run.
 5. Create new branch and bump version to 'X.(Y+1).Z.dev0'.
 6. Send PR for this branch into develop.
