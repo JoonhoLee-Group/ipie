@@ -97,7 +97,7 @@ running:
     $ pytest -v
 
 in the base of the repo. Some longer parallel tests are also run through the CI. See
-`.github/workflows/ci2.yml` for more details.
+`.github/workflows/ci.yml` for more details.
 
 .. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
     :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
