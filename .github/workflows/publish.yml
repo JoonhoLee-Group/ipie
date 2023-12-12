@@ -1,9 +1,11 @@
-name: Publish ipie 
+name: Publish ipie
 
 on:
   push:
     branches:
       - main
+    tags:
+      - v*
 
 jobs:
   build:
@@ -35,7 +37,7 @@ jobs:
         name: python-package-distributions
         path: dist/
     - name: Test the wheel
-      run: | 
+      run: |
         ls dist
         wheel=$(find dist/*whl)
         echo $wheel
@@ -46,27 +48,20 @@ jobs:
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
       with:
-        mpi: openmpi 
+        mpi: openmpi
     - name: Test the wheel
-      run: | 
+      run: |
         pip install mpi4py
         python -c "import mpi4py"
         python -c "from ipie.config import MPI; assert \"mpi4py\" in str(MPI.COMM_WORLD)"
         python3 examples/03-custom_observable/run_afqmc.py
 
   publish-to-pypi:
-    name: >-
+    name:
       Publish Python distribution to PyPI
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
     - build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/ipie
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v3
@@ -75,3 +70,7 @@ jobs:
         path: dist/
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        packages_dir: dist/
+        password: ${{ secrets.PYPI_API_TOKEN }}
