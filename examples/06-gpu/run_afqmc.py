@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +16,17 @@
 #
 
 import os
+import sys
 
 import numpy as np
-
 from pyscf import cc, gto, scf
 
-from mpi4py import MPI
+from ipie.config import MPI
+
+try:
+    import cupy
+except ImportError:
+    sys.exit(0)
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 4)],
@@ -36,7 +40,8 @@ mf.kernel()
 
 # Need to flag that we want to use GPU before **any** ipie modules are imported
 from ipie.config import config
-config.update_option('use_gpu', True)
+
+config.update_option("use_gpu", True)
 
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
@@ -52,6 +57,6 @@ afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Inspect the default qmc options
 print(afqmc.qmc)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 20
-afqmc.run(comm=comm)
+afqmc.params.num_blocks = 20
+afqmc.run()
 # We can extract the qmc data as as a pandas data frame like so

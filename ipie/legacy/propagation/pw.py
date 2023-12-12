@@ -6,7 +6,7 @@ import numpy
 import scipy
 
 from ipie.estimators.utils import convolve, scipy_fftconvolve
-from ipie.propagation.operations import kinetic_real
+from ipie.legacy.propagation.operations import kinetic_real
 
 
 class PW(object):
@@ -26,10 +26,10 @@ class PW(object):
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r." % self.force_bias)
+                print(f"# Setting force bias to {self.force_bias!r}.")
         self.exp_nmax = options.get("expansion_order", 6)
         if verbose:
-            print("# expansion_order = {}".format(self.exp_nmax))
+            print(f"# expansion_order = {self.exp_nmax}")
         # Derived Attributes
         self.dt = qmc.dt
         self.sqrt_dt = qmc.dt**0.5
@@ -121,9 +121,7 @@ class PW(object):
         ngrid = numpy.prod(system.mesh)
         nqgrid = numpy.prod(system.qmesh)
 
-        vqfactor = (
-            self.sqrt_dt * numpy.sqrt(1.0 / (4.0 * system.vol)) * system.sqrtvqvec
-        )
+        vqfactor = self.sqrt_dt * numpy.sqrt(1.0 / (4.0 * system.vol)) * system.sqrtvqvec
 
         x_plus_cube = numpy.zeros(nqgrid, dtype=numpy.complex128)
         x_plus_cube[system.qmap] = xshifted[: self.num_vplus] * vqfactor
@@ -249,9 +247,7 @@ class PW(object):
         hybrid_energy = self.apply_bound(hybrid_energy, eshift)
         importance_function = (
             # self.mf_const_fac * No need to include constant factor.
-            cmath.exp(
-                -self.dt * (0.5 * (hybrid_energy + walker.hybrid_energy) - eshift)
-            )
+            cmath.exp(-self.dt * (0.5 * (hybrid_energy + walker.hybrid_energy) - eshift))
         )
         # splitting w_alpha = |I(x,\bar{x},|phi_alpha>)| e^{i theta_alpha}
         (magn, phase) = cmath.polar(importance_function)
@@ -329,12 +325,8 @@ class PW(object):
 
         CTdagger = numpy.array(
             [
-                numpy.array(
-                    trial.psi[:, 0 : system.nup], dtype=numpy.complex128
-                ).T.conj(),
-                numpy.array(
-                    trial.psi[:, system.nup :], dtype=numpy.complex128
-                ).T.conj(),
+                numpy.array(trial.psi[:, 0 : system.nup], dtype=numpy.complex128).T.conj(),
+                numpy.array(trial.psi[:, system.nup :], dtype=numpy.complex128).T.conj(),
             ]
         )
 
@@ -352,13 +344,13 @@ class PW(object):
                 CTdagger_i_cube[system.gmap] = CTdagger_i
 
                 # \sum_G CT(G+Q) theta(G)
-                lQ_i1 = numpy.flip(
-                    convolve(Gh_i_cube, numpy.flip(CTdagger_i_cube), system.mesh)
-                )[system.qmap]
+                lQ_i1 = numpy.flip(convolve(Gh_i_cube, numpy.flip(CTdagger_i_cube), system.mesh))[
+                    system.qmap
+                ]
                 # \sum_G CT(G) theta(G+Q)
-                lQ_i2 = numpy.flip(
-                    convolve(CTdagger_i_cube, numpy.flip(Gh_i_cube), system.mesh)
-                )[system.qmap]
+                lQ_i2 = numpy.flip(convolve(CTdagger_i_cube, numpy.flip(Gh_i_cube), system.mesh))[
+                    system.qmap
+                ]
 
                 self.vbias[: self.num_vplus] += (lQ_i1 + lQ_i2) * 1.0j
                 self.vbias[self.num_vplus :] += -lQ_i1 + lQ_i2
@@ -413,21 +405,11 @@ def unit_test():
     # print(walker.phi)
     pr = cProfile.Profile()
     pr.enable()
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
     pr.disable()
     pr.print_stats(sort="tottime")
     # print(walker.phi)
@@ -460,21 +442,11 @@ def unit_test():
 
     pr = cProfile.Profile()
     pr.enable()
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
-    propagator.propagate_walker_phaseless(
-        walker=walker, system=system, trial=trial, eshift=eshift
-    )
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
+    propagator.propagate_walker_phaseless(walker=walker, system=system, trial=trial, eshift=eshift)
     pr.disable()
     pr.print_stats(sort="tottime")
     # print(walker.phi)

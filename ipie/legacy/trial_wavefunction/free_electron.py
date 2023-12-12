@@ -29,7 +29,7 @@ class FreeElectron(object):
         )
         if self.read_in is not None:
             if verbose:
-                print("# Reading trial wavefunction from %s" % (self.read_in))
+                print(f"# Reading trial wavefunction from {self.read_in}")
             try:
                 self.psi = numpy.load(self.read_in)
                 self.psi = self.psi.astype(self.trial_type)
@@ -42,7 +42,7 @@ class FreeElectron(object):
                 ups = []
                 downs = []
                 # deal with potential inconsistency in ghf format...
-                for (i, c) in enumerate(tmp.T):
+                for i, c in enumerate(tmp.T):
                     if all(abs(c[: system.nbasis]) > 1e-10):
                         ups.append(i)
                     else:

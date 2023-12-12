@@ -8,9 +8,9 @@ Usage: srun -n 144 -N 4 python find_chem_pot.py
 import sys
 
 import numpy
-from mpi4py import MPI
 
 from ipie.analysis.thermal import analyse_energy
+from ipie.config import MPI
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 from ipie.legacy.systems.ueg import UEG
 from ipie.legacy.trial_density_matrices.onebody import OneBody
@@ -20,7 +20,7 @@ from ipie.qmc.options import QMCOpts
 def determine_nav(comm, options, mu, target):
     options["system"]["mu"] = mu
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
     if comm.rank == 0:
         av = analyse_energy([afqmc.estimators.h5f_name])
         nav = av.Nav.values[0]
@@ -36,10 +36,7 @@ def secant(comm, options, x0, x1, target, maxiter=10, threshold=1e-3):
         nx1 = determine_nav(comm, options, x1, target)
         xn = x1 - nx1 * (x1 - x0) / (nx1 - nx0)
         if comm.rank == 0:
-            print(
-                " # Chemical potential iteration: {} {} {} {} {} {}"
-                "".format(it, x0, x1, nx0, nx1, xn)
-            )
+            print(f" # Chemical potential iteration: {it} {x0} {x1} {nx0} {nx1} {xn}")
         if abs(xn - x1) < threshold:
             break
         x0 = x1
@@ -59,13 +56,13 @@ def find_mu_opt(options):
     mu1 = mu0 - 0.5 * abs(mu0)
     mu_opt = secant(comm, options, mu0, mu1, system.ne)
     if comm.rank == 0:
-        print("# Converged mu: {}".format(mu_opt))
+        print(f"# Converged mu: {mu_opt}")
     # Run longer simulation at optimal mu.
     sys_opts["mu"] = mu_opt
     qmc["nsteps"] = 50
     estim["basename"] = "optimal"
     afqmc = ThermalAFQMC(comm, options=options, verbose=(comm.rank == 0))
-    afqmc.run(comm=comm, verbose=True)
+    afqmc.run(verbose=True)
 
 
 if __name__ == "__main__":

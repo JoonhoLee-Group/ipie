@@ -1,8 +1,8 @@
 import matplotlib.pyplot as pl
 import numpy
 import pandas as pd
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.estimators.thermal import particle_number
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
@@ -49,9 +49,7 @@ for b, n in zip(fci.beta, fci.N):
     )
 pl.plot(fci.beta, fci.E, label="FCI")
 pl.plot(fci.beta, zip(*data)[0], label="THF", linestyle=":")
-data = pd.DataFrame(
-    {"beta": fci.beta, "FCI": fci.E, "THF": zip(*data)[0], "Match": match}
-)
+data = pd.DataFrame({"beta": fci.beta, "FCI": fci.E, "THF": zip(*data)[0], "Match": match})
 print(data.to_string())
 # trial = MeanField(comm, system, beta, dt,
 # options={"nav": fci.N.values[-1]}, verbose=True)

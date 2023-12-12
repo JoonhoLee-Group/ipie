@@ -1,6 +1,7 @@
 import numpy
 import pytest
-from mpi4py import MPI
+
+from ipie.config import MPI
 
 comm = MPI.COMM_WORLD
 numpy.random.seed(7)
@@ -66,11 +67,7 @@ def test_pair_branch():
     for walker in glob_inf[comm.rank * nw : (comm.rank + 1) * nw]:
         if walker[1] > 1:
             tag = comm.rank * len(walker_info) + walker[3]
-            reqs.append(
-                comm.isend(
-                    comm.rank * numpy.ones(2), dest=int(round(walker[3])), tag=tag
-                )
-            )
+            reqs.append(comm.isend(comm.rank * numpy.ones(2), dest=int(round(walker[3])), tag=tag))
     buff = []
     for walker in glob_inf[comm.rank * nw : (comm.rank + 1) * nw]:
         if walker[1] == 0:

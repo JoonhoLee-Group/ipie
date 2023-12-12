@@ -167,10 +167,7 @@ class AFQMC(object):
         if self.qmc.nwalkers == 0:
             if comm.rank == 0:
                 print("# WARNING: Not enough walkers for selected core count.")
-                print(
-                    "# There must be at least one walker per core set in the "
-                    "input file."
-                )
+                print("# There must be at least one walker per core set in the " "input file.")
                 print("# Setting one walker per core.")
             self.qmc.nwalkers = 1
         self.qmc.ntot_walkers = self.qmc.nwalkers * comm.size
@@ -202,7 +199,7 @@ class AFQMC(object):
         mem = get_node_mem()
         if comm.rank == 0:
             self.trial.calculate_energy(self.system, self.hamiltonian)
-            print("# Trial wfn energy is {}".format(self.trial.energy))
+            print(f"# Trial wfn energy is {self.trial.energy}")
         comm.barrier()
         prop_opt = options.get("propagator", {})
         self.propagators = get_propagator_driver(
@@ -336,9 +333,7 @@ class AFQMC(object):
             if self.psi.write_restart and step % self.psi.write_freq == 0:
                 self.psi.write_walkers(comm)
             if step < self.qmc.neqlb:
-                eshift = self.estimators.estimators["mixed"].get_shift(
-                    self.propagators.hybrid
-                )
+                eshift = self.estimators.estimators["mixed"].get_shift(self.propagators.hybrid)
             else:
                 eshift += self.estimators.estimators["mixed"].get_shift() - eshift
             self.tstep += time.time() - start_step
@@ -353,22 +348,18 @@ class AFQMC(object):
         """
         if self.root:
             if verbose:
-                print("# End Time: {:s}".format(time.asctime()))
-                print(
-                    "# Running time : {:.6f} seconds".format(
-                        (time.time() - self._init_time)
-                    )
-                )
+                print(f"# End Time: {time.asctime():s}")
+                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
                 print("# Timing breakdown (per processor, per block/step):")
-                print("# - Setup: {:.6f} s".format(self.tsetup))
+                print(f"# - Setup: {self.tsetup:.6f} s")
                 nsteps = max(self.qmc.nsteps, 1)
                 nstblz = max(nsteps // self.qmc.nstblz, 1)
                 npcon = max(nsteps // self.qmc.npop_control, 1)
-                print("# - Step: {:.6f} s".format((self.tstep / nsteps)))
-                print("# - Orthogonalisation: {:.6f} s".format(self.tortho / nstblz))
-                print("# - Propagation: {:.6f} s".format(self.tprop / nsteps))
-                print("# - Estimators: {:.6f} s".format(self.testim / nsteps))
-                print("# - Population control: {:.6f} s".format(self.tpopc / npcon))
+                print(f"# - Step: {self.tstep / nsteps:.6f} s")
+                print(f"# - Orthogonalisation: {self.tortho / nstblz:.6f} s")
+                print(f"# - Propagation: {self.tprop / nsteps:.6f} s")
+                print(f"# - Estimators: {self.testim / nsteps:.6f} s")
+                print(f"# - Population control: {self.tpopc / npcon:.6f} s")
 
     def determine_dtype(self, propagator, system):
         """Determine dtype for trial wavefunction and walkers.
@@ -385,47 +376,9 @@ class AFQMC(object):
         twist = system.ktwist.all() is not None
         return continuous or twist
 
-    def get_energy(self, skip=0):
-        """Get mixed estimate for the energy.
-
-        Returns
-        -------
-        (energy, error) : tuple
-            Mixed estimate for the energy and standard error.
-        """
-        filename = self.estimators.h5f_name
-        from ipie.analysis import blocking
-
-        try:
-            eloc = blocking.reblock_local_energy(filename, skip)
-        except IndexError:
-            eloc = None
-        except ValueError:
-            eloc = None
-        return eloc
-
     def setup_timers(self):
         self.tortho = 0
         self.tprop = 0
         self.testim = 0
         self.tpopc = 0
         self.tstep = 0
-
-    def get_one_rdm(self, skip=0):
-        """Get back-propagated estimate for the one RDM.
-
-        Returns
-        -------
-        rdm : :class:`numpy.ndarray`
-            Back propagated estimate for 1RMD.
-        error : :class:`numpy.ndarray`
-            Standard error in the RDM.
-        """
-        from ipie.analysis import blocking
-
-        filename = self.estimators.h5f_name
-        try:
-            bp_rdm, bp_rdm_err = blocking.reblock_rdm(filename)
-        except IndexError:
-            bp_rdm, bp_rdm_err = None, None
-        return (bp_rdm, bp_rdm_err)

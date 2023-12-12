@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +16,6 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-import sys
-
 import numpy
 from numba import jit
 
@@ -26,11 +23,9 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-
 # FDM: deprecated remove?
 def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
-    """Compute local energy using half-rotated eri tensor.
-    """
+    """Compute local energy using half-rotated eri tensor."""
 
     na = system.nup
     nb = system.ndown
@@ -82,21 +77,16 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     """
     # Element wise multiplication.
     e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nalpha, nbeta = system.nup, system.ndown
     nbasis = ham.nbasis
     nchol = ham.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(ham.chol_vecs):
-        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
-            Ga.imag.ravel()
-        )
-        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
-            Gb.imag.ravel()
-        )
+    if numpy.isrealobj(ham.chol):
+        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
+        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol_vecs.T.dot(Ga.ravel())
-        Xb = ham.chol_vecs.T.dot(Gb.ravel())
+        Xa = ham.chol.T.dot(Ga.ravel())
+        Xb = ham.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -108,9 +98,9 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol_vecs):
+    if numpy.isrealobj(ham.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -119,7 +109,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol_vecs[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
@@ -283,9 +273,8 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
         exchange contribution for given green's function.
     """
     naux = rchol.shape[0]
-    nwalkers = Ghalf.shape[0]
-    nocc = Ghalf.shape[1]
-    nbasis = Ghalf.shape[2]
+    nocc = Ghalf.shape[0]
+    nbasis = Ghalf.shape[1]
 
     exx = 0 + 0j
     GhalfT = Ghalf.T.copy()
@@ -295,6 +284,42 @@ def exx_kernel_rchol_complex(rchol, Ghalf):
         T = rmi.dot(GhalfT)
         exx += numpy.dot(T.ravel(), T.T.ravel())
     return exx
+
+
+def cholesky_jk_ghf(chol, G):
+    nbasis = G.shape[0] // 2
+
+    Gaa = G[:nbasis, :nbasis].copy()
+    Gbb = G[nbasis:, nbasis:].copy()
+    Gab = G[:nbasis, nbasis:].copy()
+    Gba = G[nbasis:, :nbasis].copy()
+
+    Gcharge = Gaa + Gbb
+    X = Gcharge.ravel().dot(chol)
+    ecoul = xp.dot(X, X)
+
+    T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    Tab = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    Tba = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+
+    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+
+    nchol = chol.shape[-1]
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        Lmn = chol[:, x].reshape((nbasis, nbasis))
+        T[:, :].real = Gaa.T.real.dot(Lmn)
+        T[:, :].imag = Gaa.T.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+        T[:, :].real = Gbb.T.real.dot(Lmn)
+        T[:, :].imag = Gbb.T.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+
+        Tab[:, :].real = Gab.T.real.dot(Lmn)
+        Tab[:, :].imag = Gab.T.imag.dot(Lmn)
+        Tba[:, :].real = Gba.T.real.dot(Lmn)
+        Tba[:, :].imag = Gba.T.imag.dot(Lmn)
+        exx += 2.0 * numpy.trace(Tab.dot(Tba))
+    return 0.5 * ecoul, -0.5 * exx  # JK energy
 
 
 def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
@@ -323,10 +348,6 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     rcholb = trial._rcholb
 
     # Element wise multiplication.
-    nalpha, nbeta = system.nup, system.ndown
-    nbasis = Ghalfa.shape[-1]
-    if rchola is not None:
-        naux = rchola.shape[0]
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
@@ -339,13 +360,9 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     ecoul += 2 * xp.dot(Xa, Xb)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
-        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(
-            rcholb, Ghalfb
-        )
+        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
 
     synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy

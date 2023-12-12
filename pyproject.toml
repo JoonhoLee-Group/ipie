@@ -1,0 +1,17 @@
+[build-system]
+requires = [
+    "pip",
+    "setuptools>=42",
+    "wheel",
+    "numpy>=1.20.0",
+    "Cython>=0.29.0",
+]
+
+[tool.black]
+line-length = 100
+exclude = '''/(ipie/legacy)/|(ipie/lib)/'''
+
+[tool.isort]
+profile = 'black'
+order_by_type = false
+line_length = 100

@@ -11,7 +11,7 @@ try:
     import mpi4py
 
     mpi4py.rc.recv_mprobe = False
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     # import dill
     # MPI.pickle.__init__(dill.dumps, dill.loads)
@@ -52,9 +52,7 @@ def get_driver(options, comm):
     batched = get_input_value(qmc_opts, "batched", default=True)  # ,
     # verbose=verbosity)
     if beta is not None:
-        afqmc = ThermalAFQMC(
-            comm, options=options, parallel=comm.size > 1, verbose=verbosity
-        )
+        afqmc = ThermalAFQMC(comm, options=options, parallel=comm.size > 1, verbose=verbosity)
     else:
         if comm.rank == 0:
             print("# Non-batched AFQMC driver is used")
@@ -83,7 +81,7 @@ def read_input(input_file, comm, verbose=False):
     """
     if comm.rank == 0:
         if verbose:
-            print("# Initialising pie simulation from %s" % input_file)
+            print(f"# Initialising pie simulation from {input_file}")
         with open(input_file) as inp:
             options = json.load(inp)
         inp.close()
@@ -164,12 +162,13 @@ def setup_parallel(options, comm=None, verbose=False):
     walker_opts = options.get("walkers", {"weight": 1})
     estimator_opts["stack_size"] = walker_opts.get("stack_size", 1)
     afqmc.estimators = EstimatorHandler(
-            comm,
-            afqmc.system,
-            afqmc.hamiltonian,
-            afqmc.trial,
-            options=estimator_opts,
-            verbose=(comm.rank == 0 and verbose))
+        comm,
+        afqmc.system,
+        afqmc.hamiltonian,
+        afqmc.trial,
+        options=estimator_opts,
+        verbose=(comm.rank == 0 and verbose),
+    )
     afqmc.psi = Walkers(
         walker_opts,
         afqmc.system,

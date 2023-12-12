@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,14 +16,10 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
-import numpy
-
-from ipie.estimators.generic import (local_energy_cholesky_opt,
-                                     local_energy_cholesky_opt_dG,
-                                     local_energy_generic_cholesky,
-                                     local_energy_generic_opt)
+from ipie.estimators.generic import local_energy_cholesky_opt, local_energy_generic_cholesky
+from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 from ipie.legacy.estimators.ci import get_hmatel
-from ipie.legacy.estimators.local_energy import local_energy_G as legacy_local_energy_G
+from ipie.utils.backend import arraylib as xp
 
 
 def local_energy_G(system, hamiltonian, trial, G, Ghalf):
@@ -49,34 +44,19 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
         Total, one-body and two-body energies.
     """
     assert len(G) == 2
-    ghf = G[0].shape[-1] == 2 * hamiltonian.nbasis
-    # unfortunate interfacial problem for the HH model
 
-    if hamiltonian.name == "Generic":
-        if Ghalf is not None:
-            if hamiltonian.exact_eri:
-                return local_energy_generic_opt(system, G, Ghalf=Ghalf, eri=trial._eri)
-            else:
-                if hamiltonian.density_diff:
-                    return local_energy_cholesky_opt_dG(
-                        system,
-                        hamiltonian.ecore,
-                        Ghalfa=Ghalf[0],
-                        Ghalfb=Ghalf[1],
-                        trial=trial,
-                    )
-                else:
-                    return local_energy_cholesky_opt(
-                        system,
-                        hamiltonian.ecore,
-                        Ghalfa=Ghalf[0],
-                        Ghalfb=Ghalf[1],
-                        trial=trial,
-                    )
-        else:
-            return local_energy_generic_cholesky(system, hamiltonian, G)
+    # unfortunate interfacial problem for the HH model
+    # if type(hamiltonian) == Generic[hamiltonian.chol.dtype]:
+    if Ghalf is not None:
+        return local_energy_cholesky_opt(
+            system,
+            hamiltonian.ecore,
+            Ghalfa=Ghalf[0],
+            Ghalfb=Ghalf[1],
+            trial=trial,
+        )
     else:
-        return legacy_local_energy_G(system, hamiltonian, trial, G, Ghalf)
+        return local_energy_generic_cholesky(system, hamiltonian, G)
 
 
 def local_energy(system, hamiltonian, walker, trial):
@@ -121,7 +101,26 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
             two_body += e2b
             if j < i:
                 # Use Hermiticity
-                evar += etot
-                one_body += e1b
-                two_body += e2b
+                evar += etot.conj()
+                one_body += e1b.conj()
+                two_body += e2b.conj()
     return evar / denom, one_body / denom, two_body / denom
+
+
+def variational_energy_noci(system, hamiltonian, trial):
+    weight = 0
+    energies = 0
+    denom = 0
+    for i, (Ba, Bb) in enumerate(zip(trial.psia, trial.psib)):
+        for j, (Aa, Ab) in enumerate(zip(trial.psia, trial.psib)):
+            # construct "local" green's functions for each component of A
+            Gup, _, inv_O_up = gab_mod_ovlp(Ba, Aa)
+            Gdn, _, inv_O_dn = gab_mod_ovlp(Bb, Ab)
+            ovlp = 1.0 / (xp.linalg.det(inv_O_up) * xp.linalg.det(inv_O_dn))
+            weight = (trial.coeffs[i].conj() * trial.coeffs[j]) * ovlp
+            G = xp.array([Gup, Gdn])
+            # Ghalf = [Ghalfa, Ghalfb]
+            e = xp.array(local_energy_G(system, hamiltonian, trial, G, Ghalf=None))
+            energies += weight * e
+            denom += weight
+    return tuple(energies / denom)

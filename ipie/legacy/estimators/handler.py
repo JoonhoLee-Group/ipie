@@ -55,9 +55,7 @@ class Estimators(object):
         True if calculating imaginary time correlation functions (ITCFs).
     """
 
-    def __init__(
-        self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False
-    ):
+    def __init__(self, estimates, root, qmc, system, hamiltonian, trial, BT2, verbose=False):
         if verbose:
             print("# Setting up estimator object.")
         if root:
@@ -66,15 +64,15 @@ class Estimators(object):
             self.basename = estimates.get("basename", "estimates")
             if self.filename is None:
                 overwrite = estimates.get("overwrite", True)
-                self.filename = self.basename + ".%s.h5" % self.index
+                self.filename = self.basename + f".{self.index}.h5"
                 while os.path.isfile(self.filename) and not overwrite:
                     self.index = int(self.filename.split(".")[1])
                     self.index = self.index + 1
-                    self.filename = self.basename + ".%s.h5" % self.index
+                    self.filename = self.basename + f".{self.index}.h5"
             with h5py.File(self.filename, "w") as fh5:
                 pass
             if verbose:
-                print("# Writing estimator data to {}.".format(self.filename))
+                print(f"# Writing estimator data to {self.filename}.")
         else:
             self.filename = None
         # Sub-members:
@@ -101,10 +99,7 @@ class Estimators(object):
             self.nbp = self.estimators["back_prop"].nmax
             if verbose:
                 print("# Performing back propagation.")
-                print(
-                    "# Total number of back propagation steps: "
-                    "{:d}.".format(self.nprop_tot)
-                )
+                print(f"# Total number of back propagation steps: {self.nprop_tot:d}.")
         else:
             self.nprop_tot = None
             self.nbp = None
@@ -133,7 +128,7 @@ class Estimators(object):
 
     def increment_file_number(self):
         self.index = self.index + 1
-        self.filename = self.basename + ".%s.h5" % self.index
+        self.filename = self.basename + f".{self.index}.h5"
 
     def print_step(self, comm, nprocs, step, nsteps=None, free_projection=False):
         """Print QMC estimates.
@@ -150,9 +145,7 @@ class Estimators(object):
             Number of steps between measurements.
         """
         for k, e in self.estimators.items():
-            e.print_step(
-                comm, nprocs, step, nsteps=nsteps, free_projection=free_projection
-            )
+            e.print_step(comm, nprocs, step, nsteps=nsteps, free_projection=free_projection)
 
     def update(self, qmc, system, hamiltonian, trial, psi, step, free_projection=False):
         """Update estimators

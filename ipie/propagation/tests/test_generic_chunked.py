@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,26 +18,20 @@
 
 import numpy
 import pytest
-from mpi4py import MPI
 
-from ipie.estimators.generic import local_energy_cholesky_opt
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_rhf_batch,
-                                             local_energy_single_det_uhf_batch)
-from ipie.estimators.local_energy_sd_chunked import \
-    local_energy_single_det_uhf_batch_chunked
+from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.propagation.continuous import Continuous
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
-    construct_force_bias_batch_single_det_chunked)
+    construct_force_bias_batch_single_det_chunked,
+)
+from ipie.propagation.phaseless_generic import PhaselessGeneric, PhaselessGenericChunked
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
-from ipie.utils.misc import dotdict, is_cupy
-from ipie.utils.mpi import MPIHandler, get_shared_array, have_shared_mem
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.utils.misc import dotdict
+from ipie.utils.mpi import get_shared_array, MPIHandler
+from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.testing import build_random_single_det_trial, generate_hamiltonian
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -79,31 +72,29 @@ def test_generic_propagation_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc
-    )
-    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = MultiSlater(system, ham, wfn)
-    trial.half_rotate(system, ham)
-
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
+    trial, _ = build_random_single_det_trial(nelec, nmo)
+    trial.half_rotate(ham)
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    options = {"hybrid": True}
-    prop = Continuous(system, ham, trial, qmc, options=options)
 
-    mpi_handler = MPIHandler(comm, options={"nmembers": 3}, verbose=(rank == 0))
+    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
     ham.chunk(mpi_handler)
     trial.chunk(mpi_handler)
 
-    walker_batch = SingleDetWalkerBatch(
-        system, ham, trial, nwalkers, mpi_handler=mpi_handler
+    prop = PhaselessGenericChunked(qmc["dt"])
+    prop.build(ham, trial, mpi_handler=mpi_handler)
+
+    init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
+
+    walker_batch = UHFWalkersTrial(
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
+    walker_batch.build(trial)
+
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
+        prop.propagate_walkers(walker_batch, ham, trial, trial.energy)
         walker_batch.reortho()
 
     vfb = construct_force_bias_batch_single_det(ham, walker_batch, trial)
@@ -115,10 +106,13 @@ def test_generic_propagation_chunked():
     xshifted = numpy.random.normal(0.0, 1.0, ham.nchol * walker_batch.nwalkers).reshape(
         walker_batch.nwalkers, ham.nchol
     )
-    VHS_chunked = prop.propagator.construct_VHS_batch_chunked(
-        ham, xshifted.T.copy(), walker_batch.mpi_handler
+    VHS_chunked = prop.construct_VHS(
+        ham,
+        xshifted.T.copy(),
     )
-    VHS = prop.propagator.construct_VHS_batch(ham, xshifted.T.copy())
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham, trial)
+    VHS = prop.construct_VHS(ham, xshifted.T.copy())
     assert numpy.allclose(VHS, VHS_chunked)
 
 

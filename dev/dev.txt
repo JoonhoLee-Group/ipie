@@ -1,0 +1,5 @@
+pylint
+black
+pytest-xdist
+flynt
+-r mpi.txt

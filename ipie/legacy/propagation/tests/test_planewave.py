@@ -13,13 +13,11 @@ from ipie.utils.misc import dotdict
 
 @pytest.mark.unit
 def test_pw():
-    options = {"rs": 2, "nup": 7, "ndown": 7, "ecut": 2, "write_integrals": True}
+    options = {"rs": 2, "nup": 7, "ndown": 7, "ecut": 2, "write_integrals": False}
     system = UEG(options=options)
     ham = HamUEG(system, options=options)
     occ = numpy.eye(ham.nbasis)[:, : system.nup]
-    wfn = numpy.zeros(
-        (1, ham.nbasis, system.nup + system.ndown), dtype=numpy.complex128
-    )
+    wfn = numpy.zeros((1, ham.nbasis, system.nup + system.ndown), dtype=numpy.complex128)
     wfn[0, :, : system.nup] = occ
     wfn[0, :, system.nup :] = occ
     coeffs = numpy.array([1 + 0j])
@@ -40,13 +38,3 @@ def test_pw():
     xi = numpy.random.rand(ham.nfields)
     vhs = prop.construct_VHS(ham, xi - fb)
     assert numpy.linalg.norm(vhs) == pytest.approx(0.1467322554815581)
-
-
-def teardown_module():
-    cwd = os.getcwd()
-    files = ["hamil.h5"]
-    for f in files:
-        try:
-            os.remove(cwd + "/" + f)
-        except OSError:
-            pass

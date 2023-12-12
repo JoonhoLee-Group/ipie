@@ -5,8 +5,7 @@ import numpy
 import scipy.linalg
 
 from ipie.legacy.estimators.local_energy import local_energy_G
-from ipie.legacy.estimators.thermal import (greens_function, one_rdm_from_G,
-                                            particle_number)
+from ipie.legacy.estimators.thermal import greens_function, one_rdm_from_G, particle_number
 from ipie.legacy.walkers.stack import PropagatorStack
 from ipie.legacy.walkers.walker import Walker
 from ipie.utils.linalg import regularise_matrix_inverse
@@ -23,9 +22,7 @@ class ThermalWalker(Walker):
         self.Ghalf = None
         self.nbasis = trial.dmat[0].shape[0]
         self.stack_size = walker_opts.get("stack_size", None)
-        max_diff_diag = numpy.linalg.norm(
-            (numpy.diag(trial.dmat[0].diagonal()) - trial.dmat[0])
-        )
+        max_diff_diag = numpy.linalg.norm((numpy.diag(trial.dmat[0].diagonal()) - trial.dmat[0]))
         if max_diff_diag < 1e-10:
             self.diagonal_trial = True
             if verbose:
@@ -44,21 +41,17 @@ class ThermalWalker(Walker):
         if self.stack_size > trial.stack_size:
             if verbose:
                 print(
-                    "# Walker stack size differs from that estimated from "
-                    "trial density matrix."
+                    "# Walker stack size differs from that estimated from " "trial density matrix."
                 )
-                print(
-                    "# Be careful. cond(BT)**stack_size: %10.3e."
-                    % (trial.cond**self.stack_size)
-                )
+                print(f"# Be careful. cond(BT)**stack_size: {trial.cond ** self.stack_size:10.3e}.")
         self.stack_length = self.num_slices // self.stack_size
         if verbose:
-            print("# Walker stack size: {}".format(self.stack_size))
+            print(f"# Walker stack size: {self.stack_size}")
 
         self.lowrank = walker_opts.get("low_rank", False)
         self.lowrank_thresh = walker_opts.get("low_rank_thresh", 1e-6)
         if verbose:
-            print("# Using low rank trick: {}".format(self.lowrank))
+            print(f"# Using low rank trick: {self.lowrank}")
         self.stack = PropagatorStack(
             self.stack_size,
             trial.num_slices,
@@ -100,7 +93,7 @@ class ThermalWalker(Walker):
             eloc = local_energy_G(system, hamiltonian, self, P)
             nav = particle_number(P)
             print("# Initial walker energy: {} {} {}".format(*eloc))
-            print("# Initial walker electron number: {}".format(nav))
+            print(f"# Initial walker electron number: {nav}")
         # self.buff_names = ['weight', 'G', 'unscaled_weight', 'phase', 'Tl',
         # 'Ql', 'Dl', 'Tr', 'Qr', 'Dr', 'M0']
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
@@ -112,9 +105,7 @@ class ThermalWalker(Walker):
         if self.lowrank:
             return self.stack.G
         else:
-            return self.greens_function_qr_strat(
-                trial, slice_ix=slice_ix, inplace=inplace
-            )
+            return self.greens_function_qr_strat(trial, slice_ix=slice_ix, inplace=inplace)
 
     def greens_function_svd(self, trial, slice_ix=None, inplace=True):
         if slice_ix == None:
@@ -226,12 +217,8 @@ class ThermalWalker(Walker):
 
                 for ix in range(1, center_ix):
                     B = self.stack.get(ix)
-                    C2 = numpy.einsum(
-                        "ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin]
-                    )
-                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(
-                        C2, pivoting=True, check_finite=False
-                    )
+                    C2 = numpy.einsum("ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin])
+                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
                     # Compute D matrices
                     D1inv = 1.0 / R1.diagonal()
                     self.Dr[spin] = R1.diagonal()
@@ -281,12 +268,8 @@ class ThermalWalker(Walker):
 
                 for ix in range(1, center_ix):
                     B = self.stack.get(ix)
-                    C2 = numpy.einsum(
-                        "ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin]
-                    )
-                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(
-                        C2, pivoting=True, check_finite=False
-                    )
+                    C2 = numpy.einsum("ij,j->ij", numpy.dot(B[spin], self.Qr[spin]), self.Dr[spin])
+                    (self.Qr[spin], R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
                     # Compute D matrices
                     D1inv = 1.0 / R1.diagonal()
                     self.Dr[spin] = R1.diagonal()
@@ -319,7 +302,6 @@ class ThermalWalker(Walker):
                     self.Dl[spin] = C2.diagonal()
 
     def greens_function_left_right(self, center_ix, inplace=False, thresh=1e-6):
-
         assert self.diagonal_trial
 
         if not inplace:
@@ -338,7 +320,6 @@ class ThermalWalker(Walker):
         #       It goes to right to left and we sample (I + L*B*R) in the end
         for spin in [0, 1]:
             if center_ix > 0:  # there exists right bit
-
                 mR = len(self.Dr[spin][numpy.abs(self.Dr[spin]) > thresh])
 
                 Ccr = numpy.einsum(
@@ -347,20 +328,14 @@ class ThermalWalker(Walker):
                     self.Dr[spin][:mR],
                 )  # N x mR
 
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Ccr, pivoting=True, check_finite=False
-                )
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
                 Dlcr = Rlcr[:mR, :mR].diagonal()  # mR
                 Dinv = 1.0 / Dlcr  # mR
-                tmp = numpy.einsum(
-                    "i,ij->ij", Dinv[:mR], Rlcr[:mR, :mR]
-                )  # mR, mR x mR -> mR x mR
+                tmp = numpy.einsum("i,ij->ij", Dinv[:mR], Rlcr[:mR, :mR])  # mR, mR x mR -> mR x mR
                 tmp[:, Plcr] = tmp[:, range(mR)]
                 Tlcr = numpy.dot(tmp, self.Tr[spin][:mR, :])  # mR x N
             else:
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Bc[spin], pivoting=True, check_finite=False
-                )
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Bc[spin], pivoting=True, check_finite=False)
                 # Form D matrices
                 Dlcr = Rlcr.diagonal()
 
@@ -371,7 +346,6 @@ class ThermalWalker(Walker):
                 Tlcr[:, Plcr] = Tlcr[:, range(self.nbasis)]  # mR x N
 
             if center_ix < self.stack.nbins - 1:  # there exists left bit
-
                 # assume left stack is all diagonal (i.e., QDT = diagonal -> Q and T are identity)
                 Clcr = numpy.einsum(
                     "i,ij->ij",
@@ -408,9 +382,7 @@ class ThermalWalker(Walker):
             if mT == nbsf:  # No need for Woodbury
                 T1inv = scipy.linalg.inv(Tlcr, check_finite=False)
                 # C = (Db Q^{-1}T^{-1}+Ds)
-                C = numpy.dot(
-                    numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv
-                ) + numpy.diag(Ds)
+                C = numpy.dot(numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv) + numpy.diag(Ds)
                 Cinv = scipy.linalg.inv(C, check_finite=False)
 
                 # Then G = T^{-1} C^{-1} Db Q^{-1}
@@ -435,9 +407,9 @@ class ThermalWalker(Walker):
                 )
                 A = numpy.einsum("i,ij->ij", Db, tmp.dot(TQinv))
                 if inplace:
-                    self.G[spin] = numpy.eye(nbsf, dtype=Bc[spin].dtype) - Qlcr[
-                        :, :mT
-                    ].dot(numpy.diag(Dlcr[:mT])).dot(A).dot(Tlcr)
+                    self.G[spin] = numpy.eye(nbsf, dtype=Bc[spin].dtype) - Qlcr[:, :mT].dot(
+                        numpy.diag(Dlcr[:mT])
+                    ).dot(A).dot(Tlcr)
                 else:
                     G[spin] = numpy.eye(nbsf, dtype=Bc[spin].dtype) - Qlcr[:, :mT].dot(
                         numpy.diag(Dlcr[:mT])
@@ -456,12 +428,8 @@ class ThermalWalker(Walker):
         for spin in [0, 1]:
             if center_ix > 0:  # there exists right bit
                 # print("center_ix > 0 second")
-                Ccr = numpy.einsum(
-                    "ij,j->ij", numpy.dot(Bc[spin], self.Qr[spin]), self.Dr[spin]
-                )
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Ccr, pivoting=True, check_finite=False
-                )
+                Ccr = numpy.einsum("ij,j->ij", numpy.dot(Bc[spin], self.Qr[spin]), self.Dr[spin])
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
                 Dlcr = Rlcr.diagonal()
                 Dinv = 1.0 / Rlcr.diagonal()
                 tmp = numpy.einsum("i,ij->ij", Dinv, Rlcr)
@@ -469,9 +437,7 @@ class ThermalWalker(Walker):
                 Tlcr = numpy.dot(tmp, self.Tr[spin])
             else:
                 # print("center_ix > 0 else second")
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Bc[spin], pivoting=True, check_finite=False
-                )
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Bc[spin], pivoting=True, check_finite=False)
                 # Form D matrices
                 Dlcr = Rlcr.diagonal()
                 Dinv = 1.0 / Rlcr.diagonal()
@@ -481,13 +447,9 @@ class ThermalWalker(Walker):
             if center_ix < self.stack.nbins - 1:  # there exists left bit
                 # print("center_ix < self.stack.nbins-1 second")
                 # assume left stack is all diagonal
-                Clcr = numpy.einsum(
-                    "i,ij->ij", self.Dl[spin], numpy.einsum("ij,j->ij", Qlcr, Dlcr)
-                )
+                Clcr = numpy.einsum("i,ij->ij", self.Dl[spin], numpy.einsum("ij,j->ij", Qlcr, Dlcr))
 
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
-                    Clcr, pivoting=True, check_finite=False
-                )
+                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Clcr, pivoting=True, check_finite=False)
                 Dlcr = Rlcr.diagonal()
                 Dinv = 1.0 / Rlcr.diagonal()
 
@@ -513,9 +475,7 @@ class ThermalWalker(Walker):
 
             T1inv = scipy.linalg.inv(Tlcr, check_finite=False)
             # C = (Db Q^{-1}T^{-1}+Ds)
-            C = numpy.dot(
-                numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv
-            ) + numpy.diag(Ds)
+            C = numpy.dot(numpy.einsum("i,ij->ij", Db, Qlcr.conj().T), T1inv) + numpy.diag(Ds)
             Cinv = scipy.linalg.inv(C, check_finite=False)
 
             # Then G = T^{-1} C^{-1} Db Q^{-1}
@@ -758,7 +718,7 @@ def unit_test():
     try:
         assert abs(eref - ekin) < 1e-8
     except AssertionError:
-        print("Error in kinetic energy check. Ref: %13.8e Calc:%13.8e" % (eref, ekin))
+        print(f"Error in kinetic energy check. Ref: {eref:13.8e} Calc:{ekin:13.8e}")
     walker = ThermalWalker({"stack_size": 10}, system, trial)
     rdm = one_rdm_from_G(walker.G)
     ekin = local_energy_hubbard(system, rdm)[1]

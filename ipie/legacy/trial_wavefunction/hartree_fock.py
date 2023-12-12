@@ -15,9 +15,7 @@ class HartreeFock(object):
         init_time = time.time()
         self.name = "hartree_fock"
         self.type = "hartree_fock"
-        self.initial_wavefunction = trial_opts.get(
-            "initial_wavefunction", "hartree_fock"
-        )
+        self.initial_wavefunction = trial_opts.get("initial_wavefunction", "hartree_fock")
         self.ndets = 1
         self.trial_type = numpy.complex128
         self.psi = numpy.zeros(
@@ -27,23 +25,17 @@ class HartreeFock(object):
         self.wfn_file = trial_opts.get("filename", None)
         if self.wfn_file is not None:
             if verbose:
-                print("# Reading trial wavefunction from %s." % self.wfn_file)
+                print(f"# Reading trial wavefunction from {self.wfn_file}.")
             try:
                 orbs_matrix = read_qmcpack_wfn(self.wfn_file)
                 if verbose:
                     print("# Finished reading wavefunction.")
                 msq = hamiltonian.nbasis**2
                 if len(orbs_matrix) == msq:
-                    orbs_matrix = orbs_matrix.reshape(
-                        (hamiltonian.nbasis, hamiltonian.nbasis)
-                    )
+                    orbs_matrix = orbs_matrix.reshape((hamiltonian.nbasis, hamiltonian.nbasis))
                 else:
-                    orbs_alpha = orbs_matrix[:msq].reshape(
-                        (hamiltonian.nbasis, hamiltonian.nbasis)
-                    )
-                    orbs_beta = orbs_matrix[msq:].reshape(
-                        (hamiltonian.nbasis, hamiltonian.nbasis)
-                    )
+                    orbs_alpha = orbs_matrix[:msq].reshape((hamiltonian.nbasis, hamiltonian.nbasis))
+                    orbs_beta = orbs_matrix[msq:].reshape((hamiltonian.nbasis, hamiltonian.nbasis))
                     orbs_matrix = numpy.array([orbs_alpha, orbs_beta])
             except UnicodeDecodeError:
                 orbs_matrix = numpy.load(self.wfn_file)
@@ -83,24 +75,16 @@ class HartreeFock(object):
                 if verbose:
                     print("# Exciting orbital %i to orbital %i in trial." % (i, a))
                 self.psi[:, i] = orbs_matrix[:, a]
-        gup, self.gup_half = gab_mod(
-            self.psi[:, : system.nup], self.psi[:, : system.nup]
-        )
-        gup, self.gup_half = gab_mod(
-            self.psi[:, : system.nup], self.psi[:, : system.nup]
-        )
+        gup, self.gup_half = gab_mod(self.psi[:, : system.nup], self.psi[:, : system.nup])
+        gup, self.gup_half = gab_mod(self.psi[:, : system.nup], self.psi[:, : system.nup])
         gdown = numpy.zeros(gup.shape)
         self.gdown_half = numpy.zeros(self.gup_half.shape)
 
         if system.ndown > 0:
-            gdown, self.gdown_half = gab_mod(
-                self.psi[:, system.nup :], self.psi[:, system.nup :]
-            )
+            gdown, self.gdown_half = gab_mod(self.psi[:, system.nup :], self.psi[:, system.nup :])
 
         self.G = numpy.array([gup, gdown], dtype=self.trial_type)
-        self.Ghalf = numpy.array(
-            [self.gup_half, self.gdown_half], dtype=self.trial_type
-        )
+        self.Ghalf = numpy.array([self.gup_half, self.gdown_half], dtype=self.trial_type)
         self.coeffs = 1.0
         self.bp_wfn = trial_opts.get("bp_wfn", None)
         self.error = False
@@ -117,12 +101,10 @@ class HartreeFock(object):
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
-        (self.energy, self.e1b, self.e2b) = local_energy(
-            system, hamiltonian, self, self
-        )
+        (self.energy, self.e1b, self.e2b) = local_energy(system, hamiltonian, self, self)
         if self.verbose:
             print(
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print("# Time to evaluate local energy: {} s".format(time.time() - start))
+            print(f"# Time to evaluate local energy: {time.time() - start} s")

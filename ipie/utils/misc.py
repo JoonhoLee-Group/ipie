@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,14 +35,17 @@ def is_cupy(obj):
     cond = "cupy" in t
     return cond
 
+
 def to_numpy(obj):
     t = str(type(obj))
     cond = "cupy" in t
     if cond:
+        # pylint: disable=import-error
         import cupy
+
         return cupy.asnumpy(obj)
     else:
-        return obj
+        return
 
 
 def get_git_info():
@@ -62,30 +64,41 @@ def get_git_info():
         List of locally modified files tracked and untracked.
     """
 
+    under_git = True
     try:
         src = os.path.dirname(__file__) + "/../../"
-        sha1 = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=src).strip()
+        sha1 = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=src, stderr=subprocess.DEVNULL
+        ).strip()
         suffix = subprocess.check_output(
             ["git", "status", "-uno", "--porcelain", "./ipie"], cwd=src
         ).strip()
-        local_mods = subprocess.check_output(
-            ["git", "status", "--porcelain", "./ipie"], cwd=src
-        ).strip().decode('utf-8').split()
+        local_mods = (
+            subprocess.check_output(["git", "status", "--porcelain", "./ipie"], cwd=src)
+            .strip()
+            .decode("utf-8")
+            .split()
+        )
         branch = subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
         ).strip()
+    except subprocess.CalledProcessError:
+        under_git = False
     except Exception as error:
         suffix = False
         print(f"couldn't determine git hash : {error}")
         sha1 = "none".encode()
         local_mods = []
-    if suffix:
-        return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8"), local_mods
+    if under_git:
+        if suffix:
+            return sha1.decode("utf-8") + "-dirty", branch.decode("utf-8"), local_mods
+        else:
+            branch = subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
+            ).strip()
+            return sha1.decode("utf-8"), branch.decode("utf_8"), local_mods
     else:
-        branch = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=src
-        ).strip()
-        return sha1.decode("utf-8"), branch.decode("utf_8"), local_mods
+        return None, None, []
 
 
 def is_h5file(obj):
@@ -96,16 +109,13 @@ def is_h5file(obj):
 
 def is_class(obj):
     cond = hasattr(obj, "__class__") and (
-        ("__dict__") in dir(obj)
-        and not isinstance(obj, types.FunctionType)
-        and not is_h5file(obj)
+        ("__dict__") in dir(obj) and not isinstance(obj, types.FunctionType) and not is_h5file(obj)
     )
 
     return cond
 
 
 def serialise(obj, verbose=0):
-
     obj_dict = {}
     if isinstance(obj, dict):
         items = obj.items()
@@ -190,9 +200,9 @@ def update_stack(stack_size, num_slices, name="stack", verbose=False):
     else:
         stack_size = upper_bound
     if verbose:
-        print("# Initial {} upper_bound is {}".format(name, upper_bound))
-        print("# Initial {} lower_bound is {}".format(name, lower_bound))
-        print("# Adjusted {} size is {}".format(name, stack_size))
+        print(f"# Initial {name} upper_bound is {upper_bound}")
+        print(f"# Initial {name} lower_bound is {lower_bound}")
+        print(f"# Adjusted {name} size is {stack_size}")
     return stack_size
 
 
@@ -228,7 +238,7 @@ def merge_dicts(a, b, path=None):
             elif a[key] == b[key]:
                 pass  # same leaf value
             else:
-                raise Exception("Conflict at %s" % ".".join(path + [str(key)]))
+                raise Exception(f"Conflict at {'.'.join(path + [str(key)])}")
         else:
             a[key] = b[key]
     return a
@@ -285,23 +295,28 @@ def get_node_mem():
 
 
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
-    print("# Git hash: {:s}.".format(sha1))
-    print("# Git branch: {:s}.".format(branch))
-    if len(local_mods)  > 0:
+    import ipie
+
+    version = getattr(ipie, "__version__", "Unknown")
+    print(f"# ipie version: {version}")
+    if sha1 is not None:
+        print(f"# Git hash: {sha1:s}.")
+        print(f"# Git branch: {branch:s}.")
+    if len(local_mods) > 0:
         print("# Found uncommitted changes and/or untracked files.")
         for prefix, file in zip(local_mods[::2], local_mods[1::2]):
-            if prefix == 'M':
-                print("# Modified : {:s}".format(file))
-            elif prefix == '??':
-                print("# Untracked : {:s}".format(file))
-    print("# Calculation uuid: {:s}.".format(uuid))
+            if prefix == "M":
+                print(f"# Modified : {file:s}")
+            elif prefix == "??":
+                print(f"# Untracked : {file:s}")
+    print(f"# Calculation uuid: {uuid:s}.")
     mem = get_node_mem()
-    print("# Approximate memory available per node: {:.4f} GB.".format(mem))
-    print("# Running on {:d} MPI rank{:s}.".format(nranks, "s" if nranks > 1 else ""))
+    print(f"# Approximate memory available per node: {mem:.4f} GB.")
+    print(f"# Running on {nranks:d} MPI rank{'s' if nranks > 1 else '':s}.")
     hostname = socket.gethostname()
-    print("# Root processor name: {}".format(hostname))
+    print(f"# Root processor name: {hostname}")
     py_ver = sys.version.splitlines()
-    print("# Python interpreter: {:s}".format(" ".join(py_ver)))
+    print(f"# Python interpreter: {' '.join(py_ver):s}")
     info = {"nranks": nranks, "python": py_ver, "branch": branch, "sha1": sha1}
     from importlib import import_module
 
@@ -311,27 +326,27 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
             # Strip __init__.py
             path = l.__file__[:-12]
             vers = l.__version__
-            print("# Using {:s} v{:s} from: {:s}.".format(lib, vers, path))
-            info["{:s}".format(lib)] = {"version": vers, "path": path}
+            print(f"# Using {lib:s} v{vers:s} from: {path:s}.")
+            info[f"{lib:s}"] = {"version": vers, "path": path}
             if lib == "numpy":
                 try:
                     np_lib = l.__config__.blas_opt_info["libraries"]
                 except AttributeError:
                     np_lib = l.__config__.blas_ilp64_opt_info["libraries"]
-                print("# - BLAS lib: {:s}".format(" ".join(np_lib)))
+                print(f"# - BLAS lib: {' '.join(np_lib):s}")
                 try:
                     lib_dir = l.__config__.blas_opt_info["library_dirs"]
                 except AttributeError:
                     lib_dir = l.__config__.blas_ilp64_opt_info["library_dirs"]
-                print("# - BLAS dir: {:s}".format(" ".join(lib_dir)))
-                info["{:s}".format(lib)]["BLAS"] = {
+                print(f"# - BLAS dir: {' '.join(lib_dir):s}")
+                info[f"{lib:s}"]["BLAS"] = {
                     "lib": " ".join(np_lib),
                     "path": " ".join(lib_dir),
                 }
             elif lib == "mpi4py":
                 mpicc = l.get_config().get("mpicc", "none")
-                print("# - mpicc: {:s}".format(mpicc))
-                info["{:s}".format(lib)]["mpicc"] = mpicc
+                print(f"# - mpicc: {mpicc:s}")
+                info[f"{lib:s}"]["mpicc"] = mpicc
             elif lib == "cupy":
                 try:
                     cu_info = l.cuda.runtime.getDeviceProperties(0)
@@ -341,29 +356,17 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
                     # info['{:s}'.format(lib)]['cuda'] = {'info': ' '.join(np_lib),
                     #                                    'path': ' '.join(lib_dir)}
                     version_string = (
-                        cuda_version[:2]
-                        + "."
-                        + cuda_version[2:4]
-                        + "."
-                        + cuda_version[4]
+                        cuda_version[:2] + "." + cuda_version[2:4] + "." + cuda_version[4]
                     )
-                    print("# - CUDA compute capability: {:s}".format(cuda_compute))
-                    print("# - CUDA version: {}".format(version_string))
-                    print("# - GPU Type: {:s}".format(str(cu_info["name"])[1:]))
-                    print(
-                        "# - GPU Mem: {:.3f} GB".format(
-                            cu_info["totalGlobalMem"] / (1024**3.0)
-                        )
-                    )
-                    print(
-                        "# - Number of GPUs: {:d}".format(
-                            l.cuda.runtime.getDeviceCount()
-                        )
-                    )
+                    print(f"# - CUDA compute capability: {cuda_compute:s}")
+                    print(f"# - CUDA version: {version_string}")
+                    print(f"# - GPU Type: {str(cu_info['name'])[1:]:s}")
+                    print(f"# - GPU Mem: {cu_info['totalGlobalMem'] / 1024 ** 3.0:.3f} GB")
+                    print(f"# - Number of GPUs: {l.cuda.runtime.getDeviceCount():d}")
                 except:
                     print("# cupy import error")
         except (ModuleNotFoundError, ImportError):
-            print("# Package {:s} not found.".format(lib))
+            print(f"# Package {lib:s} not found.")
     return info
 
 
@@ -372,7 +375,7 @@ def timeit(func):
         start = time.time()
         res = func(*args, **kwargs)
         end = time.time()
-        print(" # Time : {} ".format(end - start))
+        print(f" # Time : {end - start} ")
         return res
 
     return wrapper

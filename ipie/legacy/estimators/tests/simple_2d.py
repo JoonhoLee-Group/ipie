@@ -49,9 +49,7 @@ def convolve(f, g, mesh):
     min_shape = numpy.array(f_.shape) + numpy.array(g_.shape) - 1
     fshape = [next_fast_len(d) for d in min_shape]
     fslice = tuple([slice(sz) for sz in shape])
-    fq = numpy.fft.fftn(
-        numpy.fft.ifftn(f_, s=fshape) * numpy.fft.ifftn(g_, s=fshape)
-    ).copy()
+    fq = numpy.fft.fftn(numpy.fft.ifftn(f_, s=fshape) * numpy.fft.ifftn(g_, s=fshape)).copy()
     return fq.ravel()
 
 

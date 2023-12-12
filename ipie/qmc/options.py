@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +16,8 @@
 #          Joonho Lee
 #
 
-import copy
-
-import numpy
+from dataclasses import dataclass
+from typing import Optional
 
 from ipie.utils.io import get_input_value
 
@@ -28,16 +26,16 @@ def convert_from_reduced_unit(system, qmc_opts, verbose=False):
     if system.name == "UEG":
         TF = system.ef  # Fermi temeprature
         if verbose:
-            print("# Fermi Temperature: {:13.8e}".format(TF))
-            print("# beta in reduced unit: {:13.8e}".format(qmc_opts["beta"]))
-            print("# dt in reduced unit: {:13.8e}".format(qmc_opts["dt"]))
+            print(f"# Fermi Temperature: {TF:13.8e}")
+            print(f"# beta in reduced unit: {qmc_opts['beta']:13.8e}")
+            print(f"# dt in reduced unit: {qmc_opts['dt']:13.8e}")
         dt = qmc_opts["dt"]  # original dt
         beta = qmc_opts["beta"]  # original dt
         scaled_dt = dt / TF  # converting to Hartree ^ -1
         scaled_beta = beta / TF  # converting to Hartree ^ -1
         if verbose:
-            print("# beta in Hartree^-1:  {:13.8e}".format(scaled_beta))
-            print("# dt in Hartree^-1: {:13.8e}".format(scaled_dt))
+            print(f"# beta in Hartree^-1:  {scaled_beta:13.8e}")
+            print(f"# dt in Hartree^-1: {scaled_dt:13.8e}")
         return scaled_dt, scaled_beta
 
 
@@ -103,22 +101,13 @@ class QMCOpts(object):
         Estimate for mean energy for continuous Hubbard-Stratonovich transformation.
     """
 
+    # pylint: disable=dangerous-default-value
+    # TODO: Remove this class / replace with dataclass
     def __init__(self, inputs={}, verbose=False):
         self.nwalkers = get_input_value(
             inputs, "num_walkers", default=None, alias=["nwalkers"], verbose=verbose
         )
-        self.nwalkers_per_task = get_input_value(
-            inputs,
-            "num_walkers",
-            default=None,
-            alias=["nwalkers_per_task"],
-            verbose=verbose,
-        )
-        if self.nwalkers_per_task is not None:
-            self.nwalkers = None
-        self.dt = get_input_value(
-            inputs, "timestep", default=0.005, alias=["dt"], verbose=verbose
-        )
+        self.dt = get_input_value(inputs, "timestep", default=0.005, alias=["dt"], verbose=verbose)
         self.batched = get_input_value(inputs, "batched", default=True, verbose=verbose)
         self.nsteps = get_input_value(
             inputs, "num_steps", default=25, alias=["nsteps", "steps"], verbose=verbose
@@ -161,7 +150,34 @@ class QMCOpts(object):
         )
 
     def __str__(self, verbose=0):
-        _str = ''
+        _str = ""
         for k, v in self.__dict__.items():
             _str += f"# {k:<25s} : {v}\n"
         return _str
+
+
+@dataclass
+class QMCParams:
+    r"""Input options and certain constants / parameters derived from them.
+
+    Args:
+        num_walkers: number of walkers **per** core / task / computational unit.
+        total_num_walkers: The total number of walkers in the simulation.
+        timestep: The timestep delta_t
+        num_steps_per_block: Number of steps of propagation before estimators
+            are evaluated.
+        num_blocks: The number of blocks. Total number of iterations =
+            num_blocks * num_steps_per_block.
+        num_stblz: number of steps before QR stabilization of walkers is performed.
+        pop_control_freq: Frequency at which population control occurs.
+        rng_seed: The random number seed. If run in parallel the seeds on other
+            cores / threads are determined from this.
+    """
+    num_walkers: int
+    total_num_walkers: int
+    timestep: float
+    num_steps_per_block: int
+    num_blocks: int
+    num_stblz: int = 5
+    pop_control_freq: int = 5
+    rng_seed: Optional[int] = None

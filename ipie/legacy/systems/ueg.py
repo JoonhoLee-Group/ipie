@@ -55,11 +55,11 @@ class UEG(object):
         self.control_variate = False
         self.mu = options.get("mu", None)
         if verbose:
-            print("# Number of spin-up electrons: {:d}".format(self.nup))
-            print("# Number of spin-down electrons: {:d}".format(self.ndown))
-            print("# rs: {:6.4e}".format(self.rs))
+            print(f"# Number of spin-up electrons: {self.nup:d}")
+            print(f"# Number of spin-down electrons: {self.ndown:d}")
+            print(f"# rs: {self.rs:6.4e}")
             if self.mu is not None:
-                print("# mu: {:6.4e}".format(self.mu))
+                print(f"# mu: {self.mu:6.4e}")
 
         self.thermal = options.get("thermal", False)
         if self.thermal and verbose:
@@ -81,17 +81,15 @@ class UEG(object):
         # self.kfac = 2*math.pi/self.L
         self.kfac = 2 * math.pi / self.L
         # Fermi Wavevector (infinite system).
-        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (
-            1 / 3.0
-        )
+        self.kf = (3 * (self.zeta + 1) * math.pi**2 * self.ne / self.L**3) ** (1 / 3.0)
         # Fermi energy (inifinite systems).
         self.ef = 0.5 * self.kf**2
         if verbose:
-            print("# Spin polarisation (zeta): {:6.4e}".format(self.zeta))
-            print("# Electron density (rho): {:13.8e}".format(self.rho))
-            print("# Box Length (L): {:13.8e}".format(self.L))
-            print("# Volume: {:13.8e}".format(self.vol))
-            print("# k-space factor (2pi/L): {:13.8e}".format(self.kfac))
+            print(f"# Spin polarisation (zeta): {self.zeta:6.4e}")
+            print(f"# Electron density (rho): {self.rho:13.8e}")
+            print(f"# Box Length (L): {self.L:13.8e}")
+            print(f"# Volume: {self.vol:13.8e}")
+            print(f"# k-space factor (2pi/L): {self.kfac:13.8e}")
 
 
 def unit_test():

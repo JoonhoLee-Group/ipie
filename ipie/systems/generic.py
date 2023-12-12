@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,22 +16,11 @@
 #          Joonho Lee
 #
 
-import ast
-import sys
-import time
-
-import h5py
 import numpy
-import scipy.linalg
-from scipy.sparse import csr_matrix
-
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
-from ipie.utils.linalg import modified_cholesky
-from ipie.utils.mpi import get_shared_array, have_shared_mem
+from typing import Tuple
 
 
-class Generic(object):
+class Generic:
     """Generic system class
 
     This class should contain information that is system specific and not related to the hamiltonian
@@ -58,7 +46,7 @@ class Generic(object):
         Number of alpha and beta electrons.
     """
 
-    def __init__(self, nelec, options=None, verbose=False):
+    def __init__(self, nelec: Tuple[int, int], verbose: bool = False):
         if verbose:
             print("# Parsing input options for systems.Generic.")
         self.name = "Generic"
@@ -68,7 +56,7 @@ class Generic(object):
         self.ne = self.nup + self.ndown
 
         if verbose:
-            print("# Number of alpha electrons: %d" % (self.nup))
-            print("# Number of beta electrons: %d" % (self.ndown))
+            print(f"# Number of alpha electrons: {self.nup}")
+            print(f"# Number of beta electrons: {self.ndown}")
 
         self.ktwist = numpy.array([None])

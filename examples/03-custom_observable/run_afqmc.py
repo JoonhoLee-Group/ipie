@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,20 +15,11 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import os
-
 import numpy as np
+from pyscf import gto, scf
 
-from pyscf import cc, gto, scf
-
-from mpi4py import MPI
-
-from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.qmc.afqmc_batch import AFQMCBatch
-from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.config import MPI
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
-from ipie.utils.mpi import get_shared_comm
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
@@ -51,11 +41,11 @@ from ipie.qmc.calc import build_afqmc_driver
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Inspect the default qmc options
-print(afqmc.qmc)
+print(afqmc.params)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 20
-afqmc.estimators.overwite = True
-afqmc.run(comm=comm)
+afqmc.params.num_blocks = 20
+print(afqmc.params)
+afqmc.run()
 # We can extract the qmc data as as a pandas data frame like so
 from ipie.analysis.extraction import extract_observable
 
@@ -73,12 +63,11 @@ from ipie.estimators.estimator_base import EstimatorBase
 # Let's define our estimator class
 # For interface consistency we pass several objects around like hamiltonian and
 # wavefunction but these are not required to be used.
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 
 
 class Diagonal1RDM(EstimatorBase):
     def __init__(self, ham):
-
         # We define a dictionary to contain whatever we want to compute.
         # Note we typically want to separate the numerator and denominator of
         # the estimator
@@ -98,35 +87,27 @@ class Diagonal1RDM(EstimatorBase):
         self.scalar_estimator = False
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        greens_function(walker_batch, trial_wavefunction, build_full=True)
-        from ipie.estimators.greens_function_batch import get_greens_function
-
-        numer = np.einsum(
-            "w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb
-        )
+        trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
+        numer = np.einsum("w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb)
         self["DiagGNumer"] = numer
         self["DiagGDenom"] = sum(walker_batch.weight)
 
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 20
-afqmc.estimators.overwite = True
+afqmc.params.num_blocks = 20
 # We can now add this to the estimator handler object in the afqmc driver
-afqmc.estimators["diagG"] = Diagonal1RDM(ham=afqmc.hamiltonian)
-afqmc.run(comm=comm)
+add_est = {"diagG": Diagonal1RDM(ham=afqmc.hamiltonian)}
+afqmc.run(additional_estimators=add_est)
 # We can extract the qmc data as as a pandas data frame like so
-from ipie.analysis.extraction import extract_observable
-
 # Note the 'energy' estimator is always computed.
 qmc_data = extract_observable(afqmc.estimators.filename, "diagG")
 # Should be close to 10 (the number of electrons in the system)
-print(sum(qmc_data[0]).real)
+assert np.isclose(sum(qmc_data[0]).real, 10.0)
 
 
 class Mixed1RDM(EstimatorBase):
     def __init__(self, ham):
-
         # We define a dictionary to contain whatever we want to compute.
         # Note we typically want to separate the numerator and denominator of
         # the estimator
@@ -147,9 +128,7 @@ class Mixed1RDM(EstimatorBase):
         self.scalar_estimator = False
 
     def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        greens_function(walker_batch, trial_wavefunction, build_full=True)
-        from ipie.estimators.greens_function_batch import get_greens_function
-
+        trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
         numer = np.array(
             [
                 np.einsum("w,wij->ij", walker_batch.weight, walker_batch.Ga),
@@ -164,12 +143,10 @@ class Mixed1RDM(EstimatorBase):
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Let us override the number of blocks to keep it short
-afqmc.qmc.nblocks = 20
-afqmc.estimators.overwite = True
+afqmc.params.num_blocks = 20
 # We can now add this to the estimator handler object in the afqmc driver
-afqmc.estimators["diagG"] = Diagonal1RDM(ham=afqmc.hamiltonian)
-afqmc.estimators["1RDM"] = Mixed1RDM(ham=afqmc.hamiltonian)
-afqmc.run(comm=comm)
+add_est = {"diagG": Diagonal1RDM(ham=afqmc.hamiltonian), "1RDM": Mixed1RDM(ham=afqmc.hamiltonian)}
+afqmc.run(additional_estimators=add_est)
 # We can extract the qmc data as as a pandas data frame like so
 from ipie.analysis.extraction import extract_observable
 
@@ -178,13 +155,13 @@ qmc_data = extract_observable(afqmc.estimators.filename, "1RDM")
 # Should be close to 10 (the number of electrons in the system)
 assert qmc_data.shape == (21, 2, 10, 10)
 # Should be close to 5 (alpha part of the RDM).
-print(qmc_data[0, 0].trace().real)
+assert np.isclose(qmc_data[0, 0].trace().real, 5.0)
 
 # Necessary to test your implementation, in particular that reading / writing is
 # happening as expected.
-greens_function(afqmc.psi.walkers_batch, afqmc.trial, build_full=True)
-weights = afqmc.psi.walkers_batch.weight
-refa = np.einsum("w,wij->ij", weights, afqmc.psi.walkers_batch.Ga.copy())
+weights = afqmc.walkers.weight
+afqmc.trial.calc_greens_function(afqmc.walkers, build_full=True)
+refa = np.einsum("w,wij->ij", weights, afqmc.walkers.Ga.copy())
 refa /= np.sum(weights)
 qmc_data = extract_observable(afqmc.estimators.filename, "1RDM")
 assert qmc_data.shape == (21, 2, 10, 10)

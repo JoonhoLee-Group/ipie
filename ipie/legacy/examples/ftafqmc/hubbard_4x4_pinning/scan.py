@@ -1,6 +1,6 @@
 import numpy
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC
 
 comm = MPI.COMM_WORLD
@@ -21,15 +21,13 @@ qmc = {"dt": 0.05, "nsteps": 10, "nwalkers": 288, "beta": 5}
 
 mu = numpy.linspace(0.8, 1, 5)
 for i, b in enumerate([2, 5, 10, 20]):
-    estim = {"overwrite": False, "basename": "estimates_beta_{}".format(i)}
+    estim = {"overwrite": False, "basename": f"estimates_beta_{i}"}
     qmc["beta"] = b
     # Scan over chemical potential values
     for m in mu:
         system["mu"] = m
-        afqmc = ThermalAFQMC(
-            comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0)
-        )
-        afqmc.run(comm=comm, verbose=True)
+        afqmc = ThermalAFQMC(comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0))
+        afqmc.run(verbose=True)
 
 # Rerun with optimised chemical potential values.
 # These are values from reference.
@@ -50,10 +48,8 @@ for i, b in enumerate(beta):
     qmc["beta"] = b
     estim = {
         "overwrite": False,
-        "basename": "final_av_{}".format(i),
+        "basename": f"final_av_{i}",
         "mixed": {"average_gf": True},
     }
-    afqmc = ThermalAFQMC(
-        comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0)
-    )
-    afqmc.run(comm=comm, verbose=True)
+    afqmc = ThermalAFQMC(comm, system, qmc, estimates=estim, verbose=(True and comm.rank == 0))
+    afqmc.run(verbose=True)

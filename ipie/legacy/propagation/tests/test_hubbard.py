@@ -3,7 +3,7 @@ import pytest
 
 from ipie.legacy.estimators.greens_function import gab
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.hamiltonians.hubbard import Hubbard, decode_basis
+from ipie.legacy.hamiltonians.hubbard import decode_basis, Hubbard
 from ipie.legacy.propagation.continuous import Continuous
 from ipie.legacy.propagation.hubbard import Hirsch
 from ipie.legacy.trial_wavefunction.hubbard_uhf import HubbardUHF
@@ -15,7 +15,7 @@ from ipie.utils.misc import dotdict
 
 options = {"nx": 4, "ny": 4, "nup": 8, "ndown": 8, "U": 4}
 
-system = Generic(nelec=(8, 8), options=options)
+system = Generic(nelec=(8, 8))
 ham = Hubbard(options=options)
 eigs, eigv = numpy.linalg.eigh(ham.H1[0])
 coeffs = numpy.array([1.0 + 0j])
@@ -35,37 +35,23 @@ def test_hubbard_spin():
     nup = system.nup
     prop.propagate_walker_constrained(walker, system, ham, trial, 0.0)
     walker_ref = SingleDetWalker(system, ham, trial, nbp=1, nprop_tot=1)
-    ovlpa = numpy.linalg.det(
-        numpy.dot(trial.psi[:, :nup].conj().T, walker_ref.phi[:, :nup])
-    )
+    ovlpa = numpy.linalg.det(numpy.dot(trial.psi[:, :nup].conj().T, walker_ref.phi[:, :nup]))
     assert ovlpa == pytest.approx(walker_ref.ovlp)
     # Alpha electrons
     walker_ref.phi[:, :nup] = numpy.dot(prop.bt2[0], walker_ref.phi[:, :nup])
-    BV = numpy.diag(
-        [prop.auxf[int(x.real), 0] for x in walker.field_configs.configs[0]]
-    )
+    BV = numpy.diag([prop.auxf[int(x.real), 0] for x in walker.field_configs.configs[0]])
     walker_ref.phi[:, :nup] = numpy.dot(BV, walker_ref.phi[:, :nup])
     walker_ref.phi[:, :nup] = numpy.dot(prop.bt2[0], walker_ref.phi[:, :nup])
-    numpy.testing.assert_allclose(
-        walker.phi[:, :nup], walker_ref.phi[:, :nup], atol=1e-14
-    )
-    ovlpa = numpy.linalg.det(
-        numpy.dot(trial.psi[:, :nup].conj().T, walker_ref.phi[:, :nup])
-    )
+    numpy.testing.assert_allclose(walker.phi[:, :nup], walker_ref.phi[:, :nup], atol=1e-14)
+    ovlpa = numpy.linalg.det(numpy.dot(trial.psi[:, :nup].conj().T, walker_ref.phi[:, :nup]))
     # Beta electrons
-    BV = numpy.diag(
-        [prop.auxf[int(x.real), 1] for x in walker.field_configs.configs[0]]
-    )
+    BV = numpy.diag([prop.auxf[int(x.real), 1] for x in walker.field_configs.configs[0]])
     walker_ref.phi[:, nup:] = numpy.dot(prop.bt2[1], walker_ref.phi[:, nup:])
     walker_ref.phi[:, nup:] = numpy.dot(BV, walker_ref.phi[:, nup:])
     walker_ref.phi[:, nup:] = numpy.dot(prop.bt2[1], walker_ref.phi[:, nup:])
-    numpy.testing.assert_allclose(
-        walker.phi[:, nup:], walker_ref.phi[:, nup:], atol=1e-14
-    )
+    numpy.testing.assert_allclose(walker.phi[:, nup:], walker_ref.phi[:, nup:], atol=1e-14)
     # Test overlap
-    ovlpb = numpy.linalg.det(
-        numpy.dot(trial.psi[:, nup:].conj().T, walker_ref.phi[:, nup:])
-    )
+    ovlpb = numpy.linalg.det(numpy.dot(trial.psi[:, nup:].conj().T, walker_ref.phi[:, nup:]))
     ovlp_ = walker.calc_overlap(trial)
     assert walker.ot == pytest.approx(ovlpa * ovlpb)
 
@@ -109,9 +95,7 @@ def test_hubbard_charge():
     # system = Hubbard(options=options)
     wfn = numpy.zeros((1, ham.nbasis, system.ne), dtype=numpy.complex128)
     count = 0
-    uhf = HubbardUHF(
-        system, ham, {"ueff": 4.0, "initial": "checkerboard"}, verbose=True
-    )
+    uhf = HubbardUHF(system, ham, {"ueff": 4.0, "initial": "checkerboard"}, verbose=True)
     wfn[0] = uhf.psi.copy()
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
@@ -126,9 +110,7 @@ def test_hubbard_charge():
     prop.two_body(walker, system, ham, trial)
     walker_ref = SingleDetWalker(system, ham, trial, nbp=1, nprop_tot=1)
     # Alpha electrons
-    BV = numpy.diag(
-        [prop.auxf[int(x.real), 0] for x in walker.field_configs.configs[0]]
-    )
+    BV = numpy.diag([prop.auxf[int(x.real), 0] for x in walker.field_configs.configs[0]])
     ovlp = walker_ref.calc_overlap(trial)
     walker_ref.phi[:, :nup] = numpy.dot(BV, walker_ref.phi[:, :nup])
     walker_ref.phi[:, nup:] = numpy.dot(BV, walker_ref.phi[:, nup:])
@@ -167,9 +149,7 @@ def test_hubbard_discrete_fp():
     # options = {'nx': 4, 'ny': 4, 'nup': 8, 'ndown': 8, 'U': 4}
     # system = Hubbard(options=options)
     numpy.random.seed(7)
-    wfn = numpy.random.random(ham.nbasis * system.ne).reshape(
-        (1, ham.nbasis, system.ne)
-    )
+    wfn = numpy.random.random(ham.nbasis * system.ne).reshape((1, ham.nbasis, system.ne))
     trial = MultiSlater(system, ham, (coeffs, wfn))
     trial.psi = trial.psi[0]
     walker = SingleDetWalker(system, ham, trial, nbp=1, nprop_tot=1)
@@ -182,24 +162,14 @@ def test_hubbard_discrete_fp():
     prop.propagate_walker(walker, system, ham, trial, 0.0)
     ovlp_a = walker.greens_function(trial)
     ovlp = walker.calc_overlap(trial)
-    e1 = (
-        walker.weight
-        * walker.phase
-        * ovlp
-        * local_energy(system, ham, walker, trial)[0]
-    )
+    e1 = walker.weight * walker.phase * ovlp * local_energy(system, ham, walker, trial)[0]
     walker = SingleDetWalker(system, ham, trial, nbp=1, nprop_tot=1)
     detR = walker.reortho(trial)
     walker.weight *= detR
     numpy.random.seed(7)
     prop.propagate_walker(walker, system, ham, trial, 0.0)
     ovlp = walker.greens_function(trial)
-    e2 = (
-        walker.weight
-        * walker.phase
-        * ovlp
-        * local_energy(system, ham, walker, trial)[0]
-    )
+    e2 = walker.weight * walker.phase * ovlp * local_energy(system, ham, walker, trial)[0]
     assert e1 == pytest.approx(e2)
 
 
@@ -261,7 +231,7 @@ def total_energy(walkers, system, hamiltonian, trial, fp=False):
 @pytest.mark.unit
 def test_hubbard_ortho():
     options = {"nx": 4, "ny": 4, "nup": 5, "ndown": 5, "U": 4}
-    system = Generic(nelec=(5, 5), options=options)
+    system = Generic(nelec=(5, 5))
     ham = Hubbard(options=options)
     numpy.random.seed(7)
     wfn = numpy.zeros((1, ham.nbasis, system.ne), dtype=numpy.complex128)
@@ -272,7 +242,7 @@ def test_hubbard_ortho():
     options = {"free_projection": True}
     wopt = {"population_control": "pair_branch", "use_log_shift": True}
     walkers = Walkers(system, ham, trial, qmc, walker_opts=wopt)
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     comm = MPI.COMM_WORLD
     # Discrete
@@ -285,9 +255,7 @@ def test_hubbard_ortho():
             prop.propagate_walker(w, system, ham, trial, 0.0)
         # print(w.detR_shift, w.log_detR_shift,  w.log_detR, w.detR)
         if i % 1 == 0:
-            energies.append(
-                total_energy(walkers.walkers, system, ham, trial, True).real
-            )
+            energies.append(total_energy(walkers.walkers, system, ham, trial, True).real)
         if i % 5 == 0:
             # print([w.local_energy(system)[0].real for w in walkers.walkers])
             # print([(w.weight).real for w in walkers.walkers])
@@ -307,9 +275,7 @@ def test_hubbard_ortho():
         for w in walkers2.walkers:
             prop.propagate_walker(w, system, ham, trial, 0.0)
         if i % 1 == 0:
-            energies2.append(
-                total_energy(walkers2.walkers, system, ham, trial, False).real
-            )
+            energies2.append(total_energy(walkers2.walkers, system, ham, trial, False).real)
         if i % 5 == 0:
             walkers2.pop_control(comm)
     for w in walkers2.walkers:

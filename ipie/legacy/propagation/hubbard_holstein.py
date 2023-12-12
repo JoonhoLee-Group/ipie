@@ -5,13 +5,14 @@ import math
 import numpy
 import scipy.linalg
 
-from ipie.legacy.propagation.operations import local_energy_bound
+from ipie.legacy.propagation.operations import kinetic_real, local_energy_bound
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import (
-    HarmonicOscillator, HarmonicOscillatorMomentum)
+    HarmonicOscillator,
+    HarmonicOscillatorMomentum,
+)
 from ipie.legacy.utils.fft import fft_wavefunction, ifft_wavefunction
 from ipie.legacy.walkers.multi_ghf import MultiGHFWalker
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.propagation.operations import kinetic_real
 from ipie.utils.linalg import reortho
 
 
@@ -38,7 +39,6 @@ class HirschDMC(object):
     """
 
     def __init__(self, system, trial, qmc, options={}, verbose=False):
-
         if verbose:
             print("# Parsing discrete propagator input options.")
             print("# Using discrete Hubbard--Stratonovich transformation.")
@@ -68,7 +68,7 @@ class HirschDMC(object):
 
         self.symmetric_trotter = options.get("symmetric_trotter", False)
         if verbose:
-            print("# symmetric_trotter is {}".format(self.symmetric_trotter))
+            print(f"# symmetric_trotter is {self.symmetric_trotter}")
 
         Ueff = system.U
 
@@ -79,7 +79,7 @@ class HirschDMC(object):
             Ueff = system.Ueff
 
         if verbose:
-            print("# Ueff = {}".format(Ueff))
+            print(f"# Ueff = {Ueff}")
 
         self.sorella = options.get("sorella", False)
         self.charge = options.get("charge", False)
@@ -118,7 +118,7 @@ class HirschDMC(object):
                 ) * numpy.exp(0.5 * qmc.dt * Ueff)
 
             if verbose:
-                print("# charge_factor = {}".format(self.charge_factor))
+                print(f"# charge_factor = {self.charge_factor}")
 
             # field by spin
             self.auxf = numpy.array(
@@ -156,9 +156,9 @@ class HirschDMC(object):
         shift = trial.shift.copy()
         if verbose:
             if len(trial.psi.shape) == 3:
-                print("# Shift in propagation = {}".format(shift[0, :3]))
+                print(f"# Shift in propagation = {shift[(0), :3]}")
             else:
-                print("# Shift in propagation = {}".format(shift[:3]))
+                print(f"# Shift in propagation = {shift[:3]}")
 
         if len(trial.psi.shape) == 3:
             self.boson_trial = HarmonicOscillator(
@@ -166,9 +166,7 @@ class HirschDMC(object):
             )
             self.eshift_boson = self.boson_trial.local_energy(shift[0, :])
         else:
-            self.boson_trial = HarmonicOscillator(
-                m=system.m, w=system.w0, order=0, shift=shift
-            )
+            self.boson_trial = HarmonicOscillator(m=system.m, w=system.w0, order=0, shift=shift)
             self.eshift_boson = self.boson_trial.local_energy(shift)
 
         self.eshift_boson = self.eshift_boson.real
@@ -221,7 +219,6 @@ class HirschDMC(object):
         ndown = walker.phi.shape[1] - nup
 
         if len(trial.psi.shape) == 3:
-
             for ix in range(trial.nperms):
                 psi = trial.psi[ix, :, :].copy()
                 vup = psi.conj()[i, :nup]
@@ -333,7 +330,6 @@ class HirschDMC(object):
                 return
 
     def acceptance(self, posold, posnew, driftold, driftnew, trial):
-
         gfratio = numpy.exp(
             -numpy.sum((posold - posnew - driftnew) ** 2 / (2 * self.dt))
             + numpy.sum((posnew - posold - driftold) ** 2 / (2 * self.dt))
@@ -344,7 +340,6 @@ class HirschDMC(object):
         return ratio * gfratio
 
     def boson_importance_sampling(self, walker, system, trial, dt):
-
         sqrtdt = numpy.sqrt(dt)
 
         phiold = trial.value(walker)
@@ -360,12 +355,7 @@ class HirschDMC(object):
                 * (1.0 - 2.0 * system.g**2 / (system.w0 * system.U))
                 * numpy.sum(walker.X * walker.X)
             )
-            Ev2 = (
-                -0.5
-                * numpy.sqrt(2.0 * system.m * system.w0)
-                * system.g
-                * numpy.sum(walker.X)
-            )
+            Ev2 = -0.5 * numpy.sqrt(2.0 * system.m * system.w0) * system.g * numpy.sum(walker.X)
             lap = trial.laplacian(walker)
             Ek = 0.5 / (system.m) * numpy.sum(lap * lap)
             elocold = Ev + Ev2 + Ek
@@ -374,9 +364,7 @@ class HirschDMC(object):
 
         elocold = numpy.real(elocold)
 
-        dX = numpy.random.normal(
-            loc=0.0, scale=sqrtdt / numpy.sqrt(system.m), size=(system.nbasis)
-        )
+        dX = numpy.random.normal(loc=0.0, scale=sqrtdt / numpy.sqrt(system.m), size=(system.nbasis))
         Xnew = walker.X + dX + driftold
 
         walker.X = Xnew.copy()
@@ -394,12 +382,7 @@ class HirschDMC(object):
                 * (1.0 - 2.0 * system.g**2 / (system.w0 * system.U))
                 * numpy.sum(walker.X * walker.X)
             )
-            Ev2 = (
-                -0.5
-                * numpy.sqrt(2.0 * system.m * system.w0)
-                * system.g
-                * numpy.sum(walker.X)
-            )
+            Ev2 = -0.5 * numpy.sqrt(2.0 * system.m * system.w0) * system.g * numpy.sum(walker.X)
             lap = trial.laplacian(walker)
             Ek = 0.5 / (system.m) * numpy.sum(lap * lap)
             eloc = Ev + Ev2 + Ek
@@ -457,9 +440,7 @@ class HirschDMC(object):
             walker.ot = ot_new
             walker.weight = 0.0
 
-    def propagate_walker_constrained(
-        self, walker, system, trial, eshift, rho=None, X=None
-    ):
+    def propagate_walker_constrained(self, walker, system, trial, eshift, rho=None, X=None):
         r"""Wrapper function for propagation using discrete transformation
 
         The discrete transformation allows us to split the application of the
@@ -594,7 +575,7 @@ def calculate_overlap_ratio_multi_ghf(walker, delta, trial, i):
         Basis index.
     """
     nbasis = trial.psi.shape[1] // 2
-    for (idx, G) in enumerate(walker.Gi):
+    for idx, G in enumerate(walker.Gi):
         guu = G[i, i]
         gdd = G[i + nbasis, i + nbasis]
         gud = G[i, i + nbasis]
@@ -623,13 +604,9 @@ def calculate_overlap_ratio_multi_det(walker, delta, trial, i):
     i : int
         Basis index.
     """
-    for (idx, G) in enumerate(walker.Gi):
-        walker.R[idx, 0] = (1 + delta[0][0] * G[0][i, i]) * (
-            1 + delta[0][1] * G[1][i, i]
-        )
-        walker.R[idx, 1] = (1 + delta[1][0] * G[0][i, i]) * (
-            1 + delta[1][1] * G[1][i, i]
-        )
+    for idx, G in enumerate(walker.Gi):
+        walker.R[idx, 0] = (1 + delta[0][0] * G[0][i, i]) * (1 + delta[0][1] * G[1][i, i])
+        walker.R[idx, 1] = (1 + delta[1][0] * G[0][i, i]) * (1 + delta[1][1] * G[1][i, i])
 
     denom = numpy.sum(walker.weights)
     R = numpy.einsum("i,ix->x", walker.weights, walker.R) / denom
@@ -747,9 +724,9 @@ def back_propagate(system, psi, trial, nstblz, BT2, dt):
 
     psi_bp = [SingleDetWalker({}, system, trial, index=w) for w in range(len(psi))]
     nup = system.nup
-    for (iw, w) in enumerate(psi):
+    for iw, w in enumerate(psi):
         # propagators should be applied in reverse order
-        for (i, c) in enumerate(w.field_configs.get_block()[0][::-1]):
+        for i, c in enumerate(w.field_configs.get_block()[0][::-1]):
             B = construct_propagator_matrix(system, BT2, c, conjt=True)
             psi_bp[iw].phi[:, :nup] = B[0].dot(psi_bp[iw].phi[:, :nup])
             psi_bp[iw].phi[:, nup:] = B[1].dot(psi_bp[iw].phi[:, nup:])
@@ -785,11 +762,11 @@ def back_propagate_ghf(system, psi, trial, nstblz, BT2, dt):
         MultiGHFWalker({}, system, trial, index=w, weights="ones", wfn0="GHF")
         for w in range(len(psi))
     ]
-    for (iw, w) in enumerate(psi):
+    for iw, w in enumerate(psi):
         # propagators should be applied in reverse order
-        for (i, c) in enumerate(w.field_configs.get_block()[0][::-1]):
+        for i, c in enumerate(w.field_configs.get_block()[0][::-1]):
             B = construct_propagator_matrix_ghf(system, BT2, c, conjt=True)
-            for (idet, psi_i) in enumerate(psi_bp[iw].phi):
+            for idet, psi_i in enumerate(psi_bp[iw].phi):
                 # propagate each component of multi-determinant expansion
                 psi_bp[iw].phi[idet] = B.dot(psi_bp[iw].phi[idet])
                 if i != 0 and i % nstblz == 0:
@@ -827,7 +804,7 @@ def back_propagate_single(phi_in, configs, weights, system, nstblz, BT2, store=F
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs[::-1]):
+    for i, c in enumerate(configs[::-1]):
         B = construct_propagator_matrix(system, BT2, c, conjt=True)
         phi_in[:, :nup] = B[0].dot(phi_in[:, :nup])
         phi_in[:, nup:] = B[1].dot(phi_in[:, nup:])
@@ -868,9 +845,9 @@ def back_propagate_single_ghf(phi, configs, weights, system, nstblz, BT2, store=
     """
     nup = system.nup
     psi_store = []
-    for (i, c) in enumerate(configs[::-1]):
+    for i, c in enumerate(configs[::-1]):
         B = construct_propagator_matrix_ghf(system, BT2, c, conjt=True)
-        for (idet, psi_i) in enumerate(phi):
+        for idet, psi_i in enumerate(phi):
             # propagate each component of multi-determinant expansion
             phi[idet] = B.dot(phi[idet])
             if i != 0 and i % nstblz == 0:
@@ -900,9 +877,7 @@ def kinetic_kspace(phi, system, btk):
     s = system
     # Transform psi to kspace by fft-ing its columns.
     tup = fft_wavefunction(phi[:, : s.nup], s.nx, s.ny, s.nup, phi[:, : s.nup].shape)
-    tdown = fft_wavefunction(
-        phi[:, s.nup :], s.nx, s.ny, s.ndown, phi[:, s.nup :].shape
-    )
+    tdown = fft_wavefunction(phi[:, s.nup :], s.nx, s.ny, s.ndown, phi[:, s.nup :].shape)
     # Kinetic enery operator is diagonal in momentum space.
     # Note that multiplying by diagonal btk in this way is faster than using
     # einsum and way faster than using dot using an actual diagonal matrix.

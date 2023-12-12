@@ -8,12 +8,17 @@ except ImportError as e:
 from ipie.estimators.generic import local_energy_generic_opt
 from ipie.legacy.estimators.ci import get_hmatel
 from ipie.legacy.estimators.generic import (
-    local_energy_generic, local_energy_generic_cholesky,
+    local_energy_generic,
+    local_energy_generic_cholesky,
     local_energy_generic_cholesky_opt,
-    local_energy_generic_cholesky_opt_stochastic, local_energy_generic_pno)
-from ipie.legacy.estimators.hubbard import (local_energy_hubbard,
-                                            local_energy_hubbard_ghf,
-                                            local_energy_hubbard_holstein)
+    local_energy_generic_cholesky_opt_stochastic,
+    local_energy_generic_pno,
+)
+from ipie.legacy.estimators.hubbard import (
+    local_energy_hubbard,
+    local_energy_hubbard_ghf,
+    local_energy_hubbard_holstein,
+)
 from ipie.legacy.estimators.thermal import one_rdm_from_G, particle_number
 
 
@@ -93,13 +98,9 @@ def local_energy(system, hamiltonian, walker, trial):
                 system, walker.Gi, walker.weights, walker.X, walker.Lapi
             )
         else:
-            return local_energy_multi_det(
-                system, hamiltonian, trial, walker.Gi, walker.weights
-            )
+            return local_energy_multi_det(system, hamiltonian, trial, walker.Gi, walker.weights)
     elif walker.name == "ThermalWalker":
-        return local_energy_G(
-            system, hamiltonian, trial, one_rdm_from_G(walker.G), None
-        )
+        return local_energy_G(system, hamiltonian, trial, one_rdm_from_G(walker.G), None)
     else:
         if hamiltonian.name == "HubbardHolstein":
             return local_energy_G(
@@ -125,9 +126,7 @@ def local_energy_multi_det_hh(system, Gi, weights, X, Lapi):
     denom = 0
     for w, G, Lap in zip(weights, Gi, Lapi):
         # construct "local" green's functions for each component of A
-        energies += w * numpy.array(
-            local_energy_hubbard_holstein(system, G, X, Lap, Ghalf=None)
-        )
+        energies += w * numpy.array(local_energy_hubbard_holstein(system, G, X, Lap, Ghalf=None))
         denom += w
     return tuple(energies / denom)
 

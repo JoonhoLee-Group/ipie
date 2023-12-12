@@ -3,7 +3,7 @@ import copy
 import numpy
 import scipy.linalg
 
-from ipie.estimators.greens_function_batch import greens_function_multi_det
+from ipie.estimators.greens_function import greens_function_multi_det
 from ipie.legacy.estimators.local_energy import local_energy_multi_det
 from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import get_numeric_names
@@ -67,15 +67,9 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         # TODO: RENAME to something less like weight
         # This stores an array of overlap matrices with the various elements of
         # the trial wavefunction.
-        self.det_weights = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
-        self.det_ovlpas = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
-        self.det_ovlpbs = numpy.zeros(
-            (self.nwalkers, self.ndets), dtype=numpy.complex128
-        )
+        self.det_weights = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
+        self.det_ovlpas = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
+        self.det_ovlpbs = numpy.zeros((self.nwalkers, self.ndets), dtype=numpy.complex128)
 
         # Compute initial overlap. Avoids issues with singular matrices for
         # PHMSD.
@@ -86,11 +80,7 @@ class MultiDetTrialWalkerBatch(WalkerBatch):
         self.ovlp = self.ot
         self.le_oratio = 1.0
         if verbose:
-            print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(
-                    self.ot.real
-                )
-            )
+            print(f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}")
 
         # Green's functions for various elements of the trial wavefunction.
         if trial.ortho_expansion:

@@ -66,9 +66,7 @@ class Walker(object):
         # Number of propagators to store for back propagation / ITCF.
         num_propg = walker_opts.get("num_propg", 1)
         if nbp is not None:
-            self.field_configs = FieldConfig(
-                hamiltonian.nfields, nprop_tot, nbp, numpy.complex128
-            )
+            self.field_configs = FieldConfig(hamiltonian.nfields, nprop_tot, nbp, numpy.complex128)
         else:
             self.field_configs = None
         self.stack = None
@@ -125,9 +123,7 @@ class Walker(object):
             elif isinstance(data, list):
                 for ix, l in enumerate(data):
                     if isinstance(l, (numpy.ndarray)):
-                        self.__dict__[d][ix] = (
-                            buff[s : s + l.size].reshape(l.shape).copy()
-                        )
+                        self.__dict__[d][ix] = buff[s : s + l.size].reshape(l.shape).copy()
                         s += l.size
                     elif isinstance(l, (int, float, complex)):
                         self.__dict__[d][ix] = buff[s]

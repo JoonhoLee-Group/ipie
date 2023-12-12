@@ -5,8 +5,7 @@ import numpy
 import pytest
 
 from ipie.legacy.estimators.ci import simple_fci
-from ipie.legacy.estimators.local_energy import (local_energy,
-                                                 local_energy_generic_cholesky)
+from ipie.legacy.estimators.local_energy import local_energy, local_energy_generic_cholesky
 from ipie.legacy.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.trial_wavefunction.multi_slater import MultiSlater
 from ipie.legacy.walkers.multi_det import MultiDetWalker

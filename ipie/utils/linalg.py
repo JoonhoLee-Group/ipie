@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,6 @@
 #          Joonho Lee
 #
 
-import functools
 import time
 
 import numpy
@@ -253,7 +251,7 @@ def get_orthoAO(S, LINDEP_CUTOFF=1e-14):
 def get_ortho_ao_mod(S, LINDEP_CUTOFF=1e-14, verbose=False):
     sdiag, Us = numpy.linalg.eigh(S)
     if verbose:
-        print("sdiag = {}".format(sdiag))
+        print(f"sdiag = {sdiag}")
     sdiag[sdiag < LINDEP_CUTOFF] = 0.0
     keep = sdiag > LINDEP_CUTOFF
     X = Us[:, keep] / numpy.sqrt(sdiag[keep])

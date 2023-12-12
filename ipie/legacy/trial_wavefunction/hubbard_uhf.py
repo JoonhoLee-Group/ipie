@@ -90,9 +90,7 @@ class HubbardUHF(object):
         elif self.initial_guess == "checkerboard":
             if self.verbose:
                 print("# Using checkerboard breakup.")
-            self.psi, unused = self.checkerboard(
-                hamiltonian.nbasis, system.nup, system.ndown
-            )
+            self.psi, unused = self.checkerboard(hamiltonian.nbasis, system.nup, system.ndown)
         Gup = gab(self.psi[:, : system.nup], self.psi[:, : system.nup]).T
         if system.ndown > 0:
             Gdown = gab(self.psi[:, system.nup :], self.psi[:, system.nup :]).T
@@ -107,9 +105,7 @@ class HubbardUHF(object):
         self._mem_required = 0.0
         self._rchol = None
 
-    def find_uhf_wfn(
-        self, system, hamiltonian, ueff, ninit, nit_max, alpha, deps=1e-8, verbose=0
-    ):
+    def find_uhf_wfn(self, system, hamiltonian, ueff, ninit, nit_max, alpha, deps=1e-8, verbose=0):
         emin = 0
         # JOONHO superhacky way. it should be fixed.
         uold = hamiltonian.U
@@ -119,9 +115,7 @@ class HubbardUHF(object):
         # Search over different random starting points.
         for attempt in range(0, ninit):
             # Set up initial (random) guess for the density.
-            (self.trial, eold) = self.initialise(
-                hamiltonian.nbasis, system.nup, system.ndown
-            )
+            (self.trial, eold) = self.initialise(hamiltonian.nbasis, system.nup, system.ndown)
             niup = self.density(self.trial[:, :nup])
             nidown = self.density(self.trial[:, nup:])
             niup_old = self.density(self.trial[:, :nup])
@@ -172,21 +166,18 @@ class HubbardUHF(object):
 
         hamiltonian.U = uold
         if verbose:
-            print("# Minimum energy found: {: 8f}".format(min(minima)))
+            print(f"# Minimum energy found: {min(minima): 8f}")
             nocca = system.nup
             noccb = system.ndown
             MS = numpy.abs(nocca - noccb) / 2.0
             S2exact = MS * (MS + 1.0)
             Sij = psi_accept[:, :nocca].T.dot(psi_accept[:, nocca:])
             S2 = S2exact + min(nocca, noccb) - numpy.sum(numpy.abs(Sij * Sij).ravel())
-            print("# <S^2> = {: 3f}".format(S2))
+            print(f"# <S^2> = {S2: 3f}")
         try:
             return (psi_accept, e_accept, min(minima), False, [niup, nidown])
         except UnboundLocalError:
-            warnings.warn(
-                "Warning: No HubbardUHF wavefunction found."
-                "Delta E: %f" % (enew - emin)
-            )
+            warnings.warn(f"Warning: No HubbardUHF wavefunction found.Delta E: {enew - emin:f}")
             return (trial, numpy.append(e_up, e_down), None, True, None)
 
     def initialise(self, nbasis, nup, ndown):
@@ -239,7 +230,7 @@ class HubbardUHF(object):
         nup_diff = sum(abs(niup - niup_old)) / len(niup)
         ndown_diff = sum(abs(nidown - nidown_old)) / len(nidown)
         if verbose > 1:
-            print("# de: %.10e dniu: %.10e dnid: %.10e" % (ediff, nup_diff, ndown_diff))
+            print(f"# de: {ediff:.10e} dniu: {nup_diff:.10e} dnid: {ndown_diff:.10e}")
 
         return (ediff < deps) and (nup_diff < depsn) and (ndown_diff < depsn)
 

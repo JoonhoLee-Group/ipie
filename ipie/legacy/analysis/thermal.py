@@ -17,16 +17,16 @@ def analyse_energy(files):
         sims.append(data[1:])
     full = pd.concat(sims).groupby(keys, sort=False)
     analysed = []
-    for (i, g) in full:
+    for i, g in full:
         if g["free_projection"].values[0]:
             cols = ["ENumer", "Nav"]
             obs = ["ETotal", "Nav"]
             averaged = pd.DataFrame(index=[0])
-            for (c, o) in zip(cols, obs):
+            for c, o in zip(cols, obs):
                 (value, error) = average_ratio(g[c].values, g["EDenom"].values)
                 averaged[o] = [value]
                 averaged[o + "_error"] = [error]
-            for (k, v) in zip(full.keys, i):
+            for k, v in zip(full.keys, i):
                 averaged[k] = v
             analysed.append(averaged)
         else:
@@ -37,7 +37,7 @@ def analyse_energy(files):
                 error = scipy.stats.sem(numpy.real(g[c].values), ddof=1)
                 averaged[c] = [mean]
                 averaged[c + "_error"] = [error]
-            for (k, v) in zip(full.keys, i):
+            for k, v in zip(full.keys, i):
                 averaged[k] = v
             analysed.append(averaged)
     return pd.concat(analysed).reset_index(drop=True).sort_values(by=keys)
@@ -48,8 +48,8 @@ def nav_mu(mu, coeffs):
 
 
 def find_chem_pot(data, target, vol, order=3, plot=False):
-    print("# System volume: {}.".format(vol))
-    print("# Target number of electrons: {}.".format(vol * target))
+    print(f"# System volume: {vol}.")
+    print(f"# Target number of electrons: {vol * target}.")
     nav = data.Nav.values / vol
     nav_error = data.Nav_error.values / vol
     # Half filling special case where error bar is zero.
@@ -76,9 +76,7 @@ def find_chem_pot(data, target, vol, order=3, plot=False):
                 mu_min = mu
             elif res[0] < rmin:
                 mu_min = mu
-            print(
-                "# min = {:f} max = {:f} res = {:} mu = " "{:f}".format(a, b, res, mu)
-            )
+            print(f"# min = {a:f} max = {b:f} res = {res} mu = {mu:f}")
         except ValueError:
             mu = None
             print("Root not found in interval.")

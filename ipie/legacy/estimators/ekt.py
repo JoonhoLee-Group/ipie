@@ -7,6 +7,7 @@ try:
 except (ImportError, ValueError, OSError):
     einsum = numpy.einsum
 
+
 # Assume it's generic
 # 4-fold integral symmetry
 def ekt_1p_fock_opt(h1, cholvec, rdm1a, rdm1b):

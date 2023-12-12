@@ -2,17 +2,23 @@ import numpy
 import pytest
 
 from ipie.legacy.estimators.local_energy import local_energy
-from ipie.legacy.estimators.thermal import (greens_function, one_rdm_from_G,
-                                            particle_number)
+from ipie.legacy.estimators.thermal import one_rdm_from_G
 from ipie.legacy.hamiltonians.hubbard import Hubbard
 from ipie.legacy.thermal_propagation.hubbard import ThermalDiscrete
-from ipie.legacy.trial_density_matrices.mean_field import MeanField
-from ipie.legacy.trial_density_matrices.onebody import OneBody
-from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.systems.generic import Generic
-from ipie.utils.misc import dotdict, update_stack
+from ipie.utils.misc import dotdict
+from ipie.legacy.trial_density_matrices.onebody import OneBody
+
+try:
+    from ipie.legacy.walkers.thermal import ThermalWalker
+    from ipie.legacy.trial_density_matrices.mean_field import MeanField
+
+    _no_cython = False
+except ModuleNotFoundError:
+    _no_cython = True
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_hubbard():
     options = {"nx": 4, "ny": 4, "U": 4, "mu": 1.0, "nup": 7, "ndown": 7}
@@ -59,6 +65,7 @@ def test_hubbard():
     )
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_propagate_walker():
     options = {"nx": 4, "ny": 4, "U": 4, "mu": 1.0, "nup": 7, "ndown": 7}
@@ -126,6 +133,7 @@ def test_propagate_walker():
         prop.propagate_greens_function(walker1)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_propagate_walker_free():
     options = {"nx": 4, "ny": 4, "U": 4, "mu": 1.0, "nup": 8, "ndown": 8}
@@ -158,6 +166,7 @@ def test_propagate_walker_free():
         rdm = one_rdm_from_G(walker.G)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_update_gf():
     options = {"nx": 4, "ny": 4, "U": 4, "mu": 1.0, "nup": 8, "ndown": 8}

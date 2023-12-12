@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,16 +15,34 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import importlib
 import sys
 
+
 def purge_ipie_modules():
-    modules = [m for m in sys.modules.keys() if 'ipie' in m]
+    modules = [m for m in sys.modules.keys() if "ipie" in m]
     for m in modules:
         del sys.modules[m]
 
-class Config:
 
+def _select_mpi():
+    try:
+        from mpi4py import MPI
+
+        comm_type = MPI.Intracomm
+
+        return MPI, comm_type
+    except (ModuleNotFoundError, ImportError):
+        from ipie.qmc.comm import FakeComm, MPI
+
+        comm_type = FakeComm
+
+        return MPI, comm_type
+
+
+MPI, CommType = _select_mpi()
+
+
+class Config:
     def __init__(self):
         self.options = {}
 
@@ -35,20 +52,21 @@ class Config:
     def update_option(self, key, val):
         _val = self.options.get(key)
         if _val is None:
-            raise KeyError("config option not found: {}".format(_val))
+            raise KeyError(f"config option not found: {_val}")
         self.options[key] = val
 
     def get_option(self, key):
         _val = self.options.get(key)
         if _val is None:
-            raise KeyError("config option not found: {}".format(_val))
+            raise KeyError(f"config option not found: {_val}")
         return _val
 
     def __str__(self):
-        _str = ''
+        _str = ""
         for k, v in self.options.items():
-            _str += '{} : {}\n'.format(k, v)
+            _str += f"{k} : {v}\n"
         return _str
+
 
 config = Config()
 
@@ -57,9 +75,13 @@ config = Config()
 # Otherwise I couldnt figure out a way to successfully reload ipie.utils.backend
 # in order for arraylib etc to be correctly set.
 import os
-IPIE_USE_GPU = os.environ.get('IPIE_USE_GPU', False)
+
+IPIE_USE_GPU = os.environ.get("IPIE_USE_GPU", False)
+IPIE_USE_MIXED_PRECISION = os.environ.get("IPIE_USE_MIXED_PRECISION", False)
 # Default to not using for the moment.
-config.add_option('use_gpu', bool(int(IPIE_USE_GPU)))
+config.add_option("use_gpu", bool(int(IPIE_USE_GPU)))
+config.add_option("mixed_precision", bool(int(IPIE_USE_MIXED_PRECISION)))
 # Memory limits should be in GB
-config.add_option('max_memory_for_wicks', 2.0)
-config.add_option('max_memory_sd_energy_gpu', 2.0)
+config.add_option("max_memory_for_wicks", 2.0)
+config.add_option("max_memory_sd_energy_gpu", 2.0)
+config.add_option("estimator_buffer_size", 1000)

@@ -12,8 +12,12 @@ import time
 
 import scipy.linalg
 
-from ipie.utils.io import (from_qmcpack_dense, from_qmcpack_sparse,
-                           write_qmcpack_dense, write_qmcpack_sparse)
+from ipie.utils.io import (
+    from_qmcpack_dense,
+    from_qmcpack_sparse,
+    write_qmcpack_dense,
+    write_qmcpack_sparse,
+)
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 
@@ -70,6 +74,7 @@ class Generic(object):
         chol,
         ecore,
         h1e_mod=None,
+        chol_packed=None,
         options={},
         verbose=False,
         write_ints=False,
@@ -91,17 +96,25 @@ class Generic(object):
         self.ecore = ecore
         self.chol_vecs = chol  # [M^2, nchol]
 
+        self.symmetry = options.get("symmetry", False)
+
+        if self.symmetry:
+            self.chol_packed = chol_packed
+            nbsf = h1e.shape[1]
+            self.sym_idx = numpy.triu_indices(nbsf)
+            self.sym_idx_i = self.sym_idx[0].copy()
+            self.sym_idx_j = self.sym_idx[1].copy()
+        else:
+            self.chol_packed = None  # [M*(M+1)/2, nchol] if used
+            self.sym_idx = None
+
         if self.exact_eri:
             if self.verbose:
                 print("# exact_eri is true for local energy")
 
         if self.pno:
             if self.verbose:
-                print(
-                    "# pno is true for local energy with a threshold of {}".format(
-                        self.thresh_pno
-                    )
-                )
+                print(f"# pno is true for local energy with a threshold of {self.thresh_pno}")
             self.ij_list_aa = []
             self.ij_list_bb = []
             self.ij_list_ab = []
@@ -121,12 +134,8 @@ class Generic(object):
         if self.stochastic_ri:
             self.nsamples = nsamples
             if self.verbose:
-                print(
-                    "# stochastic_ri is true for local energy with {} samples".format(
-                        self.nsamples
-                    )
-                )
-                print("# control_variate = {}".format(self.control_variate))
+                print(f"# stochastic_ri is true for local energy with {self.nsamples} samples")
+                print(f"# control_variate = {self.control_variate}")
 
         if isrealobj(self.chol_vecs.dtype):
             if verbose:
@@ -144,7 +153,7 @@ class Generic(object):
         self.sparse = False
         if verbose:
             print("# Number of orbitals: %d" % self.nbasis)
-            print("# Approximate memory required by Cholesky vectors %f GB" % mem)
+            print(f"# Approximate memory required by Cholesky vectors {mem:f} GB")
         self.nchol = self.chol_vecs.shape[-1]
         if h1e_mod is not None:
             self.h1e_mod = h1e_mod
@@ -220,14 +229,12 @@ class Generic(object):
 
 def read_integrals(integral_file):
     try:
-        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(
-            integral_file
-        )
+        (h1e, schol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_sparse(integral_file)
         chol_vecs = schol_vecs.toarray()
     except KeyError:
         (h1e, chol_vecs, ecore, nbasis, nup, ndown) = from_qmcpack_dense(integral_file)
     except OSError:
-        print("# Unknown Hamiltonian file {}.".format(integral_file))
+        print(f"# Unknown Hamiltonian file {integral_file}.")
     except:
         print("# Unknown Hamiltonian file format.")
     return h1e, chol_vecs, ecore

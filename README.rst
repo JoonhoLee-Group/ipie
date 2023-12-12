@@ -1,6 +1,7 @@
-.. raw:: html
 
-    <img src="https://github.com/linusjoonho/ipie/blob/main/logo.png" width="200px">
+.. image:: https://github.com/linusjoonho/ipie/blob/main/logo.png
+    :width: 200
+
 ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
 
 ipie inherits a lot of QMC features from pauxy.
@@ -14,8 +15,8 @@ ipie inherits a lot of QMC features from pauxy.
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
     :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
 
-.. image:: https://codecov.io/gh/linusjoonho/ipie/branch/develop/graph/badge.svg
-    :target: https://codecov.io/gh/linusjoonho/ipie
+.. .. image:: https://codecov.io/gh/linusjoonho/ipie/branch/develop/graph/badge.svg
+..     :target: https://codecov.io/gh/linusjoonho/ipie
 
 .. image:: https://img.shields.io/badge/paper%20%28v0%29-arXiv%3A2209.04015-B31B1B
     :target: https://arxiv.org/abs/2209.04015
@@ -33,7 +34,13 @@ ipie currently supports:
 Installation
 ------------
 
-Clone the repository
+Linux and Mac OS wheels are available for installation via pip
+
+::
+
+    $ pip install ipie
+
+For develpment you can instead clone the repository
 
 ::
 
@@ -44,26 +51,40 @@ and run the following in the top-level ipie directory
 ::
 
     $ pip install -r requirements.txt
-    $ python setup.py build_ext --inplace
-    $ python setup.py install
-
-You may also need to set your PYTHONPATH appropriately.
+    $ pip install -e .
 
 Requirements
 ------------
 
-* python (>= 3.6)
-* numpy
-* scipy
-* h5py
-* mpi4py
-* cython
-* pandas
+To build ipie with MPI support (via mpi4py) do:
 
-Minimum versions are listed in the requirements.txt.
-To run the tests you will need pytest.
-To perform error analysis you will also need `pyblock <https://github.com/jsspencer/pyblock>`_.
+::
 
+    $ pip install -e .[mpi]
+
+Note that mpi4py requires a working MPI installation to be built on your
+machine. This  it is often the trickiest dependency to setup correctly.
+
+One of the easiest ways (if you are using pip to install ipie wheels) is via
+conda:
+
+::
+
+    conda install openmpi
+
+which will just install the OpenMPI library. 
+We refer users to the mpi4py
+`documentation <https://mpi4py.readthedocs.io/en/stable/install.html>`_ for
+alternative ways of building mpi4py and the required MPI library.
+
+Further requirements are listed in requirements.txt.
+
+GPU Support
+-----------
+Cupy is is required when running calculations on GPUs which
+can be install following the instructions `here <https://cupy.dev/>`_ .
+
+Cuda aware MPI may be installed via conda-forge.
 
 Running the Test Suite
 ----------------------

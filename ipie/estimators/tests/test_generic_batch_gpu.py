@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,27 +27,24 @@ except:
     no_gpu = True
 
 
-from ipie.estimators.local_energy_sd import (local_energy_single_det_batch,
-                                             local_energy_single_det_batch_gpu)
+from ipie.estimators.local_energy_sd import (
+    local_energy_single_det_batch,
+    local_energy_single_det_batch_gpu,
+)
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.legacy.estimators.local_energy import local_energy_generic_cholesky_opt
-from ipie.legacy.walkers.multi_det import MultiDetWalker
-from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.propagation.continuous import Continuous
-from ipie.propagation.force_bias import construct_force_bias_batch
+from ipie.propagation.phaseless_generic import PhaselessGeneric
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.multi_slater import MultiSlater
 from ipie.utils.misc import dotdict
-from ipie.utils.pack import pack_cholesky
-from ipie.utils.testing import (generate_hamiltonian, get_random_nomsd,
-                                get_random_phmsd, shaped_normal)
-from ipie.walkers.multi_det_batch import MultiDetTrialWalkerBatch
-from ipie.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, shaped_normal
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
+from ipie.trial_wavefunction.single_det import SingleDet
 
 
 @pytest.mark.gpu
 def test_exchange_kernel_reduction():
     import cupy
+
     nchol = 101
     nocc = 31
     nwalk = 7
@@ -58,6 +54,7 @@ def test_exchange_kernel_reduction():
     exx = cupy.einsum("xjwi,xiwj->w", T, T)
     exx_test = cupy.zeros_like(exx)
     from ipie.estimators.kernels.gpu import exchange as kernels
+
     kernels.exchange_reduction(T, exx_test)
     assert numpy.allclose(exx_test, exx)
     nchol_left = nchol
@@ -82,6 +79,7 @@ def test_local_energy_single_det_batch():
     nwalkers = 10
     nsteps = 25
     from ipie.utils.backend import arraylib as xp
+
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     chol = chol.reshape((-1, nmo * nmo)).T.copy()
@@ -96,59 +94,57 @@ def test_local_energy_single_det_batch():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=0
-    )
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=0)
     # Test PH type wavefunction.
-    wfn, init = get_random_phmsd(
-        system.nup, system.ndown, ham.nbasis, ndet=1, init=True
-    )
-    trial = MultiSlater(system, ham, wfn, init=init)
-    trial.half_rotate(system, ham)
-    trial.psi = trial.psi[0]
-    trial.psia = trial.psia[0]
-    trial.psib = trial.psib[0]
-    trial.calculate_energy(system, ham)
+    wfn, init = get_random_phmsd(system.nup, system.ndown, ham.nbasis, ndet=1, init=True)
+    Id = numpy.eye(ham.nbasis)
+    wfn = numpy.hstack([Id[:, : system.nup], Id[:, : system.ndown]])
+    trial = SingleDet(wfn, system.nelec, ham.nbasis, init=init)
+    trial.half_rotate(ham)
+    # trial.calculate_energy(system, ham)
 
     numpy.random.seed(7)
 
-    options = {"hybrid": True}
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-    prop = Continuous(system, ham, trial, qmc, options=options)
-    walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
+    prop = PhaselessGeneric(qmc["dt"])
+    prop.build(ham, trial)
+
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers.build(trial)
 
     prop.cast_to_cupy()
     ham.cast_to_cupy()
     trial.cast_to_cupy()
-    walker_batch.cast_to_cupy()
+    walkers.cast_to_cupy()
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walker_batch, system, ham, trial, trial.energy)
-        walker_batch.reortho()
+        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
+        walkers.reortho()
 
-    energies_einsum = local_energy_single_det_batch_gpu(
-        system, ham, walker_batch, trial
-    )
+    energies_einsum = local_energy_single_det_batch_gpu(system, ham, walkers, trial)
 
     energies_einsum_chunks = local_energy_single_det_batch_gpu(
-        system, ham, walker_batch, trial, max_mem=1e-6,
+        system,
+        ham,
+        walkers,
+        trial,
+        max_mem=1e-6,
     )
     from ipie.estimators.local_energy_sd import local_energy_single_det_batch_gpu_old
 
-    energies_einsum_old = local_energy_single_det_batch_gpu_old(
-        system, ham, walker_batch, trial
-    )
-    walker_batch.Ghalfa = cupy.asnumpy(walker_batch.Ghalfa)
-    walker_batch.Ghalfb = cupy.asnumpy(walker_batch.Ghalfb)
+    energies_einsum_old = local_energy_single_det_batch_gpu_old(system, ham, walkers, trial)
+    walkers.Ghalfa = cupy.asnumpy(walkers.Ghalfa)
+    walkers.Ghalfb = cupy.asnumpy(walkers.Ghalfb)
     trial._rchola = cupy.asnumpy(trial._rchola)
     trial._rcholb = cupy.asnumpy(trial._rcholb)
     trial._rH1a = cupy.asnumpy(trial._rH1a)
     trial._rH1b = cupy.asnumpy(trial._rH1b)
-    energies = local_energy_single_det_batch(system, ham, walker_batch, trial)
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_einsum_old)
     assert numpy.allclose(energies, energies_einsum)
     assert numpy.allclose(energies, energies_einsum_chunks)
+
 
 if __name__ == "__main__":
     test_local_energy_single_det_batch()

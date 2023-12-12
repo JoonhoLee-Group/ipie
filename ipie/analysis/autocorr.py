@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +69,7 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
     Parameters
     ----------
     y : pd.DataFrame
-        Output of of QMC calculation (mixed estimates). 
+        Output of of QMC calculation (mixed estimates).
     name : string
         Which column to "reblock".
     verbose : bool
@@ -78,9 +77,9 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
 
     Returns
     -------
-    df : pd.DataFrame 
+    df : pd.DataFrame
         Analysed data with errorbars attached. Will contain mean, standard error
-        (1-sigma), number of samples, block size for independent samples. 
+        (1-sigma), number of samples, block size for independent samples.
     """
     if verbose:
         print("# Reblock based on autocorrelation time")
@@ -93,17 +92,17 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
         tacs += [autocorr_gw2010(y[:n])]
     if verbose:
         for n, tac in zip(reversed(Ndata), reversed(tacs)):
-            print("nsamples, tac = {}, {}".format(n, tac))
+            print(f"nsamples, tac = {n}, {tac}")
 
     # block_size = int(numpy.round(numpy.max(tacs)))
-    block_size = int(numpy.ceil(tacs[0])) # should take the one with the largest sample size
+    block_size = int(numpy.ceil(tacs[0]))  # should take the one with the largest sample size
     nblocks = len(y) // block_size
     yblocked = []
 
     for i in range(nblocks):
         offset = i * block_size
-        if i == nblocks-1: # including everything that's left
-            yblocked += [numpy.mean(y[offset :])]
+        if i == nblocks - 1:  # including everything that's left
+            yblocked += [numpy.mean(y[offset:])]
         else:
             yblocked += [numpy.mean(y[offset : offset + block_size])]
 
@@ -112,9 +111,9 @@ def reblock_by_autocorr(y, name="ETotal", verbose=False):
 
     df = pd.DataFrame(
         {
-            "%s_ac" % name: [yavg],
-            "%s_error_ac" % name: [ystd],
-            "%s_nsamp_ac" % name: [nblocks],
+            f"{name}_ac": [yavg],
+            f"{name}_error_ac": [ystd],
+            f"{name}_nsamp_ac": [nblocks],
             "ac": [block_size],
         }
     )

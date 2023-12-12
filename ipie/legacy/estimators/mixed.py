@@ -2,7 +2,7 @@ import h5py
 import numpy
 
 try:
-    from mpi4py import MPI
+    from ipie.config import MPI
 
     mpi_sum = MPI.SUM
 except ImportError:
@@ -11,7 +11,7 @@ import time
 
 import scipy.linalg
 
-from ipie.estimators.greens_function_batch import greens_function
+from ipie.estimators.greens_function import greens_function
 from ipie.estimators.local_energy_batch import local_energy_batch
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.legacy.estimators.greens_function import gab_mod, gab_mod_ovlp
@@ -61,9 +61,7 @@ class Mixed(object):
         Class for outputting rdm data to HDF5 group.
     """
 
-    def __init__(
-        self, mixed_opts, system, hamiltonian, root, filename, qmc, trial, dtype
-    ):
+    def __init__(self, mixed_opts, system, hamiltonian, root, filename, qmc, trial, dtype):
         self.average_gf = mixed_opts.get("average_gf", False)
         self.eval_energy = mixed_opts.get("evaluate_energy", True)
         self.calc_one_rdm = mixed_opts.get("one_rdm", False)
@@ -194,9 +192,7 @@ class Mixed(object):
                 energy = local_energy_batch(system, hamiltonian, walker_batch, trial)
             else:
                 energy = zeros(walker_batch.nwalkers, 3, dtype=numpy.complex128)
-            self.estimates[self.names.enumer] += sum(
-                walker_batch.weight * energy[:, 0].real
-            )
+            self.estimates[self.names.enumer] += sum(walker_batch.weight * energy[:, 0].real)
             self.estimates[self.names.e1b : self.names.e2b + 1] += array(
                 [
                     sum(walker_batch.weight * energy[:, 1].real),
@@ -207,12 +203,8 @@ class Mixed(object):
 
         self.estimates[self.names.uweight] += sum(walker_batch.unscaled_weight)
         self.estimates[self.names.weight] += sum(walker_batch.weight)
-        self.estimates[self.names.ovlp] += sum(
-            walker_batch.weight * abs(walker_batch.ovlp)
-        )
-        self.estimates[self.names.ehyb] += sum(
-            walker_batch.weight * walker_batch.hybrid_energy
-        )
+        self.estimates[self.names.ovlp] += sum(walker_batch.weight * abs(walker_batch.ovlp))
+        self.estimates[self.names.ehyb] += sum(walker_batch.weight * walker_batch.hybrid_energy)
 
         if self.calc_one_rdm:
             start = self.names.time + 1
@@ -246,9 +238,7 @@ class Mixed(object):
         if free_projection:
             for i, w in enumerate(psi.walkers):
                 # For T > 0 w.ot = 1 always.
-                wfac = (
-                    w.weight * w.ot * w.phase
-                )  # * numpy.exp(w.log_detR-w.log_detR_shift)
+                wfac = w.weight * w.ot * w.phase  # * numpy.exp(w.log_detR-w.log_detR_shift)
                 if step % self.energy_eval_freq == 0:
                     w.greens_function(trial)
                     if self.eval_energy:
@@ -265,9 +255,9 @@ class Mixed(object):
                     else:
                         E, T, V = 0, 0, 0
                     self.estimates[self.names.enumer] += wfac * E
-                    self.estimates[
-                        self.names.e1b : self.names.e2b + 1
-                    ] += wfac * numpy.array([T, V])
+                    self.estimates[self.names.e1b : self.names.e2b + 1] += wfac * numpy.array(
+                        [T, V]
+                    )
                     self.estimates[self.names.edenom] += wfac
                 if self.thermal:
                     nav = particle_number(one_rdm_from_G(w.G))
@@ -294,12 +284,8 @@ class Mixed(object):
                             T_sum += T
                             V_sum += V
                             nav += particle_number(one_rdm_from_G(w.G))
-                        self.estimates[self.names.nav] += (
-                            w.weight * nav / w.stack_length
-                        )
-                        self.estimates[self.names.enumer] += (
-                            w.weight * E_sum.real / w.stack_length
-                        )
+                        self.estimates[self.names.nav] += w.weight * nav / w.stack_length
+                        self.estimates[self.names.enumer] += w.weight * E_sum.real / w.stack_length
                         self.estimates[self.names.e1b : self.names.e2b + 1] += (
                             w.weight * numpy.array([T_sum, V_sum]).real / w.stack_length
                         )
@@ -321,9 +307,7 @@ class Mixed(object):
                         else:
                             E, T, V = 0, 0, 0
 
-                        self.estimates[self.names.enumer] += (
-                            w.weight * w.le_oratio * E.real
-                        )
+                        self.estimates[self.names.enumer] += w.weight * w.le_oratio * E.real
                         self.estimates[self.names.e1b : self.names.e2b + 1] += (
                             w.weight * w.le_oratio * numpy.array([T, V]).real
                         )
@@ -427,8 +411,8 @@ class Mixed(object):
         if encode:
             header = header.encode("utf-8")
         print(header)
-        for (k, v) in self.key.items():
-            s = "# %s : %s" % (k, v) + eol
+        for k, v in self.key.items():
+            s = f"# {k} : {v}" + eol
             if encode:
                 s = s.encode("utf-8")
             print(s)

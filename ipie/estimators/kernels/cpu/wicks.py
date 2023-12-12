@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,36 +18,6 @@
 import numpy
 from numba import jit
 
-
-# element wise
-@jit(nopython=True, fastmath=True)
-def dot_real_cplx(
-    A,
-    B_real,
-    B_cplx,
-):
-    """Element wise multiplication of a real number with a complex one.
-
-    C = A * B
-
-    Numba complains if types aren't matched so split it up.
-
-    Parameters
-    ----------
-    A : float
-        Real number / array.
-    B : complex
-        Complex number / array.
-
-    Returns
-    -------
-    C : complex
-        result
-    """
-
-    return A * B_real + 1j * (A * B_cplx)
-
-
 # Overlap
 
 # Note mapping arrays account for occupied indices not matching compressed
@@ -57,6 +26,7 @@ def dot_real_cplx(
 # e.g. D0a = [0, 1, 4], mapping = [0, 1, 0, 0, 2]
 # mapping[orb] is then used to address arrays of dimension nocc * nmo and
 # similar (half rotated Green's functio) and avoid out of bounds errors.
+
 
 @jit(nopython=True, fastmath=True)
 def get_dets_singles(cre, anh, mapping, offset, G0, dets):
@@ -83,7 +53,6 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """
     qs = anh[:, 0] + offset
     ndets = qs.shape[0]
-    nwalkers = G0.shape[0]
     for idet in range(ndets):
         p = mapping[cre[idet, 0]] + offset
         dets[:, idet] = G0[:, p, qs[idet]]
@@ -258,7 +227,8 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
 
 # Green's function
 
-@jit(nopython=False, fastmath=False)
+
+@jit(nopython=True, fastmath=True)
 def reduce_CI_singles(cre, anh, mapping, phases, CI):
     """Reduction to CI intermediate for singles.
 
@@ -412,9 +382,7 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 
 
 @jit(nopython=True, fastmath=True)
-def _reduce_nfold_cofactor_contribution(
-    ps, qs, mapping, sign, phases, cofactor_matrix, CI
-):
+def _reduce_nfold_cofactor_contribution(ps, qs, mapping, sign, phases, cofactor_matrix, CI):
     """Reduction to CI intermediate from cofactor contributions.
 
     Parameters
@@ -474,8 +442,6 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
     -------
     None
     """
-    ndets = len(cre)
-    nwalkers = CI.shape[0]
     nexcit = det_mat.shape[-1]
     for iex in range(nexcit):
         p = cre[:, iex]
@@ -485,12 +451,11 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
             # CPU may be better to squash building and reduction.
             build_cofactor_matrix(iex, jex, det_mat, cof_mat)
             sign = (-1 + 0.0j) ** (iex + jex)
-            _reduce_nfold_cofactor_contribution(
-                p, q, mapping, sign, phases, cof_mat, CI
-            )
+            _reduce_nfold_cofactor_contribution(p, q, mapping, sign, phases, cof_mat, CI)
 
 
 # Energy evaluation
+
 
 @jit(nopython=True, fastmath=True)
 def fill_os_singles(cre, anh, mapping, offset, chol_factor, spin_buffer, det_sls):
@@ -556,8 +521,6 @@ def fill_os_doubles(cre, anh, mapping, offset, G0, chol_factor, spin_buffer, det
     ndets = cre.shape[0]
     nwalkers = G0.shape[0]
     for iw in range(nwalkers):
-        G0_real = G0[iw].real.copy()
-        G0_imag = G0[iw].imag.copy()
         for idet in range(ndets):
             p = mapping[cre[idet, 0]]
             q = anh[idet, 0]
@@ -568,18 +531,10 @@ def fill_os_doubles(cre, anh, mapping, offset, G0, chol_factor, spin_buffer, det
             ro = cre[idet, 1] + offset
             so = anh[idet, 1] + offset
             spin_buffer[iw, start + idet, :] = (
-                dot_real_cplx(
-                    chol_factor[iw, q, p, :], G0_real[ro, so], G0_imag[ro, so]
-                )
-                - dot_real_cplx(
-                    chol_factor[iw, s, p, :], G0_real[ro, qo], G0_imag[ro, qo]
-                )
-                - dot_real_cplx(
-                    chol_factor[iw, q, r, :], G0_real[po, so], G0_imag[po, so]
-                )
-                + dot_real_cplx(
-                    chol_factor[iw, s, r, :], G0_real[po, qo], G0_imag[po, qo]
-                )
+                chol_factor[iw, q, p, :] * G0[iw, ro, so]
+                - chol_factor[iw, s, p, :] * G0[iw, ro, qo]
+                - chol_factor[iw, q, r, :] * G0[iw, po, so]
+                + chol_factor[iw, s, r, :] * G0[iw, po, qo]
             )
 
 
@@ -629,41 +584,23 @@ def fill_os_triples(cre, anh, mapping, offset, G0w, chol_factor, spin_buffer, de
             to = cre[idet, 2] + offset
             uo = anh[idet, 2] + offset
             cofac = G0[ro, so] * G0[to, uo] - G0[ro, uo] * G0[to, so]
-            spin_buffer[iw, start + idet, :] = dot_real_cplx(
-                chol_factor[iw, q, p], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] = chol_factor[iw, q, p] * cofac
             cofac = G0[ro, qo] * G0[to, uo] - G0[ro, uo] * G0[to, qo]
-            spin_buffer[iw, start + idet, :] -= dot_real_cplx(
-                chol_factor[iw, s, p], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] -= chol_factor[iw, s, p] * cofac
             cofac = G0[ro, qo] * G0[to, so] - G0[ro, so] * G0[to, qo]
-            spin_buffer[iw, start + idet, :] += dot_real_cplx(
-                chol_factor[iw, u, p], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] += chol_factor[iw, u, p] * cofac
             cofac = G0[po, so] * G0[to, uo] - G0[to, so] * G0[po, uo]
-            spin_buffer[iw, start + idet, :] -= dot_real_cplx(
-                chol_factor[iw, q, r], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] -= chol_factor[iw, q, r] * cofac
             cofac = G0[po, qo] * G0[to, uo] - G0[to, qo] * G0[po, uo]
-            spin_buffer[iw, start + idet, :] += dot_real_cplx(
-                chol_factor[iw, s, r], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] += chol_factor[iw, s, r] * cofac
             cofac = G0[po, qo] * G0[to, so] - G0[to, qo] * G0[po, so]
-            spin_buffer[iw, start + idet, :] -= dot_real_cplx(
-                chol_factor[iw, u, r], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] -= chol_factor[iw, u, r] * cofac
             cofac = G0[po, so] * G0[ro, uo] - G0[ro, so] * G0[po, uo]
-            spin_buffer[iw, start + idet, :] += dot_real_cplx(
-                chol_factor[iw, q, t], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] += chol_factor[iw, q, t] * cofac
             cofac = G0[po, qo] * G0[ro, uo] - G0[ro, qo] * G0[po, uo]
-            spin_buffer[iw, start + idet, :] -= dot_real_cplx(
-                chol_factor[iw, s, t], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] -= chol_factor[iw, s, t] * cofac
             cofac = G0[po, qo] * G0[ro, so] - G0[ro, qo] * G0[po, so]
-            spin_buffer[iw, start + idet, :] += dot_real_cplx(
-                chol_factor[iw, u, t], cofac.real, cofac.imag
-            )
+            spin_buffer[iw, start + idet, :] += chol_factor[iw, u, t] * cofac
 
 
 @jit(nopython=True, fastmath=True)
@@ -698,12 +635,8 @@ def get_ss_doubles(cre, anh, mapping, chol_fact, buffer, det_sls):
             q = anh[idet, 0]
             r = mapping[cre[idet, 1]]
             s = anh[idet, 1]
-            buffer[iw, start + idet] += (
-                numpy.dot(chol_fact[iw, q, p], chol_fact[iw, s, r]) + 0j
-            )
-            buffer[iw, start + idet] -= (
-                numpy.dot(chol_fact[iw, q, r], chol_fact[iw, s, p]) + 0j
-            )
+            buffer[iw, start + idet] += numpy.dot(chol_fact[iw, q, p], chol_fact[iw, s, r]) + 0j
+            buffer[iw, start + idet] -= numpy.dot(chol_fact[iw, q, r], chol_fact[iw, s, p]) + 0j
 
 
 @jit(nopython=True, fastmath=True)
@@ -747,9 +680,7 @@ def build_cofactor_matrix(row, col, det_matrix, cofactor):
                         jshift = 1
                     if j == nexcit - 1 and col == nexcit - 1:
                         continue
-                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[
-                        iw, idet, i, j
-                    ]
+                    cofactor[iw, idet, i - ishift, j - jshift] = det_matrix[iw, idet, i, j]
 
 
 @jit(nopython=True, fastmath=True)
@@ -814,9 +745,7 @@ def build_cofactor_matrix_4(row_1, col_1, row_2, col_2, det_matrix, cofactor):
 
 
 @jit(nopython=True, fastmath=True)
-def reduce_os_spin_factor(
-    ps, qs, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls
-):
+def reduce_os_spin_factor(ps, qs, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls):
     """Reduce opposite spin (os) contributions into spin_buffer.
 
     Parameters
@@ -845,22 +774,15 @@ def reduce_os_spin_factor(
     nwalker = chol_factor.shape[0]
     ndet = cof_mat.shape[1]
     start = det_sls.start
-    # assert ndet == det_sls.end - det_sls.start
     for iw in range(nwalker):
         for idet in range(ndet):
             det_cofactor = phase * numpy.linalg.det(cof_mat[iw, idet])
             p = mapping[ps[idet]]
-            spin_buffer[iw, start + idet] += dot_real_cplx(
-                chol_factor[iw, qs[idet], p],
-                det_cofactor.real,
-                det_cofactor.imag,
-            )
+            spin_buffer[iw, start + idet] += chol_factor[iw, qs[idet], p] * det_cofactor
 
 
 @jit(nopython=True, fastmath=True)
-def fill_os_nfold(
-    cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls
-):
+def fill_os_nfold(cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls):
     """Fill opposite spin (os) n-fold contributions into spin_buffer.
 
     Parameters
@@ -886,8 +808,6 @@ def fill_os_nfold(
     -------
     None
     """
-    nwalkers = cof_mat.shape[0]
-    ndet = cof_mat.shape[1]
     nexcit = det_matrix.shape[-1]
     for iex in range(nexcit):
         ps = cre[:, iex]
@@ -945,19 +865,11 @@ def reduce_ss_spin_factor(
             chol_a = chol_factor[iw, ss[idet], r]
             chol_b = chol_factor[iw, qs[idet], p]
             cont_ab = numpy.dot(chol_a, chol_b)
-            spin_buffer[iw, start + idet] += dot_real_cplx(
-                cont_ab,
-                det_cofactor.real,
-                det_cofactor.imag,
-            )
+            spin_buffer[iw, start + idet] += cont_ab * det_cofactor
             chol_c = chol_factor[iw, qs[idet], r]
             chol_d = chol_factor[iw, ss[idet], p]
             cont_cd = numpy.dot(chol_c, chol_d)
-            spin_buffer[iw, start + idet] -= dot_real_cplx(
-                cont_cd,
-                det_cofactor.real,
-                det_cofactor.imag,
-            )
+            spin_buffer[iw, start + idet] -= cont_cd * det_cofactor
 
 
 @jit(nopython=True, fastmath=True)
@@ -987,8 +899,6 @@ def get_ss_nfold(cre, anh, mapping, dets_mat, cof_mat, chol_fact, buffer, det_sl
     -------
     None
     """
-    nwalkers = dets_mat.shape[0]
-    ndet_level = dets_mat.shape[1]
     nexcit = dets_mat.shape[-1]
     for iex in range(nexcit):
         for jex in range(nexcit):

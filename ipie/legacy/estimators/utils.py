@@ -14,6 +14,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+
 # Stolen from scipy
 def scipy_fftconvolve(in1, in2, mesh1=None, mesh2=None, mode="full", axes=None):
     """Convolve two N-dimensional arrays using FFT.
@@ -83,18 +84,13 @@ def scipy_fftconvolve(in1, in2, mesh1=None, mesh2=None, mode="full", axes=None):
     s2 = numpy.array(in2.shape)
 
     if not numpy.all(
-        (s1[other_axes] == s2[other_axes])
-        | (s1[other_axes] == 1)
-        | (s2[other_axes] == 1)
+        (s1[other_axes] == s2[other_axes]) | (s1[other_axes] == 1) | (s2[other_axes] == 1)
     ):
-        raise ValueError(
-            "incompatible shapes for in1 and in2:"
-            " {0} and {1}".format(in1.shape, in2.shape)
-        )
+        raise ValueError(f"incompatible shapes for in1 and in2: {in1.shape} and {in2.shape}")
 
-    complex_result = numpy.issubdtype(
-        in1.dtype, numpy.complexfloating
-    ) or numpy.issubdtype(in2.dtype, numpy.complexfloating)
+    complex_result = numpy.issubdtype(in1.dtype, numpy.complexfloating) or numpy.issubdtype(
+        in2.dtype, numpy.complexfloating
+    )
     shape = numpy.maximum(s1, s2)
     shape[axes] = s1[axes] + s2[axes] - 1
 
@@ -221,18 +217,13 @@ def scipy_fftconvolve(in1, in2, mesh1=None, mesh2=None, mode="full", axes=None):
     s2 = numpy.array(in2.shape)
 
     if not numpy.all(
-        (s1[other_axes] == s2[other_axes])
-        | (s1[other_axes] == 1)
-        | (s2[other_axes] == 1)
+        (s1[other_axes] == s2[other_axes]) | (s1[other_axes] == 1) | (s2[other_axes] == 1)
     ):
-        raise ValueError(
-            "incompatible shapes for in1 and in2:"
-            " {0} and {1}".format(in1.shape, in2.shape)
-        )
+        raise ValueError(f"incompatible shapes for in1 and in2: {in1.shape} and {in2.shape}")
 
-    complex_result = numpy.issubdtype(
-        in1.dtype, numpy.complexfloating
-    ) or numpy.issubdtype(in2.dtype, numpy.complexfloating)
+    complex_result = numpy.issubdtype(in1.dtype, numpy.complexfloating) or numpy.issubdtype(
+        in2.dtype, numpy.complexfloating
+    )
     shape = numpy.maximum(s1, s2)
     shape[axes] = s1[axes] + s2[axes] - 1
 

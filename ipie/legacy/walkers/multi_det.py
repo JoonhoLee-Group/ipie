@@ -41,9 +41,7 @@ class MultiDetWalker(Walker):
     ):
         if verbose:
             print("# Setting up ipie.legacy.walkers.MultiDetWalker object.")
-        Walker.__init__(
-            self, system, hamiltonian, trial, walker_opts, index, nprop_tot, nbp
-        )
+        Walker.__init__(self, system, hamiltonian, trial, walker_opts, index, nprop_tot, nbp)
         self.name = "MultiDetWalker"
         self.ndets = trial.psi.shape[0]
         dtype = numpy.complex128
@@ -67,11 +65,7 @@ class MultiDetWalker(Walker):
         self.ovlp = self.ot
         self.le_oratio = 1.0
         if verbose:
-            print(
-                "# Initial overlap of walker with trial wavefunction: {:13.8e}".format(
-                    self.ot.real
-                )
-            )
+            print(f"# Initial overlap of walker with trial wavefunction: {self.ot.real:13.8e}")
         # Green's functions for various elements of the trial wavefunction.
         self.Gi = numpy.zeros(
             shape=(self.ndets, 2, hamiltonian.nbasis, hamiltonian.nbasis), dtype=dtype
@@ -92,9 +86,7 @@ class MultiDetWalker(Walker):
 
         # Actual green's function contracted over determinant index in Gi above.
         # i.e., <psi_T|c_i^d c_j|phi>
-        self.G = numpy.zeros(
-            shape=(2, hamiltonian.nbasis, hamiltonian.nbasis), dtype=dtype
-        )
+        self.G = numpy.zeros(shape=(2, hamiltonian.nbasis, hamiltonian.nbasis), dtype=dtype)
         # Contains overlaps of the current walker with the trial wavefunction.
         self.greens_function(trial)
         self.nb = hamiltonian.nbasis
@@ -104,7 +96,7 @@ class MultiDetWalker(Walker):
 
     def overlap_direct(self, trial):
         nup = self.nup
-        for (i, det) in enumerate(trial.psi):
+        for i, det in enumerate(trial.psi):
             Oup = numpy.dot(det[:, :nup].conj().T, self.phi[:, :nup])
             Odn = numpy.dot(det[:, nup:].conj().T, self.phi[:, nup:])
             sign_a, logdet_a = numpy.linalg.slogdet(Oup)
@@ -127,7 +119,7 @@ class MultiDetWalker(Walker):
             Trial wavefunction.
         """
         nup = self.nup
-        for (indx, t) in enumerate(trial.psi):
+        for indx, t in enumerate(trial.psi):
             Oup = numpy.dot(t[:, :nup].conj().T, self.phi[:, :nup])
             self.inv_ovlp[0][indx, :, :] = scipy.linalg.inv(Oup)
             Odn = numpy.dot(t[:, nup:].conj().T, self.phi[:, nup:])
@@ -175,9 +167,7 @@ class MultiDetWalker(Walker):
             det_Odn = scipy.linalg.det(Odn)
             self.ovlpsa[ix] = det_Oup
             self.ovlpsb[ix] = det_Odn
-            self.weights[ix] = (
-                trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
-            )
+            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
 
         ovlp = sum(self.weights)
 
@@ -199,9 +189,7 @@ class MultiDetWalker(Walker):
         (self.phi[:, :nup], Rup) = scipy.linalg.qr(self.phi[:, :nup], mode="economic")
         Rdown = numpy.zeros(Rup.shape)
         if ndown > 0:
-            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(
-                self.phi[:, nup:], mode="economic"
-            )
+            (self.phi[:, nup:], Rdown) = scipy.linalg.qr(self.phi[:, nup:], mode="economic")
         signs_up = numpy.diag(numpy.sign(numpy.diag(Rup)))
         if ndown > 0:
             signs_down = numpy.diag(numpy.sign(numpy.diag(Rdown)))
@@ -227,7 +215,7 @@ class MultiDetWalker(Walker):
         nup = self.nup
         tot_ovlp = 0.0
         self.G.fill(0.0 + 0.0j)
-        for (ix, detix) in enumerate(trial.psi):
+        for ix, detix in enumerate(trial.psi):
             # construct "local" green's functions for each component of psi_T
             Oup = numpy.dot(self.phi[:, :nup].T, detix[:, :nup].conj())
             # det(A) = det(A^T)
@@ -256,9 +244,7 @@ class MultiDetWalker(Walker):
 
             tot_ovlp += trial.coeffs[ix].conj() * ovlp
 
-            self.weights[ix] = (
-                trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
-            )
+            self.weights[ix] = trial.coeffs[ix].conj() * self.ovlpsa[ix] * self.ovlpsb[ix]
             self.G[0] += self.weights[ix] * self.Gi[ix, 0, :, :]
             self.G[1] += self.weights[ix] * self.Gi[ix, 1, :, :]
 
@@ -267,7 +253,7 @@ class MultiDetWalker(Walker):
 
         if self.split_trial_local_energy:
             tot_ovlp_energy = 0.0
-            for (ix, detix) in enumerate(trial.le_psi):
+            for ix, detix in enumerate(trial.le_psi):
                 # construct "local" green's functions for each component of psi_T
                 Oup = numpy.dot(self.phi[:, :nup].T, detix[:, :nup].conj())
                 # det(A) = det(A^T)
@@ -298,12 +284,7 @@ class MultiDetWalker(Walker):
         denom = 0.0
         for i, Gi in enumerate(self.Gi):
             # Gitmp = trial.coeffs[i].conj() * (Gi[0]*self.ovlpsa[i]+Gi[1]*self.ovlpsb[i])
-            Gitmp = (
-                trial.coeffs[i].conj()
-                * (Gi[0] + Gi[1])
-                * self.ovlpsa[i]
-                * self.ovlpsb[i]
-            )
+            Gitmp = trial.coeffs[i].conj() * (Gi[0] + Gi[1]) * self.ovlpsa[i] * self.ovlpsb[i]
             numer += numpy.dot(Gitmp.ravel(), ints.ravel())
             denom += self.weights[i]
         return numer / denom

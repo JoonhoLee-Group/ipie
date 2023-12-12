@@ -6,9 +6,8 @@ import time
 import numpy
 import scipy.sparse.linalg
 
-from ipie.legacy.estimators.thermal import (inverse_greens_function_qr,
-                                            one_rdm_from_G)
-from ipie.propagation.operations import kinetic_real
+from ipie.legacy.estimators.thermal import inverse_greens_function_qr, one_rdm_from_G
+from ipie.legacy.propagation.operations import kinetic_real
 from ipie.utils.linalg import exponentiate_matrix
 
 
@@ -48,7 +47,7 @@ class GenericContinuous(object):
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r." % self.force_bias)
+                print(f"# Setting force bias to {self.force_bias!r}.")
 
         optimised = options.get("optimised", True)
         if optimised:

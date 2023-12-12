@@ -2,11 +2,10 @@ import mpi4py
 import numpy
 
 from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.walkers.single_det import SingleDetWalker
-from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
+from ipie.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.propagation.utils import get_propagator_driver
-from ipie.qmc.afqmc_batch import AFQMCBatch
+from ipie.legacy.propagation.utils import get_propagator_driver as get_propagator_driver_legacy
 from ipie.qmc.options import QMCOpts
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
@@ -62,7 +61,7 @@ twf_opts = get_input_value(options, 'trial',
 prop_opts = get_input_value(options, 'propoagator',
                            default={},
                            verbose=verbose)
-qmc = QMCOpts(qmc_opts, sys,verbose=True)
+qmc = QMCOpts(qmc_opts,verbose=True)
 ham = get_hamiltonian (sys, ham_opts, verbose = True, comm=shared_comm)
 
 trial = ( get_trial_wavefunction(sys, ham, options=twf_opts,
@@ -70,8 +69,9 @@ trial = ( get_trial_wavefunction(sys, ham, options=twf_opts,
                        scomm=shared_comm,
                        verbose=verbose) )
 trial.psi = trial.psi[0] # Super hacky thing to do; this needs to be fixed...
+trial.psia = trial.psia[0] # Super hacky thing to do; this needs to be fixed...
+trial.psib = trial.psib[0] # Super hacky thing to do; this needs to be fixed...
 trial.calculate_energy(sys, ham) # this is to get the energy shift
-
 prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
 
 walker_batch = SingleDetWalkerBatch(sys, ham, trial, nwalkers)
@@ -119,8 +119,8 @@ twf_opts = get_input_value(options, 'trial',
 prop_opts = get_input_value(options, 'propoagator',
                            default={},
                            verbose=verbose)
-qmc = QMCOpts(qmc_opts, sys,verbose=True)
-prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
+qmc = QMCOpts(qmc_opts,verbose=True)
+prop = get_propagator_driver_legacy(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
 walkers = [SingleDetWalker(sys, ham, trial) for iw in range(nwalkers)]
 for i in range (nsteps):
     for walker in walkers:
@@ -128,7 +128,8 @@ for i in range (nsteps):
         detR = walker.reortho(trial) # reorthogonalizing to stablize
 
 for iw in range(nwalkers):
-    assert numpy.allclose(walker_batch.phi[iw], walkers[iw].phi)
+    assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
+    assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:,nelec[0]:])
 
 
 

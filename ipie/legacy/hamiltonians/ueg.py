@@ -48,7 +48,7 @@ class UEG(object):
         self.name = "UEG"
         self.mu = options.get("mu", None)
         if self.mu is not None:
-            print("# mu: {:6.4e}".format(self.mu))
+            print(f"# mu: {self.mu:6.4e}")
         self._alt_convention = options.get("alt_convention", False)
         self.sparse = True
 
@@ -68,7 +68,7 @@ class UEG(object):
         self.shifted_nmax = 2 * self.nmax
         self.imax_sq = numpy.dot(self.basis[-1], self.basis[-1])
         self.create_lookup_table()
-        for (i, k) in enumerate(self.basis):
+        for i, k in enumerate(self.basis):
             assert i == self.lookup_basis(k)
 
         # Number of plane waves.
@@ -78,9 +78,7 @@ class UEG(object):
         self.nfv = 0
         self.mo_coeff = None
         # Allowed momentum transfers (4*ecut)
-        (eigs, qvecs, self.qnmax) = self.sp_energies(
-            system.ktwist, system.kfac, 4 * system.ecut
-        )
+        (eigs, qvecs, self.qnmax) = self.sp_energies(system.ktwist, system.kfac, 4 * system.ecut)
         # Omit Q = 0 term.
         self.qvecs = numpy.copy(qvecs[1:])
         self.vqvec = numpy.array([self.vq(system.kfac * q) for q in self.qvecs])
@@ -89,8 +87,8 @@ class UEG(object):
         self.nchol = len(self.qvecs)
         self.nfields = 2 * len(self.qvecs)
         if verbose:
-            print("# Number of plane waves: {:d}".format(self.nbasis))
-            print("# Number of Cholesky vectors: {:d}.".format(self.nchol))
+            print(f"# Number of plane waves: {self.nbasis:d}")
+            print(f"# Number of Cholesky vectors: {self.nchol:d}.")
         # For consistency with frozen core molecular code.
         self.orbs = None
         self.frozen_core = False
@@ -110,7 +108,7 @@ class UEG(object):
 
         self.ikpq_i = []
         self.ikpq_kpq = []
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             idxkpq_list_i = []
             idxkpq_list_kpq = []
             for i, k in enumerate(self.basis[0:nlimit]):
@@ -124,7 +122,7 @@ class UEG(object):
 
         self.ipmq_i = []
         self.ipmq_pmq = []
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             idxpmq_list_i = []
             idxpmq_list_pmq = []
             for i, p in enumerate(self.basis[0:nlimit]):
@@ -136,7 +134,7 @@ class UEG(object):
             self.ipmq_i += [idxpmq_list_i]
             self.ipmq_pmq += [idxpmq_list_pmq]
 
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             self.ikpq_i[iq] = numpy.array(self.ikpq_i[iq], dtype=numpy.int64)
             self.ikpq_kpq[iq] = numpy.array(self.ikpq_kpq[iq], dtype=numpy.int64)
             self.ipmq_i[iq] = numpy.array(self.ipmq_i[iq], dtype=numpy.int64)
@@ -146,15 +144,13 @@ class UEG(object):
             if verbose:
                 print("# Constructing two-body potentials incore.")
             (self.chol_vecs, self.iA, self.iB) = self.two_body_potentials_incore()
-            write_ints = options.get("write_integrals", None)
-            if write_ints is not None:
+            write_ints = options.get("write_integrals", False)
+            if write_ints:
                 self.write_integrals(system)
             if verbose:
                 print(
                     "# Approximate memory required for "
-                    "two-body potentials: {:13.8e} GB.".format(
-                        (3 * self.iA.nnz * 16 / (1024**3))
-                    )
+                    "two-body potentials: {:13.8e} GB.".format((3 * self.iA.nnz * 16 / (1024**3)))
                 )
                 print("# Finished constructing two-body potentials.")
                 print("# Finished setting up UEG system object.")
@@ -193,9 +189,7 @@ class UEG(object):
                         kijk = [ni, nj, nk]
                         kval.append(kijk)
                         # Reintroduce 2 \pi / L factor.
-                        ek = 0.5 * numpy.dot(
-                            numpy.array(kijk) + ks, numpy.array(kijk) + ks
-                        )
+                        ek = 0.5 * numpy.dot(numpy.array(kijk) + ks, numpy.array(kijk) + ks)
                         spval.append(kfac**2 * ek)
 
         # Sort the arrays in terms of increasing energy.
@@ -279,8 +273,8 @@ class UEG(object):
         h1e_mod = numpy.copy(T)
 
         fac = 1.0 / (2.0 * system.vol)
-        for (i, ki) in enumerate(self.basis):
-            for (j, kj) in enumerate(self.basis):
+        for i, ki in enumerate(self.basis):
+            for j, kj in enumerate(self.basis):
                 if i != j:
                     q = self.kfac * (ki - kj)
                     h1e_mod[i, i] = h1e_mod[i, i] - fac * self.vq(q)
@@ -319,7 +313,7 @@ class UEG(object):
         """
         rho_ikpq_i = []
         rho_ikpq_kpq = []
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             idxkpq_list_i = []
             idxkpq_list_kpq = []
             for i, k in enumerate(self.basis):
@@ -331,7 +325,7 @@ class UEG(object):
             rho_ikpq_i += [idxkpq_list_i]
             rho_ikpq_kpq += [idxkpq_list_kpq]
 
-        for (iq, q) in enumerate(self.qvecs):
+        for iq, q in enumerate(self.qvecs):
             rho_ikpq_i[iq] = numpy.array(rho_ikpq_i[iq], dtype=numpy.int64)
             rho_ikpq_kpq[iq] = numpy.array(rho_ikpq_kpq[iq], dtype=numpy.int64)
 
@@ -352,10 +346,8 @@ class UEG(object):
                 piovol = math.pi / (self.vol)
                 factor = (piovol / numpy.dot(qscaled, qscaled)) ** 0.5
 
-                for (innz, kpq) in enumerate(rho_ikpq_kpq[iq]):
-                    row_index += [
-                        rho_ikpq_kpq[iq][innz] + rho_ikpq_i[iq][innz] * self.nbasis
-                    ]
+                for innz, kpq in enumerate(rho_ikpq_kpq[iq]):
+                    row_index += [rho_ikpq_kpq[iq][innz] + rho_ikpq_i[iq][innz] * self.nbasis]
                     col_index += [iq]
                     values += [factor]
         else:
@@ -365,10 +357,8 @@ class UEG(object):
                 piovol = math.pi / (self.vol)
                 factor = (piovol / numpy.dot(qscaled, qscaled)) ** 0.5
 
-                for (innz, kpq) in enumerate(rho_ikpq_kpq[iq]):
-                    row_index += [
-                        rho_ikpq_kpq[iq][innz] * self.nbasis + rho_ikpq_i[iq][innz]
-                    ]
+                for innz, kpq in enumerate(rho_ikpq_kpq[iq]):
+                    row_index += [rho_ikpq_kpq[iq][innz] * self.nbasis + rho_ikpq_i[iq][innz]]
                     col_index += [iq]
                     values += [factor]
 
@@ -472,16 +462,13 @@ class UEG(object):
     def eri_4(self):
         eri_chol = 4 * self.chol_vecs.dot(self.chol_vecs.T)
         eri_chol = (
-            eri_chol.toarray()
-            .reshape((self.nbasis, self.nbasis, self.nbasis, self.nbasis))
-            .real
+            eri_chol.toarray().reshape((self.nbasis, self.nbasis, self.nbasis, self.nbasis)).real
         )
         eri_chol = eri_chol.transpose(0, 1, 3, 2)
         return eri_chol
 
     # Compute 8-fold symmetric integrals. Useful for running standard quantum chemistry methods
     def eri_8(self):
-
         eri = self.eri_4()
         U = self.compute_real_transformation()
 

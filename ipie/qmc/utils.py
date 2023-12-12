@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,13 +35,6 @@ def set_rng_seed(seed, comm):
     seed = seed + comm.rank
     xp.random.seed(seed)
     if comm.rank == 0:
-        print("# random seed is {}".format(seed))
+        print(f"# random seed is {seed}")
+    # assert False, f"{seed} {comm.rank}"
     return seed
-
-
-def gpu_synchronize(gpu):
-    if gpu:
-        import cupy
-        cupy.cuda.stream.get_current_stream().synchronize()
-
-    return

@@ -5,15 +5,11 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function_batch import get_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.propagation.generic import GenericContinuous
-from ipie.legacy.propagation.hubbard import (HubbardContinuous,
-                                             HubbardContinuousSpin)
+from ipie.legacy.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
+from ipie.legacy.propagation.operations import kinetic_real
 from ipie.legacy.propagation.planewave import PlaneWave
-from ipie.propagation.force_bias import construct_force_bias_batch
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
-from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import is_cupy
 
 
@@ -37,7 +33,7 @@ class Continuous(object):
             self.force_bias = False
         else:
             if verbose:
-                print("# Setting force bias to %r." % self.force_bias)
+                print(f"# Setting force bias to {self.force_bias!r}.")
         self.exp_nmax = options.get("expansion_order", 6)
         # Derived Attributes
         self.dt = qmc.dt
@@ -162,7 +158,7 @@ class Continuous(object):
             phi += Temp
 
         if debug:
-            print("DIFF: {: 10.8e}".format((c2 - phi).sum() / c2.size))
+            print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
 
         if is_cupy(
             VHS
@@ -252,9 +248,7 @@ class Continuous(object):
         # 1. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2. Apply 2-body projector
-        (cmf, cfb, xmxbar) = self.two_body_propagator(
-            walker, system, hamiltonian, trial
-        )
+        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
         # 3. Apply kinetic projector.
         kinetic_real(walker.phi, system, self.propagator.BH1)
         ovlp_new = walker.calc_overlap(trial)
@@ -314,9 +308,7 @@ class Continuous(object):
         # 2.a Apply one-body
         kinetic_real(walker.phi, system, self.propagator.BH1)
         # 2.b Apply two-body
-        (cmf, cfb, xmxbar) = self.two_body_propagator(
-            walker, system, hamiltonian, trial
-        )
+        (cmf, cfb, xmxbar) = self.two_body_propagator(walker, system, hamiltonian, trial)
         # 2.c Apply one-body
         kinetic_real(walker.phi, system, self.propagator.BH1)
 
@@ -407,9 +399,7 @@ class Continuous(object):
             walker.weight = 0.0
 
 
-def get_continuous_propagator(
-    system, hamiltonian, trial, qmc, options={}, verbose=False
-):
+def get_continuous_propagator(system, hamiltonian, trial, qmc, options={}, verbose=False):
     """Wrapper to select propagator class.
 
     Parameters
@@ -429,9 +419,7 @@ def get_continuous_propagator(
         Propagator object.
     """
     if hamiltonian.name == "UEG":
-        propagator = PlaneWave(
-            system, hamiltonian, trial, qmc, options=options, verbose=verbose
-        )
+        propagator = PlaneWave(system, hamiltonian, trial, qmc, options=options, verbose=verbose)
     elif hamiltonian.name == "Hubbard":
         charge = options.get("charge_decomposition", True)
         if charge:

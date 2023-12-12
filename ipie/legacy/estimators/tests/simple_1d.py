@@ -121,9 +121,7 @@ def test_fft_kpq(nalpha):
 
     import scipy.signal
 
-    fq_conv_sc = numpy.flip(
-        scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel()
-    )
+    fq_conv_sc = numpy.flip(scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel())
 
     import matplotlib.pyplot as pl
 
@@ -181,8 +179,8 @@ def test_fft_kmq(nalpha):
             if ikmq is not None:
                 Gtrace_direct += trial[i, 0] * Gh[0, ikmq]
         fq_direct[iq] = Gtrace_direct
-    print("trial[igmq,0] = {}".format(trial[:, 0]))
-    print("Gh[0,i] = {}".format(Gh[0, :]))
+    print(f"trial[igmq,0] = {trial[:, (0)]}")
+    print(f"Gh[0,i] = {Gh[(0), :]}")
     # Check by fft convolve
     # Compare to fq
     fq_conv = numpy.zeros(nqgrid, dtype=numpy.complex128)
@@ -198,9 +196,7 @@ def test_fft_kmq(nalpha):
 
     import scipy.signal
 
-    fq_conv_sc = numpy.flip(
-        scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel()
-    )
+    fq_conv_sc = numpy.flip(scipy.signal.fftconvolve(Gh_pq, numpy.flip(trial_pq)).ravel())
 
     # for i in range(qmesh[0]):
     #     target = fq_conv[i]

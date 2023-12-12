@@ -50,7 +50,6 @@ def local_energy_generic_pno(
     exxb0=None,
     UVT=None,
 ):
-
     na = system.nup
     nb = system.ndown
     M = system.nbasis
@@ -76,7 +75,6 @@ def local_energy_generic_pno(
     GTb = CT[na:, :]  # hard-coded to do single slater
 
     for (i, j), (U, VT) in zip(system.ij_list_aa, UVT_aa):
-
         if i == j:
             c = 0.5
         else:
@@ -238,9 +236,7 @@ def local_energy_generic_cholesky_opt_batched(
     ecoul_vec = numpy.zeros(nwalker, dtype=numpy.complex128)
     # simple loop because this part isn't the slow bit
     for widx in range(nwalker):
-        e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(
-            ham.H1[1] * Gb_batch[widx]
-        )
+        e1b = numpy.sum(ham.H1[0] * Ga_batch[widx]) + numpy.sum(ham.H1[1] * Gb_batch[widx])
         e1_vec[widx] = e1b
         nalpha, nbeta = system.nup, system.ndown
         nbasis = ham.nbasis
@@ -302,12 +298,8 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     if numpy.isrealobj(ham.chol_vecs):
         # Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.j * ham.chol_vecs.dot(Ga.imag.ravel())
         # Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.j * ham.chol_vecs.dot(Gb.imag.ravel())
-        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
-            Ga.imag.ravel()
-        )
-        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(
-            Gb.imag.ravel()
-        )
+        Xa = ham.chol_vecs.T.dot(Ga.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(Ga.imag.ravel())
+        Xb = ham.chol_vecs.T.dot(Gb.real.ravel()) + 1.0j * ham.chol_vecs.T.dot(Gb.imag.ravel())
     else:
         Xa = ham.chol_vecs.T.dot(Ga.ravel())
         Xb = ham.chol_vecs.T.dot(Gb.ravel())
@@ -382,7 +374,7 @@ def local_energy_generic_cholesky_opt_stochastic(
     # Element wise multiplication.
     e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
     if rchol is None:
-        rchol = system.rchol_vecs
+        rchol = system.rchol
     nalpha, nbeta = system.nup, system.ndown
     nbasis = system.nbasis
     Ga, Gb = Ghalf[0], Ghalf[1]
@@ -406,7 +398,6 @@ def local_energy_generic_cholesky_opt_stochastic(
         theta[:, i] = 2 * numpy.random.randint(0, 2, size=(naux)) - 1
 
     if control:
-
         ra = rchol_a.dot(theta).T * numpy.sqrt(1.0 / nsamples)
         rb = rchol_b.dot(theta).T * numpy.sqrt(1.0 / nsamples)
 
@@ -444,15 +435,11 @@ def local_energy_generic_cholesky_opt_stochastic(
         rchol_a = rchol_a.reshape((nalpha, nbasis, naux))
         rchol_b = rchol_b.reshape((nbeta, nbasis, naux))
 
-        ra = numpy.einsum("ipX,Xs->ips", rchol_a, theta, optimize=True) * numpy.sqrt(
-            1.0 / nsamples
-        )
+        ra = numpy.einsum("ipX,Xs->ips", rchol_a, theta, optimize=True) * numpy.sqrt(1.0 / nsamples)
         Gra = numpy.einsum("kq,lqx->lkx", Ga, ra, optimize=True)
         exxa = numpy.tensordot(Gra, Gra, axes=((0, 1, 2), (1, 0, 2)))
 
-        rb = numpy.einsum("ipX,Xs->ips", rchol_b, theta, optimize=True) * numpy.sqrt(
-            1.0 / nsamples
-        )
+        rb = numpy.einsum("ipX,Xs->ips", rchol_b, theta, optimize=True) * numpy.sqrt(1.0 / nsamples)
         Grb = numpy.einsum("kq,lqx->lkx", Gb, rb, optimize=True)
         exxb = numpy.tensordot(Grb, Grb, axes=((0, 1, 2), (1, 0, 2)))
 
@@ -465,9 +452,7 @@ def local_energy_generic_cholesky_opt_stochastic(
     return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
 
 
-def local_energy_generic_cholesky_opt(
-    system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb
-):
+def local_energy_generic_cholesky_opt(system, ham, Ga, Gb, Ghalfa, Ghalfb, rchola, rcholb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
