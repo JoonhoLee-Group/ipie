@@ -41,7 +41,7 @@ class MeanField(OneBody):
         mu_old = self.mu
         P = self.P.copy()
         if self.verbose:
-            print("# Determining Thermal Hartree--Fock Density Matrix.")
+            print("# Determining Thermal Hartree-Fock Density Matrix.")
         for it in range(self.max_macro_it):
             if self.verbose:
                 print(f"# Macro iteration: {it}")
@@ -49,7 +49,7 @@ class MeanField(OneBody):
             rho = numpy.array([scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                    system,
+                    system._alt_convention,
                     rho,
                     dt,
                     self.num_bins,

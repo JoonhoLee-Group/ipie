@@ -84,7 +84,7 @@ class Continuous(object):
         if verbose:
             print("# Finished setting up propagator.")
 
-    def two_body_propagator(self, walker, system, trial):
+    def two_body_propagator(self, walker, system, trial, xi=None):
         r"""Continuous Hubbard-Statonovich transformation.
 
         Parameters
@@ -97,7 +97,9 @@ class Continuous(object):
             Trial wavefunction object.
         """
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, system.nfields)
+        if xi is None: # For debugging.
+            xi = numpy.random.normal(0.0, 1.0, system.nfields)
+
         if self.force_bias:
             P = one_rdm_from_G(walker.G)
             xbar = self.propagator.construct_force_bias(system, P, trial)
@@ -206,7 +208,7 @@ class Continuous(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless(self, system, walker, trial, eshift=0):
+    def propagate_walker_phaseless(self, system, walker, trial, eshift=0, xi=None):
         r"""Propagate walker using phaseless approximation.
 
         Uses importance sampling and the hybrid method.
@@ -223,7 +225,7 @@ class Continuous(object):
             Trial wavefunction object.
         """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial, xi=xi)
         BV = self.exponentiate(VHS)
 
         B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])

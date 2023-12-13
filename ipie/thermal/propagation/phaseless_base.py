@@ -4,23 +4,26 @@ import scipy.linalg
 
 from abc import abstractmethod
 from ipie.propagation.continuous_base import ContinuousBase
+from ipie.thermal.estimators.thermal import one_rdm_from_G
 from ipie.thermal.propagation.force_bias import construct_force_bias
 from ipie.thermal.propagation.operations import apply_exponential
 from ipie.utils.backend import arraylib as xp
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
-# TODO write test for propagator.
+# TODO: Add lowrank implementation.
+
 
 def construct_mean_field_shift(hamiltonian, trial):
     r"""Compute mean field shift.
 
     .. math::
 
-        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} P_{ik\sigma}
 
     """
     # hamiltonian.chol has shape (nbasis^2, nchol).
-    P = (trial.P[0] + trial.P[1]).ravel()
+    P = one_rdm_from_G(trial.G)
+    P = (P[0] + P[1]).ravel()
     tmp_real = numpy.dot(hamiltonian.chol.T, P.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, P.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
@@ -38,6 +41,7 @@ class PhaselessBase(ContinuousBase):
 
         self.nfb_trig = 0  # number of force bias triggered
         self.ebound = (2.0 / self.dt) ** 0.5  # energy bound range
+        self.fbbound = 1.0
         self.mpi_handler = None
         self.lowrank = lowrank
 
@@ -71,7 +75,7 @@ class PhaselessBase(ContinuousBase):
 
         Parameters
         ----------
-        hamiltonian : hamiltonian class.
+        hamiltonian : hamiltonian class
             Generic hamiltonian object.
         dt : float
             Timestep.
@@ -86,8 +90,24 @@ class PhaselessBase(ContinuousBase):
         return expH1 # Shape (nbasis, nbasis).
 
 
-    def construct_two_body_propagator(self, walkers, hamiltonian, trial):
-        """Includes `nwalkers`.
+    def construct_two_body_propagator(self, walkers, hamiltonian, trial, debug=False):
+        r"""Construct two-body propagator.
+
+        .. math::
+            \bar{x}_n &= \sqrt{\Delta\tau} \bar{v}_n \\
+            x_\mathrm{shifted}_n &= x_n - \bar{x}_n \\
+            C_{MF} &= -\sqrt{\Delta\tau} \sum_{n} x_\mathrm{shifted}_n \bar{v}_n \\
+            &= -\sqrt{\Delta\tau} \sum_{n} (x_n - \sqrt{\Delta\tau} \bar{v}_n) \bar{v}_n \\
+            &= -\sqrt{\Delta\tau} \sum_{n} x_n \bar{v}_n + \Delta\tau \sum_{n} \bar{v}_n^2.
+
+        Parameters
+        ----------
+        walkers: walker class
+            UHFThermalWalkers object.
+        hamiltonian : hamiltonian class
+            Generic hamiltonian object.
+        trial : trial class
+            Trial dnsity matrix.
         """
         # Optimal force bias
         xbar = xp.zeros((walkers.nwalkers, hamiltonian.nfields)) 
@@ -96,9 +116,14 @@ class PhaselessBase(ContinuousBase):
         xbar = -self.sqrt_dt * (1j * self.vbias - self.mf_shift)
         self.timer.tfbias += time.time() - start_time
 
+        # Force bias bounding
+        xbar = self.apply_bound_force_bias(xbar, self.fbbound)
+
         # Normally distrubted auxiliary fields.
         xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walkers.nwalkers).reshape(
                 walkers.nwalkers, hamiltonian.nfields)
+
+        if debug: self.xi = xi # For debugging.
         xshifted = xi - xbar # Shape (nwalkers, nfields).
         
         # Constant factor arising from force bias and mean field shift
@@ -116,9 +141,10 @@ class PhaselessBase(ContinuousBase):
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         pass
     
-    def propagate_walkers(self, walkers, hamiltonian, trial, eshift=0.):
+    def propagate_walkers(self, walkers, hamiltonian, trial, eshift=0., debug=False):
         start_time = time.time()
-        cmf, cfb, xshifted, VHS = self.construct_two_body_propagator(walkers, hamiltonian, trial)
+        cmf, cfb, xshifted, VHS = self.construct_two_body_propagator(
+                                    walkers, hamiltonian, trial, debug=debug)
         assert walkers.nwalkers == xshifted.shape[-1]
         self.timer.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
@@ -128,7 +154,7 @@ class PhaselessBase(ContinuousBase):
             stack = walkers.stack[iw]
             BV = apply_exponential(VHS[iw], self.exp_nmax) # Shape (nbasis, nbasis).
             B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
-            B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
+            B = numpy.array([self.BH1[0].dot(B[0]), self.BH1[1].dot(B[1])])
 
             # Compute determinant ratio det(1+A')/det(1+A).
             # 1. Current walker's Green's function.
@@ -171,6 +197,15 @@ class PhaselessBase(ContinuousBase):
         walkers.M0a[iw] = Mnewa
         walkers.M0b[iw] = Mnewb
 
+    def apply_bound_force_bias(self, xbar, max_bound=1.0):
+        absxbar = xp.abs(xbar)
+        idx_to_rescale = absxbar > max_bound
+        nonzeros = absxbar > 1e-13
+        xbar_rescaled = xbar.copy()
+        xbar_rescaled[nonzeros] = xbar_rescaled[nonzeros] / absxbar[nonzeros]
+        xbar = xp.where(idx_to_rescale, xbar_rescaled, xbar)
+        self.nfb_trig += xp.sum(idx_to_rescale)
+        return xbar
 
     def apply_bound_hybrid(self, ehyb, eshift):  # Shift is a number but ehyb is not
         # For initial steps until first estimator communication, `eshift` will be
