@@ -38,7 +38,7 @@ def get_trial_wavefunction(
     nbasis: int,
     wfn_file: str,
     ndets: int = -1,
-    ndets_props: int = -1,
+    ndets_props: int = 100,
     ndet_chunks: int = 1,
     verbose=False,
 ):
@@ -56,7 +56,6 @@ def get_trial_wavefunction(
     trial : class or None
         Trial wavfunction class.
     """
-    assert ndets_props <= ndets
     wfn_type = determine_wavefunction_type(wfn_file)
     if wfn_type == "particle_hole":
         wfn, _ = read_particle_hole_wavefunction(wfn_file)
@@ -103,7 +102,6 @@ def get_trial_wavefunction(
         trial = setup_qmcpack_wavefunction(wfn_file, ndets, ndets_props, ndet_chunks)
     else:
         raise RuntimeError("Unknown wavefunction type")
-    trial.build()
 
     return trial
 
