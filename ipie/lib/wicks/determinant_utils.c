@@ -32,24 +32,21 @@ void encode_det(
     )
 {
   for (int i = 0; i < DET_LEN; i++) {
-    det[i] = 0;
+    det[i] = (u_int64_t)(0);
   }
   u_int64_t mask = 1;
   for (int i = 0; i < nocca; i++) {
     int spin_occ = 2*occa[i];
     int det_ind = spin_occ / DET_SIZE;
     int det_pos = spin_occ % DET_SIZE;
-    /*printf("alpha : %d %d %d\n", spin_occ, det_ind, det_pos);*/
     det[det_ind] |= (mask << det_pos);
   }
   for (int i = 0; i < noccb; i++) {
     int spin_occ = 2*occb[i] + 1;
     int det_ind = spin_occ / DET_SIZE;
     int det_pos = spin_occ % DET_SIZE;
-    /*printf("beta:  %d %d %d\n", spin_occ, det_ind, det_pos);*/
     det[det_ind] |= (mask << det_pos);
   }
-  /*printf("end\n");*/
 }
 
 int count_set_bits(const u_int64_t *det)
@@ -72,7 +69,6 @@ int get_excitation_level(
   int excit_level = 0;
   for (int i = 0; i < DET_LEN; i++) {
       excit_level += count_set_bits_single(deta[i]^detb[i]);
-      /*printf("%d %d %llu %llu %d\n", i, excit_level, deta[i], detb[i], count_set_bits_single(deta[i]^detb[i]));*/
   }
   return excit_level / 2;
 }
@@ -100,16 +96,6 @@ void decode_det(
   }
 }
 
-/*bool is_set(*/
-    /*u_int64_t *det,*/
-    /*int loc*/
-    /*)*/
-/*{*/
-  /*bool set = false;*/
-  /*for (int i = 0; i < DET_LEN; i++) {*/
-    /*set &= det & (loc << diff[0])*/
-  /*}*/
-/*}*/
 
 void build_set_mask(
     u_int64_t *mask,
@@ -154,7 +140,7 @@ void get_ia(
     int* ia)
 {
   int diff[2];
-  u_int64_t delta[2];
+  u_int64_t delta[DET_LEN];
   for (int i = 0; i < DET_LEN; i++) {
     delta[i] = det_bra[i] ^ det_ket[i];
   }
@@ -181,10 +167,10 @@ int get_perm_ia(
   u_int64_t occ_to_count[DET_LEN];
   u_int64_t loc = 1;
   for (int i = 0; i < DET_LEN; i++) {
-    and_mask[i] = 0; // all bits set to 0
-    mask_i[i] = 0; // all bits set to 0
-    mask_a[i] = 0; // all bits set to 0
-    occ_to_count[i] = 0;
+    and_mask[i] = (u_int64_t)(0); // all bits set to 0
+    mask_i[i] = (u_int64_t)(0); // all bits set to 0
+    mask_a[i] = (u_int64_t)(0); // all bits set to 0
+    occ_to_count[i] = (u_int64_t)(0);
   }
   // check bit a is occupied or bit i is unoccupied.
   // else just count set bits between i and a.

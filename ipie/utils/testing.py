@@ -229,7 +229,7 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
             dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = min(len(occ_a), ndet)
-    wfn = (coeffs, list(occ_a[:_ndet]), list(occ_b[:_ndet]))
+    wfn = (coeffs[:_ndet], list(occ_a[:_ndet]), list(occ_b[:_ndet]))
     return wfn, init_wfn
 
 

@@ -196,6 +196,7 @@ class AFQMC(object):
         stabilize_freq=5,
         pop_control_freq=5,
         num_dets_chunk=1,
+        num_dets_for_trial_props=100,
         pack_cholesky=True,
         verbose=True,
     ) -> "AFQMC":
@@ -228,6 +229,8 @@ class AFQMC(object):
                 steps.) Default 25.
         num_det_chunks : int
             Size of chunks of determinants to process during batching. Default=1 (no batching).
+        num_dets_for_trial_props: int
+            Number of determinants to use to evaluate trial wavefunction properties.
         pack_cholesky : bool
             Use symmetry to reduce memory consumption of integrals. Default True.
         verbose : bool
@@ -239,7 +242,12 @@ class AFQMC(object):
             ham_file, mpi_handler.scomm, verbose=_verbose, pack_chol=pack_cholesky
         )
         trial = get_trial_wavefunction(
-            num_elec, ham.nbasis, wfn_file, ndet_chunks=num_dets_chunk, verbose=_verbose
+            num_elec,
+            ham.nbasis,
+            wfn_file,
+            ndet_chunks=num_dets_chunk,
+            ndets_props=num_dets_for_trial_props,
+            verbose=_verbose,
         )
         trial.half_rotate(ham, mpi_handler.scomm)
         return AFQMC.build(
