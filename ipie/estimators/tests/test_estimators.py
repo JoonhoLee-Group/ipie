@@ -31,8 +31,8 @@ def test_energy_estimator():
     naux = 30
     nwalker = 10
     system, ham, walker_batch, trial = gen_random_test_instances(nmo, nocc, naux, nwalker)
-    estim = EnergyEstimator(system=system, ham=ham, trial=trial)
-    estim.compute_estimator(system, walker_batch, ham, trial)
+    estim = EnergyEstimator(hamiltonian=ham, trial=trial)
+    estim.compute_estimator(walker_batch, ham, trial)
     assert len(estim.names) == 5
     assert estim["ENumer"].real == pytest.approx(-754.0373585215561)
     assert estim["ETotal"] == pytest.approx(0.0)
@@ -55,14 +55,13 @@ def test_estimator_handler():
         naux = 30
         nwalker = 10
         system, ham, walker_batch, trial = gen_random_test_instances(nmo, nocc, naux, nwalker)
-        estim = EnergyEstimator(system=system, ham=ham, trial=trial, filename=tmp1.name)
+        estim = EnergyEstimator(hamiltonian=ham, trial=trial, filename=tmp1.name)
         estim.print_to_stdout = False
         from ipie.config import MPI
 
         comm = MPI.COMM_WORLD
         handler = EstimatorHandler(
             comm,
-            system,
             ham,
             trial,
             block_size=10,
@@ -72,5 +71,10 @@ def test_estimator_handler():
         handler["energy1"] = estim
         handler.json_string = ""
         handler.initialize(comm)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
+        handler.compute_estimators(ham, trial, walker_batch)
+        handler.compute_estimators(ham, trial, walker_batch)
+
+
+if __name__ == "__main__":
+    test_energy_estimator()
+    test_estimator_handler()

@@ -48,6 +48,7 @@ def test_generic_chunked():
     numpy.random.seed(7)
     nmo = 24
     nelec = (4, 2)
+    nup, ndown = nelec
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     h1e = comm.bcast(h1e)
@@ -70,12 +71,12 @@ def test_generic_chunked():
 
     chol = chol.reshape((nmo * nmo, nchol))
 
-    system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
-    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    _, wfn = get_random_nomsd(nup, ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(ham)
 
+    system = Generic(nelec=nelec)
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
@@ -93,7 +94,7 @@ def test_generic_chunked():
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walkers = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init_walker, nup, ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
     )
     walkers.build(trial)
 
@@ -101,9 +102,9 @@ def test_generic_chunked():
         prop.propagate_walkers(walkers, ham, trial, trial.energy)
         walkers.reortho()
 
-    energies = local_energy_single_det_batch(system, ham, walkers, trial)
+    energies = local_energy_single_det_batch(ham, walkers, trial)
 
-    energies_chunked = local_energy_single_det_uhf_batch_chunked(system, ham, walkers, trial)
+    energies_chunked = local_energy_single_det_uhf_batch_chunked(ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_chunked)
 

@@ -33,16 +33,16 @@ def test_local_energy_cholesky():
     numpy.random.seed(7)
     nmo = 24
     nelec = (4, 2)
+    nup, ndown = nelec
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
-    ci, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    ci, wfn = get_random_nomsd(nup, ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    e = local_energy_generic_cholesky(system, ham, trial.G, Ghalf=trial.Ghalf)
+    e = local_energy_generic_cholesky(ham, trial.G, Ghalf=trial.Ghalf)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
@@ -53,17 +53,17 @@ def test_local_energy_cholesky_opt():
     numpy.random.seed(7)
     nmo = 24
     nelec = (4, 2)
+    nup, ndown = nelec
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    system = Generic(nelec=nelec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
-    ci, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    ci, wfn = get_random_nomsd(nup, ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(ham)
-    e = local_energy_cholesky_opt(system, ham.ecore, trial.Ghalf[0], trial.Ghalf[1], trial)
+    e = local_energy_cholesky_opt(ham.ecore, trial.Ghalf[0], trial.Ghalf[1], trial)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
@@ -89,7 +89,6 @@ def test_local_energy_cholesky_opt_batched():
     Gahalf_batched = numpy.array([trial.Ghalf[0], trial.Ghalf[0], trial.Ghalf[0]])
     Gbhalf_batched = numpy.array([trial.Ghalf[1], trial.Ghalf[1], trial.Ghalf[1]])
     res = local_energy_generic_cholesky_opt_batched(
-        system,
         ham,
         Ga_batched,
         Gb_batched,

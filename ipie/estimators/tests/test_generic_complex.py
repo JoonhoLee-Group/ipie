@@ -22,7 +22,6 @@ import pytest
 from ipie.estimators.energy import local_energy
 
 from ipie.utils.testing import build_test_case_handlers
-from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.misc import dotdict
 
@@ -57,7 +56,6 @@ def test_local_energy_single_det_vs_real():
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
-    system = Generic(nelec)
     trial = test_handler.trial
 
     chol = ham.chol
@@ -67,10 +65,10 @@ def test_local_energy_single_det_vs_real():
         numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
     )
 
-    energy = local_energy(system, ham, walkers, trial)
+    energy = local_energy(ham, walkers, trial)
 
     trial.half_rotate(cx_ham)
-    cx_energy = local_energy(system, cx_ham, walkers, trial)
+    cx_energy = local_energy(cx_ham, walkers, trial)
 
     numpy.testing.assert_allclose(energy, cx_energy, atol=1e-10)
 
@@ -106,12 +104,11 @@ def test_local_energy_single_det_vs_eri():
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
-    system = Generic(nelec)
     trial = test_handler.trial
 
     walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
 
-    energy = local_energy(system, ham, walkers, trial)
+    energy = local_energy(ham, walkers, trial)
     etot = energy[:, 0]
     e1 = energy[:, 1]
     e2 = energy[:, 2]

@@ -78,8 +78,6 @@ def test_generic_multi_det_batch():
         afqmc.run(verbose=0, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)
         afqmc.estimators.compute_estimators(
-            comm,
-            afqmc.system,
             afqmc.hamiltonian,
             afqmc.trial,
             afqmc.walkers,

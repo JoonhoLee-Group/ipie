@@ -147,3 +147,9 @@ def test_wicks_opt_chunked():
     assert trial._rH1b.shape == (nbeta, nbasis)
     assert trial._rchola_act.shape == (naux, nbasis * trial.nact)
     assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)
+
+
+if __name__ == '__main__':
+    test_wicks_slow()
+    test_wicks_opt()
+    test_wicks_opt_chunked()

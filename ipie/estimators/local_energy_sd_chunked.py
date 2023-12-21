@@ -35,15 +35,13 @@ from ipie.utils.backend import synchronize
 # are accumulated.
 
 
-def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch, trial):
+def local_energy_single_det_uhf_batch_chunked(hamiltonian, walker_batch, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF case.
 
     Parameters
     ----------
-    system : system object
-        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walker_batch : WalkerBatch
@@ -235,7 +233,7 @@ def exx_kernel_batch_rchol_gpu_low_mem(rchola_chunk, Ghalfa, buff):
 
 
 def local_energy_single_det_uhf_batch_chunked_gpu(
-    system, hamiltonian, walker_batch, trial, max_mem=2.0
+    hamiltonian, walker_batch, trial, max_mem=2.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -243,8 +241,6 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
     Parameters
     ----------
-    system : system object
-        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walker_batch : WalkerBatch

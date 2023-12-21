@@ -55,6 +55,7 @@ def test_generic_chunked_gpu():
     numpy.random.seed(7)
     nmo = 24
     nelec = (4, 2)
+    nup, ndown = nelec
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
 
     h1e = comm.bcast(h1e)
@@ -77,12 +78,12 @@ def test_generic_chunked_gpu():
 
     chol = chol.reshape((nmo * nmo, nchol))
 
-    system = Generic(nelec=nelec)
     ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc)
-    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    wfn = get_random_nomsd(nup, ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
     trial.half_rotate(ham)
 
+    system = Generic(nelec=nelec)
     trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
@@ -99,8 +100,7 @@ def test_generic_chunked_gpu():
     prop.build(ham, trial, mpi_handler=mpi_handler)
 
     walkers = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
-    )
+        trial, init, nup, ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler)
     walkers.build(trial)
     if not no_gpu:
         prop.cast_to_cupy()
@@ -114,11 +114,10 @@ def test_generic_chunked_gpu():
 
     trial._rchola = cupy.asarray(trial._rchola)
     trial._rcholb = cupy.asarray(trial._rcholb)
-    energies_einsum = local_energy_single_det_batch_gpu(system, ham, walkers, trial)
-    energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(system, ham, walkers, trial)
+    energies_einsum = local_energy_single_det_batch_gpu(ham, walkers, trial)
+    energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(ham, walkers, trial)
     energies_chunked_low_mem = local_energy_single_det_uhf_batch_chunked_gpu(
-        system, ham, walkers, trial, max_mem=1e-6
-    )
+        ham, walkers, trial, max_mem=1e-6)
 
     assert numpy.allclose(energies_einsum, energies_chunked)
     assert numpy.allclose(energies_einsum, energies_chunked_low_mem)

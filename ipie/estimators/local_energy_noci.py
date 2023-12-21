@@ -20,14 +20,13 @@ from ipie.estimators.local_energy_sd import (
     exx_kernel_batch_real_rchol,
 )
 from ipie.hamiltonians.generic import GenericRealChol
-from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkersNOCI
 
 
 def local_energy_noci(
-    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkersNOCI, trial: NOCI
+    hamiltonian: GenericRealChol, walkers: UHFWalkersNOCI, trial: NOCI
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -35,8 +34,6 @@ def local_energy_noci(
 
     Parameters
     ----------
-    system : system object
-        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch

@@ -30,7 +30,6 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHole,
@@ -45,76 +44,69 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 
 @plum.dispatch
 def local_energy(
-    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
 ):
-    return local_energy_batch(system, hamiltonian, walkers, trial)
+    return local_energy_batch(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic,
     hamiltonian: GenericComplexChol,
     walkers: UHFWalkers,
     trial: SingleDet,
 ):
-    return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
+    return local_energy_single_det_uhf(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
     trial: ParticleHoleNaive,
 ):
-    return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
+    return local_energy_multi_det_trial_batch(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
     trial: ParticleHole,
 ):
-    return local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial)
+    return local_energy_multi_det_trial_wicks_batch_opt_chunked(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
     trial: ParticleHoleNonChunked,
 ):
-    return local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial)
+    return local_energy_multi_det_trial_wicks_batch_opt(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic,
     hamiltonian: GenericRealChol,
     walkers: UHFWalkers,
     trial: ParticleHoleSlow,
 ):
-    return local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial)
+    return local_energy_multi_det_trial_wicks_batch(hamiltonian, walkers, trial)
 
 
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: NOCI):
-    return local_energy_noci(system, hamiltonian, walkers, trial)
+def local_energy(hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: NOCI):
+    return local_energy_noci(hamiltonian, walkers, trial)
 
 
 class EnergyEstimator(EstimatorBase):
     def __init__(
         self,
-        system=None,
-        ham=None,
+        hamiltonian=None,
         trial=None,
         filename=None,
     ):
-        assert system is not None
-        assert ham is not None
+        assert hamiltonian is not None
         assert trial is not None
         super().__init__()
         self._eshift = 0.0
@@ -131,10 +123,10 @@ class EnergyEstimator(EstimatorBase):
         self.print_to_stdout = True
         self.ascii_filename = filename
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, walkers, hamiltonian, trial, istep=1):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
-        energy = local_energy(system, hamiltonian, walkers, trial)
+        energy = local_energy(hamiltonian, walkers, trial)
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
