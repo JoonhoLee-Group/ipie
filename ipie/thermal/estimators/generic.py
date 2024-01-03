@@ -224,6 +224,7 @@ def local_energy_generic_cholesky_opt_batched(
     e2b_vec = 0.5 * (ecoul_vec - exx_vec)
     return (e1_vec + e2b_vec + hamiltonian.ecore, e1_vec + hamiltonian.ecore, e2b_vec)
 
+
 @plum.dispatch
 def local_energy_generic_cholesky(hamiltonian: GenericRealChol, G):
     r"""Calculate local for generic two-body hamiltonian.
@@ -329,13 +330,11 @@ def local_energy_generic_cholesky(hamiltonian: GenericComplexChol, G):
 
     exx *= 0.5
     e2b = ecoul - exx
-    print(ecoul, -exx)
     return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
 def local_energy_generic_cholesky_opt_stochastic(
-    hamiltonian, nelec, nsamples, G, Ghalf=None, rchol=None, C0=None, ecoul0=None, exxa0=None, exxb0=None
-):
+    hamiltonian, nelec, nsamples, G, Ghalf=None, rchol=None, C0=None, ecoul0=None, exxa0=None, exxb0=None):
     r"""Calculate local for generic two-body hamiltonian.
     This uses the cholesky decomposed two-electron integrals.
     Parameters

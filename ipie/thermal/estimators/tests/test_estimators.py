@@ -14,6 +14,7 @@ from ipie.thermal.estimators.energy import ThermalEnergyEstimator
 from ipie.thermal.estimators.handler import ThermalEstimatorHandler
 from ipie.thermal.propagation.phaseless_generic import PhaselessGeneric
 
+
 def build_test_case_handlers(nelec: Tuple[int, int],
                              options: Union[dict, None] = None,
                              seed: Union[int, None] = None,
@@ -58,6 +59,7 @@ def build_test_case_handlers(nelec: Tuple[int, int],
     return objs
 
 
+@pytest.mark.unit
 def test_energy_estimator():
     nocca = 5
     noccb = 5
@@ -110,6 +112,8 @@ def test_energy_estimator():
     data_to_text = estim.data_to_text(tmp)
     assert len(data_to_text.split()) == 5
 
+
+@pytest.mark.unit
 def test_estimator_handler():
     nocca = 5
     noccb = 5

@@ -33,6 +33,7 @@ def legacy_propagate_walkers(legacy_hamiltonian, legacy_trial, legacy_walkers, l
 
     return legacy_walkers
 
+
 def setup_objs(mf_trial=False, seed=None):
     nocca = 5
     noccb = 5
@@ -160,6 +161,7 @@ def setup_objs(mf_trial=False, seed=None):
     return objs, legacy_objs
     
 
+@pytest.mark.unit
 def test_mf_shift(verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(seed=seed)
@@ -173,6 +175,7 @@ def test_mf_shift(verbose=False):
     numpy.testing.assert_almost_equal(legacy_propagator.propagator.mf_shift, 
                                       propagator.mf_shift, decimal=10)
 
+@pytest.mark.unit
 def test_BH1(verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(seed=seed)
@@ -187,6 +190,7 @@ def test_BH1(verbose=False):
                                       propagator.BH1, decimal=10)
 
 
+@pytest.mark.unit
 def test_construct_two_body_propagator(verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(seed=seed)
@@ -238,6 +242,7 @@ def test_construct_two_body_propagator(verbose=False):
     numpy.testing.assert_almost_equal(legacy_VHS, VHS, decimal=10)
 
 
+@pytest.mark.unit
 def test_phaseless_generic_propagator(mf_trial=False, verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(mf_trial=mf_trial, seed=seed)

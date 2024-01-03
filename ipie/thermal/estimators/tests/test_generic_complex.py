@@ -2,7 +2,11 @@ import numpy
 import pytest
 from typing import Tuple, Union
 
+from ipie.utils.misc import dotdict
 from ipie.utils.testing import generate_hamiltonian
+from ipie.utils.testing import build_test_case_handlers as build_test_case_handlers_0T
+from ipie.estimators.energy import local_energy
+
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.trial.mean_field import MeanField
@@ -57,6 +61,7 @@ def build_test_case_handlers(nelec: Tuple[int, int],
     return objs
 
 
+@pytest.mark.unit
 def test_local_energy_vs_real():
     nocca = 5
     noccb = 5
@@ -107,6 +112,7 @@ def test_local_energy_vs_real():
         numpy.testing.assert_allclose(energy, cx_energy, atol=1e-10)
 
 
+@pytest.mark.unit
 def test_local_energy_vs_eri():
     nocca = 5
     noccb = 5
@@ -175,6 +181,52 @@ def test_local_energy_vs_eri():
         numpy.testing.assert_allclose(etot, etotref, atol=1e-10)
 
 
+@pytest.mark.unit
+def test_local_energy_0T_single_det():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 1
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+
+    handler_0T = build_test_case_handlers_0T(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det",
+        choltol=1e-10,
+    )
+
+    hamiltonian = handler_0T.hamiltonian
+    walkers = handler_0T.walkers
+    trial = handler_0T.trial
+    walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
+    energy = local_energy(hamiltonian, walkers, trial)
+    test_energy = numpy.array(
+                    [local_energy_generic_cholesky(
+                        hamiltonian, 
+                        numpy.array([walkers.Ga[0], walkers.Gb[0]]))])
+
+    print(f'\n0T energy = \n{energy}\n')
+    print(f'test_energy = \n{test_energy}\n')
+    
+    numpy.testing.assert_allclose(energy, test_energy, atol=1e-10)
+
+
 if __name__ == '__main__':
     test_local_energy_vs_real()
     test_local_energy_vs_eri()
+    test_local_energy_0T_single_det()

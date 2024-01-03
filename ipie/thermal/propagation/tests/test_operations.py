@@ -19,6 +19,7 @@ from ipie.legacy.trial_density_matrices.onebody import OneBody as LegacyOneBody
 from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.thermal_propagation.continuous import Continuous
 
+
 def setup_objs(mf_trial=False, seed=None):
     nocca = 5
     noccb = 5
@@ -150,6 +151,7 @@ def setup_objs(mf_trial=False, seed=None):
     return objs, legacy_objs
    
 
+@pytest.mark.unit
 def test_apply_exponential(verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(seed=seed)

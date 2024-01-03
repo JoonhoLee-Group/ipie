@@ -18,6 +18,7 @@ from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
 from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
 
+
 def setup_objs(mf_trial=False, seed=None):
     nocca = 5
     noccb = 5
@@ -107,6 +108,7 @@ def setup_objs(mf_trial=False, seed=None):
 
     return objs, legacy_objs
     
+
 @pytest.mark.unit
 def test_thermal_walkers():
     verbose = True

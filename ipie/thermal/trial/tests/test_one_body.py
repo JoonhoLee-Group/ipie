@@ -44,6 +44,7 @@ def setup_objs():
     return objs
 
 
+@pytest.mark.unit
 def test_one_body():
     beta = 0.1
     dt = 0.01
