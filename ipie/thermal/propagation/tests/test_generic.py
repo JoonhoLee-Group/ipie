@@ -1,10 +1,11 @@
 import numpy
 import pytest
 
-from pyscf import gto, scf, lo
 from ipie.qmc.options import QMCOpts
 
 from ipie.systems.generic import Generic
+from ipie.utils.testing import generate_hamiltonian
+from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.trial.mean_field import MeanField
 from ipie.thermal.trial.one_body import OneBody
@@ -35,29 +36,25 @@ def legacy_propagate_walkers(legacy_hamiltonian, legacy_trial, legacy_walkers, l
 def setup_objs(mf_trial=False, seed=None):
     nocca = 5
     noccb = 5
-    nelec = nocca + noccb
-    r0 = 1.75
-    mol = gto.M(
-            atom=[("H", i * r0, 0, 0) for i in range(nelec)],
-            basis='sto-6g',
-            unit='Bohr',
-            verbose=5)
+    nelec = (nocca, noccb)
+    nbasis = 10
 
     mu = -10.
-    beta = 0.1
+    beta = 0.02
     dt = 0.01
-    nwalkers = 5
+    nwalkers = 2
     numpy.random.seed(seed)
     blocks = 10
     stabilise_freq = 10
     pop_control_freq = 1
     nsteps = 1
-    nslice = 3
 
     lowrank = False
     verbose = True
+    complex_integrals = False
+    sym = 8
+    if complex_integrals: sym = 4
 
-    path = "/Users/shufay/Documents/in_prep/ft_moire/ipie/ipie/thermal/tests/"
     options = {
         "qmc": {
             "dt": dt,
@@ -77,31 +74,34 @@ def setup_objs(mf_trial=False, seed=None):
 
         "walkers": {
             "low_rank": lowrank
-
         },
 
         "hamiltonian": {
             "name": "Generic",
-            "integrals": path + "reference_data/generic_integrals.h5",
             "_alt_convention": False,
-            "symmetry": False,
             "sparse": False,
             "mu": mu
-        },
+        }
     }
 
     # Test.
     print('\n----------------------------')
     print('Constructing test objects...')
     print('----------------------------')
-    system = Generic(mol.nelec, verbose=verbose)
-    hamiltonian = get_hamiltonian(system, options["hamiltonian"])
-    trial = OneBody(hamiltonian, mol.nelec, beta, dt, verbose=verbose)
+    h1e, chol, _, _ = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
+                                           sym=sym, tol=1e-10)
+    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]),
+                             chol=chol.reshape((-1, nbasis**2)).T.copy(),
+                             ecore=0)
+    hamiltonian.name = options["hamiltonian"]["name"]
+    hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
+    hamiltonian.sparse = options["hamiltonian"]["sparse"]
+
+    trial = OneBody(hamiltonian, nelec, beta, dt, verbose=verbose)
 
     if mf_trial:
-        trial = MeanField(hamiltonian, mol.nelec, beta, dt, verbose=verbose)
+        trial = MeanField(hamiltonian, nelec, beta, dt, verbose=verbose)
 
-    nbasis = trial.dmat.shape[-1]
     walkers = UHFThermalWalkers(trial, nbasis, nwalkers, lowrank=lowrank, 
                                 verbose=verbose)
     propagator = PhaselessGeneric(dt, mu, lowrank=lowrank, verbose=verbose)
@@ -111,13 +111,12 @@ def setup_objs(mf_trial=False, seed=None):
     print('\n------------------------------')
     print('Constructing legacy objects...')
     print('------------------------------')
-    legacy_system = Generic(mol.nelec, verbose=verbose)
+    legacy_system = Generic(nelec, verbose=verbose)
     legacy_system.mu = mu
     legacy_hamiltonian = LegacyHamGeneric(
                             h1e=hamiltonian.H1,
                             chol=hamiltonian.chol,
-                            ecore=hamiltonian.ecore,
-                            options=options["hamiltonian"])
+                            ecore=hamiltonian.ecore)
     legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
     legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
             (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
@@ -142,8 +141,6 @@ def setup_objs(mf_trial=False, seed=None):
     qmc_opts.dt = dt
     qmc_opts.seed = seed
 
-    legacy_hamiltonian.chol_vecs = legacy_hamiltonian.chol_vecs.T.reshape(
-                    (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
     legacy_propagator = Continuous(
                             options["propagator"], qmc_opts, legacy_system, 
                             legacy_hamiltonian, legacy_trial, verbose=verbose, 
@@ -204,7 +201,7 @@ def test_construct_two_body_propagator(verbose=False):
     legacy_propagator = legacy_objs['propagator']
 
     cmf, cfb, xshifted, VHS = propagator.construct_two_body_propagator(
-                                walkers, hamiltonian, trial)
+                                walkers, hamiltonian, trial, debug=True)
 
     legacy_cmf = []
     legacy_cfb = []
@@ -261,18 +258,16 @@ def test_phaseless_generic_propagator(mf_trial=False, verbose=False):
             eloc = local_energy_generic_cholesky(hamiltonian, P)
 
             legacy_P = legacy_one_rdm_from_G(numpy.array(legacy_walkers[iw].G))
-            legacy_hamiltonian.chol_vecs = legacy_hamiltonian.chol_vecs.reshape(
-                            (hamiltonian.nchol, hamiltonian.nbasis**2)).T
             legacy_eloc = legacy_local_energy_generic_cholesky(
                             legacy_system, legacy_hamiltonian, legacy_P)
-            legacy_hamiltonian.chol_vecs = legacy_hamiltonian.chol_vecs.T.reshape(
-                            (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
 
             if verbose:
                 print(f'\nt = {t}')
                 print(f'iw = {iw}')
                 print(f'eloc = \n{eloc}\n')
                 print(f'legacy_eloc = \n{legacy_eloc}\n')
+                print(f'walkers.weight = \n{walkers.weight[iw]}\n')
+                print(f'legacy_walkers.weight = \n{legacy_walkers[iw].weight}\n')
 
             numpy.testing.assert_almost_equal(legacy_eloc, eloc, decimal=10)
             numpy.testing.assert_almost_equal(legacy_walkers[iw].G[0], walkers.Ga[iw], decimal=10)
@@ -288,7 +283,7 @@ def test_phaseless_generic_propagator(mf_trial=False, verbose=False):
 
 
 if __name__ == "__main__":
-    #test_mf_shift(verbose=True)
-    #test_BH1(verbose=True)
-    #test_construct_two_body_propagator(verbose=True)
+    test_mf_shift(verbose=True)
+    test_BH1(verbose=True)
+    test_construct_two_body_propagator(verbose=True)
     test_phaseless_generic_propagator(mf_trial=True, verbose=True)

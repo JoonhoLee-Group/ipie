@@ -1,7 +1,7 @@
-
+import plum
 import numpy
-
 from ipie.utils.misc import is_cupy
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 
 def local_energy_generic_pno(
@@ -224,8 +224,8 @@ def local_energy_generic_cholesky_opt_batched(
     e2b_vec = 0.5 * (ecoul_vec - exx_vec)
     return (e1_vec + e2b_vec + hamiltonian.ecore, e1_vec + hamiltonian.ecore, e2b_vec)
 
-
-def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
+@plum.dispatch
+def local_energy_generic_cholesky(hamiltonian: GenericRealChol, G):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -236,8 +236,6 @@ def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
-    Ghalf : :class:`numpy.ndarray`
-        Walker's "half-rotated" "green's function"
 
     Returns
     -------
@@ -250,41 +248,88 @@ def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
     nchol = hamiltonian.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(hamiltonian.chol):
-        Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Ga.imag.ravel())
-        Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Gb.imag.ravel())
-    else:
-        Xa = hamiltonian.chol.T.dot(Ga.ravel())
-        Xb = hamiltonian.chol.T.dot(Gb.ravel())
-
-    ecoul = numpy.dot(Xa, Xa)
-    ecoul += numpy.dot(Xb, Xb)
-    ecoul += 2 * numpy.dot(Xa, Xb)
-
-    T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
-
+    # Ecoul.
+    Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Ga.imag.ravel())
+    Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Gb.imag.ravel())
+    X = Xa + Xb
+    ecoul = 0.5 * numpy.dot(X, X)
+    
+    # Ex.
     GaT = Ga.T.copy()
     GbT = Gb.T.copy()
-
+    T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(hamiltonian.chol):
-        for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
-            T[:, :].real = GaT.real.dot(Lmn)
-            T[:, :].imag = GaT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T))
-            T[:, :].real = GbT.real.dot(Lmn)
-            T[:, :].imag = GbT.imag.dot(Lmn)
-            exx += numpy.trace(T.dot(T))
-    else:
-        for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
-            T[:, :] = GaT.dot(Lmn)
-            exx += numpy.trace(T.dot(T))
-            T[:, :] = GbT.dot(Lmn)
-            exx += numpy.trace(T.dot(T))
 
-    e2b = 0.5 * (ecoul - exx)
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
+        T[:, :].real = GaT.real.dot(Lmn)
+        T[:, :].imag = GaT.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+        T[:, :].real = GbT.real.dot(Lmn)
+        T[:, :].imag = GbT.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+
+    exx *= 0.5
+    e2b = ecoul - exx
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
+
+
+@plum.dispatch
+def local_energy_generic_cholesky(hamiltonian: GenericComplexChol, G):
+    r"""Calculate local for generic two-body hamiltonian.
+
+    This uses the cholesky decomposed two-electron integrals.
+
+    Parameters
+    ----------
+    hamiltonian : :class:`Generic`
+        ab-initio hamiltonian information
+    G : :class:`numpy.ndarray`
+        Walker's "green's function"
+
+    Returns
+    -------
+    (E, T, V): tuple
+        Local, kinetic and potential energies.
+    """
+    # Element wise multiplication.
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
+    Ga, Gb = G[0], G[1]
+    
+    # Ecoul.
+    XAa = hamiltonian.A.T.dot(Ga.ravel())
+    XAb = hamiltonian.A.T.dot(Gb.ravel())
+    XA = XAa + XAb
+
+    XBa = hamiltonian.B.T.dot(Ga.ravel())
+    XBb = hamiltonian.B.T.dot(Gb.ravel())
+    XB = XBa + XBb
+
+    ecoul = 0.5 * (numpy.dot(XA, XA) + numpy.dot(XB, XB))
+
+    # Ex.
+    GaT = Ga.T.copy()
+    GbT = Gb.T.copy()
+    TA = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    TB = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        Amn = hamiltonian.A[:, x].reshape((nbasis, nbasis))
+        Bmn = hamiltonian.B[:, x].reshape((nbasis, nbasis))
+        TA[:, :] = GaT.dot(Amn)
+        TB[:, :] = GaT.dot(Bmn)
+        exx += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
+
+        TA[:, :] = GbT.dot(Amn)
+        TB[:, :] = GbT.dot(Bmn)
+        exx += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
+
+    exx *= 0.5
+    e2b = ecoul - exx
+    print(ecoul, -exx)
     return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 

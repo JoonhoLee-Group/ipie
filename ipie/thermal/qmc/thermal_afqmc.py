@@ -1,16 +1,26 @@
 """Driver to perform AFQMC calculation"""
+import numpy
 import time
+import json
 import uuid
 from typing import Dict, Optional, Tuple
 
+from ipie.thermal.walkers.uhf_walkers import UHFThermalWalkers
+from ipie.thermal.walkers.base_walkers import ThermalWalkerAccumulator
 from ipie.thermal.propagation.propagator import Propagator
-from ipie.thermal.walkers import UHFThermalWalkers
+from ipie.thermal.estimators.handler import ThermalEstimatorHandler
 from ipie.thermal.qmc.options import ThermalQMCParams
+
+from ipie.utils.io import to_json
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import get_host_memory
+from ipie.utils.misc import get_git_info, print_env_info
+from ipie.utils.mpi import MPIHandler
+from ipie.systems.generic import Generic
+from ipie.estimators.estimator_base import EstimatorBase
+from ipie.walkers.pop_controller import PopController
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.utils import set_rng_seed
-from ipie.utils.misc import get_git_info, print_env_info
-from ipie.systems.generic import Generic
-from ipie.utils.mpi import MPIHandler
 
 
 ## This is now only applicable to the Generic case!
@@ -30,7 +40,7 @@ class ThermalAFQMC(AFQMC):
     propagator :
         Class describing how to propagate walkers.
     params :
-        Parameters of simulation. See QMCParams for description.
+        Parameters of simulation. See ThermalQMCParams for description.
     verbose : bool
         How much information to print.
 
@@ -46,12 +56,14 @@ class ThermalAFQMC(AFQMC):
                  trial, 
                  walkers, 
                  propagator, 
-                 params: QMCParams, 
-                 verbose: int = 0):
+                 params: ThermalQMCParams, 
+                 debug: bool = False,
+                 verbose: bool = False):
         super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose)
+        self.debug = debug
 
     def build(
-            nelec: Tuple[],
+            nelec: Tuple[int, int],
             mu: float,
             beta: float,
             hamiltonian,
@@ -103,13 +115,13 @@ class ThermalAFQMC(AFQMC):
         """
         mpi_handler = MPIHandler()
         comm = mpi_handler.comm
-        params = QMCParams(
+        params = ThermalQMCParams(
+                    beta=beta,
                     num_walkers=num_walkers,
                     total_num_walkers=num_walkers * comm.size,
                     num_blocks=num_blocks,
                     num_steps_per_block=num_steps_per_block,
                     timestep=timestep,
-                    beta=beta,
                     num_stblz=stabilize_freq,
                     pop_control_freq=pop_control_freq,
                     rng_seed=seed)
@@ -129,99 +141,128 @@ class ThermalAFQMC(AFQMC):
                 verbose=(verbose and comm.rank == 0))
 
 
-    def run(self, walkers=None, comm=None, verbose=None):
+    def run(self, 
+            walkers = None, 
+            verbose: bool = True,
+            estimator_filename = None,
+            additional_estimators: Optional[Dict[str, EstimatorBase]] = None):
         """Perform Thermal AFQMC simulation on state object using open-ended random walk.
 
         Parameters
         ----------
         state : :class:`pie.state.State` object
             Model and qmc parameters.
-        walk: :class:`pie.walker.Walkers` object
+
+        walkers: :class:`pie.walker.Walkers` object
             Initial wavefunction / distribution of walkers.
-        comm : MPI communicator
+
+        estimator_filename : str
+            File to write estimates to.
+
+        additional_estimators : dict
+            Dictionary of additional estimators to evaluate.
         """
+        # Setup.
         self.setup_timers()
-        ft_setup time.time()
+        ft_setup = time.time()
+        eshift = 0.
 
         if walkers is not None:
             self.walkers = walkers
 
-        # Calculate estimates for initial distribution of walkers.
-        self.estimators.estimators["mixed"].update(
-            self.qmc,
-            self.hamiltonian,
-            self.trial,
-            self.walkers,
-            0,
-            self.propagators.free_projection,
-        )
-        # Print out zeroth step for convenience.
-        self.estimators.estimators["mixed"].print_step(comm, comm.size, 0, 1)
+        self.pcontrol = PopController(
+                            self.params.num_walkers,
+                            self.params.num_steps_per_block,
+                            self.mpi_handler,
+                            self.params.pop_control_method,
+                            verbose=self.verbose)
         
+        self.get_env_info()
+        self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
+        
+        comm = self.mpi_handler.comm
+        self.tsetup += time.time() - ft_setup
+        
+        print(f'comm.size = {comm.size}')
+        print(f'comm.rank = {comm.rank}')
+
+        # Propagate.
         num_walkers = self.walkers.nwalkers
         total_steps = self.params.num_steps_per_block * self.params.num_blocks
-        num_slices = self.params.num_slices
+        # TODO: This magic value of 2 is pretty much never controlled on input.
+        # Moreover I'm not convinced having a two stage shift update actually
+        # matters at all.
+        num_eqlb_steps = 2.0 / self.params.timestep
+        num_slices = numpy.rint(self.params.beta / self.params.timestep).astype(int)
 
         for step in range(1, total_steps + 1):
             start_path = time.time()
 
-            for ts in range(num_slices):
+            for t in range(num_slices):
                 if self.verbosity >= 2 and comm.rank == 0:
-                    print(" # Timeslice %d of %d." % (ts, num_slices))
+                    print(" # Timeslice %d of %d." % (t, num_slices))
 
                 start = time.time()
                 self.propagator.propagate_walkers(
-                        self.walkers, self.hamiltonian, self.trial, eshift)
+                        self.walkers, self.hamiltonian, self.trial, eshift, debug=self.debug)
+
+                self.tprop_fbias = self.propagator.timer.tfbias
+                self.tprop_update = self.propagator.timer.tupdate
+                self.tprop_vhs = self.propagator.timer.tvhs
+                self.tprop_gemm = self.propagator.timer.tgemm
                 
                 start_clip = time.time()
-                if step > 1:
+                if t > 0:
                     wbound = self.pcontrol.total_weight * 0.10
                     xp.clip(self.walkers.weight, a_min=-wbound, a_max=wbound,
-                            out=self.walkers.weight)  # in-place clipping
+                            out=self.walkers.weight)  # In-place clipping
 
                 self.tprop_clip += time.time() - start_clip
 
                 start_barrier = time.time()
-                if step % self.params.pop_control_freq == 0:
+                if t % self.params.pop_control_freq == 0:
                     comm.Barrier()
+
                 self.tprop_barrier += time.time() - start_barrier
-
-                if step % self.params.pop_control_freq == 0:
-                start = time.time()
-                self.pcontrol.pop_control(self.walkers, comm)
-                synchronize()
-                self.tpopc += time.time() - start
-                self.tpopc_send = self.pcontrol.timer.send_time
-                self.tpopc_recv = self.pcontrol.timer.recv_time
-                self.tpopc_comm = self.pcontrol.timer.communication_time
-                self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
-
                 self.tprop += time.time() - start
-
-                start = time.time()
-                if ts % self.qmc.npop_control == 0 and ts != 0:
-                    self.walkers.pop_control(comm)
-                self.tpopc += time.time() - start
-            self.tpath += time.time() - start_path
+                
+                print(f'self.walkers.weight = {self.walkers.weight}')
+                if (t > 0) and (t % self.params.pop_control_freq == 0):
+                    start = time.time()
+                    self.pcontrol.pop_control(self.walkers, comm)
+                    self.tpopc += time.time() - start
+                    self.tpopc_send = self.pcontrol.timer.send_time
+                    self.tpopc_recv = self.pcontrol.timer.recv_time
+                    self.tpopc_comm = self.pcontrol.timer.communication_time
+                    self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
+            
+            # Accumulate weight, hybrid energy etc. across block.
             start = time.time()
-            self.estimators.update(
-                self.qmc,
-                self.hamiltonian,
-                self.trial,
-                self.walkers,
-                step,
-                self.propagators.free_projection,
-            )
+            self.accumulators.update(self.walkers)
             self.testim += time.time() - start
-            self.estimators.print_step(
-                comm,
-                comm.size,
-                step,
-                free_projection=self.propagators.free_projection,
-            )
-            self.walkers.reset(self.trial)
 
-    def finalise(self, verbose):
+            # Calculate estimators.
+            start = time.time()
+            if step % self.params.num_steps_per_block == 0:
+                self.estimators.compute_estimators(self.hamiltonian,
+                                                   self.trial, self.walkers)
+
+                self.estimators.print_block(
+                    comm, step // self.params.num_steps_per_block, self.accumulators)
+                self.accumulators.zero(self.walkers, self.trial)
+
+            self.testim += time.time() - start
+
+            if step < num_eqlb_steps:
+                eshift = self.accumulators.eshift
+
+            else:
+                eshift += self.accumulators.eshift - eshift
+
+            self.tpath += time.time() - start_path
+
+
+    def finalise(self, verbose=False):
         """Tidy up.
 
         Parameters
@@ -229,22 +270,90 @@ class ThermalAFQMC(AFQMC):
         verbose : bool
             If true print out some information to stdout.
         """
-        pass
+        nsteps_per_block = max(self.params.num_steps_per_block, 1)
+        nblocks = max(self.params.num_blocks, 1)
+        nstblz = max(nsteps_per_block // self.params.num_stblz, 1)
+        npcon = max(nsteps_per_block // self.params.pop_control_freq, 1)
 
-    def determine_dtype(self, propagator, system):
-        """Determine dtype for trial wavefunction and walkers.
+        if self.mpi_handler.rank == 0:
+            if verbose:
+                print(f"# End Time: {time.asctime():s}")
+                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
+                print("# Timing breakdown (per call, total calls per block, total blocks):")
+                print(f"# - Setup: {self.tsetup:.6f} s")
+                print(
+                    "# - Path update: {:.6f} s / block for {} total blocks".format(
+                        self.tpath / (nblocks), nblocks
+                    )
+                )
+                print(
+                    "# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_fbias / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_vhs / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     - Green's Function: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_gf / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     -          Overlap: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_ovlp / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        (self.tprop_update + self.tprop_clip) / (nblocks * nsteps_per_block),
+                        nsteps_per_block,
+                        nblocks,
+                    )
+                )
+                print(
+                    "#     -  GEMM operations: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_gemm / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "#     -          Barrier: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tprop_barrier / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
+                    )
+                )
+                print(
+                    "# - Estimators: {:.6f} s / call for {} call(s)".format(
+                        self.testim / nblocks, nblocks
+                    )
+                )
+                print(
+                    "# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tortho / (nstblz * nblocks), nstblz, nblocks
+                    )
+                )
+                print(
+                    "# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tpopc / (npcon * nblocks), npcon, nblocks
+                    )
+                )
+                print(
+                    "#       -     Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tpopc_comm / (npcon * nblocks), npcon, nblocks
+                    )
+                )
+                print(
+                    "#       - Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(
+                        self.tpopc_non_comm / (npcon * nblocks), npcon, nblocks
+                    )
+                )
 
-        Parameters
-        ----------
-        propagator : dict
-            Propagator input options.
-        system : object
-            System object.
-        """
-        hs_type = propagator.get("hubbard_stratonovich", "discrete")
-        continuous = "continuous" in hs_type
-        twist = system.ktwist.all() is not None
-        return continuous or twist
 
     def get_env_info(self):
         this_uuid = str(uuid.uuid1())
@@ -268,10 +377,51 @@ class ThermalAFQMC(AFQMC):
 
             mem_avail = get_host_memory()
             print(f"# Available memory on the node is {mem_avail:4.3f} GB")
+    
+
+    def setup_estimators(
+        self,
+        filename,
+        additional_estimators: Optional[Dict[str, EstimatorBase]] = None):
+        self.accumulators = ThermalWalkerAccumulator(
+            ["Weight", "WeightFactor", "HybridEnergy"], self.params.num_steps_per_block)
+        comm = self.mpi_handler.comm
+        self.estimators = ThermalEstimatorHandler(
+            self.mpi_handler.comm,
+            self.hamiltonian,
+            self.trial,
+            walker_state=self.accumulators,
+            verbose=(comm.rank == 0 and self.verbose),
+            filename=filename)
+
+        if additional_estimators is not None:
+            for k, v in additional_estimators.items():
+                self.estimators[k] = v
+
+        # TODO: Move this to estimator and log uuid etc in serialization
+        json.encoder.FLOAT_REPR = lambda o: format(o, ".6f")
+        json_string = to_json(self)
+        self.estimators.json_string = json_string
+        self.estimators.initialize(comm)
+
+        # Calculate estimates for initial distribution of walkers.
+        self.estimators.compute_estimators(self.hamiltonian,
+                                           self.trial, self.walkers)
+        self.accumulators.update(self.walkers)
+        self.estimators.print_block(comm, 0, self.accumulators)
+        self.accumulators.zero(self.walkers, self.trial)
+
 
     def setup_timers(self):
+        self.tsetup = 0
         self.tpath = 0
+        
         self.tprop = 0
+        self.tprop_barrier = 0
+        self.tprop_fbias = 0
+        self.tprop_update = 0
+        self.tprop_vhs = 0
         self.tprop_clip = 0
+
         self.testim = 0
         self.tpopc = 0

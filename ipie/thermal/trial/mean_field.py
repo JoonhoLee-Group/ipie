@@ -2,7 +2,8 @@ import numpy
 import scipy.linalg
 
 from ipie.thermal.estimators.fock import fock_matrix
-from ipie.thermal.estimators.thermal import greens_function, one_rdm_stable, particle_number
+from ipie.thermal.estimators.greens_function import greens_function
+from ipie.thermal.estimators.thermal import one_rdm_stable, particle_number
 from ipie.thermal.trial.chem_pot import compute_rho, find_chemical_potential
 from ipie.thermal.trial.one_body import OneBody
 

@@ -1,4 +1,7 @@
 import time
+import plum
+import math
+import cmath
 import numpy
 import scipy.linalg
 
@@ -11,9 +14,10 @@ from ipie.utils.backend import arraylib as xp
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 # TODO: Add lowrank implementation.
+# Ref: 10.1103/PhysRevB.80.214116 for bounds.
 
-
-def construct_mean_field_shift(hamiltonian, trial):
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealChol, trial):
     r"""Compute mean field shift.
 
     .. math::
@@ -27,6 +31,25 @@ def construct_mean_field_shift(hamiltonian, trial):
     tmp_real = numpy.dot(hamiltonian.chol.T, P.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, P.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
+    return mf_shift # Shape (nchol,).
+
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} P_{ik\sigma}
+
+    """
+    # hamiltonian.chol has shape (nbasis^2, nchol).
+    P = one_rdm_from_G(trial.G)
+    P = (P[0] + P[1]).ravel()
+    nchol = hamiltonian.nchol
+    mf_shift = numpy.zeros(hamiltonian.nfields, dtype=hamiltonian.chol.dtype)
+    mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, P.ravel())
+    mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, P.ravel())
     return mf_shift # Shape (nchol,).
 
 
@@ -64,8 +87,13 @@ class PhaselessBase(ContinuousBase):
         # Allocate force bias (we don't need to do this here - it will be allocated when it is needed)
         self.vbias = None
 
+        # Legacy attributes.
+        self.mf_core = hamiltonian.ecore + 0.5 * numpy.dot(self.mf_shift, self.mf_shift)
+        self.mf_const_fac = cmath.exp(-self.dt * self.mf_core)
 
-    def construct_one_body_propagator(self, hamiltonian):
+
+    @plum.dispatch
+    def construct_one_body_propagator(self, hamiltonian: GenericRealChol):
         r"""Construct mean-field shifted one-body propagator.
 
         .. math::
@@ -82,6 +110,35 @@ class PhaselessBase(ContinuousBase):
         """
         nb = hamiltonian.nbasis
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, self.mf_shift).reshape(nb, nb)
+        muN = self.mu * numpy.identity(nb, dtype=hamiltonian.H1.dtype)
+        H1 = hamiltonian.h1e_mod - numpy.array([shift + muN, shift + muN])
+        expH1 = numpy.array([
+                    scipy.linalg.expm(-0.5 * self.dt * H1[0]), 
+                    scipy.linalg.expm(-0.5 * self.dt * H1[1])])
+        return expH1 # Shape (nbasis, nbasis).
+
+    
+    @plum.dispatch
+    def construct_one_body_propagator(self, hamiltonian: GenericComplexChol):
+        r"""Construct mean-field shifted one-body propagator.
+
+        .. math::
+
+            H1 \rightarrow H1 - v0
+            v0_{ik} = \sum_n v_{(ik),n} \bar{v}_n
+
+        Parameters
+        ----------
+        hamiltonian : hamiltonian class
+            Generic hamiltonian object.
+        dt : float
+            Timestep.
+        """
+        nb = hamiltonian.nbasis
+        nchol = hamiltonian.nchol
+        shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, self.mf_shift[:nchol]).reshape(nb, nb)
+        shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, self.mf_shift[nchol:]).reshape(nb, nb)
         muN = self.mu * numpy.identity(nb, dtype=hamiltonian.H1.dtype)
         H1 = hamiltonian.h1e_mod - numpy.array([shift + muN, shift + muN])
         expH1 = numpy.array([
@@ -159,17 +216,24 @@ class PhaselessBase(ContinuousBase):
             # Compute determinant ratio det(1+A')/det(1+A).
             # 1. Current walker's Green's function.
             tix = stack.nslice
-            G = walkers.greens_function(iw, slice_ix=tix, inplace=False)
+            start_time = time.time()
+            G = walkers.calc_greens_function(iw, slice_ix=tix, inplace=False)
+            self.timer.tgf += time.time() - start_time
 
             # 2. Compute updated Green's function.
+            start_time = time.time()
             stack.update_new(B)
-            walkers.greens_function(iw, slice_ix=tix, inplace=True)
+            walkers.calc_greens_function(iw, slice_ix=tix, inplace=True)
 
             # 3. Compute det(G/G')
             # Now apply phaseless approximation
-            self.update_weight(walkers, iw, G, cfb, cmf, eshift)
+            if debug:
+                self.update_weight_legacy(walkers, iw, G, cfb, cmf, eshift)
 
-        self.timer.tupdate += time.time() - start_time
+            else:
+                self.update_weight(walkers, iw, G, cfb, cmf, eshift)
+
+            self.timer.tupdate += time.time() - start_time
 
 
     def update_weight(self, walkers, iw, G, cfb, cmf, eshift):
@@ -179,7 +243,7 @@ class PhaselessBase(ContinuousBase):
         M0b = scipy.linalg.det(G[1], check_finite=False)
         Mnewa = scipy.linalg.det(walkers.Ga[iw], check_finite=False)
         Mnewb = scipy.linalg.det(walkers.Gb[iw], check_finite=False)
-
+        
         # ovlp = det( G^{-1} )
         ovlp_ratio = (M0a * M0b) / (Mnewa * Mnewb) # ovlp_new / ovlp_old
         hybrid_energy = -(xp.log(ovlp_ratio) + cfb[iw] + cmf[iw]) / self.dt # Scalar.
@@ -197,6 +261,47 @@ class PhaselessBase(ContinuousBase):
         walkers.M0a[iw] = Mnewa
         walkers.M0b[iw] = Mnewb
 
+
+    def update_weight_legacy(self, walkers, iw, G, cfb, cmf, eshift):
+        """Update weight for walker `iw` using legacy code.
+        """
+        M0a = scipy.linalg.det(G[0], check_finite=False)
+        M0b = scipy.linalg.det(G[1], check_finite=False)
+        Mnewa = scipy.linalg.det(walkers.Ga[iw], check_finite=False)
+        Mnewb = scipy.linalg.det(walkers.Gb[iw], check_finite=False)
+        _cfb = cfb[iw]
+        _cmf = cmf[iw]
+
+        try:
+            # Could save M0 rather than recompute.
+            oratio = (M0a * M0b) / (Mnewa * Mnewb)
+            # Might want to cap this at some point
+            hybrid_energy = cmath.log(oratio) + _cfb + _cmf
+            Q = cmath.exp(hybrid_energy)
+            #hybrid_energy = -(cmath.log(oratio) + _cfb + _cmf) / self.dt
+            #walkers.hybrid_energy = hybrid_energy + self.mf_core
+            #Q = cmath.exp(-self.dt * hybrid_energy)
+            #hybrid_energy = cmath.log(oratio) + _cfb + _cmf
+            expQ = self.mf_const_fac * Q
+            (magn, phase) = cmath.polar(expQ)
+
+            if not math.isinf(magn):
+                # Determine cosine phase from Arg(det(1+A'(x))/det(1+A(x))).
+                # Note this doesn't include exponential factor from shifting
+                # proability distribution.
+                dtheta = cmath.phase(cmath.exp(hybrid_energy - _cfb))
+                cosine_fac = max(0, math.cos(dtheta))
+                walkers.weight[iw] *= magn * cosine_fac
+                walkers.M0a[iw] = Mnewa
+                walkers.M0b[iw] = Mnewb
+
+            else:
+                walkers.weight[iw] = 0.
+
+        except ZeroDivisionError:
+            walkers.weight[iw] = 0.
+
+
     def apply_bound_force_bias(self, xbar, max_bound=1.0):
         absxbar = xp.abs(xbar)
         idx_to_rescale = absxbar > max_bound
@@ -206,6 +311,7 @@ class PhaselessBase(ContinuousBase):
         xbar = xp.where(idx_to_rescale, xbar_rescaled, xbar)
         self.nfb_trig += xp.sum(idx_to_rescale)
         return xbar
+
 
     def apply_bound_hybrid(self, ehyb, eshift):  # Shift is a number but ehyb is not
         # For initial steps until first estimator communication, `eshift` will be
