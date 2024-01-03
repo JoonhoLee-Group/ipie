@@ -17,6 +17,7 @@
 #
 
 import numpy
+from typing import Tuple
 
 
 class Generic:
@@ -45,7 +46,7 @@ class Generic:
         Number of alpha and beta electrons.
     """
 
-    def __init__(self, nelec, options=None, verbose=False):
+    def __init__(self, nelec: Tuple[int, int], verbose: bool = False):
         if verbose:
             print("# Parsing input options for systems.Generic.")
         self.name = "Generic"
@@ -55,7 +56,7 @@ class Generic:
         self.ne = self.nup + self.ndown
 
         if verbose:
-            print("# Number of alpha electrons: %d" % (self.nup))
-            print("# Number of beta electrons: %d" % (self.ndown))
+            print(f"# Number of alpha electrons: {self.nup}")
+            print(f"# Number of beta electrons: {self.ndown}")
 
         self.ktwist = numpy.array([None])

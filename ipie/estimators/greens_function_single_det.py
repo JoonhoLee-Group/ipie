@@ -2,6 +2,60 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
+def gab_mod_ovlp(A, B):
+    r"""One-particle Green's function.
+
+    This actually returns 1-G since it's more useful, i.e.,
+
+    .. math::
+        \langle \phi_A|c_i^{\dagger}c_j|\phi_B\rangle =
+        [B(A^{\dagger}B)^{-1}A^{\dagger}]_{ji}
+
+    where :math:`A,B` are the matrices representing the Slater determinants
+    :math:`|\psi_{A,B}\rangle`.
+
+    For example, usually A would represent (an element of) the trial wavefunction.
+
+    .. warning::
+        Assumes A and B are not orthogonal.
+
+    Parameters
+    ----------
+    A : :class:`numpy.ndarray`
+        Matrix representation of the bra used to construct G.
+    B : :class:`numpy.ndarray`
+        Matrix representation of the ket used to construct G.
+
+    Returns
+    -------
+    GAB : :class:`numpy.ndarray`
+        the green's function.
+    Ghalf : :class:`numpy.ndarray`
+        the half rotated green's function.
+    inv_O : :class:`numpy.ndarray`
+        Inverse of the overlap matrix.
+    """
+    inv_O = xp.linalg.inv(xp.dot(B.T, A.conj()))
+    GHalf = xp.dot(inv_O, B.T)
+    G = xp.dot(A.conj(), GHalf)
+    return (G, GHalf, inv_O)
+
+
+def greens_function_single_det_ghf(walkers, trial):
+    det = []
+    for iw in range(walkers.nwalkers):
+        ovlp = xp.dot(walkers.phi[iw].T, trial.psi0.conj())
+        ovlp_inv = xp.linalg.inv(ovlp)
+        Ghalf = xp.dot(ovlp_inv, walkers.phi[iw].T)
+        walkers.G[iw] = xp.dot(trial.psi0.conj(), Ghalf)
+        sign, log_ovlp = xp.linalg.slogdet(ovlp)
+        det += [sign * xp.exp(log_ovlp - walkers.log_shift[iw])]
+
+    det = xp.array(det, dtype=xp.complex128)
+    synchronize()
+    return det
+
+
 def greens_function_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
 

@@ -26,7 +26,7 @@ try:
     _wicks_helper = np.ctypeslib.load_library("libwicks_helper", _path)
 except OSError:
     raise ImportError
-DET_LEN = 2
+DET_LEN = 4
 
 
 def encode_dets(occsa, occsb):
@@ -57,9 +57,7 @@ def encode_dets(occsa, occsb):
     fun.argtypes = [
         ndpointer(shape=(ndets, nocca), dtype=ctypes.c_int, flags="C_CONTIGUOUS"),
         ndpointer(shape=(ndets, noccb), dtype=ctypes.c_int, flags="C_CONTIGUOUS"),
-        ndpointer(
-            shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"
-        ),
+        ndpointer(shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"),
         ctypes.c_size_t,
         ctypes.c_size_t,
         ctypes.c_size_t,
@@ -102,7 +100,7 @@ def encode_det(a, b):
         ctypes.c_size_t,
     ]
     out = np.zeros(DET_LEN, dtype=np.uint64)
-    det = _wicks_helper.encode_det(a, b, out, a.size, b.size)
+    _wicks_helper.encode_det(a, b, out, a.size, b.size)
     return out
 
 
@@ -121,9 +119,7 @@ def count_set_bits(a):
     """
     fun = _wicks_helper.count_set_bits
     fun.restype = ctypes.c_int
-    fun.argtypes = [
-        ndpointer(shape=(DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS")
-    ]
+    fun.argtypes = [ndpointer(shape=(DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS")]
     nset = _wicks_helper.count_set_bits(a)
     return nset
 
@@ -174,7 +170,6 @@ def decode_det(det, occs):
         ndpointer(shape=(occs.size), dtype=ctypes.c_int, flags="C_CONTIGUOUS"),
         ctypes.c_size_t,
     ]
-    print(det.size, det.shape, occs.size, occs.shape)
     _wicks_helper.decode_det(det, occs, occs.size)
 
 
@@ -228,7 +223,6 @@ def get_perm_ia(det_ket, i, a):
         ctypes.c_int,
         ctypes.c_int,
     ]
-    # print(det_ket, type(det_ket), det_ket.dtype)
     perm = _wicks_helper.get_perm_ia(det_ket, i, a)
     return perm
 
@@ -257,9 +251,7 @@ def compute_opdm(ci_coeffs, dets, norbs, nelec):
         fun.restype = None
         fun.argtypes = [
             ndpointer(np.complex128, flags="C_CONTIGUOUS"),
-            ndpointer(
-                shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"
-            ),
+            ndpointer(shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"),
             ndpointer(np.complex128, flags="C_CONTIGUOUS"),
             ndpointer(ctypes.c_int, flags="C_CONTIGUOUS"),
             ctypes.c_size_t,
@@ -271,9 +263,7 @@ def compute_opdm(ci_coeffs, dets, norbs, nelec):
         fun.restype = None
         fun.argtypes = [
             ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
-            ndpointer(
-                shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"
-            ),
+            ndpointer(shape=(ndets, DET_LEN), dtype=ctypes.c_ulonglong, flags="C_CONTIGUOUS"),
             ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
             ndpointer(ctypes.c_int, flags="C_CONTIGUOUS"),
             ctypes.c_size_t,
@@ -306,7 +296,6 @@ def convert_phase(occa, occb):
     ndet = len(occa)
     phases = np.zeros(ndet)
     for i in range(ndet):
-        doubles = list(set(occa[i]) & set(occb[i]))
         occa0 = np.array(occa[i])
         occb0 = np.array(occb[i])
 
@@ -320,11 +309,9 @@ def convert_phase(occa, occb):
     return phases
 
 
-def print_bitstring(bitstring, nbits=64):
+def get_bitstring(bitstring, nbits=64):
     mask = np.uint64(1)
     out = ""
     for bs in bitstring:
-        out += "".join(
-            "1" if bs & (mask << np.uint64(i)) else "0" for i in range(nbits)
-        )
+        out += "".join("1" if bs & (mask << np.uint64(i)) else "0" for i in range(nbits))
     return out[::-1]

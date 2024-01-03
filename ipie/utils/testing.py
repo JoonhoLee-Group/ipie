@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
-from mpi4py import MPI
 
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
@@ -30,10 +29,10 @@ from ipie.qmc.options import QMCOpts
 from ipie.systems import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
+    ParticleHole,
     ParticleHoleNaive,
-    ParticleHoleWicks,
-    ParticleHoleWicksNonChunked,
-    ParticleHoleWicksSlow,
+    ParticleHoleNonChunked,
+    ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -42,7 +41,7 @@ from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -230,7 +229,7 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
             dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = min(len(occ_a), ndet)
-    wfn = (coeffs, list(occ_a[:_ndet]), list(occ_b[:_ndet]))
+    wfn = (coeffs[:_ndet], list(occ_a[:_ndet]), list(occ_b[:_ndet]))
     return wfn, init_wfn
 
 
@@ -305,6 +304,7 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
         system.ndown,
         ham.nbasis,
         nwalkers,
+        MPIHandler(),
     )
     walkers.build(trial)
 
@@ -328,9 +328,9 @@ def build_random_phmsd_trial(
 ):
     _classes = {
         "naive": ParticleHoleNaive,
-        "opt": ParticleHoleWicks,
-        "chunked": ParticleHoleWicksNonChunked,
-        "slow": ParticleHoleWicksSlow,
+        "opt": ParticleHole,
+        "chunked": ParticleHoleNonChunked,
+        "slow": ParticleHoleSlow,
     }
     wfn, init = get_random_phmsd_opt(
         num_elec[0],
@@ -464,7 +464,7 @@ def build_test_case_handlers_mpi(
     reconf_freq = get_input_value(options, "reconfiguration_freq", default=50)
 
     walkers = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers.build(trial)
     pcontrol = PopController(
@@ -495,6 +495,7 @@ def build_test_case_handlers(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     choltol: float = 1e-3,
+    reortho: bool = True,
     options: Union[dict, None] = None,
 ):
     if seed is not None:
@@ -528,7 +529,9 @@ def build_test_case_handlers(
         numpy.random.seed(seed)
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)  # any intermediates that require information from trial
 
     prop = PhaselessGeneric(time_step=options["dt"])
@@ -540,7 +543,8 @@ def build_test_case_handlers(
             prop.propagate_walkers_two_body(walkers, ham, trial)
         else:
             prop.propagate_walkers(walkers, ham, trial, trial.energy)
-        walkers.reortho()
+        if reortho:
+            walkers.reortho()
         trial.calc_greens_function(walkers)
 
     return TestData(trial, walkers, ham, prop)
@@ -570,7 +574,7 @@ def build_driver_test_instance(
     )
     if density_diff:
         ham.density_diff = True
-    trial, init = build_random_trial(
+    trial, _ = build_random_trial(
         num_elec,
         num_basis,
         num_dets=num_dets,
@@ -580,33 +584,25 @@ def build_driver_test_instance(
         rhf_trial=rhf_trial,
     )
     trial.half_rotate(ham)
-    trial.calculate_energy(system, ham)
+    try:
+        trial.calculate_energy(system, ham)
+    except NotImplementedError:
+        pass
 
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
 
-    nwalkers = qmc.nwalkers
-
-    _, init = get_initial_walker(trial)  # Here we update init...
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, ham.nbasis, nwalkers)
-    walkers.build(trial)  # any intermediates that require information from trial
-
-    comm = MPI.COMM_WORLD
-    afqmc = AFQMC(
-        comm=comm,
-        system=system,
-        hamiltonian=ham,
-        trial=trial,
-        walkers=walkers,
+    afqmc = AFQMC.build(
+        num_elec,
+        ham,
+        trial,
+        num_walkers=qmc.nwalkers,
         seed=qmc.rng_seed,
-        nwalkers=qmc.nwalkers,
         num_steps_per_block=qmc.nsteps,
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
-        stabilise_freq=qmc.nstblz,
+        stabilize_freq=qmc.nstblz,
         pop_control_freq=qmc.npop_control,
-        verbose=0,
-        filename=options["estimates"]["filename"],
     )
     return afqmc

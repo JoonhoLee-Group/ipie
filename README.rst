@@ -15,8 +15,8 @@ ipie inherits a lot of QMC features from pauxy.
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
     :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
 
-.. image:: https://codecov.io/gh/linusjoonho/ipie/branch/develop/graph/badge.svg
-    :target: https://codecov.io/gh/linusjoonho/ipie
+.. .. image:: https://codecov.io/gh/linusjoonho/ipie/branch/develop/graph/badge.svg
+..     :target: https://codecov.io/gh/linusjoonho/ipie
 
 .. image:: https://img.shields.io/badge/paper%20%28v0%29-arXiv%3A2209.04015-B31B1B
     :target: https://arxiv.org/abs/2209.04015
@@ -56,10 +56,17 @@ and run the following in the top-level ipie directory
 Requirements
 ------------
 
-ipie currently relies on MPI (via mpi4py) for parallelism and it is often the
-trickiest dependency to setup correctly.
+To build ipie with MPI support (via mpi4py) do:
 
-One of the easiest ways (if you are using pip to install ipie wheels) is via conda:
+::
+
+    $ pip install -e .[mpi]
+
+Note that mpi4py requires a working MPI installation to be built on your
+machine. This  it is often the trickiest dependency to setup correctly.
+
+One of the easiest ways (if you are using pip to install ipie wheels) is via
+conda:
 
 ::
 
@@ -90,7 +97,7 @@ running:
     $ pytest -v
 
 in the base of the repo. Some longer parallel tests are also run through the CI. See
-`.github/workflows/ci2.yml` for more details.
+`.github/workflows/ci.yml` for more details.
 
 .. image:: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg
     :target: https://github.com/linusjoonho/ipie/workflows/CI/badge.svg

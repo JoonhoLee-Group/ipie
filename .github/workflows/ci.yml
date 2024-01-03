@@ -18,7 +18,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt 
-          pip install -r dev/requirements.txt
+          pip install -r dev/dev.txt
       - name: pylint
         run: |
           python dev/run_tests.py --pylint
@@ -28,16 +28,17 @@ jobs:
       - name: flynt
         run: |
           python dev/run_tests.py --flynt
-  build:
+  pytest-mpi4py:
     strategy:
+      fail-fast: false
       matrix:
         python-version: [ '3.8', '3.9', '3.10' ]
         mpi:
           - openmpi
     runs-on:  ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v1
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
@@ -49,9 +50,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install -r dev/dev.txt
         pip install pyblock
-        pip install pyscf
-        pip install pytest-cov
+        # https://github.com/JoonhoLee-Group/ipie/issues/278
+        pip install "pyscf<=2.3.0"
     - name: Install package
       run: |
         # HACK FOR LEGACY CODE!
@@ -60,18 +62,83 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-xdist
-        python -m pytest -n 6 --dist loadfile --cov=./ipie
+        #python -m pytest -n=auto
     - name: mpi test
-      run: |
-        mpiexec -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
-        mpiexec -n 6 python -m pytest ipie/estimators/tests/test_generic_chunked.py
-        mpiexec -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
-    - name: Test Integration
       timeout-minutes: 10
       run: |
-        pip install pytest-mpi
-        mpirun -np 4 python -u -m pytest -sv --with-mpi ipie/qmc/tests/test_mpi_integration.py
-        python dev/run_tests.py --examples
-    - name: Codecov
-      uses: codecov/codecov-action@v3.1.1
-
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python ipie/estimators/tests/test_generic_chunked.py
+        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
+  pytest-no_mpi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-xdist
+      - name: Install package
+        run: |
+          python -m pip install -e .
+      - name: No mpi4py
+        run: |
+          python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
+          python -m pytest -n=auto
+      - name: wicks helper
+        run: |
+          sudo apt-get -y update && sudo apt-get -y install cmake
+          cc --version
+          root=$(pwd)
+          cd ipie/lib/wicks && mkdir build && cd build && cmake .. && make VERBOSE=1 && cd $root
+          pytest ipie/trial_wavefunction/ -m wicks
+          pytest ipie/lib/wicks -m wicks
+  integration:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Setup MPI
+        uses: mpi4py/setup-mpi@v1
+        with:
+          mpi: openmpi 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt 
+          pip install -r dev/dev.txt
+      - name: Install package
+        run: |
+          export BUILD_LEGACY_IPIE=1; python -m pip install -e .
+      - name: Test Integration
+        timeout-minutes: 10
+        run: |
+          mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt 
+          pip install pyblock
+          # https://github.com/JoonhoLee-Group/ipie/issues/278
+          pip install "pyscf<=2.3.0"
+      - name: Install package
+        run: |
+          python -m pip install -e .
+      - name: Test Examples
+        timeout-minutes: 10
+        run: |
+          python dev/run_tests.py --examples

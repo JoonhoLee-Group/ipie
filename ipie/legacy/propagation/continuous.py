@@ -5,14 +5,11 @@ import time
 
 import numpy
 
-from ipie.estimators.greens_function import get_greens_function
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.propagation.generic import GenericContinuous
 from ipie.legacy.propagation.hubbard import HubbardContinuous, HubbardContinuousSpin
+from ipie.legacy.propagation.operations import kinetic_real
 from ipie.legacy.propagation.planewave import PlaneWave
-from ipie.propagation.force_bias import construct_force_bias_batch
-from ipie.propagation.operations import kinetic_real, kinetic_spin_real_batch
-from ipie.propagation.overlap import get_calc_overlap
 from ipie.utils.misc import is_cupy
 
 

@@ -21,13 +21,12 @@
 from __future__ import print_function
 
 import os
+from typing import Tuple, Union
 
 import h5py
 import numpy
-from mpi4py import MPI
-from typing import Union, Tuple
 
-from ipie.config import config
+from ipie.config import config, MPI
 from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper

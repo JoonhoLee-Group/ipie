@@ -22,16 +22,14 @@ import numpy
 from numba import jit
 
 from ipie.estimators.generic import local_energy_generic_cholesky
+from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.propagation.overlap import (
     compute_determinants_batched,
-    get_overlap_one_det_wicks,
-    get_cofactor_matrix_batched,
     get_cofactor_matrix_4_batched,
+    get_cofactor_matrix_batched,
+    get_overlap_one_det_wicks,
 )
 from ipie.utils.linalg import minor_mask, minor_mask4
-
-
-from ipie.estimators.kernels.cpu import wicks as wk
 
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
@@ -624,23 +622,29 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, t
     cphase_ab = cphase_a * trial.phase_b
     start = time.time()
     cont3 = numpy.zeros_like(cont2)
-    det_sizes_a = max(
-        [
+    if trial.max_excite > 0:
+        det_sizes_a = max(
+            [
+                max(
+                    [
+                        len(trial.cre_ex_a_chunk[ichunk][i]) * i * i
+                        for i in range(1, trial.max_excite + 1)
+                    ]
+                )
+                for ichunk in range(trial.num_det_chunks)
+            ]
+        )
+        det_sizes_b = max(
             max(
                 [
-                    len(trial.cre_ex_a_chunk[ichunk][i]) * i * i
+                    len(trial.cre_ex_b_chunk[ichunk][i]) * i * i
                     for i in range(1, trial.max_excite + 1)
                 ]
             )
             for ichunk in range(trial.num_det_chunks)
-        ]
-    )
-    det_sizes_b = max(
-        max([len(trial.cre_ex_b_chunk[ichunk][i]) * i * i for i in range(1, trial.max_excite + 1)])
-        for ichunk in range(trial.num_det_chunks)
-    )
-    max_size = max(det_sizes_a, det_sizes_b)
-    det_mat_buffer = numpy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
+        )
+        max_size = max(det_sizes_a, det_sizes_b)
+        det_mat_buffer = numpy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
     # energy_os = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     # energy_ss = numpy.zeros((nwalkers, ndets), dtype=numpy.complex128)
     for ichunk in range(trial.num_det_chunks):

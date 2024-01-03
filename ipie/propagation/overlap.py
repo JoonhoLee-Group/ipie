@@ -17,58 +17,21 @@
 #
 
 import itertools
+
 import numpy
 import scipy.linalg
 
 from ipie.estimators.kernels.cpu import wicks as wk
-
-
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-# Later we will add walker kinds as an input too
-def get_calc_overlap(trial):
-    """Wrapper to select the calc_overlap function
-
-    Parameters
-    ----------
-    trial : class
-        Trial wavefunction object.
-
-    Returns
-    -------
-    propagator : class or None
-        Propagator object.
-    """
-
-    if trial.name == "MultiSlater" and trial.ndets == 1:
-        # calc_overlap = calc_overlap_single_det
-        calc_overlap = calc_overlap_single_det_batch
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks == False:
-        calc_overlap = calc_overlap_multi_det
-    elif (
-        trial.name == "MultiSlater"
-        and trial.ndets > 1
-        and trial.wicks == True
-        and not trial.optimized
-    ):
-        # calc_overlap = calc_overlap_multi_det
-        calc_overlap = calc_overlap_multi_det_wicks
-    elif trial.name == "MultiSlater" and trial.ndets > 1 and trial.wicks and trial.optimized:
-        calc_overlap = calc_overlap_multi_det_wicks_opt
-    else:
-        calc_overlap = None
-
-    return calc_overlap
-
-
-def calc_overlap_single_det(walker_batch, trial):
+def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     """Caculate overlap with single det trial wavefunction.
 
     Parameters
     ----------
-    walker_batch : object
+    walkers : object
         WalkerBatch object (this stores some intermediates for the particular trial wfn).
     trial : object
         Trial wavefunction object.
@@ -78,53 +41,29 @@ def calc_overlap_single_det(walker_batch, trial):
     ot : float / complex
         Overlap.
     """
-    nb = walker_batch.ndown
-    ot = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
+    ndown = walkers.ndown
+    ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, trial.psi0a.conj(), optimize=True)
+    sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
-    for iw in range(walker_batch.nwalkers):
-        Oalpha = xp.dot(trial.psi0a.conj().T, walker_batch.phia[iw])
-        sign_a, logdet_a = xp.linalg.slogdet(Oalpha)
-        logdet_b, sign_b = 0.0, 1.0
-        if nb > 0:
-            Obeta = xp.dot(trial.psi0b.conj().T, walker_batch.phib[iw])
-            sign_b, logdet_b = xp.linalg.slogdet(Obeta)
-
-        ot[iw] = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walker_batch.log_shift[iw])
+    if ndown > 0 and not walkers.rhf:
+        ovlp_b = xp.einsum("wmi,mj->wij", walkers.phib, trial.psi0b.conj(), optimize=True)
+        sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
+        ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
+    elif ndown > 0 and walkers.rhf:
+        ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walkers.log_shift)
+    elif ndown == 0:
+        ot = sign_a * xp.exp(log_ovlp_a - walkers.log_shift)
 
     synchronize()
 
     return ot
 
 
-def calc_overlap_single_det_batch(walker_batch, trial):
-    """Caculate overlap with single det trial wavefunction.
+def calc_overlap_single_det_ghf(walkers: "GHFWalkers", trial: "SingleDet"):
+    ovlp = xp.einsum("wmi,mj->wij", walkers.phi, trial.psi0.conj(), optimize=True)
+    sign, log_ovlp = xp.linalg.slogdet(ovlp)
 
-    Parameters
-    ----------
-    walker_batch : object
-        WalkerBatch object (this stores some intermediates for the particular trial wfn).
-    trial : object
-        Trial wavefunction object.
-
-    Returns
-    -------
-    ot : float / complex
-        Overlap.
-    """
-    ndown = walker_batch.ndown
-    ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True)
-    sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
-
-    if ndown > 0 and not walker_batch.rhf:
-        ovlp_b = xp.einsum("wmi,mj->wij", walker_batch.phib, trial.psi0b.conj(), optimize=True)
-        sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
-        ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
-    elif ndown > 0 and walker_batch.rhf:
-        ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
-    elif ndown == 0:
-        ot = sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)
-
-    synchronize()
+    ot = sign * xp.exp(log_ovlp - walkers.log_shift)
 
     return ot
 
@@ -742,12 +681,13 @@ def calc_overlap_multi_det(walker_batch, trial):
             sign_b, logdet_b = numpy.linalg.slogdet(Odn)
             walker_batch.det_ovlpas[iw, i] = sign_a * numpy.exp(logdet_a)
             walker_batch.det_ovlpbs[iw, i] = sign_b * numpy.exp(logdet_b)
-            walker_batch.det_weights[iw, i] = (
-                trial.coeffs[i].conj()
-                * walker_batch.det_ovlpas[iw, i]
-                * walker_batch.det_ovlpbs[iw, i]
-            )
-    return numpy.einsum("wi->w", walker_batch.det_weights)
+    return numpy.einsum(
+        "wi,wi,i->w",
+        walker_batch.det_ovlpas,
+        walker_batch.det_ovlpbs,
+        trial.coeffs.conj(),
+        optimize=True,
+    )
 
 
 ### Legacy overlap functions useful for testing.

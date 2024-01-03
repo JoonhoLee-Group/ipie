@@ -15,11 +15,14 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import numpy as np
 import os
+import tempfile
+
+import numpy as np
 import pytest
 
-from ipie.utils.io import write_hamiltonian, read_hamiltonian, read_wavefunction, write_wavefunction
+from ipie.utils.io import read_hamiltonian, read_wavefunction, write_hamiltonian, write_wavefunction
+from ipie.utils.testing import get_random_phmsd_opt
 
 
 @pytest.mark.unit
@@ -29,11 +32,12 @@ def test_read_write():
     hcore = np.random.random((nmo, nmo))
     LXmn = np.random.random((naux, nmo, nmo))
     e0 = 18.0
-    write_hamiltonian(hcore, LXmn, e0, filename="test.h5")
-    hcore_read, LXmn_read, e0_read = read_hamiltonian("test.h5")
-    assert np.allclose(hcore_read, hcore)
-    assert np.allclose(LXmn_read, LXmn)
-    assert e0 == pytest.approx(e0_read)
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        write_hamiltonian(hcore, LXmn, e0, filename=tmpfile.name)
+        hcore_read, LXmn_read, e0_read = read_hamiltonian(tmpfile.name)
+        assert np.allclose(hcore_read, hcore)
+        assert np.allclose(LXmn_read, LXmn)
+        assert e0 == pytest.approx(e0_read)
 
 
 @pytest.mark.unit
@@ -41,9 +45,10 @@ def test_read_write_single_det_rhf():
     nmo = 10
     nalpha = 5
     wfn = np.random.random((nmo, nalpha))
-    write_wavefunction(wfn)
-    wfn_read = read_wavefunction("wavefunction.h5")
-    assert np.allclose(wfn, wfn_read)
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        write_wavefunction(wfn, filename=tmpfile.name)
+        wfn_read = read_wavefunction(tmpfile.name)
+        assert np.allclose(wfn, wfn_read)
 
 
 @pytest.mark.unit
@@ -54,10 +59,11 @@ def test_read_write_single_det_uhf():
     wfna = np.random.random((nmo, nalpha))
     wfnb = np.random.random((nmo, nbeta))
     wfn = [wfna, wfnb]
-    write_wavefunction(wfn)
-    wfn_read, _ = read_wavefunction("wavefunction.h5")
-    assert np.allclose(wfn[0], wfn_read[0])
-    assert np.allclose(wfn[1], wfn_read[1])
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        write_wavefunction(wfn, filename=tmpfile.name)
+        wfn_read, _ = read_wavefunction(tmpfile.name)
+        assert np.allclose(wfn[0], wfn_read[0])
+        assert np.allclose(wfn[1], wfn_read[1])
 
 
 @pytest.mark.unit
@@ -69,12 +75,13 @@ def test_read_write_noci_wavefunction():
     wfna = np.random.random((ndet, nmo, nalpha))
     wfnb = np.random.random((ndet, nmo, nbeta))
     ci_coeffs = np.random.random((ndet))
-    wfn = (ci_coeffs, [wfna, wfnb])
-    write_wavefunction(wfn)
-    wfn_read, _ = read_wavefunction("wavefunction.h5")
-    assert np.allclose(wfn[0], wfn_read[0])
-    assert np.allclose(wfn[1][0], wfn_read[1][0])
-    assert np.allclose(wfn[1][1], wfn_read[1][1])
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        wfn = (ci_coeffs, [wfna, wfnb])
+        write_wavefunction(wfn, filename=tmpfile.name)
+        wfn_read, _ = read_wavefunction(tmpfile.name)
+        assert np.allclose(wfn[0], wfn_read[0])
+        assert np.allclose(wfn[1][0], wfn_read[1][0])
+        assert np.allclose(wfn[1][1], wfn_read[1][1])
 
 
 @pytest.mark.unit
@@ -83,22 +90,10 @@ def test_read_write_particle_hole_wavefunction():
     nmo = 10
     nalpha = 5
     nbeta = 7
-    occa = np.random.randint((ndet, nalpha))
-    occb = np.random.randint((ndet, nbeta))
-    ci_coeffs = np.random.random((ndet))
-    wfn = (ci_coeffs, occa, occb)
-    write_wavefunction(wfn)
-    wfn_read, _ = read_wavefunction("wavefunction.h5")
-    assert np.allclose(wfn[0], wfn_read[0])
-    assert np.allclose(wfn[1], wfn_read[1])
-    assert np.allclose(wfn[2], wfn_read[2])
-
-
-def teardown_module(self):
-    cwd = os.getcwd()
-    files = ["test.h5", "wavefunction.h5"]
-    for f in files:
-        try:
-            os.remove(cwd + "/" + f)
-        except OSError:
-            pass
+    wfn, _ = get_random_phmsd_opt(nalpha, nbeta, nmo, ndet=ndet)
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        write_wavefunction(wfn, filename=tmpfile.name)
+        wfn_read, _ = read_wavefunction(tmpfile.name)
+        assert np.allclose(wfn[0], wfn_read[0])
+        assert np.allclose(wfn[1], wfn_read[1])
+        assert np.allclose(wfn[2], wfn_read[2])

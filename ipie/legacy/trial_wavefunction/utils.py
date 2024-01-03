@@ -68,8 +68,7 @@ def get_trial_wavefunction(
             na = system.nup
             nb = system.ndown
             wfn = numpy.zeros(
-                (1, hamiltonian.nbasis, system.nup + system.ndown),
-                dtype=numpy.complex128,
+                (1, hamiltonian.nbasis, system.nup + system.ndown), dtype=numpy.complex128
             )
             coeffs = numpy.array([1.0 + 0j])
             I = numpy.identity(hamiltonian.nbasis, dtype=numpy.complex128)

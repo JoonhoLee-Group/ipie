@@ -24,6 +24,24 @@ def purge_ipie_modules():
         del sys.modules[m]
 
 
+def _select_mpi():
+    try:
+        from mpi4py import MPI
+
+        comm_type = MPI.Intracomm
+
+        return MPI, comm_type
+    except (ModuleNotFoundError, ImportError):
+        from ipie.qmc.comm import FakeComm, MPI
+
+        comm_type = FakeComm
+
+        return MPI, comm_type
+
+
+MPI, CommType = _select_mpi()
+
+
 class Config:
     def __init__(self):
         self.options = {}

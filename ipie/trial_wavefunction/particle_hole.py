@@ -28,7 +28,7 @@ except ImportError:
     _use_wicks_helper = False
 
 
-class ParticleHoleWicks(TrialWavefunctionBase):
+class ParticleHole(TrialWavefunctionBase):
     def __init__(
         self,
         wfn,
@@ -49,9 +49,11 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.setup_basic_wavefunction(
             wfn, num_dets=num_dets_for_trial, use_active_space=use_active_space
         )
-        self._num_dets_for_props = num_dets_for_props
         self._num_dets = len(self.coeffs)
-        self._num_dets_for_props = num_dets_for_props
+        self._num_dets_for_props = (
+            self._num_dets if num_dets_for_props == -1 else num_dets_for_props
+        )
+        self._num_dets_for_props = min(self._num_dets, self._num_dets_for_props)
         self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
         self.ortho_expansion = True
@@ -94,7 +96,10 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.occa = np.array(occa, dtype=np.int32)
         self.occb = np.array(occb, dtype=np.int32)
         self.coeffs = np.array(wfn[0][:num_dets], dtype=np.complex128)
-        max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
+        if nbeta > 0:
+            max_orbital = max(np.max(wfn[1]), np.max(wfn[2])) + 1
+        else:
+            max_orbital = np.max(wfn[1]) + 1
         if use_active_space:
             self.nact = max_orbital
             self.nelec_cas = nocca_in_wfn + noccb_in_wfn
@@ -172,13 +177,16 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         # TODO: Use safer value than zero that fails in debug mode.
         # d0a = [0,1,3,5]
         # occ_map_a = [0,1,0,2,0,3]
+        nalpha, nbeta = self.nelec
         self.occ_map_a = np.zeros(max(d0a) + 1, dtype=np.int32)
-        self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
         self.occ_map_a[d0a] = list(range(self.nocc_alpha))
-        self.occ_map_b[d0b] = list(range(self.nocc_beta))
+        if nbeta > 0:
+            self.occ_map_b = np.zeros(max(d0b) + 1, dtype=np.int32)
+            self.occ_map_b[d0b] = list(range(self.nocc_beta))
+        else:
+            self.occ_map_b = []
         self.phase_a = np.ones(self.num_dets)  # 1.0 is for the reference state
         self.phase_b = np.ones(self.num_dets)  # 1.0 is for the reference state
-        nalpha, nbeta = self.nelec
         nexcit_a = nalpha
         nexcit_b = nbeta
         # This is an overestimate because we don't know number of active
@@ -395,6 +403,11 @@ class ParticleHoleWicks(TrialWavefunctionBase):
         self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
             system, hamiltonian, self.spin_occs, self.coeffs
         )
+        if self.verbose:
+            print(f"# Variational energy of trial wavefunction: {self.energy.real}")
+            if abs(self.energy.imag) > 1e-10:
+                print(f"# Warning imaginary part of trial energy is not zero: {self.energy.imag}")
+        return self.energy, self.e1b, self.e2b
 
     def build_one_rdm(self):
         if self.verbose:
@@ -405,6 +418,12 @@ class ParticleHoleWicks(TrialWavefunctionBase):
             if self.verbose:
                 print("# Using Wicks helper to compute 1-RDM.")
             assert wicks_helper is not None
+            max_orb = max(np.max(self.occa), np.max(self.occb))
+            err_msg = (
+                f"Number of orbitals is too large for wicks_helper {max_orb} "
+                f"vs {64*wicks_helper.DET_LEN}."
+            )
+            assert 2 * max_orb < 64 * wicks_helper.DET_LEN, err_msg
             dets = wicks_helper.encode_dets(self.occa, self.occb)
             phases = wicks_helper.convert_phase(self.occa, self.occb)
             _keep = self.num_dets_for_props
@@ -419,6 +438,11 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 print(f"# Time to compute 1-RDM: {end - start} s")
         else:
             self.G = self.compute_1rdm(self.nbasis)
+        tr_g = self.G[0].trace() + self.G[1].trace()
+        err_msg = f"Tr(G_T) is incorrect {tr_g} vs {self.nalpha + self.nbeta}"
+        assert np.isclose(tr_g, self.nalpha + self.nbeta), err_msg
+        if self.verbose:
+            print(f"# Tr(G_T): {tr_g}")
 
     def calc_greens_function(self, walkers) -> np.ndarray:
         return greens_function_multi_det_wicks_opt(walkers, self)
@@ -431,7 +455,9 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
     def compute_1rdm(self, nbasis):
         assert self.ortho_expansion == True
-        denom = np.sum(self.coeffs.conj() * self.coeffs)
+        denom = np.sum(
+            self.coeffs[: self.num_dets_for_props].conj() * self.coeffs[: self.num_dets_for_props]
+        )
         Pa = np.zeros((nbasis, nbasis), dtype=np.complex128)
         Pb = np.zeros((nbasis, nbasis), dtype=np.complex128)
         P = [Pa, Pb]
@@ -446,13 +472,13 @@ class ParticleHoleWicks(TrialWavefunctionBase):
                 ix = orb - nbasis
             return ix, s
 
-        for idet in range(self.num_dets):
+        for idet in range(self.num_dets_for_props):
             di = self.spin_occs[idet]
             # zero excitation case
             for iorb in range(len(di)):
                 ii, spin_ii = map_orb(di[iorb], nbasis)
                 P[spin_ii][ii, ii] += self.coeffs[idet].conj() * self.coeffs[idet]
-            for jdet in range(idet + 1, self.num_dets):
+            for jdet in range(idet + 1, self.num_dets_for_props):
                 dj = self.spin_occs[jdet]
                 from_orb = list(set(dj) - set(di))
                 to_orb = list(set(di) - set(dj))
@@ -477,7 +503,7 @@ class ParticleHoleWicks(TrialWavefunctionBase):
 
 
 # No chunking no excitation data structure
-class ParticleHoleWicksNonChunked(ParticleHoleWicks):
+class ParticleHoleNonChunked(ParticleHole):
     def __init__(
         self,
         wfn,
@@ -508,7 +534,7 @@ class ParticleHoleWicksNonChunked(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks_opt(walkers, self)
 
 
-class ParticleHoleWicksSlow(ParticleHoleWicks):
+class ParticleHoleSlow(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,
@@ -577,7 +603,7 @@ class ParticleHoleWicksSlow(ParticleHoleWicks):
         return calc_overlap_multi_det_wicks(walkers, self)
 
 
-class ParticleHoleNaive(ParticleHoleWicks):
+class ParticleHoleNaive(ParticleHole):
     def __init__(
         self,
         wavefunction: tuple,

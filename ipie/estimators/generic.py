@@ -302,6 +302,42 @@ def exx_kernel_complex_rchol(rchol, rcholbar, Ghalf):
     return exx
 
 
+def cholesky_jk_ghf(chol, G):
+    nbasis = G.shape[0] // 2
+
+    Gaa = G[:nbasis, :nbasis].copy()
+    Gbb = G[nbasis:, nbasis:].copy()
+    Gab = G[:nbasis, nbasis:].copy()
+    Gba = G[nbasis:, :nbasis].copy()
+
+    Gcharge = Gaa + Gbb
+    X = Gcharge.ravel().dot(chol)
+    ecoul = xp.dot(X, X)
+
+    T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    Tab = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+    Tba = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
+
+    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
+
+    nchol = chol.shape[-1]
+    for x in range(nchol):  # write a cython function that calls blas for this.
+        Lmn = chol[:, x].reshape((nbasis, nbasis))
+        T[:, :].real = Gaa.T.real.dot(Lmn)
+        T[:, :].imag = Gaa.T.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+        T[:, :].real = Gbb.T.real.dot(Lmn)
+        T[:, :].imag = Gbb.T.imag.dot(Lmn)
+        exx += numpy.trace(T.dot(T))
+
+        Tab[:, :].real = Gab.T.real.dot(Lmn)
+        Tab[:, :].imag = Gab.T.imag.dot(Lmn)
+        Tba[:, :].real = Gba.T.real.dot(Lmn)
+        Tba[:, :].imag = Gba.T.imag.dot(Lmn)
+        exx += 2.0 * numpy.trace(Tab.dot(Tba))
+    return 0.5 * ecoul, -0.5 * exx  # JK energy
+
+
 def half_rotated_cholesky_jk(Ghalfa, Ghalfb, trial):
     """Compute exchange and coulomb contributions via jitted kernels.
 

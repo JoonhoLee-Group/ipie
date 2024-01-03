@@ -18,18 +18,16 @@
 
 import numpy
 import pytest
-from mpi4py import MPI
 
+from ipie.config import MPI
 from ipie.estimators.local_energy_sd import local_energy_single_det_batch
-from ipie.estimators.local_energy_sd_chunked import (
-    local_energy_single_det_uhf_batch_chunked,
-)
+from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.misc import dotdict
-from ipie.utils.mpi import MPIHandler, get_shared_array
+from ipie.utils.mpi import get_shared_array, MPIHandler
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
@@ -82,7 +80,7 @@ def test_generic_chunked():
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
-    mpi_handler = MPIHandler(comm, nmembers=3, verbose=(rank == 0))
+    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
     if comm.rank == 0:
         print("# Chunking hamiltonian.")
     ham.chunk(mpi_handler)
@@ -95,7 +93,7 @@ def test_generic_chunked():
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walkers = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
     walkers.build(trial)
 

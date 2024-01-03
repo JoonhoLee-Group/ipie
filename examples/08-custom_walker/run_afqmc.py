@@ -11,11 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+"""Use a custom walker object.
+
+In this example we will build a custom walker object. Note this requires a
+little more interaction with ipie than previous examples as we can't rely on
+factory methods so much.
+"""
 
 import numpy as np
-
 from pyscf import gto, scf
+
+from ipie.propagation.propagator import PhaselessGeneric
+from ipie.qmc.options import QMCParams
+from ipie.utils.mpi import MPIHandler
 
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
@@ -64,8 +72,7 @@ class NoisySingleDet(SingleDet):
         return force_bias * (1 + noise)
 
 
-from ipie.estimators.energy import EnergyEstimator
-from ipie.estimators.energy import local_energy_batch
+from ipie.estimators.energy import EnergyEstimator, local_energy_batch
 
 
 # Need to define a custom energy estimator as currently we don't have multiple dispatch setup.
@@ -99,14 +106,11 @@ class NoisyEnergyEstimator(EnergyEstimator):
         return self.data
 
 
+from ipie.config import MPI
+
 # Checkpoint integrals and wavefunction
 # Running in serial but still need MPI World
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
-
-
-from mpi4py import MPI
+from ipie.utils.from_pyscf import generate_hamiltonian
 
 comm = MPI.COMM_WORLD
 
@@ -125,25 +129,13 @@ system = Generic(nelec=mol.nelec)
 
 # 2. Build Hamiltonian
 
-from ipie.utils.from_pyscf import (
-    generate_hamiltonian,
-)
+from ipie.utils.from_pyscf import generate_hamiltonian
 
-integrals = generate_hamiltonian(
+ham = generate_hamiltonian(
     mol,
     mf.mo_coeff,
     mf.get_hcore(),
     mf.mo_coeff,  # should be optional
-)
-from ipie.hamiltonians.generic import Generic as HamGeneric
-
-num_basis = integrals.h1e.shape[0]
-num_chol = integrals.chol.shape[0]
-
-ham = HamGeneric(
-    np.array([integrals.h1e, integrals.h1e]),
-    integrals.chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-    integrals.e0,
 )
 
 # 3. Build trial wavefunction
@@ -169,10 +161,12 @@ trial.half_rotate(ham)
 np.random.seed(7)
 from ipie.walkers.uhf_walkers import UHFWalkers
 
+mpi_handler = MPIHandler()
+
 
 class CustomUHFWalkers(UHFWalkers):
-    def __init__(self, initial_walker, nup, ndown, nbasis, nwalkers):
-        super().__init__(initial_walker, nup, ndown, nbasis, nwalkers)
+    def __init__(self, initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler):
+        super().__init__(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler)
 
     def reortho(self):
         print("customized reortho called")
@@ -180,25 +174,36 @@ class CustomUHFWalkers(UHFWalkers):
 
 
 walkers = CustomUHFWalkers(
-    np.hstack([orbs, orbs]), system.nup, system.ndown, ham.nbasis, num_walkers  # initial_walkers
+    np.hstack([orbs, orbs]),
+    system.nup,
+    system.ndown,
+    ham.nbasis,
+    num_walkers,
+    mpi_handler,  # initial_walkers
+)
+params = QMCParams(
+    num_walkers=num_walkers,
+    total_num_walkers=num_walkers * comm.size,
+    num_blocks=num_blocks,
+    num_steps_per_block=num_steps_per_block,
+    timestep=timestep,
+    rng_seed=7,
 )
 
+propagator = PhaselessGeneric(params.timestep)
+propagator.build(ham, trial, walkers, mpi_handler)
+
 afqmc = AFQMC(
-    comm,
-    system=system,
-    hamiltonian=ham,
-    trial=trial,
-    walkers=walkers,
-    nwalkers=num_walkers,
-    num_steps_per_block=num_steps_per_block,
-    num_blocks=num_blocks,
-    timestep=timestep,
-    seed=59306159,
+    system,
+    ham,
+    trial,
+    walkers,
+    propagator,
+    params,
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)
-afqmc.estimators.overwrite = True
-afqmc.estimators["energy"] = estimator
-afqmc.run(comm=comm)
+add_est = {"energy": estimator}
+afqmc.run(additional_estimators=add_est)
 
 from ipie.analysis.extraction import extract_observable
 
