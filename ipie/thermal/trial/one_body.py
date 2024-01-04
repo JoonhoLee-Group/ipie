@@ -79,10 +79,10 @@ class OneBody(object):
 
         # Adjust stack size
         self.nstack = update_stack(self.nstack, self.nslice, verbose=verbose)
-        self.num_bins = int(beta / (self.nstack * dt))
+        self.stack_length = int(beta / (self.nstack * dt))
 
         if verbose:
-            print(f"# Number of stacks: {self.num_bins}")
+            print(f"# Number of stacks: {self.stack_length}")
 
         sign = 1
         if hamiltonian._alt_convention:
@@ -98,7 +98,7 @@ class OneBody(object):
             self.rho = numpy.array([scipy.linalg.expm(-dtau * (self.H1[0])),
                                     scipy.linalg.expm(-dtau * (self.H1[1]))])
             self.mu = find_chemical_potential(
-                        hamiltonian._alt_convention, self.rho, dtau, self.num_bins,
+                        hamiltonian._alt_convention, self.rho, dtau, self.stack_length,
                         self.nav, deps=self.deps, max_it=self.max_it, verbose=verbose)
             
         else:
@@ -108,7 +108,7 @@ class OneBody(object):
         if self.verbose:
             print(f"# Chemical potential in trial density matrix: {self.mu: .10e}")
 
-        self.P = one_rdm_stable(compute_rho(self.rho, self.mu, dtau, sign=sign), self.num_bins)
+        self.P = one_rdm_stable(compute_rho(self.rho, self.mu, dtau, sign=sign), self.stack_length)
         self.nav = particle_number(self.P).real
 
         if self.verbose:

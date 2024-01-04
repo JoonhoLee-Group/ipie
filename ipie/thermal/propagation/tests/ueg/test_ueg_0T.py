@@ -26,11 +26,11 @@ from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from
 def setup_objs(seed=None):
     mu = -10.
     nwalkers = 1
-    numpy.random.seed(seed)
     nblocks = 10
     nsteps_per_block = 1
     timestep = 0.005
     verbose = True
+    numpy.random.seed(seed)
     
     options = {
         "qmc": {
@@ -43,7 +43,7 @@ def setup_objs(seed=None):
         },
 
         "hamiltonian": {
-            "name": "Generic",
+            "name": "UEG",
             "_alt_convention": False,
             "sparse": False,
             "mu": mu

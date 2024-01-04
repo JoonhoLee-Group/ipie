@@ -44,7 +44,6 @@ def setup_objs(mf_trial=False, seed=None):
     beta = 0.02
     dt = 0.01
     nwalkers = 2
-    numpy.random.seed(seed)
     blocks = 10
     stabilise_freq = 10
     pop_control_freq = 1
@@ -55,6 +54,7 @@ def setup_objs(mf_trial=False, seed=None):
     complex_integrals = False
     sym = 8
     if complex_integrals: sym = 4
+    numpy.random.seed(seed)
 
     options = {
         "qmc": {

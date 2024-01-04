@@ -131,6 +131,16 @@ class UHFThermalWalkers(BaseWalkers):
         else:
             return greens_function_qr_strat(self, iw, slice_ix=slice_ix, inplace=inplace)
     
+
+    def reset(self, trial):
+        self.weight = numpy.ones(self.nwalkers)
+        self.phase = numpy.ones(self.nwalkers, dtype=numpy.complex128)
+
+        for iw in range(self.nwalkers):
+            self.stack[iw].reset()
+            self.stack[iw].set_all(trial.dmat)
+            self.calc_greens_function(iw)
+    
     # For compatibiltiy with BaseWalkers class.
     def reortho(self):
         pass

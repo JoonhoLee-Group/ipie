@@ -1,7 +1,7 @@
 import numpy
 import scipy.linalg
 
-from ipie.thermal.estimators.fock import fock_matrix
+from ipie.thermal.estimators.generic import fock_generic
 from ipie.thermal.estimators.greens_function import greens_function
 from ipie.thermal.estimators.thermal import one_rdm_stable, particle_number
 from ipie.thermal.trial.chem_pot import compute_rho, find_chemical_potential
@@ -45,14 +45,14 @@ class MeanField(OneBody):
                                scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                        hamiltonian._alt_convention, rho, dt, self.num_bins, self.nav, 
+                        hamiltonian._alt_convention, rho, dt, self.stack_length, self.nav, 
                         deps=self.deps, max_it=self.max_it, verbose=self.verbose)
 
             else:
                 mu = self.mu
 
             rho_mu = compute_rho(rho, mu_old, dt)
-            P = one_rdm_stable(rho_mu, self.num_bins)
+            P = one_rdm_stable(rho_mu, self.stack_length)
             dmu = abs(mu - mu_old)
 
             if self.verbose:
@@ -67,21 +67,21 @@ class MeanField(OneBody):
 
     def scf(self, hamiltonian, beta, mu, P):
         # Compute HMF
-        HMF = fock_matrix(hamiltonian, P)
+        HMF = fock_generic(hamiltonian, P)
         dt = self.dtau
         muN = mu * numpy.eye(hamiltonian.nbasis, dtype=self.G.dtype)
         rho = numpy.array([scipy.linalg.expm(-dt * (HMF[0] - muN)),
                            scipy.linalg.expm(-dt * (HMF[1] - muN))])
-        Pold = one_rdm_stable(rho, self.num_bins)
+        Pold = one_rdm_stable(rho, self.stack_length)
 
         if self.verbose:
             print("# Running Thermal SCF.")
 
         for it in range(self.max_scf_it):
-            HMF = fock_matrix(hamiltonian, Pold)
+            HMF = fock_generic(hamiltonian, Pold)
             rho = numpy.array([scipy.linalg.expm(-dt * (HMF[0] - muN)),
                                scipy.linalg.expm(-dt * (HMF[1] - muN))])
-            Pnew = (1 - self.alpha) * one_rdm_stable(rho, self.num_bins) + self.alpha * Pold
+            Pnew = (1 - self.alpha) * one_rdm_stable(rho, self.stack_length) + self.alpha * Pold
             change = numpy.linalg.norm(Pnew - Pold)
 
             if change < self.deps:

@@ -6,7 +6,6 @@ import uuid
 from typing import Dict, Optional, Tuple
 
 from ipie.thermal.walkers.uhf_walkers import UHFThermalWalkers
-from ipie.thermal.walkers.base_walkers import ThermalWalkerAccumulator
 from ipie.thermal.propagation.propagator import Propagator
 from ipie.thermal.estimators.handler import ThermalEstimatorHandler
 from ipie.thermal.qmc.options import ThermalQMCParams
@@ -19,6 +18,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.walkers.pop_controller import PopController
+from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.utils import set_rng_seed
 
@@ -68,10 +68,10 @@ class ThermalAFQMC(AFQMC):
             beta: float,
             hamiltonian,
             trial,
-            num_walkers: int = 100,
+            nwalkers: int = 100,
             seed: int = None,
-            num_steps_per_block: int = 25,
-            num_blocks: int = 100,
+            nsteps_per_block: int = 25,
+            nblocks: int = 100,
             timestep: float = 0.005,
             stabilize_freq: int = 5,
             pop_control_freq: int = 5,
@@ -91,15 +91,15 @@ class ThermalAFQMC(AFQMC):
             Hamiltonian describing the system.
         trial :
             Trial density matrix.
-        num_walkers : int
+        nwalkers : int
             Number of walkers per MPI process used in the simulation. The TOTAL
-                number of walkers is num_walkers * number of processes.
-        num_steps_per_block : int
-            Number of Monte Carlo steps before estimators are evaluatied.
+                number of walkers is nwalkers * number of processes.
+        nsteps_per_block : int
+            Number of Monte Carlo steps before estimators are evaluated.
                 Default 25.
-        num_blocks : int
-            Number of blocks to perform. Total number of steps = num_blocks *
-                num_steps_per_block.
+        nblocks : int
+            Number of blocks to perform. Total number of steps = nblocks *
+                nsteps_per_block.
         timestep : float
             Imaginary timestep. Default 0.005.
         stabilize_freq : float
@@ -117,16 +117,16 @@ class ThermalAFQMC(AFQMC):
         comm = mpi_handler.comm
         params = ThermalQMCParams(
                     beta=beta,
-                    num_walkers=num_walkers,
-                    total_num_walkers=num_walkers * comm.size,
-                    num_blocks=num_blocks,
-                    num_steps_per_block=num_steps_per_block,
+                    num_walkers=nwalkers,
+                    total_num_walkers=nwalkers * comm.size,
+                    num_blocks=nblocks,
+                    num_steps_per_block=nsteps_per_block,
                     timestep=timestep,
                     num_stblz=stabilize_freq,
                     pop_control_freq=pop_control_freq,
                     rng_seed=seed)
         
-        walkers = UHFThermalWalkers(trial, hamiltonian.nbasis, num_walkers, 
+        walkers = UHFThermalWalkers(trial, hamiltonian.nbasis, nwalkers, 
                                     lowrank=lowrank, verbose=verbose)
         propagator = Propagator[type(hamiltonian)](
                         timestep, beta, lowrank=lowrank, verbose=verbose)
@@ -187,20 +187,23 @@ class ThermalAFQMC(AFQMC):
         print(f'comm.rank = {comm.rank}')
 
         # Propagate.
-        num_walkers = self.walkers.nwalkers
+        nwalkers = self.walkers.nwalkers
         total_steps = self.params.num_steps_per_block * self.params.num_blocks
         # TODO: This magic value of 2 is pretty much never controlled on input.
         # Moreover I'm not convinced having a two stage shift update actually
         # matters at all.
-        num_eqlb_steps = 2.0 / self.params.timestep
-        num_slices = numpy.rint(self.params.beta / self.params.timestep).astype(int)
+        neqlb_steps = 2.0 / self.params.timestep
+        nslices = numpy.rint(self.params.beta / self.params.timestep).astype(int)
+
+        print(f'total_steps = {total_steps}')
+        print(f'nslices = {nslices}')
 
         for step in range(1, total_steps + 1):
             start_path = time.time()
 
-            for t in range(num_slices):
+            for t in range(nslices):
                 if self.verbosity >= 2 and comm.rank == 0:
-                    print(" # Timeslice %d of %d." % (t, num_slices))
+                    print(" # Timeslice %d of %d." % (t, nslices))
 
                 start = time.time()
                 self.propagator.propagate_walkers(
@@ -215,7 +218,7 @@ class ThermalAFQMC(AFQMC):
                 if t > 0:
                     wbound = self.pcontrol.total_weight * 0.10
                     xp.clip(self.walkers.weight, a_min=-wbound, a_max=wbound,
-                            out=self.walkers.weight)  # In-place clipping
+                            out=self.walkers.weight)  # In-place clipping.
 
                 self.tprop_clip += time.time() - start_clip
 
@@ -226,7 +229,7 @@ class ThermalAFQMC(AFQMC):
                 self.tprop_barrier += time.time() - start_barrier
                 self.tprop += time.time() - start
                 
-                print(f'self.walkers.weight = {self.walkers.weight}')
+                #print(f'self.walkers.weight = {self.walkers.weight}')
                 if (t > 0) and (t % self.params.pop_control_freq == 0):
                     start = time.time()
                     self.pcontrol.pop_control(self.walkers, comm)
@@ -249,16 +252,17 @@ class ThermalAFQMC(AFQMC):
 
                 self.estimators.print_block(
                     comm, step // self.params.num_steps_per_block, self.accumulators)
-                self.accumulators.zero(self.walkers, self.trial)
+                self.accumulators.zero()
 
             self.testim += time.time() - start
 
-            if step < num_eqlb_steps:
+            if step < neqlb_steps:
                 eshift = self.accumulators.eshift
 
             else:
                 eshift += self.accumulators.eshift - eshift
 
+            self.walkers.reset(self.trial) # Reset stack, weights, phase.
             self.tpath += time.time() - start_path
 
 
@@ -383,7 +387,7 @@ class ThermalAFQMC(AFQMC):
         self,
         filename,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None):
-        self.accumulators = ThermalWalkerAccumulator(
+        self.accumulators = WalkerAccumulator(
             ["Weight", "WeightFactor", "HybridEnergy"], self.params.num_steps_per_block)
         comm = self.mpi_handler.comm
         self.estimators = ThermalEstimatorHandler(
@@ -409,7 +413,7 @@ class ThermalAFQMC(AFQMC):
                                            self.trial, self.walkers)
         self.accumulators.update(self.walkers)
         self.estimators.print_block(comm, 0, self.accumulators)
-        self.accumulators.zero(self.walkers, self.trial)
+        self.accumulators.zero()
 
 
     def setup_timers(self):

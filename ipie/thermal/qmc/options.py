@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import ClassVar
 
 from ipie.qmc.options import QMCParams
 
@@ -23,15 +23,18 @@ class ThermalQMCParams(QMCParams):
         rng_seed: The random number seed. If run in parallel the seeds on other
             cores / threads are determined from this.
     """
+    # Due to structure of FT algorithm, `num_steps_per_block` is fixed at 1.
+    # Overide whatever input for backward compatibility.
+    num_steps_per_block: ClassVar[float] = 1 
+    beta: float = _no_default
+    pop_control_method: str = 'pair_branch'
+    
     # This is a hack to get around the error:
     #
     #   TypeError: non-default argument 'beta' follows default argument
     #
     # due to inheritance from the QMCParams dataclass which has default attributes.
     # Ref: https://stackoverflow.com/questions/51575931/class-inheritance-in-python-3-7-dataclasses
-    beta: float = _no_default
-    pop_control_method: str = 'pair_branch'
-    
     def __post_init__(self):
         if self.beta is _no_default:
             raise TypeError("__init__ missing 1 required argument: 'beta'")

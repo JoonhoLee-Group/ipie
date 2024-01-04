@@ -20,7 +20,7 @@ class PropagatorStack:
         self.time_slice = 0
         self.nstack = nstack
         self.nslice = nslice
-        self.nbins = nslice // self.nstack
+        self.stack_length = self.nslice // self.nstack
         self.nbasis = nbasis
         self.diagonal_trial = diagonal
         self.averaging = averaging
@@ -32,9 +32,9 @@ class PropagatorStack:
         if self.lowrank:
             assert diagonal
 
-        if self.nbins * self.nstack < self.nslice:
+        if self.stack_length * self.nstack < self.nslice:
             print("nstack must divide the total path length")
-            assert self.nbins * self.nstack == self.nslice
+            assert self.stack_length * self.nstack == self.nslice
 
         self.dtype = dtype
         self.BT = BT
@@ -42,9 +42,9 @@ class PropagatorStack:
         self.counter = 0
         self.block = 0
 
-        self.stack = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
-        self.left = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
-        self.right = numpy.zeros(shape=(self.nbins, 2, nbasis, nbasis), dtype=dtype)
+        self.stack = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
+        self.left = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
+        self.right = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
 
         self.G = numpy.asarray([numpy.eye(self.nbasis, dtype=dtype),  # Ga
                                 numpy.eye(self.nbasis, dtype=dtype)]) # Gb
@@ -56,16 +56,16 @@ class PropagatorStack:
 
         # Global block matrix
         if self.lowrank:
-            self.Ql = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
-            self.Dl = numpy.zeros(shape=(2, nbasis), dtype=dtype)
-            self.Tl = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
+            self.Ql = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
+            self.Dl = numpy.zeros((2, nbasis), dtype=dtype)
+            self.Tl = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
 
-            self.Qr = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
-            self.Dr = numpy.zeros(shape=(2, nbasis), dtype=dtype)
-            self.Tr = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
+            self.Qr = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
+            self.Dr = numpy.zeros((2, nbasis), dtype=dtype)
+            self.Tr = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
 
-            self.CT = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
-            self.theta = numpy.zeros(shape=(2, nbasis, nbasis), dtype=dtype)
+            self.CT = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
+            self.theta = numpy.zeros((2, nbasis, nbasis), dtype=dtype)
             self.mT = nbasis
 
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
@@ -137,7 +137,7 @@ class PropagatorStack:
     def reset(self):
         self.time_slice = 0
         self.block = 0
-        for i in range(0, self.nbins):
+        for i in range(0, self.stack_length):
             self.stack[i, 0] = numpy.identity(self.nbasis, dtype=self.dtype)
             self.stack[i, 1] = numpy.identity(self.nbasis, dtype=self.dtype)
             self.right[i, 0] = numpy.identity(self.nbasis, dtype=self.dtype)
@@ -163,8 +163,8 @@ class PropagatorStack:
             self.Ql[spin] = numpy.identity(B[spin].shape[0])
             self.Tl[spin] = numpy.identity(B[spin].shape[0])
 
-            # for ix in range(2, self.nbins):
-            for ix in range(1, self.nbins):
+            # for ix in range(2, self.stack_length):
+            for ix in range(1, self.stack_length):
                 B = self.stack[ix]
                 C2 = numpy.einsum("ii,i->i", B[spin], self.Dl[spin])
                 self.Dl[spin] = C2
@@ -175,7 +175,7 @@ class PropagatorStack:
             self.stack[self.block, 1] = numpy.identity(B.shape[-1], dtype=B.dtype)
         self.stack[self.block, 0] = B[0].dot(self.stack[self.block, 0])
         self.stack[self.block, 1] = B[1].dot(self.stack[self.block, 1])
-        self.time_slice = self.time_slice + 1
+        self.time_slice += 1
         self.block = self.time_slice // self.nstack
         self.counter = (self.counter + 1) % self.nstack
 
@@ -210,8 +210,8 @@ class PropagatorStack:
             self.stack[self.block, 0] = self.left[self.block, 0].dot(self.right[self.block, 0])
             self.stack[self.block, 1] = self.left[self.block, 1].dot(self.right[self.block, 1])
 
-        self.time_slice = self.time_slice + 1  # Count the time slice
-        self.block = self.time_slice // self.nstack  # move to the next block if necessary
+        self.time_slice += 1  # Count the time slice
+        self.block = self.time_slice // self.nstack  # Move to the next block if necessary
         self.counter = (self.counter + 1) % self.nstack  # Counting within a stack
 
     def update_low_rank(self, B):
@@ -383,6 +383,6 @@ class PropagatorStack:
 
         # print("ovlp = {}".format(self.ovlp))
         self.mT = mT
-        self.time_slice = self.time_slice + 1  # Count the time slice
+        self.time_slice += 1  # Count the time slice
         self.block = self.time_slice // self.nstack  # move to the next block if necessary
         self.counter = (self.counter + 1) % self.nstack  # Counting within a stack

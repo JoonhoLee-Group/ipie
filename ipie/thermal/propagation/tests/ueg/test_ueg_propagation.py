@@ -8,7 +8,6 @@ from ipie.qmc.options import QMCOpts
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.thermal.trial.one_body import OneBody
 from ipie.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.thermal.propagation.phaseless_generic import PhaselessGeneric
@@ -47,7 +46,6 @@ def setup_objs(seed=None):
     beta = 0.01
     timestep = 0.002
     nwalkers = 1
-    numpy.random.seed(seed)
     nblocks = 10
     stabilise_freq = 10
     pop_control_freq = 1
@@ -55,6 +53,7 @@ def setup_objs(seed=None):
 
     lowrank = False
     verbose = True
+    numpy.random.seed(seed)
     
     options = {
         "qmc": {
@@ -78,7 +77,7 @@ def setup_objs(seed=None):
         },
 
         "hamiltonian": {
-            "name": "Generic",
+            "name": "UEG",
             "_alt_convention": False,
             "sparse": False,
             "mu": mu
