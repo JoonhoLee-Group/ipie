@@ -41,7 +41,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self.e1b = None
         self.e2b = None
         self.energy = None
-        
+
     def cast_to_cupy(self, verbose=False):
         cast_to_device(self, verbose=verbose)
 

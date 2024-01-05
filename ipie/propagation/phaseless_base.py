@@ -12,6 +12,7 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from mpi4py import MPI
 
+
 @plum.dispatch
 def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
     r"""Construct mean-field shifted one-body propagator.
@@ -31,7 +32,7 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
     nb = hamiltonian.nbasis
     shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
-    if hasattr(H1, 'get'):
+    if hasattr(H1, "get"):
         H1_numpy = H1.get()
     else:
         H1_numpy = H1
