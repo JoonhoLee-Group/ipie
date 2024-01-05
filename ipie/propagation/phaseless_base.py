@@ -10,7 +10,6 @@ from ipie.utils.backend import synchronize, cast_to_device
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from mpi4py import MPI
 
 
 @plum.dispatch
