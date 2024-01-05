@@ -151,7 +151,7 @@ class SingleDet(TrialWavefunctionBase):
         hamiltonian: GenericRealChol,
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
-    ) -> numpy.ndarray:
+    ) -> xp.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler

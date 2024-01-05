@@ -19,6 +19,7 @@
 import numpy
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
+from ipie.utils.backend import arraylib as xp
 
 from ipie.utils.io import (
     from_qmcpack_dense,
@@ -34,7 +35,7 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis * nchol))
     # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
-    v0 = 0.5 * numpy.dot(
+    v0 = 0.5 * xp.dot(
         chol_view,
         chol_view.T.conj(),  # conjugate added to account for complex integrals
     )  # einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
@@ -62,6 +63,8 @@ class GenericRealChol(GenericBase):
 
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
         self.sym_idx = numpy.triu_indices(self.nbasis)
+        self.sym_idx_i = self.sym_idx[0].copy()
+        self.sym_idx_j = self.sym_idx[1].copy()
         cp_shape = (self.nbasis * (self.nbasis + 1) // 2, self.chol.shape[-1])
         self.chol_packed = numpy.zeros(cp_shape, dtype=self.chol.dtype)
         pack_cholesky(self.sym_idx[0], self.sym_idx[1], self.chol_packed, self.chol)
@@ -72,7 +75,7 @@ class GenericRealChol(GenericBase):
         # this is the one-body part that comes out of re-ordering the 2-body operators
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
         construct_h1e_mod(self.chol, self.H1, h1e_mod)
-        self.h1e_mod = h1e_mod
+        self.h1e_mod = xp.array(h1e_mod)
 
         if verbose:
             mem = self.chol.nbytes / (1024.0**3)
@@ -110,7 +113,7 @@ class GenericComplexChol(GenericBase):
         # this is the one-body part that comes out of re-ordering the 2-body operators
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
         construct_h1e_mod(self.chol, self.H1, h1e_mod)
-        self.h1e_mod = h1e_mod
+        self.h1e_mod = xp.array(h1e_mod)
 
         # We need to store A and B integrals
         self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))

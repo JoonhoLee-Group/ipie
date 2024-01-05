@@ -120,9 +120,9 @@ class BaseWalkers(metaclass=ABCMeta):
 
         self.hybrid_energy = numpy.array([0.0 for iw in range(self.nwalkers)])
         self.detR = [1.0 for iw in range(self.nwalkers)]
-        self.detR_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
+        self.detR_shift = xp.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR = [0.0 for iw in range(self.nwalkers)]
-        self.log_shift = numpy.array([0.0 for iw in range(self.nwalkers)])
+        self.log_shift = xp.array([0.0 for iw in range(self.nwalkers)])
         self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
 
         self.buff_names = [
