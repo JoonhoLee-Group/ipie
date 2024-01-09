@@ -29,7 +29,11 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
         Timestep.
     """
     nb = hamiltonian.nbasis
-    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
+    if hasattr(mf_shift, "get"):
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift.get()).reshape(nb, nb)
+    else:
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
+    shift = xp.array(shift)
     H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
     if hasattr(H1, "get"):
         H1_numpy = H1.get()
@@ -45,9 +49,8 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
 def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
-    shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
+    shift = numpy.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
     shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(nb, nb)
-
     shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(nb, nb)
 
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
@@ -68,8 +71,9 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     """
     # hamiltonian.chol [X, M^2]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    tmp_real = xp.dot(hamiltonian.chol.T, Gcharge.real)
-    tmp_imag = xp.dot(hamiltonian.chol.T, Gcharge.imag)
+    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
+    tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
     return xp.array(mf_shift)
 

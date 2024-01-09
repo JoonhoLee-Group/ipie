@@ -72,6 +72,9 @@ def get_hamiltonian(filename, scomm, verbose=False, pack_chol=True):
         if scomm.rank == 0 and pack_chol:
             pack_cholesky(idx[0], idx[1], chol_packed, chol)
         scomm.Barrier()
+        chol_pack_shmem = get_shared_array(scomm, shape, dtype)
+        if scomm.rank == 0:
+            chol_pack_shmem[:] = chol_packed[:]
     else:
         dtype = chol.dtype
         cp_shape = (nbsf * (nbsf + 1) // 2, nchol)
@@ -84,7 +87,12 @@ def get_hamiltonian(filename, scomm, verbose=False, pack_chol=True):
     if verbose:
         print(f"# Time to pack Cholesky vectors: {time.time() - start:.6f}")
 
-    ham = Generic(h1e=hcore, chol=chol, ecore=enuc, verbose=verbose)
+    if shmem and pack_chol:
+        ham = Generic(
+            h1e=hcore, chol=chol, ecore=enuc, shmem=True, chol_packed=chol_packed, verbose=verbose
+        )
+    else:
+        ham = Generic(h1e=hcore, chol=chol, ecore=enuc, verbose=verbose)
 
     return ham
 
