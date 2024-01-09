@@ -62,13 +62,14 @@ class PhaselessGeneric(PhaselessBase):
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
         nwalkers = xshifted.shape[-1]
 
-        VHS_packed = hamiltonian.chol_packed.dot(
-            xshifted.real
-        ) + 1.0j * hamiltonian.chol_packed.dot(xshifted.imag)
+        VHS_packed = hamiltonian.chol_packed.dot(xshifted.real).astype(xshifted.dtype)
+        VHS_packed += 1.0j * hamiltonian.chol_packed.dot(
+            xshifted.imag
+        )  # in-place operation reduce gpu mem
 
         # (nb, nb, nw) -> (nw, nb, nb)
-        VHS_packed = (
-            self.isqrt_dt * VHS_packed.T.reshape(nwalkers, hamiltonian.chol_packed.shape[0]).copy()
+        VHS_packed = self.isqrt_dt * VHS_packed.T.reshape(
+            nwalkers, hamiltonian.chol_packed.shape[0]
         )
 
         VHS = xp.zeros(
@@ -83,6 +84,9 @@ class PhaselessGeneric(PhaselessBase):
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS
             )
+            del VHS_packed
+            xp.cuda.runtime.deviceSynchronize()
+            xp._default_memory_pool.free_all_blocks()
         else:
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
         return VHS

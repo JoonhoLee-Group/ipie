@@ -316,8 +316,10 @@ def test_vhs():
         }
     )
     legacy_data = build_legacy_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields).reshape(
-        nwalkers, legacy_data.hamiltonian.nfields
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields)
+        .reshape(nwalkers, legacy_data.hamiltonian.nfields)
+        .astype(numpy.complex128)
     )
     vhs_serial = []
     for iw in range(nwalkers):
