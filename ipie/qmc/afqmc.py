@@ -69,14 +69,14 @@ class AFQMC(object):
     """
 
     def __init__(
-        self, system, hamiltonian, trial, walkers, propagator, params: QMCParams, verbose: int = 0
+        self, system, hamiltonian, trial, walkers, propagator, mpi_handler, params: QMCParams, verbose: int = 0
     ):
         self.system = system
         self.hamiltonian = hamiltonian
         self.trial = trial
         self.walkers = walkers
         self.propagator = propagator
-        self.mpi_handler = MPIHandler()
+        self.mpi_handler = mpi_handler
         self.shared_comm = self.mpi_handler.shared_comm
         self.verbose = verbose
         self.verbosity = int(verbose)
@@ -178,6 +178,7 @@ class AFQMC(object):
             trial_wavefunction,
             walkers,
             propagator,
+            mpi_handler,
             params,
             verbose=(verbose and comm.rank == 0),
         )
@@ -396,8 +397,14 @@ class AFQMC(object):
         )
 
         self.get_env_info()
-        self.copy_to_gpu()
         self.distribute_hamiltonian()
+        self.copy_to_gpu()
+
+        # from ipie.utils.backend import get_device_memory
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# before distribute {comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# after distribute {comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
 
         # TODO: This magic value of 2 is pretty much never controlled on input.
