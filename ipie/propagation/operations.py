@@ -105,6 +105,9 @@ def apply_exponential_batch(phi, VHS, exp_nmax):
         for n in range(1, exp_nmax + 1):
             Temp = xp.matmul(VHS, Temp) / n  # matmul use much less GPU memory than einsum
             phi += Temp
+        # del Temp
+        # xp.cuda.runtime.deviceSynchronize()
+        # xp._default_memory_pool.free_all_blocks()
     else:
         for iw in range(phi.shape[0]):
             for n in range(1, exp_nmax + 1):

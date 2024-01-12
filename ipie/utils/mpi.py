@@ -76,7 +76,7 @@ class MPIHandler(object):
         elif isinstance(array, np.ndarray):
             if len(array.shape) == 2:
                 ncols = array.shape[1]
-                my_array = np.zeros((split_sizes[self.srank], ncols), dtype=array.dtype)
+                my_array = np.zeros((split_sizes[self.srank], ncols), dtype=np.float64)
                 self.scomm.Scatterv(
                     [array, split_sizes * ncols, displacements * ncols, MPI.DOUBLE],
                     my_array,

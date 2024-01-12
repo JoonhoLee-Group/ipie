@@ -97,8 +97,10 @@ def cast_to_device(self, verbose=False):
         if k in ["Ga", "Gb"]:
             continue  # reduce mem usage, Ga/Gb not used, use Ghalf instead
         if isinstance(v, _np.ndarray):
+            # print(f"{self.__class__.__name__}, {k}, array, {v.nbytes/1023**3}Gb")
             self.__dict__[k] = arraylib.array(v)
         elif isinstance(v, list) and isinstance(v[0], _np.ndarray):
+            # print(f"{self.__class__.__name__}, {k}, list, {sum([vi.nbytes/1023**3 for vi in v])}Gb")
             self.__dict__[k] = [arraylib.array(vi) for vi in v]
 
     used_bytes, total_bytes = get_device_memory()

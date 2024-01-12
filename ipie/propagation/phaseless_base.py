@@ -10,6 +10,8 @@ from ipie.utils.backend import synchronize, cast_to_device
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from mpi4py import MPI
+from ipie.utils.mpi import make_splits_displacements
 
 
 @plum.dispatch
@@ -30,7 +32,10 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
     """
     nb = hamiltonian.nbasis
     if hasattr(mf_shift, "get"):
-        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift.get()).reshape(nb, nb)
+        start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
+        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank+1]
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]).reshape(nb, nb)
+        shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
     else:
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     shift = xp.array(shift)
@@ -42,6 +47,7 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
     expH1 = xp.array(
         [scipy.linalg.expm(-0.5 * dt * H1_numpy[0]), scipy.linalg.expm(-0.5 * dt * H1_numpy[1])]
     )
+    # print(f"expH1 {expH1.nbytes/1024**3} GB")
     return expH1
 
 
@@ -72,9 +78,27 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     # hamiltonian.chol [X, M^2]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
     # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
-    tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
-    tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
-    mf_shift = 1.0j * tmp_real - tmp_imag
+    tmp_real = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.imag)
+
+    split_sizes, displacements = make_splits_displacements(hamiltonian.nchol, trial.handler.ssize)
+    split_sizes_np = numpy.array(split_sizes, dtype=int)
+    displacements_np = numpy.array(displacements, dtype=int)
+
+    recvbuf_real = numpy.zeros(hamiltonian.nchol, dtype=tmp_real.dtype)
+    recvbuf_imag = numpy.zeros(hamiltonian.nchol, dtype=tmp_imag.dtype)
+
+    # print(split_sizes_np, displacements_np)
+    trial.handler.scomm.Gatherv(tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
+    trial.handler.scomm.Gatherv(tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
+
+    trial.handler.scomm.Bcast(recvbuf_real, root=0)
+    trial.handler.scomm.Bcast(recvbuf_imag, root=0)
+
+    mf_shift = 1.0j * recvbuf_real - recvbuf_imag
+    # mf_shift_1 = numpy.load("../Test_Disk_nochunk/mf_shift.npy")
+    # print(f'mf_shift complete,{numpy.allclose(mf_shift, mf_shift_1)}')
+    
     return xp.array(mf_shift)
 
 
@@ -166,6 +190,7 @@ class PhaselessBase(ContinuousBase):
         xshifted = xshifted.T.copy()
         self.apply_VHS(walkers, hamiltonian, xshifted)
 
+        # xp._default_memory_pool.free_all_blocks()
         return (cmf, cfb)
 
     def propagate_walkers(self, walkers, hamiltonian, trial, eshift):
