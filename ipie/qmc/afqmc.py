@@ -402,8 +402,6 @@ class AFQMC(object):
 
         # from ipie.utils.backend import get_device_memory
         # used_bytes, total_bytes = get_device_memory()
-        # print(f"# before distribute {comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
-        # used_bytes, total_bytes = get_device_memory()
         # print(f"# after distribute {comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
 

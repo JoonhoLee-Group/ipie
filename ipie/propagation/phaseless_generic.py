@@ -116,15 +116,13 @@ class PhaselessGenericChunked(PhaselessGeneric):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
         self.mpi_handler = mpi_handler
 
-    @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
-        "abstract function for construct VHS"
+    # @plum.dispatch.abstract
+    # def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
+    #     "abstract function for construct VHS"
 
     @plum.dispatch
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
         assert hamiltonian.chunked
-        assert xp.isrealobj(hamiltonian.chol)
-
         nwalkers = xshifted.shape[-1]
 
         # if hamiltonian.mixed_precision:  # cast it to float
@@ -149,7 +147,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
             synchronize()
             self.mpi_handler.scomm.Isend(
                 xshifted_send, dest=self.mpi_handler.receivers[srank], tag=1
-            )
+                )
             self.mpi_handler.scomm.Isend(VHS_send, dest=self.mpi_handler.receivers[srank], tag=2)
 
             req1 = self.mpi_handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
@@ -162,8 +160,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
             # prepare sending
             VHS_send = (
                 VHS_recv
-                + chol_packed_chunk.dot(xshifted_recv[idxs, :].real)
-                + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
+                + chol_packed_chunk.dot(xshifted_recv[idxs, :].real) 
+            + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
             )
             xshifted_send = xshifted_recv.copy()
 
@@ -181,11 +179,16 @@ class PhaselessGenericChunked(PhaselessGeneric):
         # This should be abstracted by kernel import
         if config.get_option("use_gpu"):
             threadsperblock = 512
-            nut = len(hamiltonian.sym_idx_i)
+            nbsf = hamiltonian.nbasis
+            nut = round(nbsf * (nbsf + 1) / 2)
             blockspergrid = math.ceil(nwalkers * nut / threadsperblock)
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS
             )
+            del VHS_recv
+            del VHS_send
+            xp.cuda.runtime.deviceSynchronize()
+            xp._default_memory_pool.free_all_blocks()
         else:
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
         synchronize()
