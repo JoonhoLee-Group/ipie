@@ -49,8 +49,14 @@ class PhaselessGeneric(PhaselessBase):
                 walkers.phia[iw] = apply_exponential(walkers.phia[iw], VHS[iw], self.exp_nmax)
                 if walkers.ndown > 0 and not walkers.rhf:
                     walkers.phib[iw] = apply_exponential(walkers.phib[iw], VHS[iw], self.exp_nmax)
+        # del VHS
         synchronize()
+        # xp.cuda.runtime.deviceSynchronize()
+        # xp._default_memory_pool.free_all_blocks()
         self.timer.tgemm += time.time() - start_time
+        # from ipie.utils.backend import get_device_memory
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# apply VHS: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
 
     @plum.dispatch.abstract
     def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
@@ -122,6 +128,9 @@ class PhaselessGenericChunked(PhaselessGeneric):
 
     @plum.dispatch
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
+        # from ipie.utils.backend import get_device_memory
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# before construct VHS: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         assert hamiltonian.chunked
         nwalkers = xshifted.shape[-1]
 
@@ -135,7 +144,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
 
-        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real) + 1.0j * chol_packed_chunk.dot(
+        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real).astype(xshifted.dtype) 
+        VHS_send += 1.0j * chol_packed_chunk.dot(
             xshifted[idxs, :].imag
         )
         VHS_recv = xp.zeros_like(VHS_send)
@@ -158,11 +168,16 @@ class PhaselessGenericChunked(PhaselessGeneric):
             self.mpi_handler.scomm.barrier()
 
             # prepare sending
-            VHS_send = (
-                VHS_recv
-                + chol_packed_chunk.dot(xshifted_recv[idxs, :].real) 
-            + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
-            )
+            # VHS_send = (
+            #     VHS_recv
+            #     + chol_packed_chunk.dot(xshifted_recv[idxs, :].real) 
+            # + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
+            # )
+
+            VHS_send = chol_packed_chunk.dot(xshifted_recv[idxs, :].real).astype(xshifted.dtype)
+            VHS_send += 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
+            VHS_send += VHS_recv
+
             xshifted_send = xshifted_recv.copy()
 
         synchronize()
@@ -171,7 +186,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
         req.wait()
         self.mpi_handler.scomm.barrier()
 
-        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0]).copy()
+        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0])
         VHS = xp.zeros(
             (nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
             dtype=VHS_recv.dtype,
@@ -185,13 +200,16 @@ class PhaselessGenericChunked(PhaselessGeneric):
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS
             )
-            del VHS_recv
-            del VHS_send
-            xp.cuda.runtime.deviceSynchronize()
-            xp._default_memory_pool.free_all_blocks()
+            # del VHS_recv
+            # del VHS_send
+            # xp.cuda.runtime.deviceSynchronize()
+            # xp._default_memory_pool.free_all_blocks()
         else:
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_recv, VHS)
         synchronize()
+        # from ipie.utils.backend import get_device_memory
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# {srank} construct VHS: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         return VHS
 
 
