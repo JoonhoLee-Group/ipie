@@ -81,3 +81,10 @@ class GenericBase(metaclass=ABCMeta):
         tot_size = handler.allreduce_group(self.chol_chunk.size)
         assert self.chol.size == tot_size
         del self.chol
+
+        import h5py
+        with h5py.File(f"chol_{handler.srank}.h5", "w") as fa:
+            fa["chol"] = self.chol_chunk
+            fa["chol_packed"] = self.chol_packed_chunk
+
+        print(f"{handler.srank} saved cholesky chunked")

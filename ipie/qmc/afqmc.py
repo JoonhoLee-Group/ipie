@@ -270,7 +270,7 @@ class AFQMC(object):
         if self.mpi_handler.nmembers > 1:
             if self.mpi_handler.comm.rank == 0:
                 print("# Chunking hamiltonian.")
-            self.hamiltonian.chunk(self.mpi_handler)
+            # self.hamiltonian.chunk(self.mpi_handler)
             if self.mpi_handler.comm.rank == 0:
                 print("# Chunking trial.")
             self.trial.chunk(self.mpi_handler)
