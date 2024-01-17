@@ -48,6 +48,7 @@ class MPIHandler(object):
             print(f"# MPIHandler detected {self.ngroups} groups with {self.nmembers} members each")
 
         try:
+            print((self.size, self.nmembers, self.ngroups))
             assert self.size == self.nmembers * self.ngroups
         except AssertionError:
             raise ValueError("# MPI nmembers should divide the total MPI size")
