@@ -149,14 +149,14 @@ def half_rotate_chunked(
     if isinstance(hamiltonian, GenericComplexChol):
         raise NotImplementedError
     elif isinstance(hamiltonian, GenericRealChol):
-        rchola = [get_shared_array(comm, shape_a, integral_type)]
-        rcholb = [get_shared_array(comm, shape_b, integral_type)]
-
-    rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
-    rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
-
-    rH1a[:] = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
-    rH1b[:] = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+        # rchola = [get_shared_array(comm, shape_a, integral_type)]
+        # rcholb = [get_shared_array(comm, shape_b, integral_type)]
+        rchola_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * na)), dtype=integral_type)]
+        rcholb_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * nb)), dtype=integral_type)]
+    # rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
+    # rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
+    rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+    rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
     if verbose:
         print("# Half-Rotating Cholesky for determinant.")
@@ -204,15 +204,20 @@ def half_rotate_chunked(
             optimize=True,
         )
         rdn = rdn.reshape((ndets, nchol_loc, nb * M))
-        rchola[0][:, start_n:end_n, start_a : start_a + M * na] = rup[:]
-        rcholb[0][:, start_n:end_n, start_b : start_b + M * nb] = rdn[:]
+        # rchola[0][:, start_n:end_n, start_a : start_a + M * na] = rup[:]
+        # rcholb[0][:, start_n:end_n, start_b : start_b + M * nb] = rdn[:]
+        rchola_chunk[0][:, :, start_a : start_a + M * na] = rup[:]
+        rcholb_chunk[0][:, :, start_b : start_b + M * nb] = rdn[:]
+
 
     if comm is not None:
         comm.barrier()
 
     if isinstance(hamiltonian, GenericRealChol):
-        rchola = rchola[0]
-        rcholb = rcholb[0]
+        # rchola = rchola[0]
+        # rcholb = rcholb[0]
+        rchola = rchola_chunk[0]
+        rcholb = rcholb_chunk[0]
 
     print('half rotation complete')
 

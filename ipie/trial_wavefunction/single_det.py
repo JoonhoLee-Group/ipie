@@ -46,6 +46,10 @@ class SingleDet(TrialWavefunctionBase):
         self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
         self.handler = handler
 
+        self.psi0a = numpy.ascontiguousarray(self.psi0a.conj())
+        self.psi0b = numpy.ascontiguousarray(self.psi0b.conj())
+
+
     def build(self) -> None:
         pass
 
@@ -101,8 +105,8 @@ class SingleDet(TrialWavefunctionBase):
         # grab zeroth element.
         self._rH1a = rot_1body[0][0]
         self._rH1b = rot_1body[1][0]
-        self._rchola = rot_chol[0][0]
-        self._rcholb = rot_chol[1][0]
+        self._rchola_chunk = rot_chol[0][0]
+        self._rcholb_chunk = rot_chol[1][0]
         self.half_rotated = True
 
         # rot_1body_1 = numpy.load('../Test_Disk_nochunk/rot_1body.npy')

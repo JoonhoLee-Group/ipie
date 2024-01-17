@@ -280,7 +280,8 @@ class AFQMC(object):
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
             _ = xp.cuda.runtime.getDeviceProperties(0)
-            xp.cuda.runtime.setDevice(self.shared_comm.rank)
+            xp.cuda.runtime.setDevice(self.shared_comm.rank%4)
+            # xp.cuda.runtime.setDevice(comm.rank%4) # ?
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
@@ -397,7 +398,7 @@ class AFQMC(object):
         )
 
         self.get_env_info()
-        self.distribute_hamiltonian()
+        # self.distribute_hamiltonian()
         self.copy_to_gpu()
 
         # from ipie.utils.backend import get_device_memory
