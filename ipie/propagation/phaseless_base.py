@@ -47,6 +47,7 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
     expH1 = xp.array(
         [scipy.linalg.expm(-0.5 * dt * H1_numpy[0]), scipy.linalg.expm(-0.5 * dt * H1_numpy[1])]
     )
+    # print(f"expH1 {expH1.nbytes/1024**3} GB")
     return expH1
 
 
@@ -189,6 +190,7 @@ class PhaselessBase(ContinuousBase):
         xshifted = xshifted.T.copy()
         self.apply_VHS(walkers, hamiltonian, xshifted)
 
+        # xp._default_memory_pool.free_all_blocks()
         return (cmf, cfb)
 
     def propagate_walkers(self, walkers, hamiltonian, trial, eshift):

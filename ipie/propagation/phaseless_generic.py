@@ -35,6 +35,10 @@ class PhaselessGeneric(PhaselessBase):
         assert walkers.nwalkers == xshifted.shape[-1]
         VHS = self.construct_VHS(hamiltonian, xshifted)
         synchronize()
+        # xp._default_memory_pool.free_all_blocks()
+        # from ipie.utils.backend import get_device_memory
+        # used_bytes, total_bytes = get_device_memory()
+        # print(f"# after free energy: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.timer.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
 
@@ -185,6 +189,10 @@ class PhaselessGenericChunked(PhaselessGeneric):
         req = self.mpi_handler.scomm.Irecv(VHS_recv, source=sender, tag=1)
         req.wait()
         self.mpi_handler.scomm.barrier()
+
+        # del VHS_send
+        # xp.cuda.runtime.deviceSynchronize()
+        # xp._default_memory_pool.free_all_blocks()
 
         VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0])
         VHS = xp.zeros(

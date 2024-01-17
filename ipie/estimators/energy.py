@@ -135,6 +135,7 @@ class EnergyEstimator(EstimatorBase):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)
+        # xp._default_memory_pool.free_all_blocks()
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
