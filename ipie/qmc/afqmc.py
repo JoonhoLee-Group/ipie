@@ -281,6 +281,7 @@ class AFQMC(object):
             ngpus = xp.cuda.runtime.getDeviceCount()
             _ = xp.cuda.runtime.getDeviceProperties(0)
             xp.cuda.runtime.setDevice(self.shared_comm.rank%4)
+            # xp.cuda.runtime.setDevice(comm.rank%4) # ?
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
