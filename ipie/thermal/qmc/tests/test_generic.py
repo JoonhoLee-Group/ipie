@@ -186,16 +186,16 @@ def test_thermal_afqmc():
     nup = 5
     ndown = 5
     nelec = (nup, ndown)
-    nbasis = 10
+    nbasis = 20
 
     mu = -10.0
     beta = 0.1
     timestep = 0.01
-    nwalkers = 1
+    nwalkers = 10
     seed = 7
     # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
     nsteps_per_block = 1
-    nblocks = 8
+    nblocks = 12
     stabilize_freq = 10
     pop_control_freq = 1
     lowrank = False

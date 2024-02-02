@@ -43,7 +43,7 @@ def setup_objs(mf_trial=False, seed=None):
     mu = -10.
     beta = 0.02
     dt = 0.01
-    nwalkers = 2
+    nwalkers = 10
     blocks = 10
     stabilise_freq = 10
     pop_control_freq = 1

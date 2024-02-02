@@ -301,7 +301,6 @@ class PhaselessBase(ContinuousBase):
         except ZeroDivisionError:
             walkers.weight[iw] = 0.
 
-
     def apply_bound_force_bias(self, xbar, max_bound=1.0):
         absxbar = xp.abs(xbar)
         idx_to_rescale = absxbar > max_bound

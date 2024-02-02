@@ -234,11 +234,16 @@ class Continuous(object):
         # Compute determinant ratio det(1+A')/det(1+A).
         # 1. Current walker's green's function.
         tix = walker.stack.ntime_slices
+        G = walker.greens_function(None, slice_ix=tix, inplace=False)
         # 2. Compute updated green's function.
         walker.stack.update_new(B)
         walker.greens_function(None, slice_ix=tix, inplace=True)
         # 3. Compute det(G/G')
-        M0 = walker.M0
+        #M0 = walker.M0
+        M0 = [
+                scipy.linalg.det(G[0], check_finite=False),
+                scipy.linalg.det(G[1], check_finite=False)
+        ]
         Mnew = [
             scipy.linalg.det(walker.G[0], check_finite=False),
             scipy.linalg.det(walker.G[1], check_finite=False),
