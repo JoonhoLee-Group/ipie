@@ -390,3 +390,41 @@ def analyse_ekt_ipea(filename, ix=None, cutoff=1e-14, screen_factor=1):
     fockT = numpy.dot(X.conj().T, numpy.dot(fock_1p_av, X))
     eea, eea_vec = numpy.linalg.eigh(fockT)
     return (eip, eip_vec), (eea, eea_vec)
+
+
+def block_ratios(num: numpy.ndarray, denom: numpy.ndarray):
+    r"""Block averaging of ratios.
+
+    Parameters
+    ----------
+    num : :class:`numpy.ndarray`
+        Numerator.
+    denom : :class:`numpy.ndarray`
+        Denominator.
+
+    Returns
+    -------
+    mean : :class:`numpy.ndarray`
+        Mean of the ratio.
+    """
+    mean = numpy.mean(num) / numpy.mean(denom)
+    n_samples = num.size
+    print(f"Complex mean: {mean:.8e}")
+    header_0 = "Block size"
+    header_1 = "# of blocks"
+    header_2 = "Mean"
+    header_3 = "Error"
+    print(f" {header_0:>17s} {header_1:>17s} {header_2:>17s} {header_3:>17s}")
+    block_sizes = numpy.array([1, 2, 5, 10, 20, 50, 100, 200, 300, 400, 500, 1000, 10000])
+    for i in block_sizes[block_sizes < n_samples / 2.0]:
+        n_blocks = n_samples // i
+        blocked_denom = numpy.zeros(n_blocks, dtype=num.dtype)
+        blocked_num = numpy.zeros(n_blocks, dtype=num.dtype)
+        for j in range(n_blocks):
+            blocked_denom[j] = denom[j * i : (j + 1) * i].sum()
+            blocked_num[j] = num[j * i : (j + 1) * i].sum()
+        mean = numpy.mean(blocked_num) / numpy.mean(blocked_denom)
+        error = numpy.std((blocked_num / blocked_denom).real) / numpy.sqrt(n_blocks)
+        # taking real part for the error is a bit hacky
+        print(f" {i:>17d} {n_blocks:>17d} {mean.real:>17f} {error.real:>17f}")
+    return mean

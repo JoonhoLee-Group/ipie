@@ -19,17 +19,12 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function import (
-    greens_function_single_det_batch,
-)
+from ipie.estimators.greens_function import greens_function_single_det_batch
+from ipie.propagation.free_propagation import FreePropagation
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
+from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (
-    build_test_case_handlers,
-)
-from ipie.utils.legacy_testing import (
-    build_legacy_test_case_handlers,
-)
+from ipie.utils.testing import build_test_case_handlers
 
 
 @pytest.mark.unit
@@ -334,6 +329,35 @@ def test_vhs():
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
 
 
+@pytest.mark.unit
+def test_fp():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 8
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+    qmc.batched = True
+    batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
+    prop_fp = FreePropagation(time_step=0.005, verbose=False, ene_0=-1.0)
+    prop_fp.build(batched_data.hamiltonian, batched_data.trial)
+
+    prop_fp.propagate_walkers(
+        batched_data.walkers, batched_data.hamiltonian, batched_data.trial, -1.0
+    )
+    assert batched_data.walkers.phia.shape == (nwalkers, nmo, nelec[0])
+    assert batched_data.walkers.phib.shape == (nwalkers, nmo, nelec[1])
+
+
 if __name__ == "__main__":
     test_overlap_rhf_batch()
     test_overlap_batch()
@@ -342,3 +366,4 @@ if __name__ == "__main__":
     test_hybrid_rhf_batch()
     test_hybrid_batch()
     test_vhs()
+    test_fp()

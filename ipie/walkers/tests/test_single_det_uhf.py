@@ -127,7 +127,33 @@ def test_reortho_batch():
     assert numpy.allclose(detR_legacy, detR)
 
 
+@pytest.mark.unit
+def test_reortho_batch_fp():
+    nelec = (5, 5)
+    nwalkers = 10
+    nsteps = 10
+    nmo = 10
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": False,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+    qmc.batched = True
+    batched_data = build_test_case_handlers(
+        nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
+    )
+    batched_data.walkers.orthogonalise(True)
+    assert batched_data.walkers.phia.shape == (nwalkers, nmo, nelec[0])
+    assert batched_data.walkers.phib.shape == (nwalkers, nmo, nelec[1])
+
+
 if __name__ == "__main__":
     test_overlap_batch()
     test_greens_function_batch()
     test_reortho_batch()
+    test_reortho_batch_fp()

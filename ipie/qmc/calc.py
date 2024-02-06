@@ -21,9 +21,12 @@
 import json
 
 from ipie.config import MPI
+from ipie.estimators.energy import local_energy
 from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.propagation.free_propagation import FreePropagation
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.afqmc import AFQMC
+from ipie.qmc.fp_afqmc import FPAFQMC
 from ipie.qmc.options import QMCParams
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
@@ -137,15 +140,33 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         )
         propagator = Propagator[type(hamiltonian)](params.timestep)
         propagator.build(hamiltonian, trial, walkers, mpi_handler)
-        afqmc = AFQMC(
-            system,
-            hamiltonian,
-            trial,
-            walkers,
-            propagator,
-            params,
-            verbose=(verbosity and comm.rank == 0),
+        free_projection = get_input_value(
+            qmc_opts, "free_projection", alias=["free_propagation", "fp_afqmc"], default=False
         )
+        if free_projection:
+            params.num_iterations_fp = get_input_value(qmc_opts, "num_iterations_fp", 1)
+            ene_0 = local_energy(system, hamiltonian, walkers, trial)[0][0]
+            propagator = FreePropagation(time_step=params.timestep, exp_nmax=10, ene_0=ene_0)
+            propagator.build(hamiltonian, trial, walkers, mpi_handler)
+            afqmc = FPAFQMC(
+                system,
+                hamiltonian,
+                trial,
+                walkers,
+                propagator,
+                params,
+                verbose=(verbosity and comm.rank == 0),
+            )
+        else:
+            afqmc = AFQMC(
+                system,
+                hamiltonian,
+                trial,
+                walkers,
+                propagator,
+                params,
+                verbose=(verbosity and comm.rank == 0),
+            )
 
     return afqmc
 
@@ -159,6 +180,7 @@ def build_afqmc_driver(
     estimator_filename: str = "estimates.0.h5",
     seed: int = None,
     verbosity: int = 0,
+    extra_qmc_options: dict = None,
 ):
     if comm.rank != 0:
         verbosity = 0
@@ -169,6 +191,8 @@ def build_afqmc_driver(
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
     }
+    if extra_qmc_options is not None:
+        options["qmc"].update(extra_qmc_options)
     return get_driver(options, comm)
 
 

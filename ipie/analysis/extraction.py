@@ -25,12 +25,17 @@ import pandas as pd
 from ipie.utils.misc import get_from_dict
 
 
-def extract_hdf5_data(filename, block_idx=1):
+def extract_hdf5_data(filename, block_idx=1, complexQ=False):
     shapes = {}
     with h5py.File(filename, "r") as fh5:
         keys = fh5[f"block_size_{block_idx}/data/"].keys()
         shape_keys = fh5[f"block_size_{block_idx}/shape/"].keys()
-        data = numpy.concatenate([fh5[f"block_size_{block_idx}/data/{d}"][:].real for d in keys])
+        if not complexQ:
+            data = numpy.concatenate(
+                [fh5[f"block_size_{block_idx}/data/{d}"][:].real for d in keys]
+            )
+        else:
+            data = numpy.concatenate([fh5[f"block_size_{block_idx}/data/{d}"][:] for d in keys])
         for k in shape_keys:
             shapes[k] = {
                 "names": fh5[f"block_size_{block_idx}/names/{k}"][()],
@@ -47,8 +52,8 @@ def extract_hdf5_data(filename, block_idx=1):
     return data[: max_block + 1], shapes
 
 
-def extract_observable(filename, name="energy", block_idx=1):
-    data, info = extract_hdf5_data(filename, block_idx=block_idx)
+def extract_observable(filename, name="energy", block_idx=1, complexQ=False):
+    data, info = extract_hdf5_data(filename, block_idx=block_idx, complexQ=complexQ)
     obs_info = info.get(name)
     if obs_info is None:
         raise RuntimeError(f"Unknown value for name={name}")

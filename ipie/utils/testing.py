@@ -25,6 +25,7 @@ import numpy
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC
+from ipie.qmc.fp_afqmc import FPAFQMC
 from ipie.qmc.options import QMCOpts
 from ipie.systems import Generic
 from ipie.trial_wavefunction.noci import NOCI
@@ -562,6 +563,7 @@ def build_driver_test_instance(
     seed: Union[int, None] = None,
     density_diff=False,
     options: Union[dict, None] = None,
+    free_propagation=False,
 ):
     if seed is not None:
         numpy.random.seed(seed)
@@ -592,17 +594,31 @@ def build_driver_test_instance(
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
-
-    afqmc = AFQMC.build(
-        num_elec,
-        ham,
-        trial,
-        num_walkers=qmc.nwalkers,
-        seed=qmc.rng_seed,
-        num_steps_per_block=qmc.nsteps,
-        num_blocks=qmc.nblocks,
-        timestep=qmc.dt,
-        stabilize_freq=qmc.nstblz,
-        pop_control_freq=qmc.npop_control,
-    )
+    if not free_propagation:
+        afqmc = AFQMC.build(
+            num_elec,
+            ham,
+            trial,
+            num_walkers=qmc.nwalkers,
+            seed=qmc.rng_seed,
+            num_steps_per_block=qmc.nsteps,
+            num_blocks=qmc.nblocks,
+            timestep=qmc.dt,
+            stabilize_freq=qmc.nstblz,
+            pop_control_freq=qmc.npop_control,
+        )
+    else:
+        afqmc = FPAFQMC.build(
+            num_elec,
+            ham,
+            trial,
+            num_walkers=qmc.nwalkers,
+            seed=qmc.rng_seed,
+            num_steps_per_block=qmc.nsteps,
+            num_blocks=qmc.nblocks,
+            timestep=qmc.dt,
+            stabilize_freq=qmc.nstblz,
+            pop_control_freq=qmc.npop_control,
+            ene_0=trial.energy,
+        )
     return afqmc

@@ -235,6 +235,36 @@ def test_generic_single_det_batch_density_diff():
 
 
 @pytest.mark.driver
+def test_generic_single_det_batch_fp():
+    with tempfile.NamedTemporaryFile() as tmpf:
+        driver_options = {
+            "verbosity": 0,
+            "get_sha1": False,
+            "qmc": options,
+            "estimates": {"filename": tmpf.name, "observables": {"energy": {}}},
+            "walkers": {"population_control": "pair_branch"},
+        }
+
+        afqmc = build_driver_test_instance(
+            nelec,
+            nmo,
+            trial_type="single_det",
+            options=driver_options,
+            seed=7,
+            free_propagation=True,
+        )
+        afqmc.setup_estimators(tmpf.name)
+        afqmc.run(verbose=False, estimator_filename=tmpf.name)
+        afqmc.finalise(verbose=0)
+        for i in range(len(afqmc.estimators)):
+            data_batch = extract_observable(f"{tmpf.name}.{i}", "energy", complexQ=True)
+            numer_batch = data_batch["ENumer"]
+            denom_batch = data_batch["EDenom"]
+            etot_batch = data_batch["ETotal"]
+            assert etot_batch.dtype == numpy.complex128
+
+
+@pytest.mark.driver
 def test_factory_method():
     with tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
         numpy.random.seed(7)
@@ -256,4 +286,5 @@ def test_factory_method():
 
 if __name__ == "__main__":
     test_generic_single_det_batch()
+    test_generic_single_det_batch_fp()
     test_generic_single_det_batch_density_diff()
