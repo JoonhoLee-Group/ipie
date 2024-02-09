@@ -108,7 +108,7 @@ def local_energy_noci(
     walkers : WalkerBatch
         Walkers object.
     trial : trial object
-        Trial wavefunctioni.
+        Trial wavefunction.
 
     Returns
     -------
