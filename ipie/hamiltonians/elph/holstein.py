@@ -4,7 +4,7 @@ from ipie.utils.backend import arraylib as xp
 
 
 class HolsteinModel(GenericBase):
-    """Class for Holsteib model carrying elph tensor and system parameters
+    """Class for Holstein model carrying elph tensor and system parameters
     """
 
     def __init__(self, g: float, t: float, w0: float, nsites: int, pbc: bool):

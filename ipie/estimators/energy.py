@@ -31,7 +31,7 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.hamiltonians.holstein import HolsteinModel
+from ipie.hamiltonians.elph.holstein import HolsteinModel
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
@@ -151,7 +151,7 @@ class EnergyEstimator(EstimatorBase):
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
         self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
-
+        
         return self.data
 
     def get_index(self, name):

@@ -4,6 +4,7 @@ from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
+from ipie.trial_wavefunction.holstein.toyozawa import ToyozawaTrial
 
 class EphWalkers(BaseWalkers):
     """"""
@@ -26,6 +27,8 @@ class EphWalkers(BaseWalkers):
 
         super().__init__(nwalkers, verbose=verbose)
 
+        self.weight = numpy.ones(self.nwalkers, dtype=numpy.complex128)
+
         #TODO is there a reason we dont use numpy tile for these?
         self.phia = xp.array(
             [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
@@ -41,15 +44,31 @@ class EphWalkers(BaseWalkers):
             [initial_walker[:, self.nup+self.ndown:].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128
         )
-        self.x = numpy.squeeze(self.x) #NOTE: 1e hack to work with 1e overlaps
-
+        self.x = numpy.squeeze(self.x)
+        
         self.buff_names += ["phia", "phib", "x"]
 
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def build(self, trial):
-        self.ovlp = trial.calc_greens_function(self)
+        """NOTE: total_ovlp is the same as ovlp for coherent state trial, and just
+        serves the purpose of not recomputing overlaps for each permutation 
+        but passing it to the pop_control and adjsuting it accordingly for the 
+        Toyozawa trial."""
+
+        if isinstance(trial, ToyozawaTrial):
+            shape = (self.nwalkers, trial.nperms)
+        else:
+            shape = self.nwalkers
+
+        self.ph_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
+        self.el_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
+        self.total_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
+
+        self.buff_names += ['total_ovlp'] #, 'el_ovlp', 'total_ovlp'] #not really necessary to bring 'el_ovlp', 'total_ovlp' along if computing overlap after normalization anyways.
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def cast_to_cupy(self, verbose=False):
         cast_to_device(self, verbose)
@@ -90,6 +109,9 @@ class EphWalkers(BaseWalkers):
             detR += [xp.exp(log_det - self.detR_shift[iw])]
             self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
+            
+            self.el_ovlp[iw, :] = self.el_ovlp[iw, :] / detR[iw]
+            self.total_ovlp[iw, :] = self.total_ovlp[iw, :] / detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
         synchronize()

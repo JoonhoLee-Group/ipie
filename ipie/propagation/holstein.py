@@ -3,10 +3,12 @@ import time
 import scipy.linalg
 
 from ipie.propagation.phaseless_base import PhaselessBase
-from ipie.hamiltonians.holstein import HolsteinModel
+from ipie.hamiltonians.elph.holstein import HolsteinModel
 from ipie.propagation.operations import propagate_one_body #TODO check this
 from ipie.utils.backend import synchronize, cast_to_device
 from ipie.propagation.continuous_base import PropagatorTimer
+
+verbose=False
 
 def construct_one_body_propagator(hamiltonian: HolsteinModel, dt: float):
     """"""
@@ -138,10 +140,9 @@ class HolsteinPropagatorImportance(HolsteinPropagatorFree):
         trial : 
         """
         start_time = time.time()
-
         #no ZPE in pot -> cancels with ZPE of etrial, wouldn't affect estimators anyways
         ph_ovlp_old = trial.calc_phonon_overlap(walkers)
-
+        
         pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.einsum('ni->n',walkers.x**2)
         pot -= 0.5 * trial.calc_phonon_laplacian_importance(walkers) / hamiltonian.m
         pot = numpy.real(pot)
@@ -157,33 +158,48 @@ class HolsteinPropagatorImportance(HolsteinPropagatorFree):
         pot -= 0.5 * trial.calc_phonon_laplacian_importance(walkers) / hamiltonian.m
         pot = numpy.real(pot)
         walkers.weight *= numpy.exp(-self.dt_ph * pot / 2)
-        
+
         walkers.weight *= ph_ovlp_old / ph_ovlp_new
         walkers.weight *= numpy.exp(self.dt_ph * trial.energy)
-        
+
         synchronize()
         self.timer.tgemm += time.time() - start_time
         
-#    def propagate_walkers(self, walkers, hamiltonian, trial):
-#        pass
 
     def propagate_walkers(self, walkers, hamiltonian, trial, eshift=None):
-        #TODO where should I store the phonon overlaps?
+        """"""
+
         synchronize()
         start_time = time.time()
-        ovlp = trial.calc_overlap(walkers)
+        
+        if verbose:
+            print('before ovlp: ', walkers.phia[0,0,0], walkers.x[0,0], walkers.weight[0])
+        
+        ovlp = trial.calc_overlap(walkers).copy()
+        
+        if verbose:
+            print('ovlp:    ', ovlp[0])
+        
         synchronize()
         self.timer.tgf += time.time() - start_time
 
         # 2. Update Walkers
         # 2.a DMC for phonon degrees of freedom
         self.propagate_phonons(walkers, hamiltonian, trial)
-
+        
+        if verbose:
+            print('weight in prop I:   ', walkers.weight[0]) 
+        
         # 2.b One-body propagation for electrons
         self.propagate_electron(walkers, trial)
-
+        
         # 2.c DMC for phonon degrees of freedom
         self.propagate_phonons(walkers, hamiltonian, trial)
+        
+        if verbose:
+            print('weight in prop II:   ', walkers.weight[0]) 
+
+#       print('electron & phonon & weight: ', walkers.phia[0], walkers.x, walkers.weight)
 
         # Update weights (and later do phaseless for multi-electron)
         start_time = time.time()
@@ -192,8 +208,16 @@ class HolsteinPropagatorImportance(HolsteinPropagatorFree):
         self.timer.tovlp += time.time() - start_time
 
         start_time = time.time()
-        self.update_weight(walkers, ovlp, ovlp_new)
+        
+        if verbose:
+            print('new and old overlaps:    ', ovlp_new[0], ovlp[0])
+        
+        self.update_weight(walkers, ovlp, ovlp_new) #walkers.previously ovlp_for_weight_update
+#        walkers.total_ovlp_for_weight_update = ovlp_new
+        
+        if verbose:
+            print('weight in prop III:   ', walkers.weight[0]) 
+        
         synchronize()
         self.timer.tupdate += time.time() - start_time
-
 
