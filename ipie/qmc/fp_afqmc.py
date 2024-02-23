@@ -26,14 +26,14 @@ from ipie.estimators.handler import EstimatorHandlerFP
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.free_propagation import FreePropagation
 from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.options import QMCParams
+from ipie.qmc.options import QMCParamsFP
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
-from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.utils.io import to_json
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.uhf_walkers import UHFWalkersFP
+from ipie.walkers.walkers_dispatch import get_initial_walker
 
 
 class FPAFQMC(AFQMC):
@@ -46,7 +46,7 @@ class FPAFQMC(AFQMC):
         trial,
         walkers,
         propagator,
-        params: QMCParams,
+        params: QMCParamsFP,
         verbose: int = 0,
     ):
         super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose=verbose)
@@ -68,6 +68,7 @@ class FPAFQMC(AFQMC):
         verbose=True,
         mpi_handler=None,
         ene_0=0.0,
+        num_iterations_fp=1,
     ) -> "FPAFQMC":
         """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
 
@@ -120,14 +121,37 @@ class FPAFQMC(AFQMC):
         else:
             comm = mpi_handler.comm
         fp_prop = FreePropagation(timestep, verbose=verbose, exp_nmax=10, ene_0=ene_0)
-        fp_prop.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
+        fp_prop.build(hamiltonian, driver.trial, walkers, mpi_handler)
+        if walkers is None:
+            _, initial_walker = get_initial_walker(driver.trial)
+            # TODO this is a factory method not a class
+            walkers = UHFWalkersFP(
+                initial_walker,
+                driver.system.nup,
+                driver.system.ndown,
+                hamiltonian.nbasis,
+                num_walkers,
+                mpi_handler,
+            )
+            walkers.build(driver.trial)  # any intermediates that require information from trial
+        params = QMCParamsFP(
+            num_walkers=num_walkers,
+            total_num_walkers=num_walkers * comm.size,
+            num_blocks=num_blocks,
+            num_steps_per_block=num_steps_per_block,
+            timestep=timestep,
+            num_stblz=stabilize_freq,
+            pop_control_freq=pop_control_freq,
+            rng_seed=seed,
+            num_iterations_fp=num_iterations_fp,
+        )
         return FPAFQMC(
             driver.system,
             driver.hamiltonian,
             driver.trial,
             driver.walkers,
             fp_prop,
-            driver.params,
+            params,
             verbose=(verbose and comm.rank == 0),
         )
 
@@ -289,8 +313,7 @@ class FPAFQMC(AFQMC):
             block_number = 0
             _, initial_walker = get_initial_walker(self.trial)
             # TODO this is a factory method not a class
-            initial_walkers = UHFWalkersTrial(
-                self.trial,
+            initial_walkers = UHFWalkersFP(
                 initial_walker,
                 self.system.nup,
                 self.system.ndown,
@@ -305,7 +328,7 @@ class FPAFQMC(AFQMC):
                 start_step = time.time()
                 if step % self.params.num_stblz == 0:
                     start = time.time()
-                    self.walkers.orthogonalise(free_projection=True)
+                    self.walkers.orthogonalise()
                     synchronize()
                     self.tortho += time.time() - start
                 start = time.time()

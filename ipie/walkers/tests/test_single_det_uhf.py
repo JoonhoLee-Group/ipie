@@ -22,7 +22,7 @@ import pytest
 from ipie.estimators.greens_function import greens_function_single_det
 from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import build_test_case_handlers
+from ipie.utils.testing import build_test_case_handlers, build_test_case_handlers_fp
 
 
 @pytest.mark.unit
@@ -144,10 +144,10 @@ def test_reortho_batch_fp():
         }
     )
     qmc.batched = True
-    batched_data = build_test_case_handlers(
+    batched_data = build_test_case_handlers_fp(
         nelec, nmo, num_dets=1, complex_trial=True, options=qmc, seed=7
     )
-    batched_data.walkers.orthogonalise(True)
+    batched_data.walkers.orthogonalise()
     assert batched_data.walkers.phia.shape == (nwalkers, nmo, nelec[0])
     assert batched_data.walkers.phib.shape == (nwalkers, nmo, nelec[1])
 

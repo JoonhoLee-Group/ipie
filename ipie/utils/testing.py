@@ -23,6 +23,7 @@ from typing import Tuple, Union
 import numpy
 
 from ipie.hamiltonians import Generic as HamGeneric
+from ipie.propagation.free_propagation import FreePropagation
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.fp_afqmc import FPAFQMC
@@ -42,6 +43,7 @@ from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
+from ipie.walkers.uhf_walkers import UHFWalkersFP
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
@@ -551,6 +553,71 @@ def build_test_case_handlers(
     return TestData(trial, walkers, ham, prop)
 
 
+def build_test_case_handlers_fp(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="single_det",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    choltol: float = 1e-3,
+    reortho: bool = True,
+    options: Union[dict, None] = None,
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    sym = 8
+    if complex_integrals:
+        sym = 4
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+    )
+    ham.eri = eri.copy()
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(ham)
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    walkers = UHFWalkersFP(init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler())
+    walkers.build(trial)  # any intermediates that require information from trial
+
+    prop = FreePropagation(time_step=options["dt"])
+    prop.build(ham, trial)
+
+    trial.calc_greens_function(walkers)
+    for _ in range(options.num_steps):
+        if two_body_only:
+            prop.propagate_walkers_two_body(walkers, ham, trial)
+        else:
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        if reortho:
+            walkers.reortho()
+        trial.calc_greens_function(walkers)
+
+    return TestData(trial, walkers, ham, prop)
+
+
 def build_driver_test_instance(
     num_elec: Tuple[int, int],
     num_basis: int,
@@ -563,7 +630,6 @@ def build_driver_test_instance(
     seed: Union[int, None] = None,
     density_diff=False,
     options: Union[dict, None] = None,
-    free_propagation=False,
 ):
     if seed is not None:
         numpy.random.seed(seed)
@@ -594,31 +660,75 @@ def build_driver_test_instance(
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     qmc = QMCOpts(qmc_opts, verbose=0)
     qmc.nwalkers = qmc.nwalkers
-    if not free_propagation:
-        afqmc = AFQMC.build(
-            num_elec,
-            ham,
-            trial,
-            num_walkers=qmc.nwalkers,
-            seed=qmc.rng_seed,
-            num_steps_per_block=qmc.nsteps,
-            num_blocks=qmc.nblocks,
-            timestep=qmc.dt,
-            stabilize_freq=qmc.nstblz,
-            pop_control_freq=qmc.npop_control,
-        )
-    else:
-        afqmc = FPAFQMC.build(
-            num_elec,
-            ham,
-            trial,
-            num_walkers=qmc.nwalkers,
-            seed=qmc.rng_seed,
-            num_steps_per_block=qmc.nsteps,
-            num_blocks=qmc.nblocks,
-            timestep=qmc.dt,
-            stabilize_freq=qmc.nstblz,
-            pop_control_freq=qmc.npop_control,
-            ene_0=trial.energy,
-        )
+    afqmc = AFQMC.build(
+        num_elec,
+        ham,
+        trial,
+        num_walkers=qmc.nwalkers,
+        seed=qmc.rng_seed,
+        num_steps_per_block=qmc.nsteps,
+        num_blocks=qmc.nblocks,
+        timestep=qmc.dt,
+        stabilize_freq=qmc.nstblz,
+        pop_control_freq=qmc.npop_control,
+    )
+    return afqmc
+
+
+def build_driver_test_instance_fp(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="phmsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+    seed: Union[int, None] = None,
+    density_diff=False,
+    options: Union[dict, None] = None,
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+    )
+    if density_diff:
+        ham.density_diff = True
+    trial, _ = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(ham)
+    try:
+        trial.calculate_energy(system, ham)
+    except NotImplementedError:
+        pass
+
+    qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
+    qmc = QMCOpts(qmc_opts, verbose=0)
+    qmc.nwalkers = qmc.nwalkers
+    afqmc = FPAFQMC.build(
+        num_elec,
+        ham,
+        trial,
+        num_walkers=qmc.nwalkers,
+        seed=qmc.rng_seed,
+        num_steps_per_block=5,
+        num_blocks=2,
+        timestep=qmc.dt,
+        stabilize_freq=qmc.nstblz,
+        pop_control_freq=qmc.npop_control,
+        ene_0=trial.energy,
+        num_iterations_fp=3,
+    )
     return afqmc

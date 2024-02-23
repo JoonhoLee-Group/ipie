@@ -330,7 +330,7 @@ def test_vhs():
 
 
 @pytest.mark.unit
-def test_fp():
+def test_free_projection():
     numpy.random.seed(7)
     nmo = 10
     nelec = (6, 5)
@@ -356,6 +356,19 @@ def test_fp():
     )
     assert batched_data.walkers.phia.shape == (nwalkers, nmo, nelec[0])
     assert batched_data.walkers.phib.shape == (nwalkers, nmo, nelec[1])
+    assert numpy.allclose(
+        numpy.sum(batched_data.walkers.phase), 7.926221838159645 + 0.3971467053264697j
+    )
+    assert numpy.allclose(numpy.sum(batched_data.walkers.weight), 1.7901505653712695)
+    assert numpy.allclose(
+        numpy.sum(batched_data.walkers.ovlp), -6.40187371404052e-05 - 2.34160780650416e-05j
+    )
+    assert numpy.allclose(
+        numpy.sum(batched_data.walkers.phia), 33.95629475599705 - 0.30274130601759786j
+    )
+    assert numpy.allclose(
+        numpy.sum(batched_data.walkers.phib), 41.45587700725909 - 2.8023497141639413j
+    )
 
 
 if __name__ == "__main__":
@@ -366,4 +379,4 @@ if __name__ == "__main__":
     test_hybrid_rhf_batch()
     test_hybrid_batch()
     test_vhs()
-    test_fp()
+    test_free_projection()

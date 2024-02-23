@@ -17,6 +17,7 @@
 #          Ankit Mahajan <ankitmahajan76@gmail.com>
 #
 
+import cmath
 import time
 from abc import ABCMeta, abstractmethod
 
@@ -170,13 +171,11 @@ class BaseWalkers(metaclass=ABCMeta):
         free_projection : bool
             True if doing free projection.
         """
+        detR = self.reortho()
         if free_projection:
-            detR = self.reortho_fp()
-            magn, dtheta = xp.abs(self.detR), xp.angle(self.detR)
+            (magn, dtheta) = cmath.polar(self.detR)
             self.weight *= magn
-            self.phase *= xp.exp(1j * dtheta)
-        else:
-            detR = self.reortho()
+            self.phase *= cmath.exp(1j * dtheta)
         return detR
 
     def get_write_buffer(self):
@@ -222,7 +221,4 @@ class BaseWalkers(metaclass=ABCMeta):
 
     @abstractmethod
     def reortho_batched(self):  # gpu version
-        pass
-
-    def reortho_fp(self):  # for free projection
         pass
