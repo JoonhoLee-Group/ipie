@@ -184,8 +184,6 @@ def build_fpafqmc_driver(
     seed: int = None,
     qmc_options: dict = None,
 ):
-    if comm.rank != 0:
-        verbosity = 0
     options = {
         "system": {"nup": nelec[0], "ndown": nelec[1]},
         "qmc": {"rng_seed": seed},

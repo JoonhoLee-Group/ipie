@@ -172,7 +172,6 @@ class QMCParams:
         pop_control_freq: Frequency at which population control occurs.
         rng_seed: The random number seed. If run in parallel the seeds on other
             cores / threads are determined from this.
-        num_iterations_fp: Number of free projection iterations per task.
     """
 
     num_walkers: int
