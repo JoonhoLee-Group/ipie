@@ -84,9 +84,9 @@ class FreePropagation(PhaselessGeneric):
         synchronize()
         self.timer.tupdate += time.time() - start_time
 
-    def update_weight(self, walkers, ovlp, ovlp_new, ceshift, cmf, eshift):
+    def update_weight(self, walkers, ovlp, ovlp_new, cfb, cmf, eshift):
         # weights in fp keep track of the walker normalization
-        magn, dtheta = xp.abs(ceshift * cmf), xp.angle(ceshift * cmf)
+        magn, dtheta = xp.abs(cfb * cmf), xp.angle(cfb * cmf)
         walkers.weight *= magn
         walkers.phase *= xp.exp(1j * dtheta)
         walkers.ovlp = ovlp_new
