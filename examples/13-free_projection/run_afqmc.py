@@ -21,21 +21,20 @@ if comm.rank == 0:
     gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 comm.barrier()
 
-from ipie.qmc.calc import build_afqmc_driver
+from ipie.qmc.calc import build_fpafqmc_driver
 
 qmc_options = {
-    "free_projection": True,
-    "num_iterations_fp": 10,
+    "num_iterations_fp": 100,
     "num_blocks": 5,
     "num_steps": 20,
+    "num_walkers": 10,
     "dt": 0.05,
 }
-afqmc = build_afqmc_driver(
+afqmc = build_fpafqmc_driver(
     comm,
     nelec=mol.nelec,
-    num_walkers_per_task=100,
     seed=41100801,
-    extra_qmc_options=qmc_options,
+    qmc_options=qmc_options,
 )
 if comm.rank == 0:
     print(afqmc.params)  # Inspect the default qmc options
@@ -43,7 +42,7 @@ afqmc.run()
 
 # analysis
 if comm.rank == 0:
-    from ipie.analysis.blocking import block_ratios
+    from ipie.analysis.blocking import jackknife_ratios
     from ipie.analysis.extraction import extract_observable
 
     for i in range(afqmc.params.num_blocks):
@@ -51,4 +50,4 @@ if comm.rank == 0:
             f"\nEnergy statistics at time {(i+1) * afqmc.params.num_steps_per_block * afqmc.params.timestep}:"
         )
         qmc_data = extract_observable(afqmc.estimators[i].filename, "energy", complexQ=True)
-        block_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
+        jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
