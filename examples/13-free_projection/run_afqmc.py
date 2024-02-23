@@ -43,11 +43,11 @@ afqmc.run()
 # analysis
 if comm.rank == 0:
     from ipie.analysis.blocking import jackknife_ratios
-    from ipie.analysis.extraction import extract_observable
+    from ipie.analysis.extraction import extract_observable_complex
 
     for i in range(afqmc.params.num_blocks):
         print(
             f"\nEnergy statistics at time {(i+1) * afqmc.params.num_steps_per_block * afqmc.params.timestep}:"
         )
-        qmc_data = extract_observable(afqmc.estimators[i].filename, "energy", complexQ=True)
+        qmc_data = extract_observable_complex(afqmc.estimators[i].filename, "energy")
         jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
