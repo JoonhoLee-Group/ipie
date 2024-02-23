@@ -392,39 +392,35 @@ def analyse_ekt_ipea(filename, ix=None, cutoff=1e-14, screen_factor=1):
     return (eip, eip_vec), (eea, eea_vec)
 
 
-def block_ratios(num: numpy.ndarray, denom: numpy.ndarray):
-    r"""Block averaging of ratios.
+def jackknife_ratios(num: numpy.ndarray, denom: numpy.ndarray):
+    r"""Jackknife estimation of standard deviation of the ratio of means.
 
     Parameters
     ----------
-    num : :class:`numpy.ndarray`
-        Numerator.
-    denom : :class:`numpy.ndarray`
-        Denominator.
+    num : :class:`np.ndarray
+        Numerator samples.
+    denom : :class:`np.ndarray`
+        Denominator samples.
 
     Returns
     -------
-    mean : :class:`numpy.ndarray`
-        Mean of the ratio.
+    mean : :class:`np.ndarray`
+        Ratio of means.
+    sigma : :class:`np.ndarray`
+        Standard deviation of the ratio of means.
     """
-    mean = numpy.mean(num) / numpy.mean(denom)
     n_samples = num.size
+    num_mean = numpy.mean(num)
+    denom_mean = numpy.mean(denom)
+    mean = num_mean / denom_mean
     print(f"Complex mean: {mean:.8e}")
-    header_0 = "Block size"
-    header_1 = "# of blocks"
-    header_2 = "Mean"
-    header_3 = "Error"
-    print(f" {header_0:>17s} {header_1:>17s} {header_2:>17s} {header_3:>17s}")
-    block_sizes = numpy.array([1, 2, 5, 10, 20, 50, 100, 200, 300, 400, 500, 1000, 10000])
-    for i in block_sizes[block_sizes < n_samples / 2.0]:
-        n_blocks = n_samples // i
-        blocked_denom = numpy.zeros(n_blocks, dtype=num.dtype)
-        blocked_num = numpy.zeros(n_blocks, dtype=num.dtype)
-        for j in range(n_blocks):
-            blocked_denom[j] = denom[j * i : (j + 1) * i].sum()
-            blocked_num[j] = num[j * i : (j + 1) * i].sum()
-        mean = numpy.mean(blocked_num) / numpy.mean(blocked_denom)
-        error = numpy.std((blocked_num / blocked_denom).real) / numpy.sqrt(n_blocks)
-        # taking real part for the error is a bit hacky
-        print(f" {i:>17d} {n_blocks:>17d} {mean.real:>17f} {error.real:>17f}")
-    return mean
+    jackknife_estimates = numpy.zeros(n_samples, dtype=num.dtype)
+    for i in range(n_samples):
+        mean_num_i = (num_mean * n_samples - num[i]) / (n_samples - 1)
+        mean_denom_i = (denom_mean * n_samples - denom[i]) / (n_samples - 1)
+        jackknife_estimates[i] = (mean_num_i / mean_denom_i).real
+    mean = numpy.mean(jackknife_estimates)
+    sigma = numpy.sqrt((n_samples - 1) * numpy.var(jackknife_estimates))
+    print(f"Mean: {mean.real:.8e}")
+    print(f"Stochastic error: {sigma.real:.8e}")
+    return mean, sigma
