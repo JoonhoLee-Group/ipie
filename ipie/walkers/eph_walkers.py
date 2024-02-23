@@ -29,23 +29,23 @@ class EphWalkers(BaseWalkers):
 
         self.weight = numpy.ones(self.nwalkers, dtype=numpy.complex128)
 
-        #TODO is there a reason we dont use numpy tile for these?
-        self.phia = xp.array(
-            [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
-            dtype=xp.complex128,
-        )
-#        self.phia = numpy.squeeze(self.phia) #NOTE: 1e hack to work with 1e overlaps
-
-        self.phib = xp.array(
-            [initial_walker[:, self.nup:self.nup+self.ndown].copy() for iw in range(self.nwalkers)],
-            dtype=xp.complex128,
-        )
         self.x = xp.array(
-            [initial_walker[:, self.nup+self.ndown:].copy() for iw in range(self.nwalkers)],
+            [initial_walker[:,0].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128
         )
         self.x = numpy.squeeze(self.x)
-        
+ 
+        #TODO is there a reason we dont use numpy tile for these?
+        self.phia = xp.array(
+            [initial_walker[:, 1 : self.nup+1].copy() for iw in range(self.nwalkers)],
+            dtype=xp.complex128,
+        )
+
+        self.phib = xp.array(
+            [initial_walker[:, self.nup+1 : self.nup+self.ndown+1].copy() for iw in range(self.nwalkers)],
+            dtype=xp.complex128,
+        )
+       
         self.buff_names += ["phia", "phib", "x"]
 
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
@@ -110,8 +110,8 @@ class EphWalkers(BaseWalkers):
             self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
             
-            self.el_ovlp[iw, :] = self.el_ovlp[iw, :] / detR[iw]
-            self.total_ovlp[iw, :] = self.total_ovlp[iw, :] / detR[iw]
+            self.el_ovlp[iw, ...] = self.el_ovlp[iw, ...] / detR[iw]
+            self.total_ovlp[iw, ...] = self.total_ovlp[iw, ...] / detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
         synchronize()

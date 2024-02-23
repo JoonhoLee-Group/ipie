@@ -7,7 +7,10 @@ from ipie.estimators.greens_function_single_det import greens_function_single_de
 from ipie.trial_wavefunction.holstein.eph_trial_base import EphTrialWavefunctionBase
 from ipie.trial_wavefunction.holstein.coherent_state import CoherentStateTrial
 
-verbose=False
+from ipie.utils.backend import arraylib as xp
+from ipie.propagation.overlap import calc_overlap_single_det_uhf 
+from ipie.estimators.greens_function_single_det import greens_function_single_det
+from ipie.config import CommType, config, MPI
 
 #TODO greensfunctions are in estimators 
 
@@ -24,6 +27,7 @@ class ToyozawaTrial(CoherentStateTrial):
     def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
         super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
         self.perms = list(circ_perm([i for i in range(self.nbasis)]))
+#        self.perms = [self.perms[0]]
         self.nperms = len(self.perms)
 
     def calculate_energy(self, system, hamiltonian):
@@ -46,8 +50,6 @@ class ToyozawaTrial(CoherentStateTrial):
             ph_ov = np.exp(-(self.m * self.w0 / 2) * (walkers.x - self.beta_shift[perm])**2)
             walkers.ph_ovlp[:, ip] = np.prod(ph_ov, axis=1)
         ph_ovlp = np.sum(walkers.ph_ovlp, axis=1)  
-        if verbose:
-            print('ph_ovlp: ', ph_ovlp[0])
         return ph_ovlp
 
     def calc_phonon_gradient(self, walkers) -> np.ndarray:  
@@ -79,22 +81,51 @@ class ToyozawaTrial(CoherentStateTrial):
     def calc_electronic_overlap(self, walkers) -> np.ndarray:
         """"""
         for ip,perm in enumerate(self.perms):
-            walkers.el_ovlp[:, ip] = np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia) #this is single electron
-            if self.nbeta > 0:
-                pass #TODO -> adjust ovlps shape
+#            print('psia shape:   ', self.psia.shape)
+#            print('walkers shape:   ', walkers.phia.shape)
+            ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia[perm, :].conj(), optimize=True)
+            sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
+
+            if self.ndown > 0:
+                ovlp_b = xp.einsum("wmi,mj->wij", walkers.phib, self.psib[perm, :].conj(), optimize=True)
+                sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
+                ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
+            else: 
+                ot = sign_a * xp.exp(log_ovlp_a - walkers.log_shift)
+
+            walkers.el_ovlp[:, ip] = ot
+        
         el_ovlp = np.sum(walkers.el_ovlp, axis=1) #NOTE this was ph before??
-        if verbose:
-            print('el_ovlp: ', el_ovlp[0])
+        
+#        if verbose:
+#            print('el_ovlp: ', el_ovlp[0])
+        
         return el_ovlp
 
-    def calc_greens_function(self, walkers) -> np.ndarray:
+    def calc_greens_function(self, walkers, build_full=True) -> np.ndarray:
         """"""
-        greensfct = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
-        for ovlp, perm in zip(walkers.total_ovlp.T, self.perms):
-            overlap_inv = 1 / np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia) #NOTE psi currently hacked
-            greensfct += np.einsum('nie,n,j,n->nji', walkers.phia, overlap_inv, 
-                                   self.psia[perm].conj(), ovlp) 
-        greensfct = np.einsum('nij,n->nij', greensfct, 1 / np.sum(walkers.total_ovlp, axis=1))  #these sums can be replaced by walkers.ovlp calls
-        return greensfct
 
+#        greensfct = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
+        walkers.Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
+        walkers.Gb = np.zeros_like(walkers.Ga)
+
+        for ovlp, perm in zip(walkers.total_ovlp.T, self.perms):
+            #TODO adjust this by just calling gab from exisiting extimators rubric TODO
+            #overlap_inv = 1 / np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia) #NOTE psi currently hacked
+            #greensfct += np.einsum('nie,n,j,n->nji', walkers.phia, overlap_inv, 
+            #                       self.psia[perm].conj(), ovlp) 
+            
+            inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia[perm,:], walkers.phia.conj()))
+            walkers.Ga += xp.einsum('nie,nef,jf,n->nji', walkers.phia, inv_Oa, self.psia[perm].conj(), ovlp) 
+            
+            if self.ndown > 0: 
+                inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib[perm,:], walkers.phib.conj()))
+                walkers.Gb += xp.einsum('nie,nef,jf,n->nji', walkers.phib, inv_Ob, self.psib[perm].conj(), ovlp)
+            #greensfct += greens_function_single_det(walkers, self, build_full=build_full) * ovlp            
+
+#        greensfct = np.einsum('nij,n->nij', greensfct, 1 / np.sum(walkers.total_ovlp, axis=1))  #these sums can be replaced by walkers.ovlp calls
+        walkers.Ga = np.einsum('nij,n->nij', walkers.Ga, 1 / np.sum(walkers.total_ovlp, axis=1))
+        walkers.Gb = np.einsum('nij,n->nij', walkers.Gb, 1 / np.sum(walkers.total_ovlp, axis=1))
+        
+        return [walkers.Ga, walkers.Gb]
 

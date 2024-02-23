@@ -3,46 +3,42 @@ import scipy.linalg
 
 #TODO add greens_function_coherent_state in estimators
 from ipie.estimators.greens_function_single_det import greens_function_single_det
-from ipie.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
+from ipie.trial_wavefunction.holstein.eph_trial_base import EphTrialWavefunctionBase
+from ipie.utils.backend import arraylib as xp
 
 #TODO greensfunctions are in estimators 
-class CoherentState(EphTrialWavefunctionBase):
+class CoherentStateTrial(EphTrialWavefunctionBase):
     """"""
-    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         self.num_elec = num_elec
-        self.nalpha, self.nbeta = self.num_elec
+        self.nup, self.ndown = self.num_elec
         self.w0 = hamiltonian.w0
         self.m = hamiltonian.m
         self.nsites = hamiltonian.nsites
 
-        self.psia = wavefunction[:self.nalpha, :]
-        self.psia = self.psia[0]
-        #NOTE 1e hack
-        self.psib = wavefunction[self.nalpha:self.nalpha+self.nbeta, :]
-        self.beta_shift = np.squeeze(wavefunction[-1, :])
-
-
-    def build(self, walkers) -> None:
-        walkers.ph_ovlp = np.zeros(walkers.nwalkers)
-        walkers.el_ovlp = np.zeros(walkers.nwalkers)
-        walkers.total_ovlp = np.zeros(self.nsites)
+        self.beta_shift = np.squeeze(wavefunction[:, 0])
+        self.psia = wavefunction[:, 1:self.nup+1]
+        self.psib = wavefunction[:, self.nup+1:self.nup+self.ndown+1]
 
     def calculate_energy(self, system, hamiltonian):
         #TODO variational_energy_coherent_state in ipie.estimators.local_energy
         ...
 
     def calc_overlap(self, walkers) -> np.ndarray:
-        #TODO this will be a concoction of phonon and electronic overlap
-        
+        _ = self.calc_phonon_overlap(walkers)
+        _ = self.calc_electronic_overlap(walkers)
+        walkers.total_ovlp = np.einsum('n,n->n', walkers.el_ovlp, walkers.ph_ovlp)
+        walkers.ovlp = walkers.total_ovlp
+        return walkers.ovlp
 
     def calc_phonon_overlap(self, walkers) -> np.ndarray:
-        walker.ph_ov = np.exp(-(self.m * self.w0 / 2) * (walkers.x - self.beta_shift)**2) 
-        walker.ph_ov = np.prod(ph_ov, axis=1)
-        return ph_ov
+        ph_ovlp = np.exp(-(self.m * self.w0 / 2) * (walkers.x - self.beta_shift)**2) 
+        walkers.ph_ovlp = np.prod(ph_ovlp, axis=1)
+        return walkers.ph_ovlp
 
     def calc_phonon_gradient(self, walkers) -> np.ndarray:
-        grad = np.einsum('ni,n->ni', (walkers.x - self.beta_shift), ovlp)
+        grad = walkers.x - self.beta_shift
         grad *= -self.m * self.w0
         return grad
 
@@ -59,10 +55,35 @@ class CoherentState(EphTrialWavefunctionBase):
         return self.calc_phonon_laplacian(walkers)
 
     def calc_electronic_overlap(self, walkers) -> np.ndarray:
-        walkers.el_ovlp[ip] = np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia)
-        if self.nbeta > 0:
-            pass
+#        walkers.el_ovlp = np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia)
+#        if self.nbeta > 0:
+#            pass
+        ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia.conj(), optimize=True)
+        sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
+        if self.ndown > 0:
+            ovlp_b = xp.einsum("wmi,mj->wij", walkers.phib, self.psib.conj(), optimize=True)
+            sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
+            ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
+        else:
+            ot = sign_a * xp.exp(log_ovlp_a - walkers.log_shift)
+
+        walkers.el_ovlp = ot
+
+        return walkers.el_ovlp
 
     def calc_greens_function(self, walkers) -> np.ndarray:
+#        overlap_inv = 1 / np.einsum('i,nie->n', self.psia.conj(), walkers.phia)
+#        greensfct = np.einsum('nie,n,j->nji', walkers.phia, overlap_inv, self.psia[perm].conj())
+#        walkers.Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
+#        walkers.Gb = np.zeros_like(walkers.Ga)
+
+        inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia, walkers.phia.conj()))
+        walkers.Ga = xp.einsum('nie,nef,jf->nji', walkers.phia, inv_Oa, self.psia.conj())
+
+        if self.ndown > 0:
+            inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib, walkers.phib.conj()))
+            walkers.Gb = xp.einsum('nie,nef,jf->nji', walkers.phib, inv_Ob, self.psib.conj())
+
+        return [walkers.Ga, walkers.Gb]
 
