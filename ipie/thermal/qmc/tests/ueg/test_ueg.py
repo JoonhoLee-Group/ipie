@@ -97,6 +97,7 @@ def build_driver_test_instance(ueg: UEG,
     nblocks = options['nblocks']
     stabilize_freq = options['stabilize_freq']
     pop_control_freq = options['pop_control_freq']
+    pop_control_method = options['pop_control_method']
     lowrank = options['lowrank']
     numpy.random.seed(seed)
 
@@ -118,6 +119,7 @@ def build_driver_test_instance(ueg: UEG,
                 beta=beta,
                 num_stblz=stabilize_freq,
                 pop_control_freq=pop_control_freq,
+                pop_control_method=pop_control_method,
                 rng_seed=seed)
     
     print('\n----------------------------')
@@ -169,6 +171,7 @@ def build_legacy_driver_instance(hamiltonian,
     nblocks = options['nblocks']
     stabilize_freq = options['stabilize_freq']
     pop_control_freq = options['pop_control_freq']
+    pop_control_method = options['pop_control_method']
     lowrank = options['lowrank']
     numpy.random.seed(seed)
     
@@ -190,7 +193,9 @@ def build_legacy_driver_instance(hamiltonian,
         },
 
         "walkers": {
-            "low_rank": lowrank
+            "low_rank": lowrank,
+            "pop_control_freq": pop_control_freq,
+            "pop_control": pop_control_method
         },
         
         "ueg_opts": options["ueg_opts"],
@@ -210,30 +215,14 @@ def build_legacy_driver_instance(hamiltonian,
     # 3. Build trial.
     legacy_trial = LegacyOneBody(legacy_system, legacy_hamiltonian, beta, timestep, verbose=verbose)
     
-    # 4. Build walkers.
-    legacy_walkers = [
-            ThermalWalker(
-                legacy_system, legacy_hamiltonian, legacy_trial,
-                walker_opts=legacy_options, verbose=i == 0) for i in range(nwalkers)]
-
-    # 5. Build propagator.
-    qmc_opts = QMCOpts()
-    qmc_opts.nwalkers = nwalkers
-    qmc_opts.ntot_walkers = nwalkers
-    qmc_opts.beta = beta
-    qmc_opts.nsteps = nsteps_per_block
-    qmc_opts.dt = timestep
-    qmc_opts.seed = seed
-
-    legacy_propagator = PlaneWave(legacy_system, legacy_hamiltonian, legacy_trial, qmc_opts,
-                                  options=legacy_options["propagator"], lowrank=lowrank, verbose=verbose)
+    # 4. Build Thermal AFQMC.
     afqmc = LegacyThermalAFQMC(comm, legacy_options, legacy_system, 
                                legacy_hamiltonian, legacy_trial, verbose=verbose)
     return afqmc
 
 
 @pytest.mark.unit
-def test_thermal_afqmc(against_ref=False):
+def test_thermal_afqmc_1walker(against_ref=False):
     # Thermal AFQMC params.
     seed = 7
     mu = -1.
@@ -245,6 +234,10 @@ def test_thermal_afqmc(against_ref=False):
     nblocks = 11
     stabilize_freq = 10
     pop_control_freq = 1
+
+    # `pop_control_method` doesn't matter for 1 walker.
+    pop_control_method = "pair_branch"
+    #pop_control_method = "comb"
     lowrank = False
     verbose = True
     debug = True
@@ -288,6 +281,7 @@ def test_thermal_afqmc(against_ref=False):
                     'nblocks': nblocks,
                     'stabilize_freq': stabilize_freq,
                     'pop_control_freq': pop_control_freq,
+                    'pop_control_method': pop_control_method,
                     'lowrank': lowrank,
 
                     "hamiltonian": {
@@ -414,9 +408,156 @@ def test_thermal_afqmc(against_ref=False):
                     print(f" name = {k}\n ref = {v[0]}\n test = {v[1]}\n delta = {v[0]-v[1]}\n")
 
             if local_err_count == 0:
-                print(f"\n*** PASSED : {test_name} ***")
+                print(f"\n*** PASSED : {test_name} ***\n")
+
+@pytest.mark.unit
+def test_thermal_afqmc():
+    # Thermal AFQMC params.
+    seed = 7
+    mu = -1.
+    beta = 0.1
+    timestep = 0.01
+    nwalkers = 32
+    # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
+    nsteps_per_block = 1
+    nblocks = 11
+    stabilize_freq = 10
+    pop_control_freq = 1
+    pop_control_method = "pair_branch"
+    #pop_control_method = "comb"
+    lowrank = False
+    verbose = True
+    debug = True
+    numpy.random.seed(seed)
+    
+    with tempfile.NamedTemporaryFile() as tmpf1, tempfile.NamedTemporaryFile() as tmpf2:
+        ueg_opts = {
+                "nup": 7,
+                "ndown": 7,
+                "rs": 1.,
+                "ecut": 1.,
+                "thermal": True,
+                "write_integrals": False,
+                "low_rank": lowrank
+                }
+
+        # Generate UEG integrals.
+        ueg = UEG(ueg_opts, verbose=verbose)
+        ueg.build(verbose=verbose)
+        nbasis = ueg.nbasis
+        nchol = ueg.nchol
+        nelec = (ueg.nup, ueg.ndown)
+        nup, ndown = nelec
+
+        if verbose:
+            print(f"# nbasis = {nbasis}")
+            print(f"# nchol = {nchol}")
+            print(f"# nup = {nup}")
+            print(f"# ndown = {ndown}")
+        
+        # ---------------------------------------------------------------------
+        options = {
+                    'nelec': nelec,
+                    'nbasis': nbasis,
+                    'mu': mu,
+                    'beta': beta,
+                    'timestep': timestep,
+                    'nwalkers': nwalkers,
+                    'seed': seed,
+                    'nsteps_per_block': nsteps_per_block,
+                    'nblocks': nblocks,
+                    'stabilize_freq': stabilize_freq,
+                    'pop_control_freq': pop_control_freq,
+                    'pop_control_method': pop_control_method,
+                    'lowrank': lowrank,
+
+                    "hamiltonian": {
+                        "name": "UEG",
+                        "_alt_convention": False,
+                        "sparse": False,
+                        "mu": mu
+                    },
+
+                    "estimators": {
+                        "filename": tmpf2.name, # For legacy.
+                    },
+
+                    "ueg_opts": ueg_opts
+                }
+    
+        # ---------------------------------------------------------------------
+        # Test.
+        # ---------------------------------------------------------------------
+        print('\n-----------------------')
+        print('Running ThermalAFQMC...')
+        print('-----------------------')
+        afqmc, hamiltonian, walkers = build_driver_test_instance(ueg, options, seed, debug, verbose)
+        afqmc.run(walkers, verbose, estimator_filename=tmpf1.name)
+        afqmc.finalise()
+        afqmc.estimators.compute_estimators(afqmc.hamiltonian, afqmc.trial, afqmc.walkers)
+
+        test_energy_data = extract_observable(afqmc.estimators.filename, "energy")
+        test_energy_numer = afqmc.estimators["energy"]["ENumer"]
+        test_energy_denom = afqmc.estimators["energy"]["EDenom"]
+        test_number_data = extract_observable(afqmc.estimators.filename, "nav")
+        
+        # ---------------------------------------------------------------------
+        # Legacy.
+        # ---------------------------------------------------------------------
+        print('\n------------------------------')
+        print('Running Legacy ThermalAFQMC...')
+        print('------------------------------')
+        legacy_afqmc = build_legacy_driver_instance(hamiltonian, options, seed, verbose)
+        legacy_afqmc.run(comm=comm)
+        legacy_afqmc.finalise(verbose=False)
+        legacy_afqmc.estimators.estimators["mixed"].update(
+            legacy_afqmc.qmc,
+            legacy_afqmc.system,
+            legacy_afqmc.hamiltonian,
+            legacy_afqmc.trial,
+            legacy_afqmc.walk,
+            0,
+            legacy_afqmc.propagators.free_projection)
+        legacy_mixed_data = extract_mixed_estimates(legacy_afqmc.estimators.filename)
+
+        enum = legacy_afqmc.estimators.estimators["mixed"].names
+        legacy_energy_numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
+        legacy_energy_denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
+        
+        # ---------------------------------------------------------------------
+        if verbose:
+            print(f'\nThermal AFQMC options: \n{json.dumps(options, indent=4)}\n')
+            print(f'test filename: {afqmc.estimators.filename}')
+            print(f'legacy filename: {legacy_afqmc.estimators.filename}')
+            print(f'\ntest_energy_data: \n{test_energy_data}\n')
+            print(f'test_number_data: \n{test_number_data}\n')
+            print(f'legacy_mixed_data: \n{legacy_mixed_data}\n')
+
+        assert test_energy_denom.real == pytest.approx(legacy_energy_denom.real)
+        assert test_energy_numer.imag == pytest.approx(legacy_energy_numer.imag)
+        assert test_energy_denom.imag == pytest.approx(legacy_energy_denom.imag)
+    
+        assert numpy.mean(test_energy_data.WeightFactor.values[1:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.WeightFactor.values[1:-1].real))
+        assert numpy.mean(test_energy_data.Weight.values[1:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.Weight.values[1:-1].real))
+        assert numpy.mean(test_energy_data.ENumer.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.ENumer.values[:-1].real))
+        assert numpy.mean(test_energy_data.EDenom.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.EDenom.values[:-1].real))
+        assert numpy.mean(test_energy_data.ETotal.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.ETotal.values[:-1].real))
+        assert numpy.mean(test_energy_data.E1Body.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.E1Body.values[:-1].real))
+        assert numpy.mean(test_energy_data.E2Body.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.E2Body.values[:-1].real))
+        assert numpy.mean(test_energy_data.HybridEnergy.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.EHybrid.values[:-1].real))
+        assert numpy.mean(test_number_data.Nav.values[:-1].real) == pytest.approx(
+            numpy.mean(legacy_mixed_data.Nav.values[:-1].real))
 
 
 if __name__ == '__main__':
-    test_thermal_afqmc(against_ref=True)
+    test_thermal_afqmc_1walker(against_ref=True)
+    test_thermal_afqmc()
 

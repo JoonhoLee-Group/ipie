@@ -119,8 +119,10 @@ class UHFThermalWalkers(BaseWalkers):
                 nav = particle_number(P)
                 print(f"# Trial electron number for {iw}-th walker: {nav}")
 
-        self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
-
+        #self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
+        self.buff_names += ["Ga", "Gb"]
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def calc_greens_function(self, iw, slice_ix=None, inplace=True):
         """Return the Green's function for walker `iw`.

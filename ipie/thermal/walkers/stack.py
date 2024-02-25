@@ -69,7 +69,9 @@ class PropagatorStack:
             self.mT = nbasis
 
         self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
-        # set all entries to be the identity matrix
+        self.stack_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+
+        # Set all entries to be the identity matrix
         self.reset()
 
     def get(self, ix):

@@ -525,7 +525,10 @@ class PlaneWave(object):
             walker.greens_function(None, slice_ix=tix, inplace=True)
 
         # 3. Compute det(G/G')
-        M0 = walker.M0
+        M0 = [
+                scipy.linalg.det(G[0], check_finite=False),
+                scipy.linalg.det(G[1], check_finite=False)
+        ]
         Mnew = numpy.array(
             [
                 scipy.linalg.det(walker.G[0], check_finite=False),

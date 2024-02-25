@@ -44,7 +44,7 @@ def setup_objs(mpi_handler, pop_control_method, seed=None):
     nbasis = 10
 
     mu = -10.
-    beta = 0.03
+    beta = 0.1
     timestep = 0.01
     nwalkers = 10
     nblocks = 3

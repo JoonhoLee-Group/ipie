@@ -28,6 +28,7 @@ from ipie.analysis.extraction import (
 from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
 from ipie.legacy.trial_density_matrices.onebody import OneBody as LegacyOneBody
+from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.thermal_propagation.continuous import Continuous
 from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
@@ -63,6 +64,7 @@ def build_driver_test_instance(options: Union[dict, None],
     nblocks = options['nblocks']
     stabilize_freq = options['stabilize_freq']
     pop_control_freq = options['pop_control_freq']
+    pop_control_method = options['pop_control_method']
     lowrank = options['lowrank']
     numpy.random.seed(seed)
 
@@ -78,6 +80,7 @@ def build_driver_test_instance(options: Union[dict, None],
                 beta=beta,
                 num_stblz=stabilize_freq,
                 pop_control_freq=pop_control_freq,
+                pop_control_method=pop_control_method,
                 rng_seed=seed)
     
     system = Generic(nelec=nelec)
@@ -119,6 +122,7 @@ def build_legacy_driver_instance(hamiltonian,
     nblocks = options['nblocks']
     stabilize_freq = options['stabilize_freq']
     pop_control_freq = options['pop_control_freq']
+    pop_control_method = options['pop_control_method']
     lowrank = options['lowrank']
     numpy.random.seed(seed)
     
@@ -140,7 +144,9 @@ def build_legacy_driver_instance(hamiltonian,
         },
 
         "walkers": {
-            "low_rank": lowrank
+            "low_rank": lowrank,
+            "pop_control_freq": pop_control_freq,
+            "pop_control": pop_control_method
         },
 
         "system": {
@@ -168,13 +174,6 @@ def build_legacy_driver_instance(hamiltonian,
     legacy_hamiltonian.mu = legacy_options["hamiltonian"]["mu"]
     legacy_trial = LegacyMeanField(legacy_system, legacy_hamiltonian, beta, timestep)
         
-    legacy_walkers = [
-            ThermalWalker(
-                legacy_system, legacy_hamiltonian, legacy_trial, 
-                walker_opts=options, verbose=i == 0) for i in range(nwalkers)]
-
-    #legacy_hamiltonian.chol_vecs = legacy_hamiltonian.chol_vecs.T.reshape(
-    #                (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
     afqmc = LegacyThermalAFQMC(comm, legacy_options, legacy_system, 
                                legacy_hamiltonian, legacy_trial, verbose=verbose)
     return afqmc
@@ -198,6 +197,8 @@ def test_thermal_afqmc():
     nblocks = 12
     stabilize_freq = 10
     pop_control_freq = 1
+    pop_control_method = 'pair_branch'
+    #pop_control_method = 'comb'
     lowrank = False
     verbose = True
     debug = True
@@ -215,6 +216,7 @@ def test_thermal_afqmc():
                     'nblocks': nblocks,
                     'stabilize_freq': stabilize_freq,
                     'pop_control_freq': pop_control_freq,
+                    'pop_control_method': pop_control_method,
                     'lowrank': lowrank,
 
                     "hamiltonian": {

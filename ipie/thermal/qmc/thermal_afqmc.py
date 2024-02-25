@@ -182,9 +182,6 @@ class ThermalAFQMC(AFQMC):
         
         comm = self.mpi_handler.comm
         self.tsetup += time.time() - ft_setup
-        
-        print(f'comm.size = {comm.size}')
-        print(f'comm.rank = {comm.rank}')
 
         # Propagate.
         nwalkers = self.walkers.nwalkers
@@ -194,9 +191,6 @@ class ThermalAFQMC(AFQMC):
         # matters at all.
         neqlb_steps = 2.0 / self.params.timestep
         nslices = numpy.rint(self.params.beta / self.params.timestep).astype(int)
-
-        print(f'total_steps = {total_steps}')
-        print(f'nslices = {nslices}')
 
         for step in range(1, total_steps + 1):
             start_path = time.time()
