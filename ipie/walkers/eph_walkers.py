@@ -7,7 +7,8 @@ from ipie.walkers.base_walkers import BaseWalkers
 from ipie.trial_wavefunction.holstein.toyozawa import ToyozawaTrial
 
 class EphWalkers(BaseWalkers):
-    """"""
+    """Class tailored to el-ph models where keeping track of phonon overlaps is
+    required."""
     def __init__(
         self, 
         initial_walker: numpy.ndarray,
@@ -15,14 +16,12 @@ class EphWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler,
         verbose: bool = False
     ):
 
         self.nup = nup
         self.ndown = ndown
         self.nbasis = nbasis
-        self.mpi_handler = mpi_handler
 
 
         super().__init__(nwalkers, verbose=verbose)
@@ -35,7 +34,6 @@ class EphWalkers(BaseWalkers):
         )
         self.x = numpy.squeeze(self.x)
  
-        #TODO is there a reason we dont use numpy tile for these?
         self.phia = xp.array(
             [initial_walker[:, 1 : self.nup+1].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128,
@@ -52,10 +50,14 @@ class EphWalkers(BaseWalkers):
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def build(self, trial):
-        """NOTE: total_ovlp is the same as ovlp for coherent state trial, and just
-        serves the purpose of not recomputing overlaps for each permutation 
-        but passing it to the pop_control and adjsuting it accordingly for the 
-        Toyozawa trial."""
+        """Allocates memory for computation of overlaps throughout the 
+        simulation.
+        
+        Parameters
+        ----------
+        trial : class
+            Trial wavefunction object.
+        """
 
         if isinstance(trial, ToyozawaTrial):
             shape = (self.nwalkers, trial.nperms)
@@ -66,7 +68,7 @@ class EphWalkers(BaseWalkers):
         self.el_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
         self.total_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
 
-        self.buff_names += ['total_ovlp'] #, 'el_ovlp', 'total_ovlp'] #not really necessary to bring 'el_ovlp', 'total_ovlp' along if computing overlap after normalization anyways.
+        self.buff_names += ['total_ovlp']
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
@@ -74,9 +76,11 @@ class EphWalkers(BaseWalkers):
         cast_to_device(self, verbose)
 
     def reortho(self):
-        """reorthogonalise walkers.
+        """reorthogonalise walkers. This function is mostly from BaseWalkers,
+        with the exception that it adjusts all overlaps, possibly of numerous 
+        coherent states.
 
-        parameters
+        Parameters
         ----------
         """
         if config.get_option("use_gpu"):
@@ -117,26 +121,5 @@ class EphWalkers(BaseWalkers):
         synchronize()
         return detR
 
-    def reortho_batched(self):
-        """reorthogonalise walkers.
-
-        parameters
-        ----------
-        """
-        assert config.get_option("use_gpu")
-        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
-        Rup_diag = xp.einsum("wii->wi", Rup)
-        log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
-
-        if self.ndown > 0:
-            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
-            Rdn_diag = xp.einsum("wii->wi", Rdn)
-            log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
-        self.detR = xp.exp(log_det - self.detR_shift)
-        self.ovlp = self.ovlp / self.detR
-
-        synchronize()
-
-        return self.detR
-
-
+    def reortho_batched(self):  # gpu version
+        pass

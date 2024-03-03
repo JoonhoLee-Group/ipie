@@ -27,7 +27,6 @@ class ToyozawaTrial(CoherentStateTrial):
     def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
         super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
         self.perms = list(circ_perm([i for i in range(self.nbasis)]))
-#        self.perms = [self.perms[0]]
         self.nperms = len(self.perms)
 
     def calculate_energy(self, system, hamiltonian):
@@ -38,7 +37,7 @@ class ToyozawaTrial(CoherentStateTrial):
         #TODO this will be a concoction of phonon and electronic overlap
         _ = self.calc_phonon_overlap(walkers)
         _ = self.calc_electronic_overlap(walkers)
-        walkers.total_ovlp = np.einsum('np,np->np', walkers.el_ovlp, walkers.ph_ovlp) 
+        walkers.total_ovlp = walkers.el_ovlp * walkers.ph_ovlp 
         walkers.ovlp = np.sum(walkers.total_ovlp, axis=1)
         return walkers.ovlp
 

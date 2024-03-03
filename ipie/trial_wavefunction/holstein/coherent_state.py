@@ -28,7 +28,7 @@ class CoherentStateTrial(EphTrialWavefunctionBase):
     def calc_overlap(self, walkers) -> np.ndarray:
         _ = self.calc_phonon_overlap(walkers)
         _ = self.calc_electronic_overlap(walkers)
-        walkers.total_ovlp = np.einsum('n,n->n', walkers.el_ovlp, walkers.ph_ovlp)
+        walkers.total_ovlp = walkers.el_ovlp * walkers.ph_ovlp #np.einsum('n,n->n', walkers.el_ovlp, walkers.ph_ovlp)
         walkers.ovlp = walkers.total_ovlp
         return walkers.ovlp
 
@@ -55,9 +55,18 @@ class CoherentStateTrial(EphTrialWavefunctionBase):
         return self.calc_phonon_laplacian(walkers)
 
     def calc_electronic_overlap(self, walkers) -> np.ndarray:
-#        walkers.el_ovlp = np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia)
-#        if self.nbeta > 0:
-#            pass
+        """Computes electronic overlap.
+        
+        Parameters
+        ----------
+        walkers : class
+            EphWalkers class object
+            
+        Returns
+        -------
+        walker.el_ovlp : np.ndarray
+            Electronic overlap
+        """
         ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia.conj(), optimize=True)
         sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
@@ -73,17 +82,24 @@ class CoherentStateTrial(EphTrialWavefunctionBase):
         return walkers.el_ovlp
 
     def calc_greens_function(self, walkers) -> np.ndarray:
-#        overlap_inv = 1 / np.einsum('i,nie->n', self.psia.conj(), walkers.phia)
-#        greensfct = np.einsum('nie,n,j->nji', walkers.phia, overlap_inv, self.psia[perm].conj())
-#        walkers.Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
-#        walkers.Gb = np.zeros_like(walkers.Ga)
-
-        inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia, walkers.phia.conj()))
-        walkers.Ga = xp.einsum('nie,nef,jf->nji', walkers.phia, inv_Oa, self.psia.conj())
+        """Computes Greens function.
+        
+        Parameters
+        ----------
+        walkers : class
+            EphWalkers class object
+        
+        Returns
+        -------
+        walkers.G : list
+            Greens function for each spin space
+        """
+        inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia, walkers.phia.conj()), optimize=True)
+        walkers.Ga = xp.einsum('nie,nef,jf->nji', walkers.phia, inv_Oa, self.psia.conj(), optimize=True)
 
         if self.ndown > 0:
-            inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib, walkers.phib.conj()))
-            walkers.Gb = xp.einsum('nie,nef,jf->nji', walkers.phib, inv_Ob, self.psib.conj())
+            inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib, walkers.phib.conj()), optimize=True)
+            walkers.Gb = xp.einsum('nie,nef,jf->nji', walkers.phib, inv_Ob, self.psib.conj(), optimize=True)
 
         return [walkers.Ga, walkers.Gb]
 
