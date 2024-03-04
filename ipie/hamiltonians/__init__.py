@@ -18,4 +18,3 @@
 
 from .generic_base import GenericBase
 from .generic import Generic
-from .ueg import UEG
