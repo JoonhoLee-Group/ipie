@@ -22,9 +22,7 @@ import time
 import numpy
 
 from ipie.systems.generic import Generic as SysGeneric
-from ipie.systems.ueg import UEG as SysUEG
 from ipie.hamiltonians.generic import Generic, construct_h1e_mod, read_integrals
-from ipie.hamiltonians.ueg import UEG
 from ipie.utils.io import get_input_value
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 from ipie.utils.pack_numba import pack_cholesky
@@ -98,20 +96,6 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             h1e=hcore,
             chol=chol,
             ecore=enuc,
-            verbose=verbose,
-        )
-
-        ham._alt_convention = ham_opts["_alt_convention"]
-        ham.sparse = ham_opts["sparse"]
-        ham.name = ham_opts["name"]
-        ham.hs_pot = chol.T.reshape(nchol, nbsf, nbsf)
-        ham.chol_vecs = chol
-        ham.mu = ham_opts["mu"]
-
-    elif isinstance(system, SysUEG):
-        ham = UEG(
-            system,
-            ham_opts,
             verbose=verbose,
         )
 
