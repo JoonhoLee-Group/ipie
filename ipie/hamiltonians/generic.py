@@ -50,7 +50,7 @@ def construct_h1e_mod_chunked(chol, h1e, h1e_mod, handler):
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis * nchol))
     # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
-    v0 = 0.5 * xp.dot(
+    v0 = 0.5 * numpy.dot(
         chol_view,
         chol_view.T.conj(),  # conjugate added to account for complex integrals
     )  # einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
