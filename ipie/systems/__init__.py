@@ -17,4 +17,3 @@
 #
 
 from .generic import Generic
-from .ueg import UEG
