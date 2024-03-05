@@ -19,7 +19,6 @@
 import sys
 
 from ipie.systems.generic import Generic
-from ipie.systems.ueg import UEG
 
 
 def get_system(sys_opts=None, verbose=0, comm=None):
@@ -39,7 +38,6 @@ def get_system(sys_opts=None, verbose=0, comm=None):
     """
     assert sys_opts is not None
     sys_type = sys_opts.get("name")
-
     if sys_type is None or sys_type == "Generic":
         nup, ndown = sys_opts.get("nup"), sys_opts.get("ndown")
         if nup is None or ndown is None:
@@ -49,16 +47,9 @@ def get_system(sys_opts=None, verbose=0, comm=None):
 
         nelec = (nup, ndown)
         system = Generic(nelec, verbose)
-        #system.mu = sys_opts["mu"]
-
-
-    elif sys_type == "UEG":
-        system = UEG(sys_opts, verbose)
-
     else:
         if comm.rank == 0:
             print(f"# Error: unrecognized system name {sys_type}.")
 
         raise ValueError
-
     return system
