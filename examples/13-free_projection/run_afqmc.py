@@ -21,7 +21,7 @@ if comm.rank == 0:
     gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 comm.barrier()
 
-from ipie.qmc.calc import build_fpafqmc_driver
+from ipie.addons.free_projection.qmc.calc import build_fpafqmc_driver
 
 qmc_options = {
     "num_iterations_fp": 100,
@@ -42,12 +42,13 @@ afqmc.run()
 
 # analysis
 if comm.rank == 0:
-    from ipie.analysis.blocking import jackknife_ratios
-    from ipie.analysis.extraction import extract_observable_complex
+    from ipie.addons.free_projection.analysis.extraction import extract_observable
+    from ipie.addons.free_projection.analysis.jackknife import jackknife_ratios
 
     for i in range(afqmc.params.num_blocks):
         print(
             f"\nEnergy statistics at time {(i+1) * afqmc.params.num_steps_per_block * afqmc.params.timestep}:"
         )
-        qmc_data = extract_observable_complex(afqmc.estimators[i].filename, "energy")
-        jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
+        qmc_data = extract_observable(afqmc.estimators[i].filename, "energy")
+        energy_mean, energy_err = jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
+        print(f"Energy: {energy_mean:.8e} +/- {energy_err:.8e}")

@@ -20,11 +20,12 @@
 # todo : handle more gracefully.
 import json
 
+from ipie.addons.free_projection.estimators.energy import local_energy
+from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
+from ipie.addons.free_projection.qmc.fp_afqmc import FPAFQMC
+from ipie.addons.free_projection.qmc.options import QMCParamsFP
 from ipie.config import MPI
 from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.propagation.propagator import Propagator
-from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.options import QMCParams
 from ipie.systems.utils import get_system
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value
@@ -32,21 +33,28 @@ from ipie.utils.mpi import MPIHandler
 from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
 
 
-def init_communicator():
-    return MPI.COMM_WORLD
+def build_fpafqmc_driver(
+    comm,
+    nelec: tuple,
+    wavefunction_file: str = "wavefunction.h5",
+    hamiltonian_file: str = "hamiltonian.h5",
+    estimator_filename: str = "estimates.0.h5",
+    seed: int = None,
+    qmc_options: dict = None,
+):
+    options = {
+        "system": {"nup": nelec[0], "ndown": nelec[1]},
+        "qmc": {"rng_seed": seed},
+        "hamiltonian": {"integrals": hamiltonian_file},
+        "trial": {"filename": wavefunction_file},
+        "estimators": {"overwrite": True, "filename": estimator_filename},
+    }
+    if qmc_options is not None:
+        options["qmc"].update(qmc_options)
+    return get_driver_fp(options, comm)
 
 
-def setup_calculation(input_options):
-    comm = init_communicator()
-    if isinstance(input_options, str):
-        options = read_input(input_options, comm, verbose=True)
-    else:
-        options = input_options
-    afqmc = get_driver(options, comm)
-    return (afqmc, comm)
-
-
-def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
+def get_driver_fp(options: dict, comm: MPI.COMM_WORLD) -> FPAFQMC:
     verbosity = options.get("verbosity", 1)
     qmc_opts = get_input_value(options, "qmc", default={}, alias=["qmc_options"])
     sys_opts = get_input_value(
@@ -125,7 +133,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             mpi_handler,
         )
         walkers.build(trial)  # any intermediates that require information from trial
-        params = QMCParams(
+        params = QMCParamsFP(
             num_walkers=qmc.nwalkers,
             total_num_walkers=qmc.nwalkers * comm.size,
             num_blocks=qmc.nblocks,
@@ -134,10 +142,12 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             num_stblz=qmc.nstblz,
             pop_control_freq=qmc.npop_control,
             rng_seed=qmc.rng_seed,
+            num_iterations_fp=get_input_value(qmc_opts, "num_iterations_fp", 1),
         )
-        propagator = Propagator[type(hamiltonian)](params.timestep)
+        ene_0 = local_energy(system, hamiltonian, walkers, trial)[0][0]
+        propagator = FreePropagation(time_step=params.timestep, exp_nmax=10, ene_0=ene_0)
         propagator.build(hamiltonian, trial, walkers, mpi_handler)
-        afqmc = AFQMC(
+        afqmc = FPAFQMC(
             system,
             hamiltonian,
             trial,
@@ -148,60 +158,3 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         )
 
     return afqmc
-
-
-def build_afqmc_driver(
-    comm,
-    nelec: tuple,
-    wavefunction_file: str = "wavefunction.h5",
-    hamiltonian_file: str = "hamiltonian.h5",
-    num_walkers_per_task: int = 10,
-    estimator_filename: str = "estimates.0.h5",
-    seed: int = None,
-    verbosity: int = 0,
-):
-    if comm.rank != 0:
-        verbosity = 0
-    options = {
-        "system": {"nup": nelec[0], "ndown": nelec[1]},
-        "qmc": {"nwalkers": num_walkers_per_task, "rng_seed": seed},
-        "hamiltonian": {"integrals": hamiltonian_file},
-        "trial": {"filename": wavefunction_file},
-        "estimators": {"overwrite": True, "filename": estimator_filename},
-    }
-    return get_driver(options, comm)
-
-
-def read_input(input_file, comm, verbose=False):
-    """Helper function to parse input file and setup parallel calculation.
-
-    Parameters
-    ----------
-    input_file : string
-        Input filename.
-    verbose : bool
-        If true print out set up information.
-
-    Returns
-    -------
-    options : dict
-        Python dict of input options.
-    comm : MPI communicator
-        Communicator object. If mpi4py is not installed then we return a fake
-        communicator.
-    """
-    if comm.rank == 0:
-        if verbose:
-            print(f"# Initialising pie simulation from {input_file}")
-        try:
-            with open(input_file) as inp:
-                options = json.load(inp)
-        except FileNotFoundError:
-            options = None
-    else:
-        options = None
-    options = comm.bcast(options, root=0)
-    if options == None:
-        raise FileNotFoundError
-
-    return options

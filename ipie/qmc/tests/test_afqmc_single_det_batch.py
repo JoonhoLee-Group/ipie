@@ -22,16 +22,12 @@ import tempfile
 import numpy
 import pytest
 
-from ipie.analysis.extraction import (
-    extract_mixed_estimates,
-    extract_observable,
-    extract_observable_complex,
-)
+from ipie.analysis.extraction import extract_mixed_estimates, extract_observable
 from ipie.config import MPI
 from ipie.qmc.calc import AFQMC
 from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.legacy_testing import build_legacy_driver_instance
-from ipie.utils.testing import build_driver_test_instance, build_driver_test_instance_fp
+from ipie.utils.testing import build_driver_test_instance
 
 steps = 25
 blocks = 10
@@ -239,43 +235,6 @@ def test_generic_single_det_batch_density_diff():
 
 
 @pytest.mark.driver
-def test_generic_single_det_batch_fp():
-    with tempfile.NamedTemporaryFile() as tmpf:
-        driver_options = {
-            "verbosity": 0,
-            "get_sha1": False,
-            "qmc": options,
-            "estimates": {"filename": tmpf.name, "observables": {"energy": {}}},
-            "walkers": {"population_control": "pair_branch"},
-        }
-
-        afqmc = build_driver_test_instance_fp(
-            nelec,
-            nmo,
-            trial_type="single_det",
-            options=driver_options,
-            seed=7,
-        )
-        afqmc.setup_estimators(tmpf.name)
-        afqmc.run(verbose=False, estimator_filename=tmpf.name)
-        afqmc.finalise(verbose=0)
-        for i in range(len(afqmc.estimators)):
-            data_batch = extract_observable_complex(f"{tmpf.name}.{i}", "energy")
-            numer_batch = data_batch["ENumer"]
-            denom_batch = data_batch["EDenom"]
-            etot_batch = data_batch["ETotal"]
-            assert etot_batch.dtype == numpy.complex128
-
-        data_batch = extract_observable_complex(f"{tmpf.name}.0", "energy")
-        numer_batch = data_batch["ENumer"]
-        denom_batch = data_batch["EDenom"]
-        etot_batch = data_batch["ETotal"]
-        assert numpy.allclose(numpy.sum(numer_batch), 89026.91053310843 + 37.16899096646583j)
-        assert numpy.allclose(numpy.sum(denom_batch), 7431.790242711337 + 12.22172751384279j)
-        assert numpy.allclose(numpy.sum(etot_batch), 35.93783190822862 - 0.04412020753601597j)
-
-
-@pytest.mark.driver
 def test_factory_method():
     with tempfile.NamedTemporaryFile() as hamilf, tempfile.NamedTemporaryFile() as wfnf:
         numpy.random.seed(7)
@@ -296,6 +255,5 @@ def test_factory_method():
 
 
 if __name__ == "__main__":
-    # test_generic_single_det_batch()
-    test_generic_single_det_batch_fp()
-    # test_generic_single_det_batch_density_diff()
+    test_generic_single_det_batch()
+    test_generic_single_det_batch_density_diff()

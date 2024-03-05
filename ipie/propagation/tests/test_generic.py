@@ -20,7 +20,6 @@ import numpy
 import pytest
 
 from ipie.estimators.greens_function import greens_function_single_det_batch
-from ipie.propagation.free_propagation import FreePropagation
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
 from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
@@ -329,48 +328,6 @@ def test_vhs():
         assert numpy.allclose(vhs_batch[iw], vhs_serial[iw])
 
 
-@pytest.mark.unit
-def test_free_projection():
-    numpy.random.seed(7)
-    nmo = 10
-    nelec = (6, 5)
-    nwalkers = 8
-    nsteps = 25
-    qmc = dotdict(
-        {
-            "dt": 0.005,
-            "nstblz": 5,
-            "nwalkers": nwalkers,
-            "batched": False,
-            "hybrid": True,
-            "num_steps": nsteps,
-        }
-    )
-    qmc.batched = True
-    batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    prop_fp = FreePropagation(time_step=0.005, verbose=False, ene_0=-1.0)
-    prop_fp.build(batched_data.hamiltonian, batched_data.trial)
-
-    prop_fp.propagate_walkers(
-        batched_data.walkers, batched_data.hamiltonian, batched_data.trial, -1.0
-    )
-    assert batched_data.walkers.phia.shape == (nwalkers, nmo, nelec[0])
-    assert batched_data.walkers.phib.shape == (nwalkers, nmo, nelec[1])
-    assert numpy.allclose(
-        numpy.sum(batched_data.walkers.phase), 7.926221838159645 + 0.3971467053264697j
-    )
-    assert numpy.allclose(numpy.sum(batched_data.walkers.weight), 1.7901505653712695)
-    assert numpy.allclose(
-        numpy.sum(batched_data.walkers.ovlp), -6.40187371404052e-05 - 2.34160780650416e-05j
-    )
-    assert numpy.allclose(
-        numpy.sum(batched_data.walkers.phia), 33.95629475599705 - 0.30274130601759786j
-    )
-    assert numpy.allclose(
-        numpy.sum(batched_data.walkers.phib), 41.45587700725909 - 2.8023497141639413j
-    )
-
-
 if __name__ == "__main__":
     test_overlap_rhf_batch()
     test_overlap_batch()
@@ -379,4 +336,3 @@ if __name__ == "__main__":
     test_hybrid_rhf_batch()
     test_hybrid_batch()
     test_vhs()
-    test_free_projection()

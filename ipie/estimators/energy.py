@@ -157,35 +157,3 @@ class EnergyEstimator(EstimatorBase):
         data[ix_nume] = data[ix_nume] / data[ix_deno]
         ix_nume = self._data_index["E2Body"]
         data[ix_nume] = data[ix_nume] / data[ix_deno]
-
-
-class EnergyEstimatorFP(EnergyEstimator):
-    def __init__(
-        self,
-        system=None,
-        ham=None,
-        trial=None,
-        filename=None,
-    ):
-        super().__init__(system, ham, trial, filename)
-
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
-        trial.calc_greens_function(walkers)
-        # Need to be able to dispatch here
-        energy = local_energy(system, hamiltonian, walkers, trial)
-        self._data["ENumer"] = xp.sum(walkers.weight * walkers.phase * walkers.ovlp * energy[:, 0])
-        self._data["EDenom"] = xp.sum(walkers.weight * walkers.phase * walkers.ovlp)
-        self._data["E1Body"] = xp.sum(walkers.weight * walkers.phase * walkers.ovlp * energy[:, 1])
-        self._data["E2Body"] = xp.sum(walkers.weight * walkers.phase * walkers.ovlp * energy[:, 2])
-
-        return self.data
-
-    def post_reduce_hook(self, data):
-        ix_proj = self._data_index["ETotal"]
-        ix_nume = self._data_index["ENumer"]
-        ix_deno = self._data_index["EDenom"]
-        data[ix_proj] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E1Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E2Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]

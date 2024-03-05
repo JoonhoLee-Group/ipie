@@ -390,37 +390,3 @@ def analyse_ekt_ipea(filename, ix=None, cutoff=1e-14, screen_factor=1):
     fockT = numpy.dot(X.conj().T, numpy.dot(fock_1p_av, X))
     eea, eea_vec = numpy.linalg.eigh(fockT)
     return (eip, eip_vec), (eea, eea_vec)
-
-
-def jackknife_ratios(num: numpy.ndarray, denom: numpy.ndarray):
-    r"""Jackknife estimation of standard deviation of the ratio of means.
-
-    Parameters
-    ----------
-    num : :class:`np.ndarray
-        Numerator samples.
-    denom : :class:`np.ndarray`
-        Denominator samples.
-
-    Returns
-    -------
-    mean : :class:`np.ndarray`
-        Ratio of means.
-    sigma : :class:`np.ndarray`
-        Standard deviation of the ratio of means.
-    """
-    n_samples = num.size
-    num_mean = numpy.mean(num)
-    denom_mean = numpy.mean(denom)
-    mean = num_mean / denom_mean
-    print(f"Complex mean: {mean:.8e}")
-    jackknife_estimates = numpy.zeros(n_samples, dtype=num.dtype)
-    for i in range(n_samples):
-        mean_num_i = (num_mean * n_samples - num[i]) / (n_samples - 1)
-        mean_denom_i = (denom_mean * n_samples - denom[i]) / (n_samples - 1)
-        jackknife_estimates[i] = (mean_num_i / mean_denom_i).real
-    mean = numpy.mean(jackknife_estimates)
-    sigma = numpy.sqrt((n_samples - 1) * numpy.var(jackknife_estimates))
-    print(f"Mean: {mean.real:.8e}")
-    print(f"Stochastic error: {sigma.real:.8e}")
-    return mean, sigma

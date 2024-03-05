@@ -21,18 +21,18 @@ import json
 import time
 from typing import Dict, Optional, Tuple
 
+from ipie.addons.free_projection.estimators.handler import EstimatorHandlerFP
+from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
+from ipie.addons.free_projection.qmc.options import QMCParamsFP
+from ipie.addons.free_projection.walkers.uhf_walkers import UHFWalkersFP
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.estimators.handler import EstimatorHandlerFP
 from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.propagation.free_propagation import FreePropagation
 from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.options import QMCParamsFP
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.backend import synchronize
 from ipie.utils.io import to_json
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
-from ipie.walkers.uhf_walkers import UHFWalkersFP
 from ipie.walkers.walkers_dispatch import get_initial_walker
 
 
@@ -98,6 +98,10 @@ class FPAFQMC(AFQMC):
             Not performed in free projection.
         verbose : bool
             Log verbosity. Default True i.e. print information to stdout.
+        ene_0 : float
+            Energy guess for the desired state.
+        num_iterations_fp : int
+            Number of iterations of free projection.
         """
 
         driver = AFQMC.build(

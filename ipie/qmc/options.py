@@ -182,8 +182,3 @@ class QMCParams:
     num_stblz: int = 5
     pop_control_freq: int = 5
     rng_seed: Optional[int] = None
-
-
-@dataclass
-class QMCParamsFP(QMCParams):
-    num_iterations_fp: int = 1
