@@ -1,26 +1,9 @@
 import numpy as np
 import scipy.linalg
 
-#TODO add greens_function_coherent_state in estimators
-#NOTE can use single_det for now
-from ipie.estimators.greens_function_single_det import greens_function_single_det
-from ipie.trial_wavefunction.holstein.eph_trial_base import EphTrialWavefunctionBase
-from ipie.trial_wavefunction.holstein.coherent_state import CoherentStateTrial
-
+from ipie.addons.ephqmc.trial_wavefunction.coherent_state import CoherentStateTrial
 from ipie.utils.backend import arraylib as xp
-from ipie.propagation.overlap import calc_overlap_single_det_uhf 
-from ipie.estimators.greens_function_single_det import greens_function_single_det
-from ipie.config import CommType, config, MPI
-
-#TODO greensfunctions are in estimators 
-
-def circ_perm(lst):
-    """"""
-    cpy = lst[:]                 # take a copy because a list is a mutable object
-    yield cpy
-    for i in range(len(lst) - 1):
-        cpy = cpy[1:] + [cpy[0]]
-        yield cpy
+from ipie.addons.ephqmc.trial_wavefunction.variational.toyozawa_variational import circ_perm
 
 class ToyozawaTrial(CoherentStateTrial):
     """"""
@@ -34,7 +17,6 @@ class ToyozawaTrial(CoherentStateTrial):
         pass
 
     def calc_overlap(self, walkers) -> np.ndarray:
-        #TODO this will be a concoction of phonon and electronic overlap
         _ = self.calc_phonon_overlap(walkers)
         _ = self.calc_electronic_overlap(walkers)
         walkers.total_ovlp = walkers.el_ovlp * walkers.ph_ovlp 
@@ -80,8 +62,6 @@ class ToyozawaTrial(CoherentStateTrial):
     def calc_electronic_overlap(self, walkers) -> np.ndarray:
         """"""
         for ip,perm in enumerate(self.perms):
-#            print('psia shape:   ', self.psia.shape)
-#            print('walkers shape:   ', walkers.phia.shape)
             ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia[perm, :].conj(), optimize=True)
             sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
@@ -94,25 +74,16 @@ class ToyozawaTrial(CoherentStateTrial):
 
             walkers.el_ovlp[:, ip] = ot
         
-        el_ovlp = np.sum(walkers.el_ovlp, axis=1) #NOTE this was ph before??
-        
-#        if verbose:
-#            print('el_ovlp: ', el_ovlp[0])
+        el_ovlp = np.sum(walkers.el_ovlp, axis=1)
         
         return el_ovlp
 
     def calc_greens_function(self, walkers, build_full=True) -> np.ndarray:
         """"""
-
-#        greensfct = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
         walkers.Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
         walkers.Gb = np.zeros_like(walkers.Ga)
 
         for ovlp, perm in zip(walkers.total_ovlp.T, self.perms):
-            #TODO adjust this by just calling gab from exisiting extimators rubric TODO
-            #overlap_inv = 1 / np.einsum('i,nie->n', self.psia[perm].conj(), walkers.phia) #NOTE psi currently hacked
-            #greensfct += np.einsum('nie,n,j,n->nji', walkers.phia, overlap_inv, 
-            #                       self.psia[perm].conj(), ovlp) 
             
             inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia[perm,:], walkers.phia.conj()))
             walkers.Ga += xp.einsum('nie,nef,jf,n->nji', walkers.phia, inv_Oa, self.psia[perm].conj(), ovlp) 
@@ -120,9 +91,7 @@ class ToyozawaTrial(CoherentStateTrial):
             if self.ndown > 0: 
                 inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib[perm,:], walkers.phib.conj()))
                 walkers.Gb += xp.einsum('nie,nef,jf,n->nji', walkers.phib, inv_Ob, self.psib[perm].conj(), ovlp)
-            #greensfct += greens_function_single_det(walkers, self, build_full=build_full) * ovlp            
 
-#        greensfct = np.einsum('nij,n->nij', greensfct, 1 / np.sum(walkers.total_ovlp, axis=1))  #these sums can be replaced by walkers.ovlp calls
         walkers.Ga = np.einsum('nij,n->nij', walkers.Ga, 1 / np.sum(walkers.total_ovlp, axis=1))
         walkers.Gb = np.einsum('nij,n->nij', walkers.Gb, 1 / np.sum(walkers.total_ovlp, axis=1))
         

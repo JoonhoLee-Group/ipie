@@ -1,15 +1,15 @@
 import numpy as np
-
+np.random.seed(125)
 from mpi4py import MPI
 
 from ipie.qmc.afqmc import AFQMC
 from ipie.estimators.energy import EnergyEstimator
 from ipie.systems import Generic
-from ipie.hamiltonians.elph.holstein import HolsteinModel
-from ipie.trial_wavefunction.holstein.toyozawa import ToyozawaTrial
-from ipie.trial_wavefunction.holstein.variational.toyozawa_variational import variational_trial_toyozawa
-from ipie.walkers.eph_walkers import EphWalkers
-from ipie.propagation.holstein import HolsteinPropagatorImportance
+from ipie.addons.ephqmc.hamiltonians.holstein import HolsteinModel
+from ipie.addons.ephqmc.trial_wavefunction.toyozawa import ToyozawaTrial
+from ipie.addons.ephqmc.trial_wavefunction.variational.toyozawa_variational import variational_trial_toyozawa
+from ipie.addons.ephqmc.walkers.eph_walkers import EphWalkers
+from ipie.addons.ephqmc.propagation.holstein import HolsteinPropagatorImportance
 from ipie.qmc.options import QMCParams
 
 #System Parameters
@@ -41,7 +41,6 @@ ham.build()
 etrial, beta_shift, el_trial = variational_trial_toyozawa(
         initial_phonons, initial_electron, ham, system
 )
-
 wavefunction = np.column_stack([beta_shift, el_trial])
 
 #Setup trial

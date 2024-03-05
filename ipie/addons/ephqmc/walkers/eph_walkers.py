@@ -4,7 +4,7 @@ from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.trial_wavefunction.holstein.toyozawa import ToyozawaTrial
+from ipie.addons.ephqmc.trial_wavefunction.toyozawa import ToyozawaTrial
 
 class EphWalkers(BaseWalkers):
     """Class tailored to el-ph models where keeping track of phonon overlaps is

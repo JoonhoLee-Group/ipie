@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize, basinhopping 
 from ipie.systems import Generic
-from ipie.hamiltonians.elph.holstein import HolsteinModel
+from ipie.addons.ephqmc.hamiltonians.holstein import HolsteinModel
 
 from jax.config import config
 config.update("jax_enable_x64", True)

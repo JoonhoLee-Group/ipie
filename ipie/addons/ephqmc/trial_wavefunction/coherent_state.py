@@ -1,9 +1,7 @@
 import numpy as np
 import scipy.linalg
 
-#TODO add greens_function_coherent_state in estimators
-from ipie.estimators.greens_function_single_det import greens_function_single_det
-from ipie.trial_wavefunction.holstein.eph_trial_base import EphTrialWavefunctionBase
+from ipie.addons.ephqmc.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 
 #TODO greensfunctions are in estimators 

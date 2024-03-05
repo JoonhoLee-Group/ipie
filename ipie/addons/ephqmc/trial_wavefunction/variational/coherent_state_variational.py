@@ -3,7 +3,7 @@ from scipy.optimize import basinhopping
 
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from ipie.systems.generic import Generic
-from ipie.hamiltonians.elph.holstein import HolsteinModel
+from ipie.addons.ephqmc.hamiltonians.holstein import HolsteinModel
 
 import jax
 

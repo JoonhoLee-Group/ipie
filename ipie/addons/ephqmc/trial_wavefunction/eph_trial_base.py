@@ -1,9 +1,9 @@
 import numpy as np
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 
+#NOTE could inherit from TrialWavefunctionBase, but would need to redefine abstract methods.. 
 class EphTrialWavefunctionBase():
     def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
-        #super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         self.nelec = num_elec
         self.nbasis = num_basis
         self.nalpha, self.nbeta = self.nelec
