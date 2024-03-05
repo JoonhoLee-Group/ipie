@@ -98,7 +98,6 @@ def get_hamiltonian(system, ham_opts=None, verbose=0, comm=None):
             ecore=enuc,
             verbose=verbose,
         )
-
     else:
         if comm.rank == 0:
             print(f"# Error: unrecognized hamiltonian name {ham_opts['name']}.")
