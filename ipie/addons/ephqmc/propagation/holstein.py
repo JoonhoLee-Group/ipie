@@ -2,7 +2,7 @@ import numpy
 import time
 import scipy.linalg
 
-from ipie.addons.ephqmc.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import synchronize, cast_to_device
 from ipie.propagation.continuous_base import PropagatorTimer

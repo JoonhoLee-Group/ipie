@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.linalg
 
-from ipie.addons.ephqmc.trial_wavefunction.coherent_state import CoherentStateTrial
+from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
 from ipie.utils.backend import arraylib as xp
-from ipie.addons.ephqmc.trial_wavefunction.variational.toyozawa_variational import circ_perm
+from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
 
 class ToyozawaTrial(CoherentStateTrial):
     """"""

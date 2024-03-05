@@ -1,8 +1,8 @@
 import numpy as np
 
-from ipie.addons.ephqmc.hamiltonians.holstein import HolsteinModel
-from ipie.addons.ephqmc.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
-from ipie.addons.ephqmc.walkers.eph_walkers import EphWalkers
+from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
+from ipie.addons.eph.walkers.eph_walkers import EphWalkers
 from ipie.systems.generic import Generic
 from ipie.utils.backend import arraylib as xp 
 

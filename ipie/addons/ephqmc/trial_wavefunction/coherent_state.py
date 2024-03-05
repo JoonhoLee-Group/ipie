@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg
 
-from ipie.addons.ephqmc.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 
 #TODO greensfunctions are in estimators 
