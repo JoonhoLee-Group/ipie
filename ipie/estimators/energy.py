@@ -18,7 +18,6 @@
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.addons.eph.estimators.local_energy_holstein import local_energy_holstein
 from ipie.estimators.local_energy_batch import (
     local_energy_batch,
     local_energy_multi_det_trial_batch,
@@ -31,7 +30,6 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
@@ -41,19 +39,9 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.addons.eph.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase 
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkers
-from ipie.addons.eph.walkers.eph_walkers import EphWalkers 
 
-@plum.dispatch
-def local_energy(
-        system: Generic, 
-        hamiltonian: HolsteinModel, 
-        walkers: EphWalkers, 
-        trial: EphTrialWavefunctionBase
-):
-    return local_energy_holstein(system, hamiltonian, walkers, trial)
 
 @plum.dispatch
 def local_energy(
@@ -150,8 +138,7 @@ class EnergyEstimator(EstimatorBase):
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
-        self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
-        
+        self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)        
         return self.data
 
     def get_index(self, name):
