@@ -8,7 +8,25 @@ from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 
 class EphWalkers(BaseWalkers):
     """Class tailored to el-ph models where keeping track of phonon overlaps is
-    required."""
+    required. Each walker carries along its Slater determinants a phonon 
+    displacement vector, self.x.
+    
+    Parameters
+    ----------
+    initial_walker :
+        Walker that we start the simulation from. Ideally chosen according to 
+        the trial.
+    nup : 
+        Number of electrons in up-spin space.
+    ndown :
+        Number of electrons in down-spin space.
+    nbasis :
+        Number of sites in the 1D Holstein chain.
+    nwalkers : 
+        Number of walkers in the simulation.
+    verbose : 
+        Print level.
+    """
     def __init__(
         self, 
         initial_walker: numpy.ndarray,
@@ -71,6 +89,8 @@ class EphWalkers(BaseWalkers):
         self.buff_names += ['total_ovlp']
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+
+        trial.calc_overlap(self) 
 
     def cast_to_cupy(self, verbose=False):
         cast_to_device(self, verbose)
