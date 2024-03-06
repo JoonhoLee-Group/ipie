@@ -26,7 +26,7 @@ def local_energy_holstein(
     by :math:`\beta` displaced vacuum state. 
     """
 
-    energy = xp.zeros((walkers.nwalkers, 5), dtype=xp.complex128)
+    energy = xp.zeros((walkers.nwalkers, 4), dtype=xp.complex128)
 
     gf = trial.calc_greens_function(walkers)
     
@@ -41,7 +41,7 @@ def local_energy_holstein(
 
     energy[:, 3] = 0.5 * hamiltonian.m * hamiltonian.w0**2 * np.sum(walkers.x**2, axis=1)
     energy[:, 3] -= 0.5 * hamiltonian.nsites * hamiltonian.w0
-    energy[:, 4] = -0.5 * trial.calc_phonon_laplacian_locenergy(walkers) / hamiltonian.m
+    energy[:, 3] -= 0.5 * trial.calc_phonon_laplacian_locenergy(walkers) / hamiltonian.m
     
     energy[:, 0] = np.sum(energy[:,1:], axis=1)
 
