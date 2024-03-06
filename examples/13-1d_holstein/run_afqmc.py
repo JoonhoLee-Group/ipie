@@ -15,7 +15,7 @@ from ipie.qmc.options import QMCParams
 #System Parameters
 nup = 2
 ndown = 2
-nelec = [nup, ndown]
+nelec = (nup, ndown)
 
 #Hamiltonian Parameters
 g = 2.
@@ -62,10 +62,6 @@ walkers = EphWalkers(
 )
 walkers.build(trial)
 
-timestep = 0.01
-propagator = HolsteinPropagatorImportance(timestep)
-propagator.build(ham)
-
 num_steps_per_block = 10
 num_blocks = 10000
 add_est = {
@@ -74,21 +70,18 @@ add_est = {
     )
 }
 
-stabilize_freq = 5
-pop_control_freq = 5
 seed = 125
-params = QMCParams(
-    num_walkers=nwalkers,
-    total_num_walkers=nwalkers * comm.size,
-    num_blocks=num_blocks,
-    num_steps_per_block=num_steps_per_block,
-    timestep=timestep,
-    num_stblz=stabilize_freq,
-    pop_control_freq=pop_control_freq,
-    rng_seed=seed,
-)
 
-ephqmc = AFQMC(system, ham, trial, walkers, propagator, params)
-trial.calc_overlap(walkers) #Sets ovlp, ph and el overlaps
+# Note nwalkers specifies the number of walkers on each CPU
+ephqmc = AFQMC.build(
+        num_elec=nelec, 
+        hamiltonian=ham, 
+        trial_wavefunction=trial, 
+        walkers=walkers, 
+        num_walkers=nwalkers, 
+        seed=seed, 
+        num_steps_per_block=num_steps_per_block, 
+        num_blocks=num_blocks,
+)
 ephqmc.run(additional_estimators=add_est, verbose=False)
 

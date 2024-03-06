@@ -8,7 +8,9 @@ from ipie.utils.backend import synchronize, cast_to_device
 from ipie.propagation.continuous_base import PropagatorTimer
 
 def construct_one_body_propagator(hamiltonian: HolsteinModel, dt: float):
-    """"""
+    """Exponentiates the electronic hopping term to apply it later as
+    part of the trotterized algorithm.
+    """
     H1 = hamiltonian.T
     expH1 = numpy.array(
         [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
@@ -16,9 +18,9 @@ def construct_one_body_propagator(hamiltonian: HolsteinModel, dt: float):
     return expH1
 
 
-class HolsteinPropagatorFree():
+class HolsteinPropagatorFree:
     """"""
-    def __init__(self, time_step, verbose=False):
+    def __init__(self, time_step: float, verbose: bool = False):
         self.dt = time_step
         self.verbose = verbose
         self.timer = PropagatorTimer()
@@ -27,21 +29,13 @@ class HolsteinPropagatorFree():
         self.dt_ph = 0.5 * self.dt
         self.mpi_handler = None
 
-    def build(self, hamiltonian) :   
+    def build(self, hamiltonian: HolsteinModel, trial=None, walkers=None, mpi_handler=None):   
         self.expH1 = construct_one_body_propagator(hamiltonian, self.dt)
         self.const = hamiltonian.g * numpy.sqrt(2. * hamiltonian.m * hamiltonian.w0) * self.dt
         self.w0 = hamiltonian.w0
         self.m = hamiltonian.m
         self.scale = numpy.sqrt(self.dt_ph / self.m)
         self.nsites = hamiltonian.nsites
-
-    def propagate_walkers_one_body(self, walkers):
-        start_time = time.time()
-        walkers.phia = propagate_one_body(walkers.phia, self.expH1[0])
-        if walkers.ndown > 0 and not walkers.rhf:
-            walkers.phib = propagate_one_body(walkers.phib, self.expH1[1])
-        synchronize()
-        self.timer.tgemm += time.time() - start_time
 
     def propagate_phonons(self, walkers):
         start_time = time.time()
@@ -119,9 +113,10 @@ class HolsteinPropagatorImportance(HolsteinPropagatorFree):
         super().__init__(time_step, verbose=verbose)
 
     def propagate_phonons(self, walkers, hamiltonian, trial):
-        """Propagates phonons via DMC"""
+        """Propagates phonons via Diffusion MC."""
         start_time = time.time()
-        #no ZPE in pot -> cancels with ZPE of etrial, wouldn't affect estimators anyways
+        
+        # No ZPE in pot -> cancels with ZPE of etrial, wouldn't affect estimators anyways
         ph_ovlp_old = trial.calc_phonon_overlap(walkers)
         
         pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.x**2, axis=1)
