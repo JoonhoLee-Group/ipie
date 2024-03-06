@@ -18,8 +18,6 @@
 
 """Helper Routines for setting up a calculation"""
 # todo : handle more gracefully.
-import json
-
 from ipie.addons.free_projection.estimators.energy import local_energy
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
 from ipie.addons.free_projection.qmc.fp_afqmc import FPAFQMC
