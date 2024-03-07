@@ -7,10 +7,8 @@ from ipie.systems import Generic
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import variational_trial_toyozawa
-from ipie.addons.eph.walkers.eph_walkers import EphWalkers
-from ipie.addons.eph.propagation.holstein import HolsteinPropagatorImportance
+from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.estimators.energy import EnergyEstimator
-from ipie.qmc.options import QMCParams
 
 #System Parameters
 nup = 2
@@ -53,7 +51,7 @@ trial = ToyozawaTrial(
 trial.set_etrial(etrial)
 
 #Setup walkers
-walkers = EphWalkers(
+walkers = EPhWalkers(
     initial_walker=wavefunction,
     nup=nup,
     ndown=ndown,

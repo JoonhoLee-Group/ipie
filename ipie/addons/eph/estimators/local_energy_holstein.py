@@ -1,8 +1,8 @@
 import numpy as np
 
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
-from ipie.addons.eph.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
-from ipie.addons.eph.walkers.eph_walkers import EphWalkers
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
+from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 
 from ipie.systems.generic import Generic
 from ipie.utils.backend import arraylib as xp 
@@ -11,8 +11,8 @@ from ipie.utils.backend import arraylib as xp
 def local_energy_holstein(
     system: Generic, 
     hamiltonian: HolsteinModel, 
-    walkers: EphWalkers, 
-    trial: EphTrialWavefunctionBase
+    walkers: EPhWalkers, 
+    trial: EPhTrialWavefunctionBase
 ) -> np.ndarray:
     r"""Computes the local energy for the Holstein model via
     

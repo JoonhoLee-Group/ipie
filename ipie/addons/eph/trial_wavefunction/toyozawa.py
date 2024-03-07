@@ -1,13 +1,17 @@
 import numpy as np
 import scipy.linalg
+from typing import Tuple
 
+from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
 from ipie.utils.backend import arraylib as xp
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
 
 class ToyozawaTrial(CoherentStateTrial):
     """"""
-    def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction: np.ndarray, hamiltonian: HolsteinModel, 
+                 num_elec: Tuple[int, int], num_basis: int, verbose=False):
         super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
         self.perms = list(circ_perm([i for i in range(self.nbasis)]))
         self.nperms = len(self.perms)
@@ -16,7 +20,7 @@ class ToyozawaTrial(CoherentStateTrial):
         #TODO variational_energy_coherent_state in ipie.estimators.local_energy
         pass
 
-    def calc_overlap(self, walkers) -> np.ndarray:
+    def calc_overlap(self, walkers: EPhWalkers) -> np.ndarray:
         _ = self.calc_phonon_overlap(walkers)
         _ = self.calc_electronic_overlap(walkers)
         walkers.total_ovlp = walkers.el_ovlp * walkers.ph_ovlp 
@@ -24,16 +28,18 @@ class ToyozawaTrial(CoherentStateTrial):
         return walkers.ovlp
 
 
-    def calc_phonon_overlap(self, walkers) -> np.ndarray:
+    def calc_phonon_overlap(self, walkers: EPhWalkers) -> np.ndarray:
         """"""
         ph_ovlp = np.zeros(walkers.nwalkers, dtype=np.complex128)
         for ip,perm in enumerate(self.perms):
-            ph_ov = np.exp(-(self.m * self.w0 / 2) * (walkers.x - self.beta_shift[perm])**2)
+            ph_ov = np.exp(
+                -(0.5 * self.m * self.w0) * (walkers.x - self.beta_shift[perm])**2
+            )
             walkers.ph_ovlp[:, ip] = np.prod(ph_ov, axis=1)
         ph_ovlp = np.sum(walkers.ph_ovlp, axis=1)  
         return ph_ovlp
 
-    def calc_phonon_gradient(self, walkers) -> np.ndarray:  
+    def calc_phonon_gradient(self, walkers: EPhWalkers) -> np.ndarray:  
         r"""No reevaluation of phonon overlap because it reuses the overlap from the previous
         evaluation of the laplacian. The gradient only surfaces in the quantum force."""
         grad = np.zeros_like(walkers.x, dtype=np.complex128)
@@ -43,7 +49,7 @@ class ToyozawaTrial(CoherentStateTrial):
         grad = np.einsum('ni,n->ni', grad, 1/np.sum(walkers.ph_ovlp, axis=1))
         return grad
         
-    def calc_phonon_laplacian(self, walkers, ovlps) -> np.ndarray:
+    def calc_phonon_laplacian(self, walkers: EPhWalkers, ovlps: np.ndarray) -> np.ndarray:
         r""""""
         laplacian = np.zeros(walkers.nwalkers, dtype=np.complex128)
         for ovlp, perm in zip(ovlps.T, self.perms): 
@@ -53,13 +59,13 @@ class ToyozawaTrial(CoherentStateTrial):
         laplacian /= np.sum(ovlps, axis=1)
         return laplacian
 
-    def calc_phonon_laplacian_importance(self, walkers) -> np.ndarray:
+    def calc_phonon_laplacian_importance(self, walkers: EPhWalkers) -> np.ndarray:
         return self.calc_phonon_laplacian(walkers, walkers.ph_ovlp)
 
-    def calc_phonon_laplacian_locenergy(self, walkers) -> np.ndarray: 
+    def calc_phonon_laplacian_locenergy(self, walkers: EPhWalkers) -> np.ndarray: 
         return self.calc_phonon_laplacian(walkers, walkers.total_ovlp)
 
-    def calc_electronic_overlap(self, walkers) -> np.ndarray:
+    def calc_electronic_overlap(self, walkers: EPhWalkers) -> np.ndarray:
         """"""
         for ip,perm in enumerate(self.perms):
             ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia[perm, :].conj(), optimize=True)
@@ -78,7 +84,7 @@ class ToyozawaTrial(CoherentStateTrial):
         
         return el_ovlp
 
-    def calc_greens_function(self, walkers, build_full=True) -> np.ndarray:
+    def calc_greens_function(self, walkers: EPhWalkers, build_full=True) -> np.ndarray:
         """"""
         walkers.Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
         walkers.Gb = np.zeros_like(walkers.Ga)

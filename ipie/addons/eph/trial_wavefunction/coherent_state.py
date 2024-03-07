@@ -1,12 +1,33 @@
 import numpy as np
 import scipy.linalg
 
-from ipie.addons.eph.trial_wavefunction.eph_trial_base import EphTrialWavefunctionBase
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 
-#TODO greensfunctions are in estimators 
-class CoherentStateTrial(EphTrialWavefunctionBase):
-    """"""
+class CoherentStateTrial(EPhTrialWavefunctionBase):
+    r"""Coherent state trial of the form 
+    
+    .. math::
+        |\Phi\rangle \otimes |\beta\rangle,
+        
+    where :math:`|\Phi\rangle` corresponds to the electronic wave function and
+    :math:`|\beta\rangle` to the bosonic wave function. This latter is a
+    coherent state, i.e. a vacuum state displaced by :math:`\beta`.
+    
+    Parameters
+    ----------
+    wavefunction : 
+        Concatenation of trial determinants of up and down spin spaces and beta
+        specifying the coherent state displacement.
+    hamiltonian : 
+        Holstein model Hamiltonian
+    num_elec : 
+        Tuple specifying number of up and down spins
+    num_basis : 
+        Number of sites of Holstein chain. 
+    verbose : 
+        Print level
+    """
     def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         self.num_elec = num_elec
@@ -20,7 +41,7 @@ class CoherentStateTrial(EphTrialWavefunctionBase):
         self.psib = wavefunction[:, self.nup+1:self.nup+self.ndown+1]
 
     def calculate_energy(self, system, hamiltonian):
-        #TODO variational_energy_coherent_state in ipie.estimators.local_energy
+        # TODO variational_energy_coherent_state in ipie.estimators.local_energy
         ...
 
     def calc_overlap(self, walkers) -> np.ndarray:

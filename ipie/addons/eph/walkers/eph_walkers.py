@@ -4,9 +4,9 @@ from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
+#from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 
-class EphWalkers(BaseWalkers):
+class EPhWalkers(BaseWalkers):
     """Class tailored to el-ph models where keeping track of phonon overlaps is
     required. Each walker carries along its Slater determinants a phonon 
     displacement vector, self.x.
@@ -77,7 +77,7 @@ class EphWalkers(BaseWalkers):
             Trial wavefunction object.
         """
 
-        if isinstance(trial, ToyozawaTrial):
+        if hasattr(trial, "nperms"):
             shape = (self.nwalkers, trial.nperms)
         else:
             shape = self.nwalkers
