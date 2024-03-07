@@ -113,11 +113,11 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         walkers.G : list
             Greens function for each spin space
         """
-        inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia, walkers.phia.conj()), optimize=True)
+        inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia, walkers.phia.conj(), optimize=True))
         walkers.Ga = xp.einsum('nie,nef,jf->nji', walkers.phia, inv_Oa, self.psia.conj(), optimize=True)
 
         if self.ndown > 0:
-            inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib, walkers.phib.conj()), optimize=True)
+            inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib, walkers.phib.conj(), optimize=True))
             walkers.Gb = xp.einsum('nie,nef,jf->nji', walkers.phib, inv_Ob, self.psib.conj(), optimize=True)
 
         return [walkers.Ga, walkers.Gb]
