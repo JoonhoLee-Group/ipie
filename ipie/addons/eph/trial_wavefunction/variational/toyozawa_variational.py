@@ -2,16 +2,10 @@ import numpy as np
 from scipy.optimize import minimize, basinhopping 
 from ipie.systems import Generic
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 
-from jax.config import config
-config.update("jax_enable_x64", True)
 import jax
 import jax.numpy as npj
-
-def gab(A,B):
-    inv_O = npj.linalg.inv((A.conj().T).dot(B))
-    GAB = B.dot(inv_O.dot(A.conj().T))
-    return GAB
 
 def gradient_toyozawa_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted):
     grad = np.array(jax.grad(objective_function_toyozawa_mo)(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted))
@@ -142,25 +136,3 @@ def variational_trial_toyozawa(shift_init: np.ndarray, electron_init: np.ndarray
  
 
     return etrial, beta_shift, psi
-
-if __name__ == '__main__':
-    w0 = 1.
-    m = 1/w0
-    g = 1.
-    t = 1.
-    nsites = 4
-    pbc = True
-
-    nup = 2
-    ndown = 2
-
-    system = Generic([nup, ndown])
-
-    shift_init = np.array([2.78351996, 0.04490717, 0.04490717, 0.04490717])
-    electron_init = np.random.random((nsites, nup + ndown)).astype(np.float32)
-
-    hamiltonian = HolsteinModel(g=g, t=t, w0=w0, nsites=nsites, pbc=pbc)
-    hamiltonian.build()
-
-    print(variational_trial_toyozawa(shift_init, electron_init, hamiltonian, system))
-

@@ -4,6 +4,7 @@ from scipy.optimize import basinhopping
 from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from ipie.systems.generic import Generic
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 
 import jax
 
@@ -32,30 +33,6 @@ def local_energy(
 
     local_energy = kinetic_contrib + el_ph_contrib + phonon_contrib
     return local_energy
-
-def gab(A: np.ndarray, B: np.ndarray):
-    inv_O = jax.numpy.linalg.inv((A.conj().T).dot(B))                                                                                                                                                            
-    GAB = B.dot(inv_O.dot(A.conj().T))
-    return GAB
-
-def get_T(nsites: int, t: float, pbc: bool, ndown: int) -> np.ndarray:
-    if nsites == 1:
-        return np.array([0.])
-
-    neighbor_map = np.zeros(shape=(nsites,nsites))                      
-    for i in range(nsites):
-        neighbors = np.array([(i-1)%nsites, (i+1)%nsites])
-        neighbor_map[i, neighbors] = 1.
-    
-    if not pbc:
-        neighbor_map[-1,0] = neighbor_map[0,-1] = 0.
-    T = -t * neighbor_map
-    
-    if ndown > 0:
-        T = [T.copy(), T.copy()]
-    else:
-        T = [T,]
-    return T
 
 def objective_function(x: np.ndarray, nbasis: int, T: np.ndarray, 
                        g: float, m: float, w0: float, nup: int, ndown: int):
@@ -110,14 +87,10 @@ def variational_trial(init_phonons: np.ndarray, init_electron: np.ndarray, hamil
 
     x = np.hstack([init_phonons, init_electron])
 
-    #TODO this could definitely be hamiltonian.T
-#    T = get_T(hamiltonian.nsites, hamiltonian.t, hamiltonian.pbc, system.ndown)
-    T = hamiltonian.T
-
     maxiter = 500
     minimizer_kwargs = {
         "jac": True,
-        "args": (hamiltonian.nsites, T, hamiltonian.g, hamiltonian.m, hamiltonian.w0, system.nup, system.ndown),
+        "args": (hamiltonian.nsites, hamiltonian.T, hamiltonian.g, hamiltonian.m, hamiltonian.w0, system.nup, system.ndown),
         "options": {
             "gtol": 1e-10,
             "eps": 1e-10,
@@ -150,24 +123,4 @@ def variational_trial(init_phonons: np.ndarray, init_electron: np.ndarray, hamil
 
     return etrial, beta_shift, psi
 
-if __name__ == '__main__':
-    
-    nup = 1
-    ndown = 1
-    system = Generic([nup, ndown])
-
-    g = 1.
-    t = 1.
-    w0 = 1.
-    nsites = 3
-    pbc = True
-
-    ham = HolsteinModel(g=g, t=t, w0=w0, nsites=nsites, pbc=pbc)
-
-    init_phonons = np.array([0.1, 0.1, 0.1], dtype=np.float64)
-#    init_electron = np.array([1.,1.], dtype=np.float64)
-#    init_electron /= np.linalg.norm(init_electron)
-    init_electron = np.array([[1,0,0],[0,1,0]])
-
-    print(variational_trial(init_phonons, init_electron, ham, system))
 
