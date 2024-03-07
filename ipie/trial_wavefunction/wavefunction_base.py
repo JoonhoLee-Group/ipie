@@ -46,8 +46,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         cast_to_device(self, verbose=verbose)
 
     @abstractmethod
-    def build(self) -> None:
-        ...
+    def build(self) -> None: ...
 
     @property
     def num_dets(self) -> int:
@@ -71,16 +70,13 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian, comm: Optional[CommType] = MPI.COMM_WORLD) -> None:
-        ...
+    def half_rotate(self, hamiltonian, comm: Optional[CommType] = MPI.COMM_WORLD) -> None: ...
 
     @abstractmethod
-    def calc_overlap(self, walkers) -> np.ndarray:
-        ...
+    def calc_overlap(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_greens_function(self, walkers) -> np.ndarray:
-        ...
+    def calc_greens_function(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
     def calc_force_bias(self, hamiltonian, walkers, mpi_handler) -> np.ndarray:
