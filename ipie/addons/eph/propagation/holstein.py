@@ -121,15 +121,15 @@ class HolsteinPropagatorFree:
         """
         start_time = time.time()
 
-        pot = 0.25 * self.m * self.w0**2 * numpy.sum(walkers.x**2, axis=1)
+        pot = 0.25 * self.m * self.w0**2 * numpy.sum(walkers.phonon_disp**2, axis=1)
         pot = numpy.real(pot)
         walkers.weight *= numpy.exp(-self.dt_ph * pot)
 
         N = numpy.random.normal(loc=0.0, scale=self.scale, 
                              size=(walkers.nwalkers, self.nsites))        
-        walkers.x = walkers.x + N 
+        walkers.phonon_disp = walkers.phonon_disp + N 
 
-        pot = 0.25 * self.m * self.w0**2 * numpy.sum(walkers.x**2, axis=1)
+        pot = 0.25 * self.m * self.w0**2 * numpy.sum(walkers.phonon_disp**2, axis=1)
         pot = numpy.real(pot)
         walkers.weight *= numpy.exp(-self.dt_ph * pot)
             
@@ -163,7 +163,7 @@ class HolsteinPropagatorFree:
         synchronize()
         self.timer.tgf += time.time() - start_time
 
-        expEph = numpy.exp(self.const * walkers.x)
+        expEph = numpy.exp(self.const * walkers.phonon_disp)
         
         walkers.phia = propagate_one_body(walkers.phia, self.expH1[0])
         walkers.phia = numpy.einsum('ni,nie->nie', expEph, walkers.phia)
@@ -261,18 +261,18 @@ class HolsteinPropagator(HolsteinPropagatorFree):
         # wouldn't affect estimators anyways
         ph_ovlp_old = trial.calc_phonon_overlap(walkers)
         
-        pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.x**2, axis=1)
+        pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.phonon_disp**2, axis=1)
         pot -= 0.5 * trial.calc_phonon_laplacian_importance(walkers) / hamiltonian.m
         pot = numpy.real(pot)
         walkers.weight *= numpy.exp(-self.dt_ph * pot / 2)
 
         N = numpy.random.normal(loc=0.0, scale=self.scale, size=(walkers.nwalkers, self.nsites))    
         drift = trial.calc_phonon_gradient(walkers)
-        walkers.x = walkers.x + N + self.dt_ph * drift / hamiltonian.m
+        walkers.phonon_disp = walkers.phonon_disp + N + self.dt_ph * drift / hamiltonian.m
 
         ph_ovlp_new = trial.calc_phonon_overlap(walkers)        
 
-        pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.x**2, axis=1)
+        pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.phonon_disp**2, axis=1)
         pot -= 0.5 * trial.calc_phonon_laplacian_importance(walkers) / hamiltonian.m
         pot = numpy.real(pot)
         walkers.weight *= numpy.exp(-self.dt_ph * pot / 2)

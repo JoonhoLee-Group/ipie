@@ -49,7 +49,7 @@ class ToyozawaTrial(CoherentStateTrial):
         ph_ovlp = np.zeros(walkers.nwalkers, dtype=np.complex128)
         for ip,perm in enumerate(self.perms):
             ph_ov = np.exp(
-                -(0.5 * self.m * self.w0) * (walkers.x - self.beta_shift[perm])**2
+                -(0.5 * self.m * self.w0) * (walkers.phonon_disp - self.beta_shift[perm])**2
             )
             walkers.ph_ovlp[:, ip] = np.prod(ph_ov, axis=1)
         ph_ovlp = np.sum(walkers.ph_ovlp, axis=1)  
@@ -58,9 +58,9 @@ class ToyozawaTrial(CoherentStateTrial):
     def calc_phonon_gradient(self, walkers: EPhWalkers) -> np.ndarray:  
         r"""No reevaluation of phonon overlap because it reuses the overlap from the previous
         evaluation of the laplacian. The gradient only surfaces in the quantum force."""
-        grad = np.zeros_like(walkers.x, dtype=np.complex128)
+        grad = np.zeros_like(walkers.phonon_disp, dtype=np.complex128)
         for ovlp, perm in zip(walkers.ph_ovlp.T, self.perms):
-            grad += np.einsum('ni,n->ni', (walkers.x - self.beta_shift[perm]), ovlp)
+            grad += np.einsum('ni,n->ni', (walkers.phonon_disp - self.beta_shift[perm]), ovlp)
         grad *= -self.m * self.w0
         grad = np.einsum('ni,n->ni', grad, 1/np.sum(walkers.ph_ovlp, axis=1))
         return grad
@@ -69,7 +69,7 @@ class ToyozawaTrial(CoherentStateTrial):
         r""""""
         laplacian = np.zeros(walkers.nwalkers, dtype=np.complex128)
         for ovlp, perm in zip(ovlps.T, self.perms): 
-            arg = (walkers.x - self.beta_shift[perm]) * self.m * self.w0
+            arg = (walkers.phonon_disp - self.beta_shift[perm]) * self.m * self.w0
             arg2 = arg**2
             laplacian += (np.sum(arg2, axis=1) - self.nsites * self.m * self.w0) * ovlp
         laplacian /= np.sum(ovlps, axis=1)

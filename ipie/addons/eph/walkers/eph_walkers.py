@@ -22,7 +22,7 @@ from ipie.walkers.base_walkers import BaseWalkers
 class EPhWalkers(BaseWalkers):
     """Class tailored to el-ph models where keeping track of phonon overlaps is
     required. Each walker carries along its Slater determinants a phonon 
-    displacement vector, self.x.
+    displacement vector, self.phonon_disp.
     
     Parameters
     ----------
@@ -59,11 +59,11 @@ class EPhWalkers(BaseWalkers):
 
         self.weight = numpy.ones(self.nwalkers, dtype=numpy.complex128)
 
-        self.x = xp.array(
+        self.phonon_disp = xp.array(
             [initial_walker[:,0].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128
         )
-        self.x = numpy.squeeze(self.x)
+        self.phonon_disp = numpy.squeeze(self.phonon_disp)
  
         self.phia = xp.array(
             [initial_walker[:, 1 : self.nup+1].copy() for iw in range(self.nwalkers)],
@@ -75,7 +75,7 @@ class EPhWalkers(BaseWalkers):
             dtype=xp.complex128,
         )
        
-        self.buff_names += ["phia", "phib", "x"]
+        self.buff_names += ["phia", "phib", "phonon_disp"]
 
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)

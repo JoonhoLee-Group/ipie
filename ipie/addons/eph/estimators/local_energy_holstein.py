@@ -38,6 +38,17 @@ def local_energy_holstein(
     |\phi(\tau(r))\rangle \otimes |\beta(\tau(X))\rangle`. In this ansatz for
     the walkers :math:`|\beta\rangle` is a coherent state, which corresonds to a 
     by :math:`\beta` displaced vacuum state. 
+
+    Parameters
+    ----------
+    system : 
+        Generic object carrying information on number and spin of electrons
+    hamiltonian :
+        HolsteinModel object
+    walkers :
+        EPhWalkers object
+    trial : 
+        EPhTrialWavefunctionBase object
     """
 
     energy = xp.zeros((walkers.nwalkers, 4), dtype=xp.complex128)
@@ -48,12 +59,12 @@ def local_energy_holstein(
     if system.ndown > 0:
         energy[:, 1] += np.sum(hamiltonian.T[1] * gf[1], axis=(1,2))
 
-    energy[:, 2] = np.sum(np.diagonal(gf[0], axis1=1, axis2=2) * walkers.x, axis=1)
+    energy[:, 2] = np.sum(np.diagonal(gf[0], axis1=1, axis2=2) * walkers.phonon_disp, axis=1)
     if system.ndown > 0:
-        energy[:, 2] +=  np.sum(np.diagonal(gf[1], axis1=1, axis2=2) * walkers.x, axis=1)
+        energy[:, 2] +=  np.sum(np.diagonal(gf[1], axis1=1, axis2=2) * walkers.phonon_disp, axis=1)
     energy[:, 2] *= hamiltonian.const
 
-    energy[:, 3] = 0.5 * hamiltonian.m * hamiltonian.w0**2 * np.sum(walkers.x**2, axis=1)
+    energy[:, 3] = 0.5 * hamiltonian.m * hamiltonian.w0**2 * np.sum(walkers.phonon_disp**2, axis=1)
     energy[:, 3] -= 0.5 * hamiltonian.nsites * hamiltonian.w0
     energy[:, 3] -= 0.5 * trial.calc_phonon_laplacian_locenergy(walkers) / hamiltonian.m
     

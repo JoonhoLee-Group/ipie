@@ -66,17 +66,17 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         return walkers.ovlp
 
     def calc_phonon_overlap(self, walkers) -> np.ndarray:
-        ph_ovlp = np.exp(-(self.m * self.w0 / 2) * (walkers.x - self.beta_shift)**2) 
+        ph_ovlp = np.exp(-(self.m * self.w0 / 2) * (walkers.phonon_disp - self.beta_shift)**2) 
         walkers.ph_ovlp = np.prod(ph_ovlp, axis=1)
         return walkers.ph_ovlp
 
     def calc_phonon_gradient(self, walkers) -> np.ndarray:
-        grad = walkers.x - self.beta_shift
+        grad = walkers.phonon_disp - self.beta_shift
         grad *= -self.m * self.w0
         return grad
 
     def calc_phonon_laplacian(self, walkers) -> np.ndarray:
-        arg = (walkers.x - self.beta_shift) * self.m * self.w0
+        arg = (walkers.phonon_disp - self.beta_shift) * self.m * self.w0
         arg2 = arg**2
         laplacian = np.sum(arg2, axis=1) - self.nsites * self.m * self.w0
         return laplacian
