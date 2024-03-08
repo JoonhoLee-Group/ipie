@@ -43,6 +43,8 @@ class EstimatorHandler(object):
 
     Parameters
     ----------
+    system : :class:`ipie.hubbard.Hubbard` / system object in general.
+        Container for model input options.
     comm : MPI.COMM_WORLD
         MPI Communicator
     trial : :class:`ipie.trial_wavefunction.X' object
@@ -62,6 +64,7 @@ class EstimatorHandler(object):
     def __init__(
         self,
         comm,
+        system,
         hamiltonian,
         trial,
         walker_state=None,
@@ -104,6 +107,7 @@ class EstimatorHandler(object):
         for obs in observables:
             try:
                 est = _predefined_estimators[obs](
+                    system=system,
                     hamiltonian=hamiltonian,
                     trial=trial,
                 )
@@ -186,7 +190,7 @@ class EstimatorHandler(object):
         self.index = self.index + 1
         self.filename = self.basename + f".{self.index}.h5"
 
-    def compute_estimators(self, hamiltonian, trial, walker_batch):
+    def compute_estimators(self, comm, system, hamiltonian, trial, walker_batch):
         """Update estimators with bached psi
 
         Parameters
@@ -197,7 +201,7 @@ class EstimatorHandler(object):
         # TODO: generalize for different block groups (loop over groups)
         offset = self.num_walker_props
         for k, e in self.items():
-            e.compute_estimator(walker_batch, hamiltonian, trial)
+            e.compute_estimator(system, walker_batch, hamiltonian, trial)
             start = offset + self.get_offset(k)
             end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data

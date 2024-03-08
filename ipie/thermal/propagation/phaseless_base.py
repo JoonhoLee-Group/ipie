@@ -56,8 +56,8 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial):
 class PhaselessBase(ContinuousBase):
     """A base class for generic continuous HS transform FT-AFQMC propagators."""  
 
-    def __init__(self, time_step, mu, lowrank=False, verbose=False):
-        super().__init__(time_step, verbose=verbose)
+    def __init__(self, timestep, mu, lowrank=False, verbose=False):
+        super().__init__(timestep, verbose=verbose)
         self.mu = mu
         self.sqrt_dt = self.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt

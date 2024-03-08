@@ -22,6 +22,7 @@ import pytest
 from ipie.estimators.energy import local_energy
 
 from ipie.utils.testing import build_test_case_handlers
+from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.misc import dotdict
 
@@ -54,21 +55,22 @@ def test_local_energy_single_det_vs_real():
         trial_type="single_det",
     )
 
-    ham = test_handler.hamiltonian
+    hamiltonian = test_handler.hamiltonian
     walkers = test_handler.walkers
+    system = Generic(nelec)
     trial = test_handler.trial
 
-    chol = ham.chol
+    chol = hamiltonian.chol
 
     cx_chol = numpy.array(chol, dtype=numpy.complex128)
-    cx_ham = HamGeneric(
-        numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
+    cx_hamiltonian = HamGeneric(
+        numpy.array(hamiltonian.H1, dtype=numpy.complex128), cx_chol, hamiltonian.ecore, verbose=False
     )
 
-    energy = local_energy(ham, walkers, trial)
+    energy = local_energy(system, hamiltonian, walkers, trial)
 
-    trial.half_rotate(cx_ham)
-    cx_energy = local_energy(cx_ham, walkers, trial)
+    trial.half_rotate(cx_hamiltonian)
+    cx_energy = local_energy(system, cx_hamiltonian, walkers, trial)
 
     numpy.testing.assert_allclose(energy, cx_energy, atol=1e-10)
 
@@ -102,20 +104,21 @@ def test_local_energy_single_det_vs_eri():
         choltol=1e-10,
     )
 
-    ham = test_handler.hamiltonian
+    hamiltonian = test_handler.hamiltonian
     walkers = test_handler.walkers
+    system = Generic(nelec)
     trial = test_handler.trial
 
     walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
 
-    energy = local_energy(ham, walkers, trial)
+    energy = local_energy(system, hamiltonian, walkers, trial)
     etot = energy[:, 0]
     e1 = energy[:, 1]
     e2 = energy[:, 2]
 
-    nbasis = ham.nbasis
-    eri = ham.eri.reshape(nbasis, nbasis, nbasis, nbasis)
-    h1e = ham.H1[0]
+    nbasis = hamiltonian.nbasis
+    eri = hamiltonian.eri.reshape(nbasis, nbasis, nbasis, nbasis)
+    h1e = hamiltonian.H1[0]
 
     e1ref = numpy.einsum("ij,wij->w", h1e, walkers.Ga + walkers.Gb)
 
@@ -123,7 +126,7 @@ def test_local_energy_single_det_vs_eri():
 
     # testing 2-body term
 
-    chol = ham.chol.copy()
+    chol = hamiltonian.chol.copy()
     nchol = chol.shape[1]
     chol = chol.reshape(nbasis, nbasis, nchol)
 

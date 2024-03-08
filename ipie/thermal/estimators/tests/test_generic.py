@@ -1,16 +1,21 @@
 import numpy
 import pytest
+from typing import Tuple, Union
 
 from ipie.config import MPI
-from ipie.thermal.propagation.operations import apply_exponential
+from ipie.thermal.estimators.thermal import one_rdm_from_G
+from ipie.thermal.estimators.generic import local_energy_generic_cholesky
+
+from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
+
 from ipie.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
-from ipie.thermal.utils.legacy_testing import legacy_propagate_walkers
 
 comm = MPI.COMM_WORLD
 
 @pytest.mark.unit
-def test_apply_exponential():
+def test_local_energy_cholesky(mf_trial=False):
     # System params.
     nup = 5
     ndown = 5
@@ -77,8 +82,8 @@ def test_apply_exponential():
     objs =  build_generic_test_case_handlers(options, seed, debug, verbose)
     trial = objs['trial']
     hamiltonian = objs['hamiltonian']
-    walkers = objs['walkers']
-    propagator = objs['propagator']
+    P = one_rdm_from_G(trial.G) 
+    eloc = local_energy_generic_cholesky(hamiltonian, P)
 
     # Legacy.
     print('\n------------------------------')
@@ -89,33 +94,19 @@ def test_apply_exponential():
     legacy_system = legacy_objs['system']
     legacy_trial = legacy_objs['trial']
     legacy_hamiltonian = legacy_objs['hamiltonian']
-    legacy_walkers = legacy_objs['walkers']
-    legacy_propagator = legacy_objs['propagator']
 
-    _, _, _, VHS = propagator.construct_two_body_propagator(walkers, hamiltonian, trial, debug=True)
+    legacy_P = legacy_one_rdm_from_G(legacy_trial.G)
+    legacy_eloc = legacy_local_energy_generic_cholesky(
+                    legacy_system, legacy_hamiltonian, legacy_P)
     
-    exp = []
-    legacy_exp = []
-    for iw in range(walkers.nwalkers):
-        _, _, _, _VHS = legacy_propagator.two_body_propagator(
-                                        legacy_walkers.walkers[iw], legacy_hamiltonian, 
-                                        legacy_trial, xi=propagator.xi[iw])
-        _exp = apply_exponential(VHS[iw], propagator.exp_nmax) 
-        _legacy_exp = legacy_propagator.exponentiate(_VHS, debug=True)
-        exp.append(_exp)
-        legacy_exp.append(_legacy_exp)
-        numpy.testing.assert_allclose(_VHS, VHS[iw])
-
-    exp = numpy.array(exp)
-    legacy_exp = numpy.array(legacy_exp)
-
     if verbose:
-        print(f'\nexp_nmax = {propagator.exp_nmax}')
-        print(f'legacy_exp = \n{legacy_exp}\n')
-        print(f'exp = \n{exp}\n')
+        print(f'\neloc = \n{eloc}\n')
+        print(f'legacy_eloc = \n{legacy_eloc}\n')
+            
+    numpy.testing.assert_allclose(trial.G, legacy_trial.G, atol=1e-10)
+    numpy.testing.assert_allclose(P, legacy_P, atol=1e-10)
+    numpy.testing.assert_allclose(eloc, legacy_eloc, atol=1e-10)
 
-    numpy.testing.assert_almost_equal(legacy_exp, exp, decimal=10)
 
-
-if __name__ == "__main__":
-    test_apply_exponential()
+if __name__ == '__main__':
+    test_local_energy_cholesky(mf_trial=True)

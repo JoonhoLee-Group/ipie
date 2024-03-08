@@ -399,7 +399,7 @@ class ParticleHole(TrialWavefunctionBase):
             print("# Computing trial wavefunction energy.")
         # Cannot use usual energy evaluation routines if trial is orthogonal.
         self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
-            system.nelec, hamiltonian, self.spin_occs, self.coeffs
+            system, hamiltonian, self.spin_occs, self.coeffs
         )
         if self.verbose:
             print(f"# Variational energy of trial wavefunction: {self.energy.real}")

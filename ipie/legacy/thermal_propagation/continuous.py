@@ -159,7 +159,7 @@ class Continuous(object):
             print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
         return phi
 
-    def propagate_walker_free(self, system, walker, trial, eshift=0):
+    def propagate_walker_free(self, system, walker, trial, eshift=0, xi=None):
         r"""Free projection for continuous HS transformation.
 
         .. Warning::
@@ -175,7 +175,7 @@ class Continuous(object):
         state : :class:`state.State`
             Simulation state.
         """
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial, xi=xi)
         BV = self.exponentiate(VHS)
 
         B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])

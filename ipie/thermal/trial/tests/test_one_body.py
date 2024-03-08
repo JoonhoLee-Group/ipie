@@ -38,6 +38,7 @@ def setup_objs():
     print('----------------------------')
     system = Generic(mol.nelec)
     hamiltonian = get_hamiltonian(system, options["hamiltonian"])
+    hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
     objs = {'mol': mol, 
             'hamiltonian': hamiltonian}
 

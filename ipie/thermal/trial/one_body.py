@@ -12,6 +12,7 @@ class OneBody(object):
     def __init__(self, hamiltonian, nelec, beta, dt, options={}, nav=None,
                  H1=None, verbose=False):
         self.name = "thermal"
+        self.compute_trial_energy = False
         self.verbose = verbose
 
         if H1 is None:

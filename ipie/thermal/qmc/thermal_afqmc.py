@@ -1,4 +1,4 @@
-"""Driver to perform AFQMC calculation"""
+"""Driver to perform Thermal AFQMC calculation"""
 import numpy
 import time
 import json
@@ -12,7 +12,7 @@ from ipie.thermal.qmc.options import ThermalQMCParams
 
 from ipie.utils.io import to_json
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import get_host_memory
+from ipie.utils.backend import get_host_memory, synchronize
 from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
@@ -22,9 +22,6 @@ from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.utils import set_rng_seed
 
-
-## This is now only applicable to the Generic case!
-## See test_generic.py for example.
 
 class ThermalAFQMC(AFQMC):
     """Thermal AFQMC driver.
@@ -61,7 +58,8 @@ class ThermalAFQMC(AFQMC):
                  verbose: bool = False):
         super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose)
         self.debug = debug
-
+    
+    @staticmethod
     def build(
             nelec: Tuple[int, int],
             mu: float,
@@ -70,13 +68,15 @@ class ThermalAFQMC(AFQMC):
             trial,
             nwalkers: int = 100,
             seed: int = None,
-            nsteps_per_block: int = 25,
             nblocks: int = 100,
             timestep: float = 0.005,
             stabilize_freq: int = 5,
             pop_control_freq: int = 5,
+            pop_control_method: str = 'pair_branch',
             lowrank: bool = False,
-            verbose: bool = True) -> "Thermal AFQMC":
+            debug: bool = False,
+            verbose: bool = True,
+            mpi_handler=None,) -> "Thermal AFQMC":
         """Factory method to build thermal AFQMC driver from hamiltonian and trial density matrix.
 
         Parameters
@@ -113,24 +113,32 @@ class ThermalAFQMC(AFQMC):
         verbose : bool
             Log verbosity. Default True i.e. print information to stdout.
         """
-        mpi_handler = MPIHandler()
-        comm = mpi_handler.comm
+        if mpi_handler is None:
+            mpi_handler = MPIHandler()
+            comm = mpi_handler.comm
+
+        else:
+            comm = mpi_handler.comm
+
         params = ThermalQMCParams(
                     beta=beta,
                     num_walkers=nwalkers,
                     total_num_walkers=nwalkers * comm.size,
                     num_blocks=nblocks,
-                    num_steps_per_block=nsteps_per_block,
                     timestep=timestep,
                     num_stblz=stabilize_freq,
                     pop_control_freq=pop_control_freq,
+                    pop_control_method=pop_control_method,
                     rng_seed=seed)
-        
+
+        system = Generic(nelec) 
         walkers = UHFThermalWalkers(trial, hamiltonian.nbasis, nwalkers, 
-                                    lowrank=lowrank, verbose=verbose)
+                                    lowrank=lowrank, mpi_handler=mpi_handler, 
+                                    verbose=verbose)
         propagator = Propagator[type(hamiltonian)](
-                        timestep, beta, lowrank=lowrank, verbose=verbose)
-        propagator.build(hamiltonian, trial=trial, walkers=walkers, verbose=verbose)
+                        timestep, mu, lowrank=lowrank, verbose=verbose)
+        propagator.build(hamiltonian, trial=trial, walkers=walkers, 
+                         mpi_handler=mpi_handler, verbose=verbose)
         return ThermalAFQMC(
                 system,
                 hamiltonian,
@@ -138,6 +146,7 @@ class ThermalAFQMC(AFQMC):
                 walkers,
                 propagator,
                 params,
+                debug=debug,
                 verbose=(verbose and comm.rank == 0))
 
 
@@ -180,6 +189,7 @@ class ThermalAFQMC(AFQMC):
         self.get_env_info()
         self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
         
+        synchronize()
         comm = self.mpi_handler.comm
         self.tsetup += time.time() - ft_setup
 
@@ -193,6 +203,7 @@ class ThermalAFQMC(AFQMC):
         nslices = numpy.rint(self.params.beta / self.params.timestep).astype(int)
 
         for step in range(1, total_steps + 1):
+            synchronize()
             start_path = time.time()
 
             for t in range(nslices):
@@ -214,6 +225,7 @@ class ThermalAFQMC(AFQMC):
                     xp.clip(self.walkers.weight, a_min=-wbound, a_max=wbound,
                             out=self.walkers.weight)  # In-place clipping.
 
+                synchronize()
                 self.tprop_clip += time.time() - start_clip
 
                 start_barrier = time.time()
@@ -227,6 +239,7 @@ class ThermalAFQMC(AFQMC):
                 if (t > 0) and (t % self.params.pop_control_freq == 0):
                     start = time.time()
                     self.pcontrol.pop_control(self.walkers, comm)
+                    synchronize()
                     self.tpopc += time.time() - start
                     self.tpopc_send = self.pcontrol.timer.send_time
                     self.tpopc_recv = self.pcontrol.timer.recv_time
@@ -248,6 +261,7 @@ class ThermalAFQMC(AFQMC):
                     comm, step // self.params.num_steps_per_block, self.accumulators)
                 self.accumulators.zero()
 
+            synchronize()
             self.testim += time.time() - start
 
             if step < neqlb_steps:
@@ -257,6 +271,8 @@ class ThermalAFQMC(AFQMC):
                 eshift += self.accumulators.eshift - eshift
 
             self.walkers.reset(self.trial) # Reset stack, weights, phase.
+
+            synchronize()
             self.tpath += time.time() - start_path
 
 

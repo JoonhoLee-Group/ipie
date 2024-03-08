@@ -26,6 +26,7 @@ from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
+from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
@@ -259,6 +260,7 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
 
 @plum.dispatch
 def local_energy_single_det_uhf(
+    system: Generic,
     hamiltonian: GenericComplexChol,
     walkers: UHFWalkers,
     trial: SingleDet,
@@ -269,6 +271,8 @@ def local_energy_single_det_uhf(
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -311,13 +315,15 @@ def local_energy_single_det_uhf(
     return energy
 
 
-def local_energy_single_det_batch(hamiltonian, walkers, trial):
+def local_energy_single_det_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant case.
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -335,13 +341,13 @@ def local_energy_single_det_batch(hamiltonian, walkers, trial):
     for idx in range(nwalkers):
         G = [walkers.Ga[idx], walkers.Gb[idx]]
         Ghalf = [walkers.Ghalfa[idx], walkers.Ghalfb[idx]]
-        energy += [list(local_energy_G(hamiltonian, trial, G, Ghalf))]
+        energy += [list(local_energy_G(system, hamiltonian, trial, G, Ghalf))]
 
     energy = xp.array(energy, dtype=numpy.complex128)
     return energy
 
 
-def local_energy_single_det_batch_einsum(hamiltonian, walkers, trial):
+def local_energy_single_det_batch_einsum(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Use einsum rather than numba kernels.
@@ -350,6 +356,8 @@ def local_energy_single_det_batch_einsum(hamiltonian, walkers, trial):
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -434,13 +442,15 @@ def local_energy_single_det_batch_einsum(hamiltonian, walkers, trial):
     return energy
 
 
-def local_energy_single_det_rhf_batch(hamiltonian, walkers, trial):
+def local_energy_single_det_rhf_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant RHF case.
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -537,7 +547,7 @@ def two_body_energy_uhf(trial, walkers):
 
 @plum.dispatch
 def local_energy_single_det_uhf(
-    hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -545,6 +555,8 @@ def local_energy_single_det_uhf(
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -584,7 +596,7 @@ def local_energy_single_det_uhf(
     return energy
 
 
-def local_energy_single_det_batch_gpu_old(hamiltonian, walkers, trial):
+def local_energy_single_det_batch_gpu_old(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF GPU case.
@@ -593,6 +605,8 @@ def local_energy_single_det_batch_gpu_old(hamiltonian, walkers, trial):
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -661,7 +675,7 @@ def local_energy_single_det_batch_gpu_old(hamiltonian, walkers, trial):
     return energy
 
 
-def local_energy_single_det_batch_gpu(hamiltonian, walkers, trial, max_mem=2.0):
+def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant UHF GPU case.
@@ -670,6 +684,8 @@ def local_energy_single_det_batch_gpu(hamiltonian, walkers, trial, max_mem=2.0):
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch

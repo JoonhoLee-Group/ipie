@@ -1,98 +1,79 @@
 import pytest
 import tempfile
 import numpy
-from pyscf import gto
 from typing import Tuple, Union
 
-from ipie.systems.generic import Generic
-from ipie.utils.testing import generate_hamiltonian
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.thermal.trial.one_body import OneBody
-from ipie.thermal.trial.mean_field import MeanField
-from ipie.thermal.walkers.uhf_walkers import UHFThermalWalkers
+from ipie.config import MPI
 from ipie.thermal.estimators.energy import ThermalEnergyEstimator
 from ipie.thermal.estimators.handler import ThermalEstimatorHandler
-from ipie.thermal.propagation.phaseless_generic import PhaselessGeneric
+from ipie.thermal.utils.testing import build_generic_test_case_handlers
 
+# System params.
+nup = 5
+ndown = 5
+nelec = (nup, ndown)
+nbasis = 10
 
-def build_test_case_handlers(nelec: Tuple[int, int],
-                             options: Union[dict, None] = None,
-                             seed: Union[int, None] = None,
-                             choltol: float = 1e-3,
-                             complex_integrals: bool = False,
-                             verbose: bool = False):
-    if seed is not None:
-        numpy.random.seed(seed)
+# Thermal AFQMC params.
+mu = -10.
+beta = 0.1
+timestep = 0.01
+nwalkers = 12
+# Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
+nsteps_per_block = 1
+nblocks = 12
+stabilize_freq = 10
+pop_control_freq = 1
+pop_control_method = 'pair_branch'
+#pop_control_method = 'comb'
+lowrank = False
 
-    # Unpack options
-    mu = options['mu']
-    nbasis = options['nbasis']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options['nwalkers']
-    lowrank = options['lowrank']
+verbose = True
+complex_integrals = False
+debug = True
+mf_trial = True
+propagate = False
+seed = 7
+numpy.random.seed(seed)
+
+options = {
+            'nelec': nelec,
+            'nbasis': nbasis,
+            'mu': mu,
+            'beta': beta,
+            'timestep': timestep,
+            'nwalkers': nwalkers,
+            'seed': seed,
+            'nsteps_per_block': nsteps_per_block,
+            'nblocks': nblocks,
+            'stabilize_freq': stabilize_freq,
+            'pop_control_freq': pop_control_freq,
+            'pop_control_method': pop_control_method,
+            'lowrank': lowrank,
+            'complex_integrals': complex_integrals,
+            'mf_trial': mf_trial,
+            'propagate': propagate,
+
+            "hamiltonian": {
+                "name": "Generic",
+                "_alt_convention": False,
+                "sparse": False,
+                "mu": mu
+            },
     
-    sym = 8
-    if complex_integrals: sym = 4
-    h1e, chol, _, _ = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
-                                           sym=sym, tol=choltol)
-
-    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]),
-                             chol=chol.reshape((-1, nbasis**2)).T.copy(),
-                             ecore=0)
-    hamiltonian.name = options['hamiltonian']['name']
-    hamiltonian._alt_convention = options['hamiltonian']['_alt_convention']
-    hamiltonian.sparse = options['hamiltonian']['sparse']
-
-    trial = MeanField(hamiltonian, nelec, beta, timestep)
-    walkers = UHFThermalWalkers(trial, nbasis, nwalkers, lowrank=lowrank)
-    propagator = PhaselessGeneric(timestep, mu, lowrank=lowrank, verbose=verbose)
-    propagator.build(hamiltonian, trial=trial, walkers=walkers, verbose=verbose)
-        
-    for t in range(walkers.stack[0].nslice):
-        propagator.propagate_walkers(walkers, hamiltonian, trial)
-
-    objs = {'trial': trial,
-            'hamiltonian': hamiltonian,
-            'walkers': walkers,
-            'propagator': propagator}
-    return objs
-
+            "propagator": {
+                "optimised": False,
+                "free_projection": False
+            },
+        }
 
 @pytest.mark.unit
 def test_energy_estimator():
-    nocca = 5
-    noccb = 5
-    nelec = (nocca, noccb)
-    nbasis = 10
-
-    mu = -10.0
-    beta = 0.1
-    timestep = 0.01
-    nwalkers = 1
-    seed = 7
-    lowrank = False
-    verbose = True
-    
-    options = {
-                'mu': mu,
-                'nbasis': nbasis,
-                'beta': beta,
-                'timestep': timestep,
-                'nwalkers': nwalkers,
-                'seed': 7,
-                'lowrank': lowrank,
-
-                'hamiltonian': {
-                    'name': 'Generic',
-                    '_alt_convention': False,
-                    'sparse': False,
-                    'mu': mu
-                }
-            }
-    
-    objs = build_test_case_handlers(nelec, options, seed, choltol=1e-10, 
-                                    complex_integrals=False, verbose=verbose)
+    # Test.
+    print('\n----------------------------')
+    print('Constructing test objects...')
+    print('----------------------------')
+    objs =  build_generic_test_case_handlers(options, seed, debug, verbose)
     trial = objs['trial']
     hamiltonian = objs['hamiltonian']
     walkers = objs['walkers']
@@ -100,11 +81,8 @@ def test_energy_estimator():
     estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial)
     estim.compute_estimator(walkers, hamiltonian, trial)
     assert len(estim.names) == 5
-    #assert estim["ENumer"].real == pytest.approx(-754.0373585215561)
-    #assert estim["ETotal"] == pytest.approx(0.0)
     tmp = estim.data.copy()
     estim.post_reduce_hook(tmp)
-    #assert tmp[estim.get_index("ETotal")] == pytest.approx(-75.40373585215562)
     assert estim.print_to_stdout
     assert estim.ascii_filename == None
     assert estim.shape == (5,)
@@ -115,39 +93,12 @@ def test_energy_estimator():
 
 @pytest.mark.unit
 def test_estimator_handler():
-    nocca = 5
-    noccb = 5
-    nelec = (nocca, noccb)
-    nbasis = 10
-
-    mu = -10.0
-    beta = 0.1
-    timestep = 0.01
-    nwalkers = 1
-    seed = 7
-    lowrank = False
-    verbose = True
-    
-    options = {
-                'mu': mu,
-                'nbasis': nbasis,
-                'beta': beta,
-                'timestep': timestep,
-                'nwalkers': nwalkers,
-                'seed': 7,
-                'lowrank': lowrank,
-
-                'hamiltonian': {
-                    'name': 'Generic',
-                    '_alt_convention': False,
-                    'sparse': False,
-                    'mu': mu
-                }
-            }
-    
     with tempfile.NamedTemporaryFile() as tmp1, tempfile.NamedTemporaryFile() as tmp2:
-        objs = build_test_case_handlers(nelec, options, seed, choltol=1e-10, 
-                                        complex_integrals=False, verbose=verbose)
+        # Test.
+        print('\n----------------------------')
+        print('Constructing test objects...')
+        print('----------------------------')
+        objs =  build_generic_test_case_handlers(options, seed, debug, verbose)
         trial = objs['trial']
         hamiltonian = objs['hamiltonian']
         walkers = objs['walkers']
@@ -155,7 +106,6 @@ def test_estimator_handler():
         estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial, 
                                        filename=tmp1.name)
         estim.print_to_stdout = False
-        from ipie.config import MPI
 
         comm = MPI.COMM_WORLD
         handler = ThermalEstimatorHandler(

@@ -65,7 +65,7 @@ class SingleDet(TrialWavefunctionBase):
             + hamiltonian.ecore
         )
         self.ej, self.ek = half_rotated_cholesky_jk(
-            self.Ghalf[0], self.Ghalf[1], trial=self
+            system, self.Ghalf[0], self.Ghalf[1], trial=self
         )
         self.e2b = self.ej + self.ek
         self.energy = self.e1b + self.e2b

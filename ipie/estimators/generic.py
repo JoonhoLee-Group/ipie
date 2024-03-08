@@ -23,13 +23,15 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
+def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
+    system : :class:`Generic`
+        System information for Generic.
     hamiltonian : :class:`Generic`
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
@@ -87,13 +89,15 @@ def local_energy_generic_cholesky(hamiltonian, G, Ghalf=None):
     return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
-def local_energy_cholesky_opt_dG(ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the density difference trick.
 
     Parameters
     ----------
+    system : :class:`Generic`
+        System information for Generic.
     ecore : float
         Core energy
     Ghalfa : :class:`numpy.ndarray`
@@ -118,7 +122,7 @@ def local_energy_cholesky_opt_dG(ecore, Ghalfa, Ghalfb, trial):
         dGhalfa = dGhalfa.astype(numpy.complex64)
         dGhalfb = dGhalfb.astype(numpy.complex64)
 
-    deJ, deK = half_rotated_cholesky_jk(dGhalfa, dGhalfb, trial)
+    deJ, deK = half_rotated_cholesky_jk(system, dGhalfa, dGhalfb, trial)
     de2 = deJ + deK
 
     if trial.mixed_precision:
@@ -133,13 +137,15 @@ def local_energy_cholesky_opt_dG(ecore, Ghalfa, Ghalfb, trial):
     return (etot, e1, e2)
 
 
-def local_energy_cholesky_opt(ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the half-rotated cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
+    system : :class:`Generic`
+        System information for Generic.
     Ghalfa : :class:`numpy.ndarray`
         Walker's half-rotated "green's function" shape is nalpha  x nbasis
     Ghalfa : :class:`numpy.ndarray`
@@ -152,20 +158,22 @@ def local_energy_cholesky_opt(ecore, Ghalfa, Ghalfb, trial):
     (E, T, V): tuple
         Total, one and two-body energies.
     """
-    e1b = half_rotated_cholesky_hcore(Ghalfa, Ghalfb, trial)
-    eJ, eK = half_rotated_cholesky_jk(Ghalfa, Ghalfb, trial)
+    e1b = half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial)
+    eJ, eK = half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial)
     e2b = eJ + eK
 
     return (e1b + e2b + ecore, e1b + ecore, e2b)
 
 
-def half_rotated_cholesky_hcore(Ghalfa, Ghalfb, trial):
+def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the half-rotated core hamiltonian.
 
     Parameters
     ----------
+    system : :class:`Generic`
+        System information for Generic.
     Ghalfa : :class:`numpy.ndarray`
         Walker's half-rotated "green's function" shape is nalpha  x nbasis
     Ghalfa : :class:`numpy.ndarray`
@@ -297,7 +305,7 @@ def cholesky_jk_ghf(chol, G):
     return 0.5 * ecoul, -0.5 * exx  # JK energy
 
 
-def half_rotated_cholesky_jk(Ghalfa, Ghalfb, trial):
+def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     """Compute exchange and coulomb contributions via jitted kernels.
 
     Parameters

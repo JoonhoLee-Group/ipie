@@ -107,7 +107,7 @@ def setup_objs(seed=None):
     psi0 = numpy.zeros((nbasis, numpy.sum(nelec)), dtype=numpy.complex128)
     psi0[:, :nup] = psia
     psi0[:, nup:] = psib
-    numpy.save('ueg_trial', psi0)
+    #numpy.save('ueg_trial', psi0)
 
     if verbose:
         print(numpy.amax(numpy.absolute(chol.imag)))
@@ -188,7 +188,8 @@ def setup_objs(seed=None):
     legacy_walkers = Walkers(legacy_system, legacy_hamiltonian, legacy_trial,
                              qmc_opts, verbose=verbose)
     
-    objs = {'trial': trial,
+    objs = {'system': system,
+            'trial': trial,
             'hamiltonian': hamiltonian,
             'walkers': walkers}
 
@@ -204,6 +205,7 @@ def setup_objs(seed=None):
 def test_ueg_0T(verbose=False):
     seed = 7
     objs, legacy_objs = setup_objs(seed=seed)
+    system = objs['system']
     trial = objs['trial']
     hamiltonian = objs['hamiltonian']
     walkers = objs['walkers']
@@ -219,10 +221,9 @@ def test_ueg_0T(verbose=False):
     for iw in range(walkers.nwalkers):
         G = numpy.array([walkers.Ga[iw], walkers.Gb[iw]])
         Ghalf = numpy.array([walkers.Ghalfa[iw], walkers.Ghalfb[iw]])
-        eloc = local_energy_G(hamiltonian, trial, G, Ghalf)
+        eloc = local_energy_G(system, hamiltonian, trial, G, Ghalf)
         
         legacy_eloc = legacy_local_energy_ueg(legacy_system, legacy_hamiltonian, legacy_walkers.walkers[iw].G)
-        
         legacy_Ga, legacy_Gb = legacy_walkers.walkers[iw].G
         legacy_Gtot = legacy_Ga + legacy_Gb
         ref_e1 = numpy.einsum('ij,ij->', h1e, legacy_Gtot)

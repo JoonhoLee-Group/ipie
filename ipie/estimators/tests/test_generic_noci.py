@@ -22,6 +22,7 @@ import pytest
 from ipie.estimators.energy import local_energy
 from ipie.estimators.local_energy_wicks import local_energy_multi_det_trial_wicks_batch_opt_chunked
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
@@ -34,28 +35,29 @@ def test_greens_function_noci():
     np.random.seed(7)
     nmo = 12
     nelec = (7, 7)
-    nup, ndown = nelec
     nwalkers = 10
     nsteps = 100
     ndets = 11
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    ham = HamGeneric(h1e=np.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
+    system = Generic(nelec=nelec)
+    hamiltonian = HamGeneric(h1e=np.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
     # Test PH type wavefunction.
     coeffs, wfn, init = get_random_nomsd(
-        nup, ndown, ham.nbasis, ndet=ndets, init=True)
+        system.nup, system.ndown, hamiltonian.nbasis, ndet=ndets, init=True
+    )
     trial = NOCI((coeffs, wfn), nelec, nmo)
     trial.build()
-    trial.half_rotate(ham)
+    trial.half_rotate(hamiltonian)
     g = trial.build_one_rdm()
     assert np.isclose(g[0].trace(), nelec[0])
     assert np.isclose(g[1].trace(), nelec[0])
-    walkers = UHFWalkersTrial(trial, init, nup, ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
     walkers.build(trial)
     assert walkers.Gia.shape == (ndets, nwalkers, nmo, nmo)
     assert walkers.Ghalfa.shape == (ndets, nwalkers, nelec[0], nmo)
     assert walkers.Ga.shape == (nwalkers, nmo, nmo)
     assert walkers.Gb.shape == (nwalkers, nmo, nmo)
-    trial.calc_force_bias(ham, walkers)
+    trial.calc_force_bias(hamiltonian, walkers)
     ovlp_gf = trial.calc_greens_function(walkers)
     ovlp_ov = trial.calc_overlap(walkers)
     assert np.allclose(ovlp_gf, ovlp_ov)
@@ -66,15 +68,15 @@ def test_local_energy_noci():
     np.random.seed(7)
     nmo = 12
     nelec = (7, 7)
-    nup, ndown = nelec
     nwalkers = 10
     nsteps = 100
     ndets = 11
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
-    ham = HamGeneric(h1e=np.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
+    system = Generic(nelec=nelec)
+    hamiltonian = HamGeneric(h1e=np.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy())
     # Test PH type wavefunction.
     coeffs, wfn, init = get_random_nomsd(
-        nup, ndown, ham.nbasis, ndet=ndets, init=True, cplx=False
+        system.nup, system.ndown, hamiltonian.nbasis, ndet=ndets, init=True, cplx=False
     )
     wfn0 = wfn[0].copy()
     for i in range(len(wfn)):
@@ -82,36 +84,36 @@ def test_local_energy_noci():
         coeffs[i] = coeffs[0]
     trial = NOCI((coeffs, wfn), nelec, nmo)
     trial.build()
-    trial.half_rotate(ham)
+    trial.half_rotate(hamiltonian)
     g = trial.build_one_rdm()
-    walkers = UHFWalkersTrial(trial, init, nup, ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
     walkers.build(trial)
-    energy = local_energy(ham, walkers, trial)
+    energy = local_energy(system, hamiltonian, walkers, trial)
     trial_sd = SingleDet(wfn[0], nelec, nmo)
-    walkers_sd = UHFWalkersTrial(trial_sd, init, nup, ndown, ham.nbasis, nwalkers)
+    walkers_sd = UHFWalkersTrial(trial_sd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
     walkers.build(trial)
-    energy_sd = local_energy(ham, walkers, trial)
+    energy_sd = local_energy(system, hamiltonian, walkers, trial)
     assert np.allclose(energy, energy_sd)
     coeffs, wfn, init = get_random_nomsd(
-        nup, ndown, ham.nbasis, ndet=ndets, init=True, cplx=False
+        system.nup, system.ndown, hamiltonian.nbasis, ndet=ndets, init=True, cplx=False
     )
     trial = NOCI((coeffs, wfn), nelec, nmo)
     trial.build()
-    trial.half_rotate(ham)
+    trial.half_rotate(hamiltonian)
     g = trial.build_one_rdm()
-    walkers = UHFWalkersTrial(trial, init, nup, ndown, ham.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
     walkers.build(trial)
-    energy = local_energy(ham, walkers, trial)
+    energy = local_energy(system, hamiltonian, walkers, trial)
     assert not np.allclose(energy, energy_sd)
     # Test against PHMSD
-    wfn, init = get_random_phmsd_opt(nup, ndown, ham.nbasis, ndet=11, init=True)
+    wfn, init = get_random_phmsd_opt(system.nup, system.ndown, hamiltonian.nbasis, ndet=11, init=True)
     trial_phmsd = ParticleHole(
         wfn,
         nelec,
         nmo,
     )
     trial_phmsd.build()
-    trial_phmsd.half_rotate(ham)
+    trial_phmsd.half_rotate(hamiltonian)
     noci = np.zeros((ndets, nmo, sum(nelec)))
     for idet, (occa, occb) in enumerate(zip(wfn[1], wfn[2])):
         for iorb, occ in enumerate(occa):
@@ -121,27 +123,23 @@ def test_local_energy_noci():
 
     trial = NOCI((wfn[0], noci), nelec, nmo)
     trial.build()
-    trial.half_rotate(ham)
-    walkers = UHFWalkersTrial(trial, init, nup, ndown, ham.nbasis, nwalkers)
+    trial.half_rotate(hamiltonian)
+    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
     walkers.build(trial)
     ovlp_noci = trial.calc_overlap(walkers)
     trial.calc_greens_function(walkers)
-    fb_noci = trial.calc_force_bias(ham, walkers)
-    energy = local_energy(ham, walkers, trial)
+    fb_noci = trial.calc_force_bias(hamiltonian, walkers)
+    energy = local_energy(system, hamiltonian, walkers, trial)
     walkers_phmsd = UHFWalkersTrial(
-        trial_phmsd, init, nup, ndown, ham.nbasis, nwalkers
+        trial_phmsd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
     )
     walkers_phmsd.build(trial_phmsd)
     trial_phmsd.calc_greens_function(walkers_phmsd)
     assert np.allclose(ovlp_noci, trial_phmsd.calc_overlap(walkers_phmsd))
     assert np.allclose(walkers_phmsd.Ga, walkers.Ga)
     assert np.allclose(walkers_phmsd.Gb, walkers.Gb)
-    assert np.allclose(fb_noci, trial_phmsd.calc_force_bias(ham, walkers))
+    assert np.allclose(fb_noci, trial_phmsd.calc_force_bias(hamiltonian, walkers))
     e_phmsd = local_energy_multi_det_trial_wicks_batch_opt_chunked(
-        ham, walkers_phmsd, trial_phmsd)
+        system, hamiltonian, walkers_phmsd, trial_phmsd
+    )
     assert np.allclose(energy, e_phmsd)
-
-
-if __name__ == '__main__':
-    test_greens_function_noci()
-    test_local_energy_noci()

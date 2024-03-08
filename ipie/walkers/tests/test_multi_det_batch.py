@@ -220,16 +220,16 @@ def test_walker_energy():
     greens_function_multi_det_wicks_opt(
         walkers_opt, trial_opt
     )  # compute green's function using Wick's theorem
-    e_wicks = local_energy_multi_det_trial_wicks_batch(ham, walkers0, trial)
-    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(ham, walkers_opt, trial_opt)
+    e_wicks = local_energy_multi_det_trial_wicks_batch(system, ham, walkers0, trial)
+    e_wicks_opt = local_energy_multi_det_trial_wicks_batch_opt(system, ham, walkers_opt, trial_opt)
     greens_function_multi_det(walkers, trial_slow)
-    e_simple = local_energy_multi_det_trial_batch(ham, walkers, trial_slow)
+    e_simple = local_energy_multi_det_trial_batch(system, ham, walkers, trial_slow)
 
     assert e_simple[:, 0] == pytest.approx(energies)
     assert e_wicks_opt[:, 0] == pytest.approx(e_wicks[:, 0])
     assert e_wicks[:, 0] == pytest.approx(energies)
 
-    # e = local_energy_batch(ham, walkers, trial, iw=0)
+    # e = local_energy_batch(system, ham, walkers, trial, iw=0)
     # assert e[:,0] == pytest.approx(energies[0])
 
 

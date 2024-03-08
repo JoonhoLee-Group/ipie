@@ -32,13 +32,15 @@ from ipie.propagation.overlap import (
 from ipie.utils.linalg import minor_mask, minor_mask4
 
 
-def local_energy_multi_det_trial_wicks_batch(hamiltonian, walkers, trial):
+def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -75,7 +77,7 @@ def local_energy_multi_det_trial_wicks_batch(hamiltonian, walkers, trial):
         G0 = [G0a, G0b]
 
         # contribution 1 (disconnected)
-        cont1 = local_energy_generic_cholesky(hamiltonian, G0)[2]
+        cont1 = local_energy_generic_cholesky(system, hamiltonian, G0)[2]
 
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
@@ -547,7 +549,7 @@ def build_contributions12(
     return cont1_J + cont1_K, cont2_J + cont2_K
 
 
-def local_energy_multi_det_trial_wicks_batch_opt_chunked(hamiltonian, walkers, trial, max_mem=2.0):
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -559,6 +561,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(hamiltonian, walkers, t
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch
@@ -857,7 +861,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(hamiltonian, walkers, t
     return walker_energies
 
 
-def local_energy_multi_det_trial_wicks_batch_opt(hamiltonian, walkers, trial, max_mem=2.0):
+def local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -870,6 +874,8 @@ def local_energy_multi_det_trial_wicks_batch_opt(hamiltonian, walkers, trial, ma
 
     Parameters
     ----------
+    system : system object
+        System being studied.
     hamiltonian : hamiltonian object
         Hamiltonian being studied.
     walkers : WalkerBatch

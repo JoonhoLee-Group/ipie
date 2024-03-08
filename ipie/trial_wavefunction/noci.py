@@ -35,7 +35,7 @@ class NOCI(TrialWavefunctionBase):
         ...
 
     def calculate_energy(self, system, hamiltonian):
-        return variational_energy_noci(hamiltonian, self)
+        return variational_energy_noci(system, hamiltonian, self)
 
     def half_rotate(self, hamiltonian, comm=None):
         orbsa = self.psi[: self.num_dets, :, : self.nalpha]

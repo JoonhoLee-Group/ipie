@@ -236,6 +236,7 @@ class AFQMC(object):
         comm = self.mpi_handler.comm
         self.estimators = EstimatorHandler(
             self.mpi_handler.comm,
+            self.system,
             self.hamiltonian,
             self.trial,
             walker_state=self.accumulators,
@@ -253,6 +254,8 @@ class AFQMC(object):
         self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
         self.estimators.compute_estimators(
+            comm,
+            self.system,
             self.hamiltonian,
             self.trial,
             self.walkers,
@@ -393,6 +396,8 @@ class AFQMC(object):
             start = time.time()
             if step % self.params.num_steps_per_block == 0:
                 self.estimators.compute_estimators(
+                    comm,
+                    self.system,
                     self.hamiltonian,
                     self.trial,
                     self.walkers,
