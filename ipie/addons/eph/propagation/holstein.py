@@ -3,6 +3,9 @@ import time
 import scipy.linalg
 
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
+from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
+
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import synchronize, cast_to_device
 from ipie.propagation.continuous_base import PropagatorTimer
@@ -55,8 +58,9 @@ class HolsteinPropagatorFree:
         self.dt_ph = 0.5 * self.dt
         self.mpi_handler = None
 
-    def build(self, hamiltonian: HolsteinModel, trial=None, 
-              walkers=None, mpi_handler=None) -> None:   
+    def build(self, hamiltonian: HolsteinModel, 
+              trial: EPhTrialWavefunctionBase = None, 
+              walkers: EPhWalkers = None, mpi_handler = None) -> None:   
         """Necessary step before running the AFQMC procedure. 
         Sets required attributes. 
         
@@ -65,9 +69,9 @@ class HolsteinPropagatorFree:
         hamiltonian : 
             Holstein model
         trial :
-            Trial class
+            Trial object
         walkers : 
-            Walkers class
+            Walkers object
         mpi_handler :
             MPIHandler specifying rank and size
         """
@@ -78,7 +82,9 @@ class HolsteinPropagatorFree:
         self.scale = numpy.sqrt(self.dt_ph / self.m)
         self.nsites = hamiltonian.nsites
 
-    def propagate_phonons(self, walkers, hamiltonian, trial) -> None:
+    def propagate_phonons(self, walkers: EPhWalkers, 
+                          hamiltonian: HolsteinModel, 
+                          trial: EPhTrialWavefunctionBase) -> None:
         r"""Propagates phonon displacements by adjusting weigths according to
         bosonic on-site energies and sampling the momentum contribution, again
         by trotterizing the phonon propagator.
@@ -119,7 +125,8 @@ class HolsteinPropagatorFree:
         synchronize()
         self.timer.tgemm += time.time() - start_time
 
-    def propagate_electron(self, walkers, hamiltonian, trial) -> None:
+    def propagate_electron(self, walkers: EPhWalkers, hamiltonian: HolsteinModel, 
+                           trial: EPhTrialWavefunctionBase) -> None:
         r"""Propagates electronic degrees of freedom via
 
         .. math:: 
@@ -139,7 +146,6 @@ class HolsteinPropagatorFree:
             Trial class
         """
         start_time = time.time()
-        ovlp = trial.calc_greens_function(walkers) 
         synchronize()
         self.timer.tgf += time.time() - start_time
 
@@ -154,7 +160,26 @@ class HolsteinPropagatorFree:
             walkers.phib = numpy.einsum('ni,nie->nie', expEph, walkers.phib)
             walkers.phib = propagate_one_body(walkers.phib, self.expH1[1])
 
-    def propagate_walkers(self, walkers, hamiltonian, trial, eshift=None):
+    def propagate_walkers(self, 
+            walkers: EPhWalkers, 
+            hamiltonian: HolsteinModel, 
+            trial: EPhTrialWavefunctionBase, 
+            eshift: float = None
+        ) -> None:
+        r"""Propagates walkers by trotterized propagator.
+        
+        Parameters
+        ----------
+        walkers : 
+            EPhWalkers object
+        hamiltonian : 
+            HolsteinModel object
+        trial : 
+            EPhTrialWavefunctionBase object
+        eshift :
+            Only purpose is compatibility with AFQMC object, irrelevant for
+            propagation
+        """
         synchronize()
         start_time = time.time()
         ovlp = trial.calc_overlap(walkers)
@@ -183,7 +208,7 @@ class HolsteinPropagatorFree:
         self.timer.tupdate += time.time() - start_time
 
     
-    def update_weight(self, walkers, ovlp, ovlp_new):
+    def update_weight(self, walkers, ovlp, ovlp_new) -> None:
         walkers.weight *= ovlp_new / ovlp
 
 
@@ -213,11 +238,13 @@ class HolsteinPropagator(HolsteinPropagatorFree):
     def __init__(self, time_step, verbose=False):
         super().__init__(time_step, verbose=verbose)
 
-    def propagate_phonons(self, walkers, hamiltonian, trial):
+    def propagate_phonons(self, walkers: EPhWalkers, hamiltonian: HolsteinModel, 
+                          trial: EPhTrialWavefunctionBase) -> None:
         """Propagates phonons via Diffusion MC including drift term."""
         start_time = time.time()
         
-        # No ZPE in pot -> cancels with ZPE of etrial, wouldn't affect estimators anyways
+        # No ZPE in pot -> cancels with ZPE of etrial, 
+        # wouldn't affect estimators anyways
         ph_ovlp_old = trial.calc_phonon_overlap(walkers)
         
         pot = 0.5 * hamiltonian.m * hamiltonian.w0**2 * numpy.sum(walkers.x**2, axis=1)
