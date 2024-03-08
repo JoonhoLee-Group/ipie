@@ -4,7 +4,7 @@ import numpy
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
-from ipie.thermal.walkers.uhf_walkers import UHFThermalWalkers
+from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 
 class PopControllerTimer:
     def __init__(self):
