@@ -1,3 +1,17 @@
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from scipy.optimize import minimize, basinhopping 
 from ipie.systems import Generic
@@ -71,35 +85,30 @@ def objective_function_toyozawa_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms,
     etot = num_energy / denom
     return etot.real
 
-def circ_perm(lst):
-    cpy = lst[:]
-    yield cpy
-    for i in range(len(lst) - 1):
-        cpy = cpy[1:] + [cpy[0]]
-        yield cpy
-
-def func(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted):
-    f = objective_function_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted)
-    df = gradient_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted)
-    return f, df
-
-def print_fun(x: np.ndarray, f: float, accepted: bool):
-    print("at minimum %.4f accepted %d" % (f, int(accepted)))
-
-def func_toyo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted):
-    f = objective_function_toyozawa_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted)
-    df = gradient_toyozawa_mo(x, nbasis, nup, ndown, T, U, g, m, w0, perms, restricted)
-    return f, df
+def circ_perm(lst: np.ndarray) -> np.ndarray:
+    """Returns a matrix which rows consist of all possible 
+    cyclic permutations given an initial array lst.
+    
+    Parameters
+    ----------
+    lst : 
+        Initial array which is to be cyclically permuted
+    """
+    circs = lst
+    for shift in range(1, len(lst)):
+        new_circ = np.roll(lst, -shift)
+        circs = np.vstack([circs, new_circ])
+    return circs
 
 def variational_trial_toyozawa(shift_init: np.ndarray, electron_init: np.ndarray, hamiltonian, system):
     psi = electron_init.T.real.ravel()
     shift = shift_init.real
 
-    perms = list(circ_perm([i for i in range(hamiltonian.nsites)]))
+    perms = circ_perm(np.arange(hamiltonian.nsites))
 
     x = np.zeros((system.nup + system.ndown + 1) * hamiltonian.nsites)
     x[:hamiltonian.nsites] = shift.copy()
-    x[hamiltonian.nsites:] = psi.copy() #[:,0]
+    x[hamiltonian.nsites:] = psi.copy()
 
     res = minimize(
             objective_function_toyozawa_mo, 
@@ -134,5 +143,4 @@ def variational_trial_toyozawa(shift_init: np.ndarray, electron_init: np.ndarray
         psia = res.x[hamiltonian.nsites:].reshape((hamiltonian.nsites, system.nup))
         psi = psia
  
-
     return etrial, beta_shift, psi

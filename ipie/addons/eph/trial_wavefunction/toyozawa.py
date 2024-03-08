@@ -1,3 +1,17 @@
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import scipy.linalg
 from typing import Tuple
@@ -13,8 +27,10 @@ class ToyozawaTrial(CoherentStateTrial):
     def __init__(self, wavefunction: np.ndarray, hamiltonian: HolsteinModel, 
                  num_elec: Tuple[int, int], num_basis: int, verbose=False):
         super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
-        self.perms = list(circ_perm([i for i in range(self.nbasis)]))
-        self.nperms = len(self.perms)
+#        self.perms = list(circ_perm([i for i in range(self.nbasis)]))
+#        self.nperms = len(self.perms)
+        self.perms = circ_perm(np.arange(self.nbasis))
+        self.nperms = self.perms.shape[0]
 
     def calculate_energy(self, system, hamiltonian):
         #TODO variational_energy_coherent_state in ipie.estimators.local_energy
