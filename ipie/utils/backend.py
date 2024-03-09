@@ -93,8 +93,9 @@ def cast_to_device(self, verbose=False):
         expected_bytes = size * 16.0
         expected_gb = expected_bytes / 1024.0**3.0
         print(f"# {self.__class__.__name__}: expected to allocate {expected_gb} GB")
-
     for k, v in self.__dict__.items():
+        if k in ["Ga", "Gb"]:
+            continue  # reduce mem usage, Ga/Gb not used, use Ghalf instead
         if isinstance(v, _np.ndarray):
             self.__dict__[k] = arraylib.array(v)
         elif isinstance(v, list) and isinstance(v[0], _np.ndarray):

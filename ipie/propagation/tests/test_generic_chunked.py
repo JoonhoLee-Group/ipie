@@ -89,7 +89,7 @@ def test_generic_propagation_chunked():
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
 
     walker_batch = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
     walker_batch.build(trial)
 
@@ -103,8 +103,10 @@ def test_generic_propagation_chunked():
     )
 
     assert numpy.allclose(vfb, vfb_chunked)
-    xshifted = numpy.random.normal(0.0, 1.0, ham.nchol * walker_batch.nwalkers).reshape(
-        walker_batch.nwalkers, ham.nchol
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, ham.nchol * walker_batch.nwalkers)
+        .reshape(walker_batch.nwalkers, ham.nchol)
+        .astype(numpy.complex128)
     )
     VHS_chunked = prop.construct_VHS(
         ham,

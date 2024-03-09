@@ -19,7 +19,7 @@
 import ast
 import json
 import sys
-from typing import Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import h5py
 import numpy
@@ -66,6 +66,7 @@ def write_wavefunction(
         write_single_det_wavefunction(wfn, filename, phi0=phi0)
     else:
         if len(wfn) == 3:
+            len(wfn[1][0])
             write_particle_hole_wavefunction(wfn, filename, phi0=phi0)
         elif len(wfn) == 2:
             write_noci_wavefunction(wfn, filename, phi0=phi0)
@@ -156,31 +157,31 @@ def write_noci_wavefunction(wfn: tuple, filename: str, phi0: Union[None, list] =
 
 def read_particle_hole_wavefunction(
     filename: str,
-) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+) -> Tuple[Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray], Optional[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        ci_coeffs = fh5["ci_coeffs"][:]
-        occ_alpha = fh5["occ_alpha"][:]
-        occ_beta = fh5["occ_beta"][:]
+        ci_coeffs = numpy.array(fh5["ci_coeffs"][:])
+        occ_alpha = numpy.array(fh5["occ_alpha"][:])
+        occ_beta = numpy.array(fh5["occ_beta"][:])
     return (ci_coeffs, occ_alpha, occ_beta), None
 
 
-def read_noci_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
+def read_noci_wavefunction(
+    filename: str,
+) -> Tuple[Tuple[numpy.ndarray, List[numpy.ndarray]], Optional[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        ci_coeffs = fh5["ci_coeffs"][:]
-        ndets = len(ci_coeffs)
-        for _ in range(ndets):
-            psia = fh5[f"psi_T_alpha"][:]
-            psib = fh5[f"psi_T_beta"][:]
+        ci_coeffs = numpy.array(fh5["ci_coeffs"][:])
+        psia = numpy.array(fh5[f"psi_T_alpha"][:])
+        psib = numpy.array(fh5[f"psi_T_beta"][:])
     return (ci_coeffs, [psia, psib]), None
 
 
-def read_single_det_wavefunction(filename: str) -> Tuple[numpy.ndarray, list]:
+def read_single_det_wavefunction(filename: str) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     with h5py.File(filename, "r") as fh5:
-        psia = fh5["psi_T_alpha"][:]
-        phi0a = fh5["phi0_alpha"][:]
+        psia = numpy.array(fh5["psi_T_alpha"][:])
+        phi0a = numpy.array(fh5["phi0_alpha"][:])
         try:
-            psib = fh5["psi_T_beta"][:]
-            phi0b = fh5["phi0_beta"][:]
+            psib = numpy.array(fh5["psi_T_beta"][:])
+            phi0b = numpy.array(fh5["phi0_beta"][:])
             wfn = [psia, psib]
             phi0 = [phi0a, phi0b]
         except KeyError:
@@ -269,19 +270,28 @@ def get_input_value(inputs, key, default, alias=None, verbose=False):
     return val
 
 
-def read_qmcpack_wfn_hdf(filename, nelec=None):
+def read_qmcpack_wfn_hdf(filename, nelec=None, get_nelec=False):
     try:
         with h5py.File(filename, "r") as fh5:
             wgroup = fh5["Wavefunction/NOMSD"]
             wfn, psi0 = read_qmcpack_nomsd_hdf5(wgroup, nelec=nelec)
+            if get_nelec:
+                dims = wgroup["dims"]
+                nelec = (dims[1], dims[2])
     except KeyError:
         with h5py.File(filename, "r") as fh5:
             wgroup = fh5["Wavefunction/PHMSD"]
             wfn, psi0 = read_qmcpack_phmsd_hdf5(wgroup, nelec=nelec)
+            if get_nelec:
+                dims = wgroup["dims"]
+                nelec = (dims[1], dims[2])
     except KeyError:
         print("Wavefunction not found.")
         sys.exit()
-    return wfn, psi0
+    if get_nelec:
+        return wfn, psi0, nelec
+    else:
+        return wfn, psi0
 
 
 def read_qmcpack_nomsd_hdf5(wgroup, nelec=None):

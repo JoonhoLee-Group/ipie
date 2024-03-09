@@ -23,6 +23,7 @@ from ipie.estimators.greens_function import greens_function_single_det
 from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.misc import dotdict
+from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import build_test_case_handlers
 from ipie.walkers.ghf_walkers import GHFWalkers
 

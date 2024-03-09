@@ -19,9 +19,9 @@
 import numpy
 import pytest
 
+from ipie.hamiltonians.generic import GenericComplexChol
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import build_test_case_handlers
-from ipie.hamiltonians.generic import GenericComplexChol
 
 
 @pytest.mark.unit
@@ -98,7 +98,11 @@ def test_vhs_complex():
     )
 
     ham = test_handler.hamiltonian
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(ham.nfields, nwalkers)
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
 
@@ -145,7 +149,11 @@ def test_vhs_complex_vs_real():
     ham = test_handler.hamiltonian
     chol = ham.chol
 
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(ham.nfields, nwalkers)
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
 
@@ -197,7 +205,7 @@ def test_vfb_complex_vs_real():
     trial = test_handler.trial
     trial.calc_greens_function(walkers, build_full=True)
 
-    vfb = trial.calc_force_bias(ham, walkers)
+    vfb = trial.calc_force_bias(ham, walkers, walkers.mpi_handler)
 
     nbasis = ham.nbasis
     nchol = ham.nchol
@@ -213,7 +221,7 @@ def test_vfb_complex_vs_real():
         numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
     )
     trial.half_rotate(cx_ham)
-    cx_vfb = trial.calc_force_bias(cx_ham, walkers)
+    cx_vfb = trial.calc_force_bias(cx_ham, walkers, walkers.mpi_handler)
 
     nfields = cx_ham.nfields
     cx_vfb_ref = numpy.zeros((nwalkers, nfields), dtype=numpy.complex128)
@@ -264,7 +272,7 @@ def test_vfb_complex():
     G = walkers.Ga + walkers.Gb
     G = G.reshape((nwalkers, nbasis**2))
 
-    vfb = trial.calc_force_bias(ham, walkers)
+    vfb = trial.calc_force_bias(ham, walkers, walkers.mpi_handler)
 
     nchol = ham.nchol
     nfields = ham.nfields

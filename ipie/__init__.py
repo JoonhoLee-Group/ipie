@@ -16,4 +16,4 @@
 #          Joonho Lee
 #
 
-__version__ = "0.6.2"
+from ._version import __version__

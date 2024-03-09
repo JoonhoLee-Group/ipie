@@ -45,7 +45,13 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, get_random_phmsd_opt
+from ipie.utils.mpi import MPIHandler
+from ipie.utils.testing import (
+    generate_hamiltonian,
+    get_random_phmsd,
+    get_random_phmsd_opt,
+    shaped_normal,
+)
 from ipie.walkers.uhf_walkers import UHFWalkersParticleHole
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
@@ -84,13 +90,19 @@ def test_greens_function_wicks_opt():
     trial_opt.build()
     numpy.random.seed(7)
 
-    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_wick = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
 
-    walkers_slow = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_slow = UHFWalkersTrial(
+        trial_slow, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers_slow.build(trial_slow)
 
-    walkers_opt = UHFWalkersTrial(trial_opt, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_opt = UHFWalkersTrial(
+        trial_opt, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers_opt.build(trial_opt)
 
     options = {"hybrid": True}
@@ -147,7 +159,9 @@ def test_greens_function_edge_cases():
     wfn, init = get_random_phmsd_opt(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, init=True)
     trial = ParticleHole(wfn, nelec, nmo, verbose=False)
     trial.build()
-    walkers_wick = UHFWalkersParticleHole(init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_wick = UHFWalkersParticleHole(
+        init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
     ovlps_ref_wick = greens_function_multi_det_wicks_opt(walkers_wick, trial)
 
@@ -275,7 +289,9 @@ def test_det_matrix():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(hamiltonian, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -326,7 +342,7 @@ def test_phmsd_local_energy():
     # Test PH type wavefunction.
     # wfn, init = get_random_phmsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=5, init=True)
     wfn, init = get_random_phmsd(
-        system.nup, system.ndown, hamiltonian.nbasis, ndet=3000, init=True, cmplx=False
+        system.nup, system.ndown, hamiltonian.nbasis, ndet=3000, init=True, cmplx=True
     )
     ci, oa, ob = wfn
     wfn_2 = (ci[::50], oa[::50], ob[::50])  # Get high excitation determinants too
@@ -351,21 +367,25 @@ def test_phmsd_local_energy():
     trial_test.build()
     trial_test.half_rotate(hamiltonian)
     numpy.random.seed(7)
-    walkers_wick = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_wick = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers_wick.build(trial)
 
     numpy.random.seed(7)
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial_slow, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial_slow, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial_slow)
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
     walker_batch_test2 = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test2.build(trial)
 
@@ -436,7 +456,9 @@ def test_kernels_energy():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(hamiltonian, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
     numpy.random.seed(7)
     for i in range(nsteps):
@@ -459,10 +481,9 @@ def test_kernels_energy():
     test = numpy.zeros((nwalkers, ndets, nchol), dtype=numpy.complex128)
     slices_alpha, slices_beta = trial.slices_alpha, trial.slices_beta
     nbasis = hamiltonian.nbasis
-    from ipie.utils.testing import shaped_normal
 
-    Laa = shaped_normal((nwalkers, nbasis, system.nup, nchol))
-    Lbb = shaped_normal((nwalkers, nbasis, system.ndown, nchol))
+    Laa = shaped_normal((nwalkers, nbasis, system.nup, nchol), cmplx=True)
+    Lbb = shaped_normal((nwalkers, nbasis, system.ndown, nchol), cmplx=True)
     # 1.
     fill_opp_spin_factors_batched_singles(
         trial.cre_ex_b[1],
@@ -654,7 +675,9 @@ def test_kernels_gf():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(hamiltonian, trial)
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     numpy.random.seed(7)
@@ -801,16 +824,15 @@ def test_kernels_gf_active_space():
     prop = PhaselessGeneric(qmc["dt"])
     prop.build(hamiltonian, trial_ref)
 
-    I = numpy.eye(nmo)
-    init = numpy.hstack([I[:, : nelec[0]], I[:, : nelec[1]]])
+    init = shaped_normal((nmo, system.ne), cmplx=True)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
@@ -997,12 +1019,12 @@ def test_kernels_energy_active_space():
     prop.build(hamiltonian, trial_ref)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
@@ -1038,9 +1060,8 @@ def test_kernels_energy_active_space():
     )
     walker_batch_ref.CIa.fill(0.0 + 0.0j)
     walker_batch_ref.CIb.fill(0.0 + 0.0j)
-    from ipie.utils.testing import shaped_normal
 
-    Lbb = shaped_normal((nwalkers, nmo, system.ndown, nchol))
+    Lbb = shaped_normal((nwalkers, nmo, system.ndown, nchol), cmplx=True)
     slices_alpha, slices_beta = trial_test.slices_alpha, trial_test.slices_beta
     assert trial_ref.nfrozen != trial_test.nfrozen
     # 1.
@@ -1269,12 +1290,24 @@ def test_phmsd_local_energy_active_space():
     prop.build(hamiltonian, trial_ref)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_ref,
+        init,
+        system.nup,
+        system.ndown,
+        hamiltonian.nbasis,
+        nwalkers,
+        MPIHandler(),
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test,
+        init,
+        system.nup,
+        system.ndown,
+        hamiltonian.nbasis,
+        nwalkers,
+        MPIHandler(),
     )
     walker_batch_test.build(trial_test)
 
@@ -1325,10 +1358,9 @@ def test_phmsd_local_energy_active_space_polarised():
         ecore=0,
         # options={"symmetry": False},
     )
-    from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
     wfn, init = get_random_phmsd_opt(7, 5, nact, ndet=100, init=True)
-    init = shaped_normal((nmo, system.ne))
+    init = shaped_normal((nmo, system.ne), cmplx=True)
     ci, occa, occb = wfn
     core = [0, 1]
     with_core_a = numpy.array(
@@ -1363,16 +1395,18 @@ def test_phmsd_local_energy_active_space_polarised():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 
     walker_batch_test_chunked = UHFWalkersTrial(
-        trial_test_chunked, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test_chunked, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test_chunked.build(trial_test_chunked)
 
@@ -1432,7 +1466,6 @@ def test_phmsd_local_energy_active_space_non_aufbau():
         ecore=0,
         # options={"symmetry": False},
     )
-    from ipie.utils.testing import get_random_phmsd_opt, shaped_normal
 
     wfn, init = get_random_phmsd_opt(7, 7, nact, ndet=100, init=True, cmplx_coeffs=False)
     init = shaped_normal((nmo, system.ne))
@@ -1494,16 +1527,18 @@ def test_phmsd_local_energy_active_space_non_aufbau():
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
     options = {"hybrid": True}
 
-    walker_batch = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walker_batch = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walker_batch.build(trial)
 
     walker_batch_ref = UHFWalkersTrial(
-        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_ref, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_ref.build(trial_ref)
 
     walker_batch_test = UHFWalkersTrial(
-        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_test, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walker_batch_test.build(trial_test)
 

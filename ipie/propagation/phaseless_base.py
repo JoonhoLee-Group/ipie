@@ -5,7 +5,7 @@ from abc import abstractmethod
 from ipie.propagation.continuous_base import ContinuousBase
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
+from ipie.utils.backend import synchronize, cast_to_device
 
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -29,10 +29,18 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
         Timestep.
     """
     nb = hamiltonian.nbasis
-    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
-    H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
-    expH1 = numpy.array(
-        [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
+    if hasattr(mf_shift, "get"):
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift.get()).reshape(nb, nb)
+    else:
+        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
+    shift = xp.array(shift)
+    H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
+    if hasattr(H1, "get"):
+        H1_numpy = H1.get()
+    else:
+        H1_numpy = H1
+    expH1 = xp.array(
+        [scipy.linalg.expm(-0.5 * dt * H1_numpy[0]), scipy.linalg.expm(-0.5 * dt * H1_numpy[1])]
     )
     return expH1
 
@@ -41,9 +49,8 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
 def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
-    shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
+    shift = numpy.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
     shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(nb, nb)
-
     shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(nb, nb)
 
     H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
@@ -64,10 +71,11 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     """
     # hamiltonian.chol [X, M^2]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
     tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
-    return mf_shift
+    return xp.array(mf_shift)
 
 
 @plum.dispatch
@@ -156,7 +164,6 @@ class PhaselessBase(ContinuousBase):
         cfb = xp.einsum("wx,wx->w", xi, xbar) - 0.5 * xp.einsum("wx,wx->w", xbar, xbar)
 
         xshifted = xshifted.T.copy()
-
         self.apply_VHS(walkers, hamiltonian, xshifted)
 
         return (cmf, cfb)
@@ -235,3 +242,6 @@ class PhaselessBase(ContinuousBase):
     @abstractmethod
     def apply_VHS(self, walkers, hamiltonian, xshifted):
         pass
+
+    def cast_to_cupy(self, verbose=False):
+        cast_to_device(self, verbose=verbose)

@@ -1,9 +1,10 @@
 import time
+from typing import Optional
 
 import numpy
 import plum
 
-from ipie.config import config
+from ipie.config import CommType, config, MPI
 from ipie.estimators.generic import half_rotated_cholesky_jk
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
@@ -82,7 +83,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm=None,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -108,7 +109,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm=None,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -150,8 +151,8 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericRealChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
-    ) -> numpy.ndarray:
+        mpi_handler: MPIHandler,
+    ) -> xp.ndarray:
         if hamiltonian.chunked:
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler
@@ -164,7 +165,7 @@ class SingleDet(TrialWavefunctionBase):
         self,
         hamiltonian: GenericComplexChol,
         walkers: UHFWalkers,
-        mpi_handler: MPIHandler = None,
+        mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
         # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)

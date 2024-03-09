@@ -26,6 +26,7 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import generate_hamiltonian, get_random_nomsd, get_random_phmsd_opt
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
@@ -51,7 +52,9 @@ def test_greens_function_noci():
     g = trial.build_one_rdm()
     assert np.isclose(g[0].trace(), nelec[0])
     assert np.isclose(g[1].trace(), nelec[0])
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     assert walkers.Gia.shape == (ndets, nwalkers, nmo, nmo)
     assert walkers.Ghalfa.shape == (ndets, nwalkers, nelec[0], nmo)
@@ -86,11 +89,15 @@ def test_local_energy_noci():
     trial.build()
     trial.half_rotate(hamiltonian)
     g = trial.build_one_rdm()
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     energy = local_energy(system, hamiltonian, walkers, trial)
     trial_sd = SingleDet(wfn[0], nelec, nmo)
-    walkers_sd = UHFWalkersTrial(trial_sd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers_sd = UHFWalkersTrial(
+        trial_sd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     energy_sd = local_energy(system, hamiltonian, walkers, trial)
     assert np.allclose(energy, energy_sd)
@@ -101,7 +108,9 @@ def test_local_energy_noci():
     trial.build()
     trial.half_rotate(hamiltonian)
     g = trial.build_one_rdm()
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     energy = local_energy(system, hamiltonian, walkers, trial)
     assert not np.allclose(energy, energy_sd)
@@ -124,14 +133,16 @@ def test_local_energy_noci():
     trial = NOCI((wfn[0], noci), nelec, nmo)
     trial.build()
     trial.half_rotate(hamiltonian)
-    walkers = UHFWalkersTrial(trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers)
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
+    )
     walkers.build(trial)
     ovlp_noci = trial.calc_overlap(walkers)
     trial.calc_greens_function(walkers)
     fb_noci = trial.calc_force_bias(hamiltonian, walkers)
     energy = local_energy(system, hamiltonian, walkers, trial)
     walkers_phmsd = UHFWalkersTrial(
-        trial_phmsd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers
+        trial_phmsd, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, MPIHandler()
     )
     walkers_phmsd.build(trial_phmsd)
     trial_phmsd.calc_greens_function(walkers_phmsd)

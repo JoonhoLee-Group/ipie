@@ -2,6 +2,13 @@ import numpy as np
 import pytest
 
 from ipie.config import MPI
+
+try:
+    from ipie.lib.wicks import wicks_helper
+
+    no_wicks = False
+except ImportError:
+    no_wicks = True
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHole,
     ParticleHoleNonChunked,
@@ -30,6 +37,7 @@ def test_wicks_slow():
     assert len(trial.phase_a) == trial.num_dets
     assert len(trial.phase_b) == trial.num_dets
     trial.num_dets = 10
+    trial.num_dets_for_props = 10
     trial.build()
     assert len(trial.cre_a) == trial.num_dets
     assert len(trial.cre_b) == trial.num_dets
@@ -149,7 +157,33 @@ def test_wicks_opt_chunked():
     assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)
 
 
-if __name__ == '__main__':
-    test_wicks_slow()
-    test_wicks_opt()
-    test_wicks_opt_chunked()
+@pytest.mark.wicks
+@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
+@pytest.mark.parametrize(
+    "nalpha,nbeta,nbasis", ((4, 4, 10), (4, 7, 12), (36, 36, 47), (64, 65, 72))
+)
+def test_opt_one_rdm(nalpha, nbeta, nbasis):
+    wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100, cmplx_coeffs=False)
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=False,
+        num_dets_for_props=len(wavefunction[0]),
+    )
+    ref = trial.compute_1rdm(nbasis)
+    assert np.allclose(trial.G, ref)
+    wavefunction, _ = get_random_phmsd_opt(
+        nalpha, nbeta, nbasis, ndet=len(wavefunction[0]), cmplx_coeffs=True
+    )
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=False,
+        num_dets_for_props=(len(wavefunction[0])),
+    )
+    ref = trial.compute_1rdm(nbasis)
+    # TODO: Fix convention.
+    assert np.allclose(trial.G[0], ref[0].T)
+    assert np.allclose(trial.G[1], ref[1].T)

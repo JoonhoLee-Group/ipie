@@ -1,60 +1,76 @@
 name: Publish ipie
-on:
-  release:
-    types: [published]
-# allows to run on github directly (but prevents automatic releases)
-#  workflow_dispatch:
 
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
 
 jobs:
-  build_sdist:
-    name: Build source distribution
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install pypa/build
+      run: >-
+        python3 -m
+        pip install
+        build
+        --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Download the artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Test the wheel
+      run: |
+        ls dist
+        wheel=$(find dist/*whl)
+        echo $wheel
+        pip install $wheel
+        pip install pyscf
+        python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
+        python3 examples/03-custom_observable/run_afqmc.py
+    - name: Setup MPI
+      uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: openmpi
+    - name: Test the wheel
+      run: |
+        pip install mpi4py
+        python -c "import mpi4py"
+        python -c "from ipie.config import MPI; assert \"mpi4py\" in str(MPI.COMM_WORLD)"
+        python3 examples/03-custom_observable/run_afqmc.py
+
+  publish-to-pypi:
+    name:
+      Publish Python distribution to PyPI
+    needs:
+    - build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Build sdist
-        run: pipx run build --sdist
-
-      - name: Publish to PyPI
-        # pypi-publish has issues with macos
-        run: |
-            pip install twine
-            export TWINE_USERNAME=__token__
-            export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
-            twine upload --verbose ${{ github.workspace }}/dist/*.tar.gz
-
-
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      # Used to host cibuildwheel
-      - uses: actions/setup-python@v3
-
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.11.4
-
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
-        env:
-          CIBW_BUILD: cp38-* cp39-* cp310-*
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
-          CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_BUILD_VERBOSITY: 1
-          CIBW_SKIP: "*-musllinux*"
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
-
-      - name: Publish to PyPI
-        # pypi-publish has issues with macos
-        run: |
-            pip install twine
-            export TWINE_USERNAME=__token__
-            export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
-            twine upload --verbose ${{ github.workspace }}/wheelhouse/*.whl
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        packages_dir: dist/
+        password: ${{ secrets.PYPI_API_TOKEN }}

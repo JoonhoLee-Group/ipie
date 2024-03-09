@@ -89,6 +89,8 @@ class PopController:
         else:
             sum_weights = numpy.sum(weights)
             total_weight = numpy.empty(1, dtype=numpy.float64)
+            if hasattr(sum_weights, "get"):
+                sum_weights = sum_weights.get()
             comm.Reduce(sum_weights, total_weight, op=MPI.SUM, root=0)
             comm.Bcast(total_weight, root=0)
             total_weight = total_weight[0]
@@ -133,7 +135,7 @@ def get_buffer(walkers, iw):
         Relevant walker information for population control.
     """
     s = 0
-    buff = numpy.zeros(walkers.buff_size, dtype=numpy.complex128)
+    buff = xp.zeros(walkers.buff_size, dtype=numpy.complex128)
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
         if (data is None) or isinstance(data, (int, float, complex, numpy.float64, numpy.complex128)):
@@ -338,8 +340,11 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
     timer.add_non_communication()
 
     timer.start_time()
-    # Gather |w_i| from all processors (comm.size x nwalkers)
-    comm.Gather(walker_info_0, glob_inf_0, root=0)  
+    if hasattr(walker_info_0, "get"):
+        walker_info_0 = walker_info_0.get()
+    comm.Gather(
+        walker_info_0, glob_inf_0, root=0
+    )  # gather |w_i| from all processors (comm.size x nwalkers)
     timer.add_communication()
 
     # Want same random number seed used on all processors

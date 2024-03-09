@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
+from ipie.config import CommType, MPI
 from ipie.utils.backend import cast_to_device
 
 _wfn_type = Union[
@@ -41,12 +42,11 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self.e2b = None
         self.energy = None
 
-    def cast_to_cupy(self) -> None:
-        cast_to_device(self, self.verbose)
+    def cast_to_cupy(self, verbose=False):
+        cast_to_device(self, verbose=verbose)
 
     @abstractmethod
-    def build(self) -> None:
-        ...
+    def build(self) -> None: ...
 
     @property
     def num_dets(self) -> int:
@@ -70,19 +70,16 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         self._half_rotated = is_half_rotated
 
     @abstractmethod
-    def half_rotate(self, hamiltonian, comm=None) -> None:
-        ...
+    def half_rotate(self, hamiltonian, comm: Optional[CommType] = MPI.COMM_WORLD) -> None: ...
 
     @abstractmethod
-    def calc_overlap(self, walkers) -> np.ndarray:
-        ...
+    def calc_overlap(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_greens_function(self, walkers) -> np.ndarray:
-        ...
+    def calc_greens_function(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler) -> np.ndarray:
         pass
 
     def chunk(self, handler):
