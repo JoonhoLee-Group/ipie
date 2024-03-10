@@ -103,7 +103,10 @@ class EPhWalkers(BaseWalkers):
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
-        trial.calc_overlap(self) 
+        self.Ga = numpy.zeros((self.nwalkers, self.nbasis, self.nbasis), dtype=numpy.complex128)
+        self.Gb = numpy.zeros_like(self.Ga)
+
+        self.ovlp = trial.calc_overlap(self)
 
     def cast_to_cupy(self, verbose=False):
         cast_to_device(self, verbose)
