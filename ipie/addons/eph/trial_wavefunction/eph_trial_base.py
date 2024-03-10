@@ -13,13 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from typing import Tuple
+from abc import ABCMeta, abstractmethod
 
-# NOTE could inherit from TrialWavefunctionBase, 
-# but would need to redefine abstract methods.. 
-
-class EPhTrialWavefunctionBase:
+class EPhTrialWavefunctionBase(metaclass=ABCMeta):
     """Base class for electron-phonon trial wave functions.
     
     Parameters
@@ -48,15 +45,48 @@ class EPhTrialWavefunctionBase:
         self.psia = wavefunction[:self.nalpha]
         self.psib = wavefunction[self.nalpha:self.nalpha+self.nbeta]
         self.beta_shift = wavefunction[self.nalpha+self.nbeta:] 
- 
+
         self.compute_trial_energy = False
         self.energy = None
-
-    def build(self) -> None:
-        pass
 
     def set_etrial(self, energy: float) -> None:
         self.energy = energy
 
+    # TODO This should be abstract method as well
+    def calculate_energy(self, system, hamiltonian):
+        # TODO variational_energy_coherent_state in ipie.estimators.local_energy
+        ...
+
+    @abstractmethod
+    def calc_overlap(self, walkers) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def calc_phonon_overlap(self, walkers) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def calc_phonon_gradient(self, walkers) -> np.ndarray: 
+        ...
+
+    @abstractmethod
+    def calc_phonon_laplacian(self, walkers) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def calc_phonon_laplacian_importance(self, walkers) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def calc_phonon_laplacian_locenergy(self, walkers) -> np.ndarray:
+        ...
+    
+    @abstractmethod
+    def calc_electronic_overlap(self, walkers) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def calc_greens_function(self, walkers) -> np.ndarray:
+        ...
 
 
