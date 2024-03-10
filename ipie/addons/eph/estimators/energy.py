@@ -59,7 +59,6 @@ class EnergyEstimator(EstimatorBase):
         self.ascii_filename = filename
 
     def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
-        trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
