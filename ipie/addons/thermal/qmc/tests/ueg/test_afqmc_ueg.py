@@ -120,13 +120,6 @@ def test_thermal_afqmc_1walker(against_ref=False):
                         "low_rank": lowrank
                     },
 
-                    "hamiltonian": {
-                        "name": "UEG",
-                        "_alt_convention": False,
-                        "sparse": False,
-                        "mu": mu
-                    },
-
                     "estimators": {
                         "filename": tmpf2.name, # For legacy.
                     },
@@ -312,13 +305,6 @@ def test_thermal_afqmc(against_ref=False):
                         "thermal": True,
                         "write_integrals": False,
                         "low_rank": lowrank
-                    },
-
-                    "hamiltonian": {
-                        "name": "UEG",
-                        "_alt_convention": False,
-                        "sparse": False,
-                        "mu": mu
                     },
 
                     "estimators": {

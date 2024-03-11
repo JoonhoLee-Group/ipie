@@ -281,14 +281,11 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
-
             if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
                 buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
                 comm.Recv(buffer, source=source_proc, tag=i)
-
             else:
                 comm.Recv(buffer, source=source_proc, tag=i)
-
             # with h5py.File('walkers_recv.h5', 'w') as fh5:
             # fh5['walk_{}'.format(k)] = walkers.walker_buffer.copy()
             timer.add_recv_time()
@@ -424,12 +421,17 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         if walker[1] == 0:
             timer.start_time()
             tag = walker[3] * walkers.nwalkers + comm.rank
+            buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
-            comm.Recv(walkers.walker_buffer, source=int(round(walker[3])), tag=tag)
+            if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
+                buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
+                comm.Recv(buffer, source=int(round(walker[3])), tag=tag)
+            else:
+                comm.Recv(buffer, source=int(round(walker[3])), tag=tag)
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers, iw, walkers.walker_buffer)
+            set_buffer(walkers, iw, buffer)
             timer.add_non_communication()
     timer.start_time()
     for r in reqs:

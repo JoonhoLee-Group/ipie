@@ -367,10 +367,7 @@ def local_energy_generic_cholesky_opt_stochastic(
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
     ecoul += 2 * numpy.dot(Xa, Xb)
-    if hamiltonian.sparse:
-        rchol_a, rchol_b = [rchol[0].toarray(), rchol[1].toarray()]
-    else:
-        rchol_a, rchol_b = rchol[0], rchol[1]
+    rchol_a, rchol_b = rchol[0], rchol[1]
 
     # T_{abn} = \sum_k Theta_{ak} LL_{ak,n}
     # LL_{ak,n} = \sum_i L_{ik,n} A^*_{ia}
@@ -562,11 +559,6 @@ def fock_generic(hamiltonian, P):
     nbasis = hamiltonian.nbasis
     nchol = hamiltonian.nchol
     hs_pot = hamiltonian.chol.T.reshape(nchol, nbasis, nbasis)
-    if hamiltonian.sparse:
-        mf_shift = 1j * P[0].ravel() * hs_pot
-        mf_shift += 1j * P[1].ravel() * hs_pot
-        VMF = 1j * hs_pot.dot(mf_shift).reshape(nbasis, nbasis)
-    else:
-        mf_shift = 1j * numpy.einsum("lpq,spq->l", hs_pot, P)
-        VMF = 1j * numpy.einsum("lpq,l->pq", hs_pot, mf_shift)
+    mf_shift = 1j * numpy.einsum("lpq,spq->l", hs_pot, P)
+    VMF = 1j * numpy.einsum("lpq,l->pq", hs_pot, mf_shift)
     return hamiltonian.h1e_mod - VMF

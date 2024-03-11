@@ -62,18 +62,6 @@ def test_thermal_walkers_fullrank():
                 'complex_integrals': complex_integrals,
                 'mf_trial': mf_trial,
                 'propagate': propagate,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
@@ -167,18 +155,6 @@ def test_thermal_walkers_lowrank():
                 'mf_trial': mf_trial,
                 'propagate': propagate,
                 'diagonal': diagonal,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
@@ -224,4 +200,4 @@ def test_thermal_walkers_lowrank():
 
 if __name__ == "__main__":
     test_thermal_walkers_fullrank()
-    test_thermal_walkers_lowrank()
+    #test_thermal_walkers_lowrank()

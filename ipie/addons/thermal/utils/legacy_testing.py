@@ -40,13 +40,17 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
     mu = options['mu']
     beta = options['beta']
     timestep = options['timestep']
-    nwalkers = options['nwalkers']
-    nsteps_per_block = options['nsteps_per_block']
-    nblocks = options['nblocks']
-    stabilize_freq = options['stabilize_freq']
-    pop_control_freq = options['pop_control_freq']
-    pop_control_method = options['pop_control_method']
-    lowrank = options['lowrank']
+    nwalkers = options.get('nwalkers', 100)
+    nstack = options.get('nstack', 10)
+    nblocks = options.get('nblocks', 100)
+    nsteps_per_block = 1
+    stabilize_freq = options.get('stabilize_freq', 5)
+    pop_control_freq = options.get('pop_control_freq', 1)
+    pop_control_method = options.get('pop_control_method', 'pair_branch')
+    lowrank = options.get('lowrank', False)
+    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    alt_convention = options.get('alt_convention', False)
+    sparse = options.get('sparse', False)
 
     mf_trial = options.get('mf_trial', True)
     propagate = options.get('propagate', False)
@@ -54,7 +58,9 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
     
     legacy_options = {
         "walkers": {
+            "stack_size": nstack,
             "low_rank": lowrank,
+            "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
             "pop_control": pop_control_method
         },
@@ -76,8 +82,9 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
     legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
     legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
             (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
-    legacy_hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
-    legacy_hamiltonian.mu = options["hamiltonian"]["mu"]
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
+    legacy_hamiltonian.sparse = sparse
     
     # 3. Build trial.
     legacy_trial = LegacyOneBody(legacy_system, legacy_hamiltonian, beta, timestep, 
@@ -100,7 +107,7 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
 
     # 5. Build propagator.
     legacy_propagator = Continuous(
-                            options["propagator"], qmc_opts, legacy_system, 
+                            legacy_options["propagator"], qmc_opts, legacy_system, 
                             legacy_hamiltonian, legacy_trial, verbose=verbose, 
                             lowrank=lowrank)
 
@@ -129,22 +136,28 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
     mu = options['mu']
     beta = options['beta']
     timestep = options['timestep']
-    nwalkers = options['nwalkers']
-    nsteps_per_block = options['nsteps_per_block']
-    nblocks = options['nblocks']
-    stabilize_freq = options['stabilize_freq']
-    pop_control_freq = options['pop_control_freq']
-    pop_control_method = options['pop_control_method']
-    lowrank = options['lowrank']
+    nwalkers = options.get('nwalkers', 100)
+    nstack = options.get('nstack', 10)
+    nblocks = options.get('nblocks', 100)
+    nsteps_per_block = 1
+    stabilize_freq = options.get('stabilize_freq', 5)
+    pop_control_freq = options.get('pop_control_freq', 1)
+    pop_control_method = options.get('pop_control_method', 'pair_branch')
+    lowrank = options.get('lowrank', False)
+    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    alt_convention = options.get('alt_convention', False)
+    sparse = options.get('sparse', False)
 
     mf_trial = options.get('mf_trial', True)
     propagate = options.get('propagate', False)
     numpy.random.seed(seed)
     comm = mpi_handler.comm
-    
+
     legacy_options = {
         "walkers": {
+            "stack_size": nstack,
             "low_rank": lowrank,
+            "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
             "pop_control": pop_control_method
         },
@@ -153,7 +166,7 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
             "optimised": False
         },
     }
-
+    
     # 1. Build system.
     legacy_system = Generic(nelec, verbose=verbose)
     legacy_system.mu = mu
@@ -166,8 +179,9 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
     legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
     legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
             (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
-    legacy_hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
-    legacy_hamiltonian.mu = options["hamiltonian"]["mu"]
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
+    legacy_hamiltonian.sparse = sparse
     
     # 3. Build trial.
     legacy_trial = LegacyOneBody(legacy_system, legacy_hamiltonian, beta, timestep, 
@@ -190,7 +204,7 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
 
     # 5. Build propagator.
     legacy_propagator = Continuous(
-                            options["propagator"], qmc_opts, legacy_system, 
+                            legacy_options["propagator"], qmc_opts, legacy_system, 
                             legacy_hamiltonian, legacy_trial, verbose=verbose, 
                             lowrank=lowrank)
 
@@ -220,12 +234,16 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options['nwalkers']
-    nsteps_per_block = options['nsteps_per_block']
-    nblocks = options['nblocks']
-    stabilize_freq = options['stabilize_freq']
-    pop_control_freq = options['pop_control_freq']
-    pop_control_method = options['pop_control_method']
-    lowrank = options['lowrank']
+    nstack = options.get('nstack', 10)
+    nblocks = options.get('nblocks', 100)
+    nsteps_per_block = 1
+    stabilize_freq = options.get('stabilize_freq', 5)
+    pop_control_freq = options.get('pop_control_freq', 1)
+    pop_control_method = options.get('pop_control_method', 'pair_branch')
+    lowrank = options.get('lowrank', False)
+    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    alt_convention = options.get('alt_convention', False)
+    sparse = options.get('sparse', False)
     numpy.random.seed(seed)
     
     legacy_options = {
@@ -248,7 +266,9 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
         },
 
         "walkers": {
+            "stack_size": nstack,
             "low_rank": lowrank,
+            "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
             "pop_control": pop_control_method
         },
@@ -260,7 +280,6 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
             "mu": mu
         },
 
-        "hamiltonian": options["hamiltonian"],
         "estimators": options["estimators"]
     }
 
@@ -269,13 +288,13 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
     legacy_hamiltonian = LegacyHamGeneric(
                             h1e=hamiltonian.H1,
                             chol=hamiltonian.chol,
-                            ecore=hamiltonian.ecore,
-                            options=legacy_options["hamiltonian"])
+                            ecore=hamiltonian.ecore)
     legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
     legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
             (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
-    legacy_hamiltonian._alt_convention = legacy_options["hamiltonian"]["_alt_convention"]
-    legacy_hamiltonian.mu = legacy_options["hamiltonian"]["mu"]
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
+    legacy_hamiltonian.sparse = sparse
     legacy_trial = LegacyMeanField(legacy_system, legacy_hamiltonian, beta, timestep)
     
     afqmc = LegacyThermalAFQMC(comm, legacy_options, legacy_system, 
@@ -292,14 +311,17 @@ def build_legacy_ueg_test_case_handlers(hamiltonian,
     mu = options['mu']
     beta = options['beta']
     timestep = options['timestep']
-    nwalkers = options['nwalkers']
-    nsteps_per_block = options['nsteps_per_block']
-    nblocks = options['nblocks']
-    stabilize_freq = options['stabilize_freq']
-    pop_control_freq = options['pop_control_freq']
-    pop_control_method = options['pop_control_method']
+    nwalkers = options.get('nwalkers', 100)
+    nstack = options.get('nstack', 10)
+    nblocks = options.get('nblocks', 100)
+    nsteps_per_block = 1
+    stabilize_freq = options.get('stabilize_freq', 5)
+    pop_control_freq = options.get('pop_control_freq', 1)
+    pop_control_method = options.get('pop_control_method', 'pair_branch')
+    lowrank = options.get('lowrank', False)
+    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    alt_convention = options.get('alt_convention', False)
 
-    lowrank = options['lowrank']
     propagate = options.get('propagate', False)
     numpy.random.seed(seed)
     
@@ -309,7 +331,9 @@ def build_legacy_ueg_test_case_handlers(hamiltonian,
         },
 
         "walkers": {
+            "stack_size": nstack,
             "low_rank": lowrank,
+            "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
             "pop_control": pop_control_method
         },
@@ -321,8 +345,8 @@ def build_legacy_ueg_test_case_handlers(hamiltonian,
     
     # 2. Build Hamiltonian.
     legacy_hamiltonian = LegacyHamUEG(legacy_system, options=options["ueg_opts"])
-    legacy_hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
-    legacy_hamiltonian.mu = options["hamiltonian"]["mu"]
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
 
     # 3. Build trial.
     legacy_trial = LegacyOneBody(legacy_system, legacy_hamiltonian, beta, timestep, verbose=verbose)
@@ -367,13 +391,16 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
     mu = options['mu']
     beta = options['beta']
     timestep = options['timestep']
-    nwalkers = options['nwalkers']
-    nsteps_per_block = options['nsteps_per_block']
-    nblocks = options['nblocks']
-    stabilize_freq = options['stabilize_freq']
-    pop_control_freq = options['pop_control_freq']
-    pop_control_method = options['pop_control_method']
-    lowrank = options['lowrank']
+    nwalkers = options.get('nwalkers', 100)
+    nstack = options.get('nstack', 10)
+    nblocks = options.get('nblocks', 100)
+    nsteps_per_block = 1
+    stabilize_freq = options.get('stabilize_freq', 5)
+    pop_control_freq = options.get('pop_control_freq', 1)
+    pop_control_method = options.get('pop_control_method', 'pair_branch')
+    lowrank = options.get('lowrank', False)
+    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    alt_convention = options.get('alt_convention', False)
     numpy.random.seed(seed)
     
     legacy_options = {
@@ -396,13 +423,14 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
         },
 
         "walkers": {
+            "stack_size": nstack,
             "low_rank": lowrank,
+            "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
             "pop_control": pop_control_method
         },
         
         "ueg_opts": options["ueg_opts"],
-        "hamiltonian": options["hamiltonian"],
         "estimators": options["estimators"]
     }
 
@@ -412,8 +440,8 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
     
     # 2. Build Hamiltonian.
     legacy_hamiltonian = LegacyHamUEG(legacy_system, options=legacy_options["ueg_opts"])
-    legacy_hamiltonian._alt_convention = legacy_options["hamiltonian"]["_alt_convention"]
-    legacy_hamiltonian.mu = legacy_options["hamiltonian"]["mu"]
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
 
     # 3. Build trial.
     legacy_trial = LegacyOneBody(legacy_system, legacy_hamiltonian, beta, timestep, verbose=verbose)

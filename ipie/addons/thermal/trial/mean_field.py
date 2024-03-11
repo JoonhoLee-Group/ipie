@@ -8,9 +8,9 @@ from ipie.addons.thermal.trial.chem_pot import compute_rho, find_chemical_potent
 from ipie.addons.thermal.trial.one_body import OneBody
 
 class MeanField(OneBody):
-    def __init__(self, hamiltonian, nelec, beta, dt, options={}, H1=None, verbose=False):
+    def __init__(self, hamiltonian, nelec, beta, dt, options={}, alt_convention=False, H1=None, verbose=False):
         OneBody.__init__(self, hamiltonian, nelec, beta, dt, options=options, 
-                         H1=H1, verbose=verbose)
+                         alt_convention=alt_convention, H1=H1, verbose=verbose)
         if verbose:
             print(" # Building THF density matrix.")
 
@@ -45,7 +45,7 @@ class MeanField(OneBody):
                                scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                        hamiltonian._alt_convention, rho, dt, self.stack_length, self.nav, 
+                        self.alt_convention, rho, dt, self.stack_length, self.nav, 
                         deps=self.deps, max_it=self.max_it, verbose=self.verbose)
 
             else:

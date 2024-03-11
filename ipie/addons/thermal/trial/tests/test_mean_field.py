@@ -1,65 +1,43 @@
-import os
 import numpy
 import pytest
 
-from pyscf import gto, scf, lo
-
 from ipie.systems.generic import Generic
-from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.utils.testing import generate_hamiltonian
+from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.addons.thermal.trial.mean_field import MeanField
-
-
-def setup_objs():
-    nocca = 5
-    noccb = 5
-    nelec = nocca + noccb
-    r0 = 1.75
-    mol = gto.M(
-            atom=[("H", i * r0, 0, 0) for i in range(nelec)],
-            basis='sto-6g',
-            unit='Bohr',
-            verbose=5)
-    
-    mu = -10.
-    path = os.path.abspath(os.path.dirname(__file__)).split("trial")[0] + "/reference_data/generic/"
-    options = {
-        "hamiltonian": {
-            "name": "Generic",
-            "integrals": path + "generic_integrals.h5",
-            "_alt_convention": False,
-            "symmetry": False,
-            "sparse": False,
-            "mu": mu
-        },
-    }
-
-    # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
-    system = Generic(mol.nelec)
-    hamiltonian = get_hamiltonian(system, options["hamiltonian"])
-    hamiltonian._alt_convention = options["hamiltonian"]["_alt_convention"]
-    hamiltonian.sparse = options["hamiltonian"]["sparse"]
-    objs = {'mol': mol, 
-            'hamiltonian': hamiltonian}
-
-    return objs
 
 
 @pytest.mark.unit
 def test_mean_field():
-    beta = 0.1
-    dt = 0.01
-    verbose = True
-    objs = setup_objs()
-    mol = objs['mol']
-    hamiltonian = objs['hamiltonian']
-    nbasis = hamiltonian.nbasis
-    trial = MeanField(hamiltonian, mol.nelec, beta, dt, verbose=verbose)
+    nup = 5
+    ndown = 5
+    nelec = (nup, ndown)
+    nbasis = 10
 
-    assert trial.nelec == mol.nelec
-    numpy.testing.assert_almost_equal(trial.nav, numpy.sum(mol.nelec), decimal=6)
+    mu = -10.
+    beta = 0.1
+    timestep = 0.01
+
+    complex_integrals = True
+    verbose = True
+
+    sym = 8
+    if complex_integrals: sym = 4
+    
+    # Test.
+    print('\n----------------------------')
+    print('Constructing test objects...')
+    print('----------------------------')
+    system = Generic(nelec)
+    h1e, chol, _, eri = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
+                                             sym=sym, tol=1e-10)
+    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]),
+                             chol=chol.reshape((-1, nbasis**2)).T.copy(),
+                             ecore=0)
+    trial = MeanField(hamiltonian, nelec, beta, timestep, verbose=verbose)
+
+    assert trial.nelec == nelec
+    numpy.testing.assert_almost_equal(trial.nav, numpy.sum(nelec), decimal=6)
     assert trial.rho.shape == (2, nbasis, nbasis)
     assert trial.dmat.shape == (2, nbasis, nbasis)
     assert trial.P.shape == (2, nbasis, nbasis)

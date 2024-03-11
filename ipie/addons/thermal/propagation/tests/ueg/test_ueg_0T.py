@@ -1,10 +1,11 @@
 import numpy
 import pytest
 
-from pyscf import gto, scf, ao2mo
-from ipie.qmc.options import QMCOpts
-from ipie.utils.linalg import diagonalise_sorted
 from ueg import UEG
+from pyscf import gto, scf, ao2mo
+
+from ipie.utils.mpi import MPIHandler
+from ipie.qmc.options import QMCOpts
 
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
@@ -41,13 +42,6 @@ def setup_objs(seed=None):
             "rng_seed": seed,
             "batched": False
         },
-
-        "hamiltonian": {
-            "name": "UEG",
-            "_alt_convention": False,
-            "sparse": False,
-            "mu": mu
-        }
     }
 
     # Generate UEG integrals.
@@ -145,7 +139,7 @@ def setup_objs(seed=None):
 
     # 4. Build walkers.
     walkers = UHFWalkersTrial(trial, psi0, system.nup, system.ndown, hamiltonian.nbasis, 
-                              nwalkers, verbose=verbose)
+                              nwalkers, MPIHandler(), verbose=verbose)
     walkers.build(trial)
     walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
 
@@ -157,7 +151,6 @@ def setup_objs(seed=None):
                 },
 
                 "qmc": options["qmc"],
-                "hamiltonian": options["hamiltonian"],
             }
 
     print('\n------------------------------')

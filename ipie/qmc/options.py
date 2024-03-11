@@ -62,6 +62,8 @@ class QMCOpts(object):
         Frequency of Gram-Schmidt orthogonalisation steps.
     npop_control : int
         Frequency of population control.
+    pop_control_method : int
+        Population control method.
     temp : float
         Temperature. Currently not used.
     nequilibrate : int
@@ -133,6 +135,13 @@ class QMCOpts(object):
             alias=["npop_control", "pop_control"],
             verbose=verbose,
         )
+        self.pop_control_method = get_input_value(
+            inputs,
+            "pop_control_method",
+            default="pair_branch",
+            alias=["pop_control", "population_control"],
+            verbose=verbose,
+        )
         self.eqlb_time = get_input_value(
             inputs,
             "equilibration_time",
@@ -146,6 +155,12 @@ class QMCOpts(object):
             "rng_seed",
             default=None,
             alias=["random_seed", "seed"],
+            verbose=verbose,
+        )
+        self.mu = get_input_value(
+            inputs,
+            "mu",
+            default=None,
             verbose=verbose,
         )
         self.beta = get_input_value(

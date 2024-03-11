@@ -61,18 +61,6 @@ def test_local_energy_cholesky(mf_trial=False):
                 'complex_integrals': complex_integrals,
                 'mf_trial': mf_trial,
                 'propagate': propagate,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
 
     # Test.

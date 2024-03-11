@@ -74,13 +74,6 @@ def test_thermal_afqmc():
                     'lowrank': lowrank,
                     'complex_integrals': complex_integrals,
 
-                    "hamiltonian": {
-                        "name": "Generic",
-                        "_alt_convention": False,
-                        "sparse": False,
-                        "mu": mu
-                    },
-
                     "estimators": {
                         "filename": tmpf2.name, # For legacy.
                     },

@@ -10,6 +10,7 @@ class ThermalQMCParams(QMCParams):
     r"""Input options and certain constants / parameters derived from them.
 
     Args:
+        mu: chemical potential.
         beta: inverse temperature.
         num_walkers: number of walkers **per** core / task / computational unit.
         total_num_walkers: The total number of walkers in the simulation.
@@ -26,16 +27,19 @@ class ThermalQMCParams(QMCParams):
     # Due to structure of FT algorithm, `num_steps_per_block` is fixed at 1.
     # Overide whatever input for backward compatibility.
     num_steps_per_block: ClassVar[float] = 1 
+    mu: float = _no_default
     beta: float = _no_default
     pop_control_method: str = 'pair_branch'
     
     # This is a hack to get around the error:
     #
-    #   TypeError: non-default argument 'beta' follows default argument
+    #   TypeError: non-default argument <arg> follows default argument
     #
     # due to inheritance from the QMCParams dataclass which has default attributes.
     # Ref: https://stackoverflow.com/questions/51575931/class-inheritance-in-python-3-7-dataclasses
     def __post_init__(self):
+        if self.mu is _no_default:
+            raise TypeError("__init__ missing 1 required argument: 'mu'")
         if self.beta is _no_default:
             raise TypeError("__init__ missing 1 required argument: 'beta'")
 

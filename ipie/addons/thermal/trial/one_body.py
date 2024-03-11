@@ -9,11 +9,12 @@ from ipie.utils.misc import update_stack
 
 
 class OneBody(object):
-    def __init__(self, hamiltonian, nelec, beta, dt, options={}, nav=None,
-                 H1=None, verbose=False):
+    def __init__(self, hamiltonian, nelec, beta, dt, options={},
+                 alt_convention=False, H1=None, verbose=False):
         self.name = "thermal"
         self.compute_trial_energy = False
         self.verbose = verbose
+        self.alt_convention = alt_convention
 
         if H1 is None:
             try:
@@ -39,15 +40,10 @@ class OneBody(object):
             print(f"# condition number of BT: {cond: 10e}")
         
         self.nelec = nelec
+        self.nav = options.get("nav", None)
 
-        if nav is not None:
-            self.nav = nav
-
-        else:
-            self.nav = options.get("nav", None)
-
-            if self.nav is None:
-                self.nav = numpy.sum(nelec)
+        if self.nav is None:
+            self.nav = numpy.sum(self.nelec)
 
         if verbose:
             print(f"# Target average electron number: {self.nav}")
@@ -86,30 +82,29 @@ class OneBody(object):
             print(f"# Number of stacks: {self.stack_length}")
 
         sign = 1
-        if hamiltonian._alt_convention:
+        if self.alt_convention:
             if verbose:
                 print("# Using alternate sign convention for chemical potential.")
 
             sign = -1
 
-        dtau = self.nstack * dt
-        self.dtau = dtau
+        self.dtau = self.nstack * dt
 
         if self.mu is None:
-            self.rho = numpy.array([scipy.linalg.expm(-dtau * (self.H1[0])),
-                                    scipy.linalg.expm(-dtau * (self.H1[1]))])
+            self.rho = numpy.array([scipy.linalg.expm(-self.dtau * (self.H1[0])),
+                                    scipy.linalg.expm(-self.dtau * (self.H1[1]))])
             self.mu = find_chemical_potential(
-                        hamiltonian._alt_convention, self.rho, dtau, self.stack_length,
+                        self.alt_convention, self.rho, self.dtau, self.stack_length,
                         self.nav, deps=self.deps, max_it=self.max_it, verbose=verbose)
             
         else:
-            self.rho = numpy.array([scipy.linalg.expm(-dtau * (self.H1[0])),
-                                    scipy.linalg.expm(-dtau * (self.H1[1]))])
+            self.rho = numpy.array([scipy.linalg.expm(-self.dtau * (self.H1[0])),
+                                    scipy.linalg.expm(-self.dtau * (self.H1[1]))])
 
         if self.verbose:
             print(f"# Chemical potential in trial density matrix: {self.mu: .10e}")
 
-        self.P = one_rdm_stable(compute_rho(self.rho, self.mu, dtau, sign=sign), self.stack_length)
+        self.P = one_rdm_stable(compute_rho(self.rho, self.mu, self.dtau, sign=sign), self.stack_length)
         self.nav = particle_number(self.P).real
 
         if self.verbose:

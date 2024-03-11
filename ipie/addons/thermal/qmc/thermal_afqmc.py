@@ -67,6 +67,7 @@ class ThermalAFQMC(AFQMC):
             hamiltonian,
             trial,
             nwalkers: int = 100,
+            nstack: int = 10,
             seed: int = None,
             nblocks: int = 100,
             timestep: float = 0.005,
@@ -74,6 +75,7 @@ class ThermalAFQMC(AFQMC):
             pop_control_freq: int = 5,
             pop_control_method: str = 'pair_branch',
             lowrank: bool = False,
+            lowrank_thresh: float = 1e-6,
             debug: bool = False,
             verbose: bool = True,
             mpi_handler=None,) -> "Thermal AFQMC":
@@ -94,12 +96,8 @@ class ThermalAFQMC(AFQMC):
         nwalkers : int
             Number of walkers per MPI process used in the simulation. The TOTAL
                 number of walkers is nwalkers * number of processes.
-        nsteps_per_block : int
-            Number of Monte Carlo steps before estimators are evaluated.
-                Default 25.
         nblocks : int
-            Number of blocks to perform. Total number of steps = nblocks *
-                nsteps_per_block.
+            Number of blocks to perform.
         timestep : float
             Imaginary timestep. Default 0.005.
         stabilize_freq : float
@@ -109,7 +107,9 @@ class ThermalAFQMC(AFQMC):
             Frequency at which to perform population control (in units of
                 steps.) Default 25.
         lowrank : bool
-            Low-rank algorithm for thermal propagation.
+            Low-rank algorithm for thermal propagation. Doesn't work for now!
+        lowrank_thresh : bool
+            Threshold for low-rank algorithm.
         verbose : bool
             Log verbosity. Default True i.e. print information to stdout.
         """
@@ -121,6 +121,7 @@ class ThermalAFQMC(AFQMC):
             comm = mpi_handler.comm
 
         params = ThermalQMCParams(
+                    mu=mu,
                     beta=beta,
                     num_walkers=nwalkers,
                     total_num_walkers=nwalkers * comm.size,
@@ -132,9 +133,10 @@ class ThermalAFQMC(AFQMC):
                     rng_seed=seed)
 
         system = Generic(nelec) 
-        walkers = UHFThermalWalkers(trial, hamiltonian.nbasis, nwalkers, 
-                                    lowrank=lowrank, mpi_handler=mpi_handler, 
-                                    verbose=verbose)
+        walkers = UHFThermalWalkers(
+                    trial, hamiltonian.nbasis, nwalkers, nstack=nstack,
+                    lowrank=lowrank, lowrank_thresh=lowrank_thresh, 
+                    mpi_handler=mpi_handler, verbose=verbose)
         propagator = Propagator[type(hamiltonian)](
                         timestep, mu, lowrank=lowrank, verbose=verbose)
         propagator.build(hamiltonian, trial=trial, walkers=walkers, 

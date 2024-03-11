@@ -40,7 +40,7 @@ class UHFThermalWalkers(BaseWalkers):
 
         if self.nstack > trial.nstack:
             if verbose:
-                print("# Walker stack size differs from that estimated from " "Trial density matrix.")
+                print("# Walker stack size differs from that estimated from trial density matrix.")
                 print(f"# Be careful. cond(BT)**nstack: {trial.cond ** self.nstack:10.3e}.")
 
         self.stack_length = self.nslice // self.nstack

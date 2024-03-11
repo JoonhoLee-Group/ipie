@@ -56,18 +56,6 @@ def test_apply_exponential():
                 'complex_integrals': complex_integrals,
                 'mf_trial': mf_trial,
                 'propagate': propagate,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
 
     # Test.

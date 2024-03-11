@@ -69,13 +69,6 @@ def test_phaseless_generic_propagator():
                     "write_integrals": False,
                     "low_rank": lowrank
                 },
-
-                "hamiltonian": {
-                    "name": "UEG",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
             }
     
     # Test.

@@ -60,18 +60,6 @@ def test_pair_branch_batch():
                 'complex_integrals': complex_integrals,
                 'mf_trial': mf_trial,
                 'propagate': propagate,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
@@ -184,18 +172,6 @@ def test_pair_branch_batch_lowrank():
                 'mf_trial': mf_trial,
                 'propagate': propagate,
                 'diagonal': diagonal,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
@@ -304,18 +280,6 @@ def test_comb_batch():
                 'complex_integrals': complex_integrals,
                 'mf_trial': mf_trial,
                 'propagate': propagate,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
@@ -427,18 +391,6 @@ def test_comb_batch_lowrank():
                 'mf_trial': mf_trial,
                 'propagate': propagate,
                 'diagonal': diagonal,
-
-                "hamiltonian": {
-                    "name": "Generic",
-                    "_alt_convention": False,
-                    "sparse": False,
-                    "mu": mu
-                },
-        
-                "propagator": {
-                    "optimised": False,
-                    "free_projection": False
-                },
             }
     
     # Test.
