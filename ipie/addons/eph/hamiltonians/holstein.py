@@ -22,27 +22,27 @@ class HolsteinModel:
     The Holstein model is described by the Hamiltonian
 
     .. math::
-        \hat{H} = -t \sum_{\langle ij\rangle} \hat{a}_i^\dagger \hat{a}_j 
+        \hat{H} = -t \sum_{\langle ij\rangle} \hat{a}_i^\dagger \hat{a}_j
         - g \sqrt{2 w_0 m} \sum_i \hat{a}_i^\dagger \hat{a}_i \hat{X}_i
-        + \bigg(\sum_i \frac{m w_0^2}{2} \hat{X}_i^2 + \frac{1}{2m} \hat{P}_i^2 
+        + \bigg(\sum_i \frac{m w_0^2}{2} \hat{X}_i^2 + \frac{1}{2m} \hat{P}_i^2
         - \frac{w_0}{2}\bigg),
 
     where :math:`t` is associated with the electronic hopping, :math:`g` with
-    the electron-phonon coupling strength, and :math:``w_0` with the phonon 
-    frequency. 
+    the electron-phonon coupling strength, and :math:``w_0` with the phonon
+    frequency.
 
     Parameters
     ----------
-    g : 
+    g : :class:`float`
         Electron-phonon coupling strength
-    t : 
+    t : :class:`float`
         Electron hopping parameter
-    w0 : 
+    w0 : :class:`float`
         Phonon frequency
-    nsites : 
+    nsites : :class:`int`
         Length of the 1D Holstein chain
-    pbc : 
-        Boolean specifying whether periodic boundary conditions should be 
+    pbc : :class:``bool`
+        Boolean specifying whether periodic boundary conditions should be
         employed.
     """
 
@@ -50,22 +50,20 @@ class HolsteinModel:
         self.g = g
         self.t = t
         self.w0 = w0
-        self.m = 1/self.w0
+        self.m = 1 / self.w0
         self.nsites = nsites
         self.pbc = pbc
         self.T = None
-        self.const = -self.g * numpy.sqrt(2. * self.m * self.w0)
+        self.const = -self.g * numpy.sqrt(2.0 * self.m * self.w0)
 
-    def build(self):
+    def build(self) -> None:
         """Constructs electronic hopping matrix."""
-        self.T = numpy.diag(numpy.ones(self.nsites-1), 1)
-        self.T += numpy.diag(numpy.ones(self.nsites-1), -1)
-    
+        self.T = numpy.diag(numpy.ones(self.nsites - 1), 1)
+        self.T += numpy.diag(numpy.ones(self.nsites - 1), -1)
+
         if self.pbc:
-            self.T[0,-1] = self.T[-1,0] = 1.
+            self.T[0, -1] = self.T[-1, 0] = 1.0
 
         self.T *= -self.t
 
         self.T = [self.T.copy(), self.T.copy()]
-
-

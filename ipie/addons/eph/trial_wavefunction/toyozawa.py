@@ -13,28 +13,28 @@
 # limitations under the License.
 
 import numpy as np
-import scipy.linalg
 from typing import Tuple
 
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
-from ipie.utils.backend import arraylib as xp
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
+from ipie.utils.backend import arraylib as xp
+
 
 class ToyozawaTrial(CoherentStateTrial):
-    r"""The Toyozawa trial 
-    
+    r"""The Toyozawa trial
+
     .. math::
         |\Psi(\kappa)\rangle = \sum_n e^{i \kappa n} \sum_{n_1} \alpha_{n_1}^{\kappa}
         a_{n_1}^{\dagger} \exp(-\sum_{n_2} (\beta^\kappa_{n_2 - n} b_{n_2}^{\dagger}
         - \beta^{\kappa^*}_{n_2 - n} b_{n_2}))|0\rangle
 
-    developed by `Toyozawa <https://doi.org/10.1143/PTP.26.29>`_ is translationally 
-    invariant and reliable offers a good approximation to the polaron ground state 
+    developed by `Toyozawa <https://doi.org/10.1143/PTP.26.29>`_ is translationally
+    invariant and reliable offers a good approximation to the polaron ground state
     for most parameter regimes of the Holstein Model. Here, :math:`\alpha,\beta`are
     varaitional parameters, and :math:`|0\rangle` is the total vacuum state.
-    For a 1D Holstein chain this reduces to a superposition of cyclically `CoherentState` 
+    For a 1D Holstein chain this reduces to a superposition of cyclically `CoherentState`
     type trials.
     More details may be found in `Zhao et al. <https://doi.org/10.1063/1.474667>`_.
 
@@ -45,8 +45,15 @@ class ToyozawaTrial(CoherentStateTrial):
     nperms : :class:`int`
         Number of permutations in `perms`
     """
-    def __init__(self, wavefunction: np.ndarray, hamiltonian: HolsteinModel, 
-                 num_elec: Tuple[int, int], num_basis: int, verbose=False):
+
+    def __init__(
+        self,
+        wavefunction: np.ndarray,
+        hamiltonian: HolsteinModel,
+        num_elec: Tuple[int, int],
+        num_basis: int,
+        verbose=False,
+    ):
         super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
         self.perms = circ_perm(np.arange(self.nbasis))
         self.nperms = self.perms.shape[0]
@@ -54,16 +61,16 @@ class ToyozawaTrial(CoherentStateTrial):
     def calc_overlap_perm(self, walkers: EPhWalkers) -> np.ndarray:
         r"""Computes the product of electron and phonon overlaps for each
         permutation :math:`\sigma`,
-        
+
         .. math::
-            \langle \psi_T(\sigma(r))|\psi(\tau)\rangle 
+            \langle \psi_T(\sigma(r))|\psi(\tau)\rangle
             \langle \phi(\sigma(\beta))|X_{\mathrm{w}(\tau)}\rangle.
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
-            EPhWalkers object 
-        
+            EPhWalkers object
+
         Returns
         -------
         total_ovlp : :class:`np.ndarray`
@@ -75,16 +82,16 @@ class ToyozawaTrial(CoherentStateTrial):
         return walkers.total_ovlp
 
     def calc_overlap(self, walkers: EPhWalkers) -> np.ndarray:
-        r"""Sums product of electronic and phonon overlap for each permutation 
+        r"""Sums product of electronic and phonon overlap for each permutation
         over all permutations,
-        
+
         .. math::
-            \sum_\tau \langle \psi_T(\sigma(r))|\psi(\tau)\rangle 
+            \sum_\tau \langle \psi_T(\sigma(r))|\psi(\tau)\rangle
             \langle \phi(\sigma(\beta))|X_{\mathrm{w}(\tau)}\rangle.
 
         Used when evaluating local energy and when updating
         weight.
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
@@ -100,40 +107,40 @@ class ToyozawaTrial(CoherentStateTrial):
         return ovlp
 
     def calc_phonon_overlap_perms(self, walkers: EPhWalkers) -> np.ndarray:
-        r"""Updates the walker phonon overlap with each permutation :math:`\tau`, 
+        r"""Updates the walker phonon overlap with each permutation :math:`\tau`,
         i.e. :math:`\langle\phi(\tau(\beta))|X_{\mathrm{w}}\rangle` and stores
-        it in `walkers.ph_ovlp`. 
-        
+        it in `walkers.ph_ovlp`.
+
         Parameters
         ----------
-        walkers : :class:`EPhWalkers` 
+        walkers : :class:`EPhWalkers`
             EPhWalkers object
 
         Returns
         -------
         ph_ovlp_perm : :class:`np.ndarray`
-            Overlap of walker with permuted coherent states 
+            Overlap of walker with permuted coherent states
         """
-        for ip,perm in enumerate(self.perms):
+        for ip, perm in enumerate(self.perms):
             ph_ov = np.exp(
-                -(0.5 * self.m * self.w0) * (walkers.phonon_disp - self.beta_shift[perm])**2
+                -(0.5 * self.m * self.w0) * (walkers.phonon_disp - self.beta_shift[perm]) ** 2
             )
             walkers.ph_ovlp[:, ip] = np.prod(ph_ov, axis=1)
         return walkers.ph_ovlp
 
     def calc_phonon_overlap(self, walkers: EPhWalkers) -> np.ndarray:
-        r"""Sums walker phonon overlaps with permuted coherent states over all 
+        r"""Sums walker phonon overlaps with permuted coherent states over all
         permutations,
-        
-        .. math:: 
-            \sum_\tau \langle \phi(\tau(\beta)) | X_{\mathrm{w}} \rangle 
-            
+
+        .. math::
+            \sum_\tau \langle \phi(\tau(\beta)) | X_{\mathrm{w}} \rangle
+
         to get total phonon overlap. This is only used to correct
         for the importance sampling in propagate_phonons.
 
         Parameters
         ----------
-        walkers : :class:`EPhWalkers` 
+        walkers : :class:`EPhWalkers`
             EPhWalkers object
 
         Returns
@@ -145,16 +152,16 @@ class ToyozawaTrial(CoherentStateTrial):
         ph_ovlp = np.sum(ph_ovlp_perm, axis=1)
         return ph_ovlp
 
-    def calc_phonon_gradient(self, walkers: EPhWalkers) -> np.ndarray:  
+    def calc_phonon_gradient(self, walkers: EPhWalkers) -> np.ndarray:
         r"""Computes the phonon gradient,
-        
+
         .. math::
             \sum_\sigma \frac{\nabla_X \langle \phi(\sigma(\beta)) | X(\tau) \rangle}
-            {\rangle \phi(\sigma(\beta)) | X(\tau) \rangle} 
+            {\rangle \phi(\sigma(\beta)) | X(\tau) \rangle}
             = \sum_\sigma -m \omega \frac{(X(\tau) - \sigma(\beta)) * \langle\phi(\sigma(\beta))|X(\tau)\rangle}
             {\sum_\simga \langle\phi(\sigma(\beta))|X(\tau)\rangle}.
-        
-        This is only used when calculating the drift term for the importance 
+
+        This is only used when calculating the drift term for the importance
         sampling DMC part of the algorithm.
 
         Parameters
@@ -169,18 +176,18 @@ class ToyozawaTrial(CoherentStateTrial):
         """
         grad = np.zeros_like(walkers.phonon_disp, dtype=np.complex128)
         for ovlp, perm in zip(walkers.ph_ovlp.T, self.perms):
-            grad += np.einsum('ni,n->ni', (walkers.phonon_disp - self.beta_shift[perm]), ovlp)
+            grad += np.einsum("ni,n->ni", (walkers.phonon_disp - self.beta_shift[perm]), ovlp)
         grad *= -self.m * self.w0
-        grad = np.einsum('ni,n->ni', grad, 1/np.sum(walkers.ph_ovlp, axis=1))
+        grad = np.einsum("ni,n->ni", grad, 1 / np.sum(walkers.ph_ovlp, axis=1))
         return grad
-        
+
     def calc_phonon_laplacian(self, walkers: EPhWalkers, ovlps: np.ndarray) -> np.ndarray:
         r"""Computes the phonon Laplacian, which weights coherent state laplacians
         by overlaps :math:`o(\sigma, r, X, \tau)` passed to this function,
-        
-        .. math:: 
+
+        .. math::
             \sum_\sigma \frac{\nabla_X \langle \phi(\sigma(\beta)) | X(\tau) \rangle}
-            {\rangle \phi(\sigma(\beta)) | X(\tau) \rangle} 
+            {\rangle \phi(\sigma(\beta)) | X(\tau) \rangle}
             = \frac{\sum_sigma ((\sum_i (m \omega (X_i(\tau) - \sigma(\beta)_i))^2) - N m \omega) o(\sigma, r, X, \tau)}
             {\sum_\sigma o(\sigma, r, X, \tau)}.
 
@@ -190,14 +197,14 @@ class ToyozawaTrial(CoherentStateTrial):
             EPhWalkers object
         ovlps : :class:`np.ndarray`
             Overlaps weighting contributions from permuted coherent states
-        
+
         Returns
         -------
         laplacian : :class:`np.ndarray`
             Phonon Laplacian
         """
         laplacian = np.zeros(walkers.nwalkers, dtype=np.complex128)
-        for ovlp, perm in zip(ovlps.T, self.perms): 
+        for ovlp, perm in zip(ovlps.T, self.perms):
             arg = (walkers.phonon_disp - self.beta_shift[perm]) * self.m * self.w0
             arg2 = arg**2
             laplacian += (np.sum(arg2, axis=1) - self.nsites * self.m * self.w0) * ovlp
@@ -208,7 +215,7 @@ class ToyozawaTrial(CoherentStateTrial):
         r"""Computes phonon Laplacian via `calc_phonon_laplacian` with weighting
         by pure phonon overlap. This is only utilized in the importance sampling
         of the DMC procedure.
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
@@ -221,10 +228,10 @@ class ToyozawaTrial(CoherentStateTrial):
         """
         return self.calc_phonon_laplacian(walkers, walkers.ph_ovlp)
 
-    def calc_phonon_laplacian_locenergy(self, walkers: EPhWalkers) -> np.ndarray: 
+    def calc_phonon_laplacian_locenergy(self, walkers: EPhWalkers) -> np.ndarray:
         """Computes phonon Laplacian using total overlap weights as required in
         local energy evaluation.
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
@@ -238,13 +245,13 @@ class ToyozawaTrial(CoherentStateTrial):
         return self.calc_phonon_laplacian(walkers, walkers.total_ovlp)
 
     def calc_electronic_overlap_perms(self, walkers: EPhWalkers) -> np.ndarray:
-        r"""Calculates the electronic overlap of each walker with each permuted 
-        Slater determinant :math:`|\Phi_T(\tau(r_i))\rangle` of the trial, 
+        r"""Calculates the electronic overlap of each walker with each permuted
+        Slater determinant :math:`|\Phi_T(\tau(r_i))\rangle` of the trial,
 
-        .. math:: 
+        .. math::
             \langle \Phi_T(\tau(r_i))|\psi_w\rangle = \mathrm{det(U^{\dagger}V)},
-        
-        where :math:`U,V` parametrized the two Slater determinants. 
+
+        where :math:`U,V` parametrized the two Slater determinants.
 
         Parameters
         ----------
@@ -256,24 +263,28 @@ class ToyozawaTrial(CoherentStateTrial):
         el_ovlp_perm : :class:`np.ndarray`
             Electronic overlap of each permuted Slater Determiant with walkers
         """
-        for ip,perm in enumerate(self.perms):
-            ovlp_a = xp.einsum("wmi,mj->wij", walkers.phia, self.psia[perm, :].conj(), optimize=True)
+        for ip, perm in enumerate(self.perms):
+            ovlp_a = xp.einsum(
+                "wmi,mj->wij", walkers.phia, self.psia[perm, :].conj(), optimize=True
+            )
             sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
 
             if self.ndown > 0:
-                ovlp_b = xp.einsum("wmi,mj->wij", walkers.phib, self.psib[perm, :].conj(), optimize=True)
+                ovlp_b = xp.einsum(
+                    "wmi,mj->wij", walkers.phib, self.psib[perm, :].conj(), optimize=True
+                )
                 sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
                 ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
-            else: 
+            else:
                 ot = sign_a * xp.exp(log_ovlp_a - walkers.log_shift)
 
             walkers.el_ovlp[:, ip] = ot
         return walkers.el_ovlp
 
     def calc_electronic_overlap(self, walkers: EPhWalkers) -> np.ndarray:
-        """Sums walkers.el_ovlp over permutations to obtain total electronic 
+        """Sums walkers.el_ovlp over permutations to obtain total electronic
         overlap of trial with walkers.
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
@@ -290,16 +301,16 @@ class ToyozawaTrial(CoherentStateTrial):
 
     def calc_greens_function(self, walkers: EPhWalkers, build_full=True) -> np.ndarray:
         r"""Calculates Greens functions by
-        
+
         .. math::
-            G^{\Phi \Psi}_{p\alpha, q\beta} 
+            G^{\Phi \Psi}_{p\alpha, q\beta}
             = \frac{\sum_{\tau} \delta_{\alpha\beta}(U_\alpha(V^{\dagger}_\alhpa(\tau) U_\alpha) V^{\dagger}_\alpha(\tau)) \langle\Phi_T(\tau(r_i))|\psi_w\rangle}
             {\sum_{\tau} \langle\Phi_T(\tau(r_i))|\psi_w\rangle}
-        
+
         Parameters
         ----------
         walkers : :class:`EPhWalkers`
-            EPhWalkers object 
+            EPhWalkers object
 
         Returns
         -------
@@ -310,17 +321,22 @@ class ToyozawaTrial(CoherentStateTrial):
         Gb = np.zeros_like(Ga)
 
         for ovlp, perm in zip(walkers.total_ovlp.T, self.perms):
-            
-            inv_Oa = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psia[perm,:], walkers.phia.conj()))
-            Ga += xp.einsum('nie,nef,jf,n->nji', walkers.phia, inv_Oa, self.psia[perm].conj(), ovlp) 
-            
-            if self.ndown > 0: 
-                inv_Ob = xp.linalg.inv(xp.einsum('ie,nif->nef', self.psib[perm,:], walkers.phib.conj()))
-                Gb += xp.einsum('nie,nef,jf,n->nji', walkers.phib, inv_Ob, self.psib[perm].conj(), ovlp)
-        
-        Ga = np.einsum('nij,n->nij', Ga, 1 / walkers.ovlp)
+
+            inv_Oa = xp.linalg.inv(
+                xp.einsum("ie,nif->nef", self.psia[perm, :], walkers.phia.conj())
+            )
+            Ga += xp.einsum("nie,nef,jf,n->nji", walkers.phia, inv_Oa, self.psia[perm].conj(), ovlp)
+
+            if self.ndown > 0:
+                inv_Ob = xp.linalg.inv(
+                    xp.einsum("ie,nif->nef", self.psib[perm, :], walkers.phib.conj())
+                )
+                Gb += xp.einsum(
+                    "nie,nef,jf,n->nji", walkers.phib, inv_Ob, self.psib[perm].conj(), ovlp
+                )
+
+        Ga = np.einsum("nij,n->nij", Ga, 1 / walkers.ovlp)
         if self.ndown > 0:
-            Gb = np.einsum('nij,n->nij', Gb, 1 / walkers.ovlp)
+            Gb = np.einsum("nij,n->nij", Gb, 1 / walkers.ovlp)
 
         return [Ga, Gb]
-

@@ -18,18 +18,20 @@ from ipie.estimators.estimator_base import EstimatorBase
 from ipie.addons.eph.estimators.local_energy_holstein import local_energy_holstein
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.systems.generic import Generic
-from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase 
+from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
-from ipie.addons.eph.walkers.eph_walkers import EPhWalkers 
+from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
+
 
 @plum.dispatch
 def local_energy(
-        system: Generic, 
-        hamiltonian: HolsteinModel, 
-        walkers: EPhWalkers, 
-        trial: EPhTrialWavefunctionBase
+    system: Generic,
+    hamiltonian: HolsteinModel,
+    walkers: EPhWalkers,
+    trial: EPhTrialWavefunctionBase,
 ):
     return local_energy_holstein(system, hamiltonian, walkers, trial)
+
 
 class EnergyEstimator(EstimatorBase):
     def __init__(

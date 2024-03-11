@@ -19,71 +19,74 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
 
+
 class EPhWalkers(BaseWalkers):
     """Class tailored to el-ph models where keeping track of phonon overlaps is
-    required. Each walker carries along its Slater determinants a phonon 
+    required. Each walker carries along its Slater determinants a phonon
     displacement vector, self.phonon_disp.
-    
+
     Parameters
     ----------
     initial_walker :
-        Walker that we start the simulation from. Ideally chosen according to 
+        Walker that we start the simulation from. Ideally chosen according to
         the trial.
-    nup : 
+    nup :
         Number of electrons in up-spin space.
     ndown :
         Number of electrons in down-spin space.
     nbasis :
         Number of sites in the 1D Holstein chain.
-    nwalkers : 
+    nwalkers :
         Number of walkers in the simulation.
-    verbose : 
+    verbose :
         Print level.
     """
+
     def __init__(
-        self, 
+        self,
         initial_walker: numpy.ndarray,
         nup: int,
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        verbose: bool = False
+        verbose: bool = False,
     ):
 
         self.nup = nup
         self.ndown = ndown
         self.nbasis = nbasis
 
-
         super().__init__(nwalkers, verbose=verbose)
 
         self.weight = numpy.ones(self.nwalkers, dtype=numpy.complex128)
 
         self.phonon_disp = xp.array(
-            [initial_walker[:,0].copy() for iw in range(self.nwalkers)],
-            dtype=xp.complex128
+            [initial_walker[:, 0].copy() for iw in range(self.nwalkers)], dtype=xp.complex128
         )
         self.phonon_disp = numpy.squeeze(self.phonon_disp)
- 
+
         self.phia = xp.array(
-            [initial_walker[:, 1 : self.nup+1].copy() for iw in range(self.nwalkers)],
+            [initial_walker[:, 1 : self.nup + 1].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128,
         )
 
         self.phib = xp.array(
-            [initial_walker[:, self.nup+1 : self.nup+self.ndown+1].copy() for iw in range(self.nwalkers)],
+            [
+                initial_walker[:, self.nup + 1 : self.nup + self.ndown + 1].copy()
+                for iw in range(self.nwalkers)
+            ],
             dtype=xp.complex128,
         )
-       
+
         self.buff_names += ["phia", "phib", "phonon_disp"]
 
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def build(self, trial):
-        """Allocates memory for computation of overlaps throughout the 
+        """Allocates memory for computation of overlaps throughout the
         simulation.
-        
+
         Parameters
         ----------
         trial :
@@ -99,7 +102,7 @@ class EPhWalkers(BaseWalkers):
         self.el_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
         self.total_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
 
-        self.buff_names += ['total_ovlp']
+        self.buff_names += ["total_ovlp"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
@@ -113,7 +116,7 @@ class EPhWalkers(BaseWalkers):
 
     def reortho(self):
         """reorthogonalise walkers. This function is mostly from BaseWalkers,
-        with the exception that it adjusts all overlaps, possibly of numerous 
+        with the exception that it adjusts all overlaps, possibly of numerous
         coherent states.
 
         Parameters
@@ -149,7 +152,7 @@ class EPhWalkers(BaseWalkers):
             detR += [xp.exp(log_det - self.detR_shift[iw])]
             self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
-            
+
             self.el_ovlp[iw, ...] = self.el_ovlp[iw, ...] / detR[iw]
             self.total_ovlp[iw, ...] = self.total_ovlp[iw, ...] / detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]

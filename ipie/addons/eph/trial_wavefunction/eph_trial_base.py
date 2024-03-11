@@ -16,23 +16,26 @@ import numpy as np
 from typing import Tuple
 from abc import ABCMeta, abstractmethod
 
+
 class EPhTrialWavefunctionBase(metaclass=ABCMeta):
     """Base class for electron-phonon trial wave functions.
-    
+
     Parameters
     ----------
-    wavefunction : 
+    wavefunction : :class:`np.ndarray`
         Concatenation of trial determinants of up and down spin spaces and beta
         specifying the coherent state displacement.
-    num_elec : 
+    num_elec : :class:`Tuple`
         Tuple of numbers of up and down spins.
-    num_basis : 
+    num_basis : :class:`int`
         Number of sites of Holstein chain.
-    verbose : 
+    verbose : :class:`bool`
         Print level
     """
-    def __init__(self, wavefunction: np.ndarray, num_elec: Tuple[int, int], 
-                 num_basis: int, verbose=False):
+
+    def __init__(
+        self, wavefunction: np.ndarray, num_elec: Tuple[int, int], num_basis: int, verbose=False
+    ):
         self.nelec = num_elec
         self.nbasis = num_basis
         self.nalpha, self.nbeta = self.nelec
@@ -41,10 +44,10 @@ class EPhTrialWavefunctionBase(metaclass=ABCMeta):
         self._max_num_dets = self._num_dets
         self.ortho_expansion = False
         self.optimized = True
-        
-        self.psia = wavefunction[:self.nalpha]
-        self.psib = wavefunction[self.nalpha:self.nalpha+self.nbeta]
-        self.beta_shift = wavefunction[self.nalpha+self.nbeta:] 
+
+        self.psia = wavefunction[: self.nalpha]
+        self.psib = wavefunction[self.nalpha : self.nalpha + self.nbeta]
+        self.beta_shift = wavefunction[self.nalpha + self.nbeta :]
 
         self.compute_trial_energy = False
         self.energy = None
@@ -58,35 +61,25 @@ class EPhTrialWavefunctionBase(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def calc_overlap(self, walkers) -> np.ndarray:
-        ...
+    def calc_overlap(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_phonon_overlap(self, walkers) -> np.ndarray:
-        ...
+    def calc_phonon_overlap(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_phonon_gradient(self, walkers) -> np.ndarray: 
-        ...
+    def calc_phonon_gradient(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_phonon_laplacian(self, walkers) -> np.ndarray:
-        ...
+    def calc_phonon_laplacian(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_phonon_laplacian_importance(self, walkers) -> np.ndarray:
-        ...
+    def calc_phonon_laplacian_importance(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_phonon_laplacian_locenergy(self, walkers) -> np.ndarray:
-        ...
-    
-    @abstractmethod
-    def calc_electronic_overlap(self, walkers) -> np.ndarray:
-        ...
+    def calc_phonon_laplacian_locenergy(self, walkers) -> np.ndarray: ...
 
     @abstractmethod
-    def calc_greens_function(self, walkers) -> np.ndarray:
-        ...
+    def calc_electronic_overlap(self, walkers) -> np.ndarray: ...
 
-
+    @abstractmethod
+    def calc_greens_function(self, walkers) -> np.ndarray: ...
