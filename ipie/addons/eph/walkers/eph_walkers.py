@@ -100,9 +100,9 @@ class EPhWalkers(BaseWalkers):
 
         self.ph_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
         self.el_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
-        self.total_ovlp = numpy.zeros(shape, dtype=numpy.complex128)
+        self.ovlp_perm = numpy.zeros(shape, dtype=numpy.complex128)
 
-        self.buff_names += ["total_ovlp"]
+        self.buff_names += ["ovlp_perm"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
@@ -154,7 +154,7 @@ class EPhWalkers(BaseWalkers):
             self.detR[iw] = detR[iw]
 
             self.el_ovlp[iw, ...] = self.el_ovlp[iw, ...] / detR[iw]
-            self.total_ovlp[iw, ...] = self.total_ovlp[iw, ...] / detR[iw]
+            self.ovlp_perm[iw, ...] = self.ovlp_perm[iw, ...] / detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
 
         synchronize()

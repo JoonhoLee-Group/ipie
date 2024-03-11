@@ -73,13 +73,13 @@ class ToyozawaTrial(CoherentStateTrial):
 
         Returns
         -------
-        total_ovlp : :class:`np.ndarray`
-            Product of electron and phonon overlap
+        ovlp_perm : :class:`np.ndarray`
+            Product of electron and phonon overlap for each permutation
         """
         ph_ovlp_perm = self.calc_phonon_overlap_perms(walkers)
         el_ovlp_perm = self.calc_electronic_overlap_perms(walkers)
-        walkers.total_ovlp = el_ovlp_perm * ph_ovlp_perm
-        return walkers.total_ovlp
+        walkers.ovlp_perm = el_ovlp_perm * ph_ovlp_perm
+        return walkers.ovlp_perm
 
     def calc_overlap(self, walkers: EPhWalkers) -> np.ndarray:
         r"""Sums product of electronic and phonon overlap for each permutation
@@ -102,8 +102,8 @@ class ToyozawaTrial(CoherentStateTrial):
         ovlp: :class:`np.ndarray`
             Sum of product of electron and phonon overlap
         """
-        total_ovlp = self.calc_overlap_perm(walkers)
-        ovlp = np.sum(total_ovlp, axis=1)
+        ovlp_perm = self.calc_overlap_perm(walkers)
+        ovlp = np.sum(ovlp_perm, axis=1)
         return ovlp
 
     def calc_phonon_overlap_perms(self, walkers: EPhWalkers) -> np.ndarray:
@@ -242,7 +242,7 @@ class ToyozawaTrial(CoherentStateTrial):
         ph_lapl : :class:`np.ndarray`
             Phonon Laplacian weigthed by total overlaps
         """
-        return self.calc_phonon_laplacian(walkers, walkers.total_ovlp)
+        return self.calc_phonon_laplacian(walkers, walkers.ovlp_perm)
 
     def calc_electronic_overlap_perms(self, walkers: EPhWalkers) -> np.ndarray:
         r"""Calculates the electronic overlap of each walker with each permuted
@@ -320,8 +320,7 @@ class ToyozawaTrial(CoherentStateTrial):
         Ga = np.zeros((walkers.nwalkers, self.nsites, self.nsites), dtype=np.complex128)
         Gb = np.zeros_like(Ga)
 
-        for ovlp, perm in zip(walkers.total_ovlp.T, self.perms):
-
+        for ovlp, perm in zip(walkers.ovlp_perm.T, self.perms):
             inv_Oa = xp.linalg.inv(
                 xp.einsum("ie,nif->nef", self.psia[perm, :], walkers.phia.conj())
             )
