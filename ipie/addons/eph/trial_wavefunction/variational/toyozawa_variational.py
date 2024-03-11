@@ -163,12 +163,12 @@ def variational_trial_toyozawa(
     beta_shift = res.x[: hamiltonian.nsites]
     if system.ndown > 0:
         psia = res.x[hamiltonian.nsites : hamiltonian.nsites * (system.nup + 1)]
-        psia = psia.reshape((hamiltonian.nsites, system.nup))
+        psia = psia.reshape((system.nup, hamiltonian.nsites)).T
         psib = res.x[hamiltonian.nsites * (system.nup + 1) :]
-        psib = psib.reshape((hamiltonian.nsites, system.ndown))
+        psib = psib.reshape((system.ndown, hamiltonian.nsites)).T
         psi = np.column_stack([psia, psib])
     else:
-        psia = res.x[hamiltonian.nsites :].reshape((hamiltonian.nsites, system.nup))
+        psia = res.x[hamiltonian.nsites :].reshape((system.nup, hamiltonian.nsites)).T
         psi = psia
 
     return etrial, beta_shift, psi
