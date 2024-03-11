@@ -33,8 +33,8 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
     wavefunction :
         Concatenation of trial determinants of up and down spin spaces and beta
         specifying the coherent state displacement.
-    hamiltonian :
-        Holstein model Hamiltonian
+    w0 : 
+        Phonon frequency
     num_elec :
         Tuple specifying number of up and down spins
     num_basis :
@@ -43,13 +43,13 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         Print level
     """
 
-    def __init__(self, wavefunction, hamiltonian, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, w0, num_elec, num_basis, verbose=False):
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         self.num_elec = num_elec
         self.nup, self.ndown = self.num_elec
-        self.w0 = hamiltonian.w0
-        self.m = hamiltonian.m
-        self.nsites = hamiltonian.nsites
+        self.w0 = w0
+        self.m = 1 / w0
+        self.nsites = self.nbasis
 
         self.beta_shift = np.squeeze(wavefunction[:, 0])
         self.psia = wavefunction[:, 1 : self.nup + 1]

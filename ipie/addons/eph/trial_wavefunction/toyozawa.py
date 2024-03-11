@@ -15,7 +15,6 @@
 import numpy as np
 from typing import Tuple
 
-from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
@@ -49,12 +48,12 @@ class ToyozawaTrial(CoherentStateTrial):
     def __init__(
         self,
         wavefunction: np.ndarray,
-        hamiltonian: HolsteinModel,
+        w0: float,
         num_elec: Tuple[int, int],
         num_basis: int,
         verbose=False,
     ):
-        super().__init__(wavefunction, hamiltonian, num_elec, num_basis, verbose=verbose)
+        super().__init__(wavefunction, w0, num_elec, num_basis, verbose=verbose)
         self.perms = circ_perm(np.arange(self.nbasis))
         self.nperms = self.perms.shape[0]
 
