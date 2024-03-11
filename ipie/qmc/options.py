@@ -173,6 +173,7 @@ class QMCParams:
         rng_seed: The random number seed. If run in parallel the seeds on other
             cores / threads are determined from this.
     """
+
     num_walkers: int
     total_num_walkers: int
     timestep: float

@@ -341,17 +341,13 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         # Rescale weights.
         glob_inf = numpy.zeros((walkers.nwalkers * comm.size, 4), dtype=numpy.float64)
         glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
-        glob_inf[
-            :, 1
-        ] = glob_inf_1.ravel()  # all initialized to 1 when it becomes 2 then it will be "branched"
-        glob_inf[
-            :, 2
-        ] = (
+        glob_inf[:, 1] = (
+            glob_inf_1.ravel()
+        )  # all initialized to 1 when it becomes 2 then it will be "branched"
+        glob_inf[:, 2] = (
             glob_inf_2.ravel()
         )  # contain processor+walker indices (initial) (i.e., where walkers live)
-        glob_inf[
-            :, 3
-        ] = (
+        glob_inf[:, 3] = (
             glob_inf_3.ravel()
         )  # contain processor+walker indices (final) (i.e., where walkers live)
         sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
