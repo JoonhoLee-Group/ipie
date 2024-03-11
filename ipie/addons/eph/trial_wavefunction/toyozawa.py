@@ -19,6 +19,7 @@ from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
 from ipie.utils.backend import arraylib as xp
+from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 
 
 class ToyozawaTrial(CoherentStateTrial):
@@ -56,6 +57,66 @@ class ToyozawaTrial(CoherentStateTrial):
         super().__init__(wavefunction, w0, num_elec, num_basis, verbose=verbose)
         self.perms = circ_perm(np.arange(self.nbasis))
         self.nperms = self.perms.shape[0]
+
+    def variational_energy(self, ham, zero_th=1e-12):
+        r"""Computes the variational energy of the trial, i.e.
+
+        .. math::
+            E_T = \frac{\langle\Psi_T|\hat{H}|\Psi_T\rangle}{\langle\Psi_T|\Psi_T\rangle}.
+
+        As the Toyozawa trial wavefunction is a superposition of coherent state trials
+        the evaluation of :math:`E_T` a naive implementation would scale quadratically
+        with the number of sites. Here, we exploit the translational symmetry of the
+        wavefunction to obtain linear scaling.
+
+        Parameters
+        ----------
+        ham:
+            Hamiltonian
+
+        Returns
+        -------
+        etrial : :class:`float`
+            Trial energy
+        """
+        num_energy = 0.0
+        denom = 0.0
+        beta0 = self.beta_shift * np.sqrt(0.5 * ham.m * ham.w0)
+        for i, perm in enumerate(self.perms):
+            psia_i = self.psia[perm, :]
+            beta_i = beta0[perm]
+
+            if self.ndown > 0:
+                psib_i = self.psib[perm, :]
+                ov = (
+                    np.linalg.det(self.psia.T.dot(psia_i))
+                    * np.linalg.det(self.psib.T.dot(psib_i))
+                    * np.prod(np.exp(-0.5 * (beta0**2 + beta_i**2) + beta0 * beta_i))
+                )
+            else:
+                ov = np.linalg.det(self.psia.T.dot(psia_i)) * np.prod(
+                    np.exp(-0.5 * (beta0**2 + beta_i**2) + beta0 * beta_i)
+                )
+
+            if ov < zero_th:
+                continue
+
+            Ga_i, _, _ = gab_mod_ovlp(self.psia, psia_i)
+            if self.ndown > 0:
+                Gb_i, _, _ = gab_mod_ovlp(self.psib, psib_i)
+            else:
+                Gb_i = np.zeros_like(Ga_i)
+            G_i = [Ga_i, Gb_i]
+
+            kinetic = np.sum(ham.T[0] * G_i[0] + ham.T[1] * G_i[1])
+            e_ph = ham.w0 * np.sum(beta0 * beta_i)
+            rho = ham.g_tensor * (G_i[0] + G_i[1])
+            e_eph = np.sum(np.dot(rho, beta0 + beta_i))
+            num_energy += (kinetic + e_ph + e_eph) * ov
+            denom += ov
+
+        etrial = num_energy / denom
+        return etrial
 
     def calc_overlap_perm(self, walkers: EPhWalkers) -> np.ndarray:
         r"""Computes the product of electron and phonon overlaps for each

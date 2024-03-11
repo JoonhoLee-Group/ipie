@@ -38,16 +38,16 @@ class EPhTrialWavefunctionBase(metaclass=ABCMeta):
     ):
         self.nelec = num_elec
         self.nbasis = num_basis
-        self.nalpha, self.nbeta = self.nelec
+        self.nup, self.ndown = self.nelec
         self.verbose = verbose
         self._num_dets = 0
         self._max_num_dets = self._num_dets
         self.ortho_expansion = False
         self.optimized = True
 
-        self.psia = wavefunction[: self.nalpha]
-        self.psib = wavefunction[self.nalpha : self.nalpha + self.nbeta]
-        self.beta_shift = wavefunction[self.nalpha + self.nbeta :]
+        self.psia = wavefunction[: self.nup]
+        self.psib = wavefunction[self.nup : self.nup + self.ndown]
+        self.beta_shift = wavefunction[self.nup + self.ndown :]
 
         self.compute_trial_energy = False
         self.energy = None
