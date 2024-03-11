@@ -71,11 +71,10 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         ovlp : :class:`np.ndarray`
             Product of electron and phonon overlap
         """
-        _ = self.calc_phonon_overlap(walkers)
-        _ = self.calc_electronic_overlap(walkers)
-        walkers.total_ovlp = walkers.el_ovlp * walkers.ph_ovlp
-        walkers.ovlp = walkers.total_ovlp
-        return walkers.ovlp
+        ph_ovlp = self.calc_phonon_overlap(walkers)
+        el_ovlp = self.calc_electronic_overlap(walkers)
+        ovlp = el_ovlp * ph_ovlp
+        return ovlp
 
     def calc_phonon_overlap(self, walkers) -> np.ndarray:
         r"""Computes phonon overlap, :math:`\langle \phi(\beta)|X_{\mathrm{w}(\tau)}\rangle`.
