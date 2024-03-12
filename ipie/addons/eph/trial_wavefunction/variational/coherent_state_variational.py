@@ -15,7 +15,6 @@
 import numpy as np
 from scipy.optimize import basinhopping
 
-from ipie.legacy.trial_wavefunction.harmonic_oscillator import HarmonicOscillator
 from ipie.systems.generic import Generic
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
@@ -30,23 +29,17 @@ def local_energy(
     w: float,
     g: float,
     nsites: int,
-    Lap: np.ndarray,
     T: np.ndarray,
     nup: int,
     ndown: int,
 ) -> np.ndarray:
 
-    kinetic_contrib = jax.numpy.einsum("ij->", T[0] * G[0])
-    if ndown > 0:
-        kinetic_contrib += jax.numpy.einsum("ij->", T[1] * G[1])
-
+    kinetic = np.sum(T[0] * G[0] + T[1] * G[1])
     rho = G[0].diagonal() + G[1].diagonal()
-    el_ph_contrib = -g * np.sqrt(2 * m * w) * np.sum(rho * X)
+    e_eph = -g * 2 * np.sqrt(m * w) * np.sum(rho * X)
+    e_ph = m * w**2 * np.sum(X * X)
 
-    phonon_contrib = m * w**2 * np.sum(X * X) / 2
-    phonon_contrib += -0.5 * np.sum(Lap) / m - 0.5 * w * nsites
-
-    local_energy = kinetic_contrib + el_ph_contrib + phonon_contrib
+    local_energy = kinetic + e_eph + e_ph
     return local_energy
 
 
@@ -71,10 +64,8 @@ def objective_function(
 
     G = [Ga, Gb]
 
-    phi = HarmonicOscillator(m, w0, order=0, shift=shift)
-    Lap = phi.laplacian(shift)
-
-    etot = local_energy(shift, G, m, w0, g, nbasis, Lap, T, nup, ndown)
+    etot = local_energy(shift, G, m, w0, g, nbasis, T, nup, ndown)
+    
     return etot.real
 
 
@@ -136,6 +127,7 @@ def variational_trial(init_phonons: np.ndarray, init_electron: np.ndarray, hamil
     )
 
     etrial = res.fun
+
 
     beta_shift = res.x[: hamiltonian.nsites]
     if system.ndown > 0:
