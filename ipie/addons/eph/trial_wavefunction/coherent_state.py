@@ -58,10 +58,10 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
 
     def calc_energy(self, ham) -> float:
         r"""Computes the variational energy of the trial,
-        
-        .. math:: 
+
+        .. math::
             E = \frac{\langle \Psi_T |\hat{H}|\Psi_T\rangle}{\langle \Psi_T |\Psi_T\rangle}.
-            
+
         Parameters
         ----------
         ham : :class:`HolsteinModel`

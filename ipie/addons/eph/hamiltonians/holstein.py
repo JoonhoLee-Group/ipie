@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy
-from ipie.utils.backend import arraylib as xp
 
 
 class HolsteinModel:

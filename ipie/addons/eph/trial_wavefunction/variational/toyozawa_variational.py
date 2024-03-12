@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.optimize import minimize, basinhopping
-from ipie.systems import Generic
-from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
+from scipy.optimize import minimize
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 
 import jax
@@ -43,8 +41,6 @@ def objective_function_toyozawa_mo(
     nbsf = nbasis
     nocca = nup
     noccb = ndown
-    nvira = nbasis - nocca
-    nvirb = nbasis - noccb
 
     psi0a = npj.array(x[nbsf : nbsf + nbsf * nocca], dtype=npj.float64)
     psi0a = psi0a.reshape((nocca, nbsf)).T
@@ -53,14 +49,12 @@ def objective_function_toyozawa_mo(
         psi0b = npj.array(x[nbsf + nbsf * nocca :], dtype=npj.float64)
         psi0b = psi0b.reshape((noccb, nbsf)).T
 
-    nperms = len(perms)
-
     num_energy = 0.0
     denom = 0.0
 
     beta0 = shift0 * npj.sqrt(m * w0 / 2.0)
 
-    for i, perm in enumerate(perms):
+    for perm in perms:
         psia_j = psi0a[perm, :]
         beta_j = beta0[npj.array(perm)]
 

@@ -5,11 +5,12 @@ import pytest
 from ipie.addons.eph.estimators.energy import EnergyEstimator
 from ipie.addons.eph.utils.testing import gen_random_test_instances
 
+
 @pytest.mark.unit
 def test_energy_estimator():
     pbc = True
     nbasis = 4
-    nelec = (2,2)
+    nelec = (2, 2)
     trial_type = "toyozawa"
     nwalkers = 500
     sys, ham, walkers, trial = gen_random_test_instances(nelec, nbasis, nwalkers, trial_type)
@@ -25,6 +26,6 @@ def test_energy_estimator():
     assert estim.ascii_filename == None
     assert estim.shape == (6,)
 
+
 if __name__ == "__main__":
     test_energy_estimator()
-

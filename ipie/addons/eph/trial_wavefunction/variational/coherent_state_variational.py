@@ -15,8 +15,6 @@
 import numpy as np
 from scipy.optimize import basinhopping
 
-from ipie.systems.generic import Generic
-from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 
 import jax
@@ -65,7 +63,7 @@ def objective_function(
     G = [Ga, Gb]
 
     etot = local_energy(shift, G, m, w0, g, nbasis, T, nup, ndown)
-    
+
     return etot.real
 
 
@@ -127,7 +125,6 @@ def variational_trial(init_phonons: np.ndarray, init_electron: np.ndarray, hamil
     )
 
     etrial = res.fun
-
 
     beta_shift = res.x[: hamiltonian.nsites]
     if system.ndown > 0:

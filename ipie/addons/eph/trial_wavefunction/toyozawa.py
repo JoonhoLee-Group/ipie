@@ -82,7 +82,7 @@ class ToyozawaTrial(CoherentStateTrial):
         num_energy = 0.0
         denom = 0.0
         beta0 = self.beta_shift * np.sqrt(0.5 * ham.m * ham.w0)
-        for i, perm in enumerate(self.perms):
+        for perm in self.perms:
             psia_i = self.psia[perm, :]
             beta_i = beta0[perm]
 
