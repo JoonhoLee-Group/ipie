@@ -57,7 +57,21 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         self.psib = wavefunction[:, self.nup + 1 : self.nup + self.ndown + 1]
 
     def calc_energy(self, ham) -> float:
-        r""""""
+        r"""Computes the variational energy of the trial,
+        
+        .. math:: 
+            E = \frac{\langle \Psi_T |\hat{H}|\Psi_T\rangle}{\langle \Psi_T |\Psi_T\rangle}.
+            
+        Parameters
+        ----------
+        ham : :class:`HolsteinModel`
+            Holstein model
+
+        Returns
+        -------
+        etrial : :class:`float`
+            Variational trial energy
+        """
         Ga, _, _ = gab_mod_ovlp(self.psia, self.psia)
         if self.ndown > 0:
             Gb, _, _ = gab_mod_ovlp(self.psib, self.psib)
