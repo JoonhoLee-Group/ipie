@@ -23,7 +23,38 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
+# FDM: deprecated remove?
+def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
+    """Compute local energy using half-rotated eri tensor."""
+
+    na = system.nup
+    nb = system.ndown
+    M = system.nbasis
+    assert eri is not None
+
+    vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
+    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape(
+        (nb, M, nb, M)
+    )
+    vipjq_ab = eri[0, na**2 * M**2 + nb**2 * M**2 :].reshape((na, M, nb, M))
+
+    Ga, Gb = Ghalf[0], Ghalf[1]
+    # Element wise multiplication.
+    e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
+    # Coulomb
+    eJaa = 0.5 * numpy.einsum("irjs,ir,js", vipjq_aa, Ga, Ga)
+    eJbb = 0.5 * numpy.einsum("irjs,ir,js", vipjq_bb, Gb, Gb)
+    eJab = numpy.einsum("irjs,ir,js", vipjq_ab, Ga, Gb)
+
+    eKaa = -0.5 * numpy.einsum("irjs,is,jr", vipjq_aa, Ga, Ga)
+    eKbb = -0.5 * numpy.einsum("irjs,is,jr", vipjq_bb, Gb, Gb)
+
+    e2b = eJaa + eJbb + eJab + eKaa + eKbb
+
+    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
+
+
+def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -31,8 +62,8 @@ def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
     Parameters
     ----------
     system : :class:`Generic`
-        System information for Generic.
-    hamiltonian : :class:`Generic`
+        generic system information
+    ham : :class:`Generic`
         ab-initio hamiltonian information
     G : :class:`numpy.ndarray`
         Walker's "green's function"
@@ -45,17 +76,17 @@ def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
         Total , one and two-body energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
+    e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
+    nbasis = ham.nbasis
+    nchol = ham.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(hamiltonian.chol):
-        Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Ga.imag.ravel())
-        Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Gb.imag.ravel())
+    if numpy.isrealobj(ham.chol):
+        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
+        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
     else:
-        Xa = hamiltonian.chol.T.dot(Ga.ravel())
-        Xb = hamiltonian.chol.T.dot(Gb.ravel())
+        Xa = ham.chol.T.dot(Ga.ravel())
+        Xb = ham.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -67,9 +98,9 @@ def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(hamiltonian.chol):
+    if numpy.isrealobj(ham.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -78,7 +109,7 @@ def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
@@ -86,7 +117,7 @@ def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
 
     e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
+    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
 
 
 def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
@@ -97,7 +128,7 @@ def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     Parameters
     ----------
     system : :class:`Generic`
-        System information for Generic.
+        generic system information
     ecore : float
         Core energy
     Ghalfa : :class:`numpy.ndarray`
@@ -226,18 +257,7 @@ def exx_kernel_rchol_real(rchol, Ghalf):
 
 
 @jit(nopython=True, fastmath=True)
-def ecoul_kernel_rchol_complex(rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb):
-    X1 = rchola.dot(Ghalfa.ravel())
-    X1 += rcholb.dot(Ghalfb.ravel())
-    X2 = rcholbara.dot(Ghalfa.ravel())
-    X2 += rcholbarb.dot(Ghalfb.ravel())
-    ecoul = xp.dot(X1, X2)
-    ecoul *= 0.5
-    return ecoul
-
-
-@jit(nopython=True, fastmath=True)
-def exx_kernel_rchol_complex(rchol, rcholbar, Ghalf):
+def exx_kernel_rchol_complex(rchol, Ghalf):
     """Compute exchange contribution for complex rchol.
 
     Parameters
@@ -250,22 +270,19 @@ def exx_kernel_rchol_complex(rchol, rcholbar, Ghalf):
     Returns
     -------
     exx : :class:`numpy.ndarray`
-        exchange contribution for all walkers.
+        exchange contribution for given green's function.
     """
     naux = rchol.shape[0]
     nocc = Ghalf.shape[0]
-    nbsf = Ghalf.shape[1]
-    T1 = xp.zeros((nocc, nocc), dtype=numpy.complex128)
-    T2 = xp.zeros((nocc, nocc), dtype=numpy.complex128)
-    exx = 0. + 0.j
+    nbasis = Ghalf.shape[1]
+
+    exx = 0 + 0j
+    GhalfT = Ghalf.T.copy()
     # Fix this with gpu env
     for jx in range(naux):
-        rcholx = rchol[jx].reshape(nocc, nbsf)
-        rcholbarx = rcholbar[jx].reshape(nocc, nbsf)
-        T1 = rcholx.dot(Ghalf.T)
-        T2 = rcholbarx.dot(Ghalf.T)
-        exx += xp.dot(T1.ravel(), T2.T.ravel())
-    exx *= 0.5
+        rmi = rchol[jx].reshape((nocc, nbasis))
+        T = rmi.dot(GhalfT)
+        exx += numpy.dot(T.ravel(), T.T.ravel())
     return exx
 
 
@@ -310,6 +327,8 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
 
     Parameters
     ----------
+    system : :class:`Generic`
+        System information for Generic.
     Ghalfa : :class:`numpy.ndarray`
         Walker's half-rotated "green's function" shape is nalpha  x nbasis
     Ghalfa : :class:`numpy.ndarray`
@@ -324,6 +343,7 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     exx : :class:`numpy.ndarray`
         Exchange energy.
     """
+
     rchola = trial._rchola
     rcholb = trial._rcholb
 
@@ -331,26 +351,32 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
         Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
-        ecoul = xp.dot(Xa, Xa)
-        ecoul += xp.dot(Xb, Xb)
-        ecoul += 2 * xp.dot(Xa, Xb)
     else:
-        rcholbara = trial._rcholbara
-        rcholbarb = trial._rcholbarb
-        ecoul = 2.0 * ecoul_kernel_rchol_complex(
-            rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb
-        )
+        Xa = rchola.dot(Ghalfa.ravel())
+        Xb = rcholb.dot(Ghalfb.ravel())
 
+    ecoul = xp.dot(Xa, Xa)
+    ecoul += xp.dot(Xb, Xb)
+    ecoul += 2 * xp.dot(Xa, Xb)
+    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
     if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
         exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
     else:
-        rcholbara = trial._rcholbara
-        rcholbarb = trial._rcholbarb
-        exx = exx_kernel_rchol_complex(rchola, rcholbara, Ghalfa)
-        exx += exx_kernel_rchol_complex(rcholb, rcholbarb, Ghalfb)
-        exx *= 2.0
+        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
+
     synchronize()
     return 0.5 * ecoul, -0.5 * exx  # JK energy
+
+
+# FDM: Mark for deletion
+def core_contribution(system, Gcore):
+    hc_a = numpy.einsum("pqrs,pq->rs", system.h2e, Gcore[0]) - 0.5 * numpy.einsum(
+        "prsq,pq->rs", system.h2e, Gcore[0]
+    )
+    hc_b = numpy.einsum("pqrs,pq->rs", system.h2e, Gcore[1]) - 0.5 * numpy.einsum(
+        "prsq,pq->rs", system.h2e, Gcore[1]
+    )
+    return (hc_a, hc_b)
 
 
 def core_contribution_cholesky(chol, G):
@@ -369,12 +395,12 @@ def core_contribution_cholesky(chol, G):
     return (hca, hcb)
 
 
-def fock_generic(hamiltonian, P):
-    if hamiltonian.sparse:
-        mf_shift = 1j * P[0].ravel() * hamiltonian.hs_pot
-        mf_shift += 1j * P[1].ravel() * hamiltonian.hs_pot
-        VMF = 1j * hamiltonian.hs_pot.dot(mf_shift).reshape(hamiltonian.nbasis, hamiltonian.nbasis)
+def fock_generic(system, P):
+    if system.sparse:
+        mf_shift = 1j * P[0].ravel() * system.hs_pot
+        mf_shift += 1j * P[1].ravel() * system.hs_pot
+        VMF = 1j * system.hs_pot.dot(mf_shift).reshape(system.nbasis, system.nbasis)
     else:
-        mf_shift = 1j * numpy.einsum("lpq,spq->l", hamiltonian.hs_pot, P)
-        VMF = 1j * numpy.einsum("lpq,l->pq", hamiltonian.hs_pot, mf_shift)
-    return hamiltonian.h1e_mod - VMF
+        mf_shift = 1j * numpy.einsum("lpq,spq->l", system.hs_pot, P)
+        VMF = 1j * numpy.einsum("lpq,l->pq", system.hs_pot, mf_shift)
+    return system.h1e_mod - VMF

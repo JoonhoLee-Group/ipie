@@ -68,7 +68,7 @@ def variational_energy(system, hamiltonian, trial):
     return local_energy(system, hamiltonian, trial, trial)
 
 
-def variational_energy_ortho_det(system, hamiltonian, occs, coeffs):
+def variational_energy_ortho_det(system, ham, occs, coeffs):
     """Compute variational energy for CI-like multi-determinant expansion.
 
     Parameters
@@ -95,7 +95,7 @@ def variational_energy_ortho_det(system, hamiltonian, occs, coeffs):
         for j in range(0, i + 1):
             cj = coeffs[j]
             occj = occs[j]
-            etot, e1b, e2b = ci.conj() * cj * get_hmatel(hamiltonian, nel, occi, occj)
+            etot, e1b, e2b = ci.conj() * cj * get_hmatel(ham, nel, occi, occj)
             evar += etot
             one_body += e1b
             two_body += e2b

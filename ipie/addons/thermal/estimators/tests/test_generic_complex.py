@@ -90,6 +90,7 @@ def test_local_energy_vs_eri():
     print('\n----------------------------')
     print('Constructing test objects...')
     print('----------------------------')
+    options['complex_integrals'] = True
     objs =  build_generic_test_case_handlers(options, seed, debug, with_eri=True,
                                              verbose=verbose)
     trial = objs['trial']
@@ -106,6 +107,7 @@ def test_local_energy_vs_eri():
     numpy.testing.assert_allclose(eri, eri_chol, atol=1e-10)
 
     for iw in range(walkers.nwalkers):
+        print(iw)
         P = one_rdm_from_G(numpy.array([walkers.Ga[iw], walkers.Gb[iw]])) 
         Pa, Pb = P
         Ptot = Pa + Pb
@@ -132,7 +134,7 @@ def test_local_energy_0T_single_det():
     numpy.random.seed(7)
     nmo = 10
     nelec = (6, 5)
-    nwalkers = 1
+    nwalkers = 12
     nsteps = 25
     qmc = dotdict(
         {
@@ -144,13 +146,14 @@ def test_local_energy_0T_single_det():
         }
     )
 
+    print('test_local_energy_0T_single_det: here')
     handler_0T = build_test_case_handlers_0T(
         nelec,
         nmo,
         num_dets=1,
         options=qmc,
         seed=7,
-        complex_integrals=True,
+        complex_integrals=False,
         complex_trial=True,
         trial_type="single_det",
         choltol=1e-10,
@@ -174,6 +177,6 @@ def test_local_energy_0T_single_det():
 
 
 if __name__ == '__main__':
-    test_local_energy_vs_real()
-    test_local_energy_vs_eri()
+    #test_local_energy_vs_real()
+    #test_local_energy_vs_eri()
     test_local_energy_0T_single_det()

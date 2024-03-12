@@ -1,5 +1,4 @@
 from ipie.estimators.estimator_base import EstimatorBase
-import plum
 import numpy
 
 from ipie.utils.backend import arraylib as xp

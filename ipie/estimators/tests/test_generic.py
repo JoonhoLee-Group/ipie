@@ -35,14 +35,14 @@ def test_local_energy_cholesky():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    hamiltonian = HamGeneric(
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
-    ci, wfn = get_random_nomsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, cplx=False)
+    ci, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    e = local_energy_generic_cholesky(system, hamiltonian, trial.G, Ghalf=trial.Ghalf)
+    e = local_energy_generic_cholesky(system, ham, trial.G, Ghalf=trial.Ghalf)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
@@ -55,15 +55,15 @@ def test_local_energy_cholesky_opt():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    hamiltonian = HamGeneric(
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
-    ci, wfn = get_random_nomsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, cplx=False)
+    ci, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(hamiltonian)
-    e = local_energy_cholesky_opt(system, hamiltonian.ecore, trial.Ghalf[0], trial.Ghalf[1], trial)
+    trial.half_rotate(ham)
+    e = local_energy_cholesky_opt(system, ham.ecore, trial.Ghalf[0], trial.Ghalf[1], trial)
     assert e[0] == pytest.approx(20.6826247016273)
     assert e[1] == pytest.approx(23.0173528796140)
     assert e[2] == pytest.approx(-2.3347281779866)
@@ -76,21 +76,21 @@ def test_local_energy_cholesky_opt_batched():
     nelec = (4, 2)
     h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
     system = Generic(nelec=nelec)
-    hamiltonian = HamGeneric(
+    ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=enuc,
     )
-    wfn = get_random_nomsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, cplx=False)
-    trial = MultiSlater(system, hamiltonian, wfn)
-    trial.half_rotate(hamiltonian)
+    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    trial = MultiSlater(system, ham, wfn)
+    trial.half_rotate(ham)
     Ga_batched = numpy.array([trial.G[0], trial.G[0], trial.G[0]])
     Gb_batched = numpy.array([trial.G[1], trial.G[1], trial.G[1]])
     Gahalf_batched = numpy.array([trial.Ghalf[0], trial.Ghalf[0], trial.Ghalf[0]])
     Gbhalf_batched = numpy.array([trial.Ghalf[1], trial.Ghalf[1], trial.Ghalf[1]])
     res = local_energy_generic_cholesky_opt_batched(
         system,
-        hamiltonian,
+        ham,
         Ga_batched,
         Gb_batched,
         Gahalf_batched,

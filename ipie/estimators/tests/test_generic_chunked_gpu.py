@@ -78,46 +78,46 @@ def test_generic_chunked_gpu():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc)
-    wfn = get_random_nomsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, cplx=False)
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, chol_packed=chol_packed, ecore=enuc)
+    wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(hamiltonian)
+    trial.half_rotate(ham)
 
-    trial.calculate_energy(system, hamiltonian)
+    trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
     mpi_handler = MPIHandler(comm, options={"nmembers": 2}, verbose=(rank == 0))
     if comm.rank == 0:
         print("# Chunking hamiltonian.")
-    hamiltonian.chunk(mpi_handler)
+    ham.chunk(mpi_handler)
     if comm.rank == 0:
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
     prop = PhaselessGenericChunked(time_step=qmc["dt"])
-    prop.build(hamiltonian, trial, mpi_handler=mpi_handler)
+    prop.build(ham, trial, mpi_handler=mpi_handler)
 
     walkers = UHFWalkersTrial(
-        trial, init, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, mpi_handler=mpi_handler
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler=mpi_handler
     )
     walkers.build(trial)
     if not no_gpu:
         prop.cast_to_cupy()
-        hamiltonian.cast_to_cupy()
+        ham.cast_to_cupy()
         trial.cast_to_cupy()
         walkers.cast_to_cupy()
 
     for i in range(nsteps):
-        prop.propagate_walker_batch(walkers, system, hamiltonian, trial, trial.energy)
+        prop.propagate_walker_batch(walkers, system, ham, trial, trial.energy)
         walkers.reortho()
 
     trial._rchola = cupy.asarray(trial._rchola)
     trial._rcholb = cupy.asarray(trial._rcholb)
-    energies_einsum = local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial)
-    energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(system, hamiltonian, walkers, trial)
+    energies_einsum = local_energy_single_det_batch_gpu(system, ham, walkers, trial)
+    energies_chunked = local_energy_single_det_uhf_batch_chunked_gpu(system, ham, walkers, trial)
     energies_chunked_low_mem = local_energy_single_det_uhf_batch_chunked_gpu(
-        system, hamiltonian, walkers, trial, max_mem=1e-6
+        system, ham, walkers, trial, max_mem=1e-6
     )
 
     assert numpy.allclose(energies_einsum, energies_chunked)

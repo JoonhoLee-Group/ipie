@@ -15,7 +15,6 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import plum
 import numpy
 
 from ipie.utils.backend import arraylib as xp

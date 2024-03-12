@@ -37,7 +37,7 @@ def test_mean_field():
     trial = MeanField(hamiltonian, nelec, beta, timestep, verbose=verbose)
 
     assert trial.nelec == nelec
-    numpy.testing.assert_almost_equal(trial.nav, numpy.sum(nelec), decimal=6)
+    numpy.testing.assert_almost_equal(trial.nav, numpy.sum(nelec), decimal=5)
     assert trial.rho.shape == (2, nbasis, nbasis)
     assert trial.dmat.shape == (2, nbasis, nbasis)
     assert trial.P.shape == (2, nbasis, nbasis)

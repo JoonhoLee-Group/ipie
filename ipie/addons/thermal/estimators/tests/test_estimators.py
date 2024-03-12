@@ -29,7 +29,7 @@ pop_control_method = 'pair_branch'
 lowrank = False
 
 verbose = True
-complex_integrals = False
+complex_integrals = True
 debug = True
 mf_trial = True
 propagate = False

@@ -43,10 +43,10 @@ class EstimatorHandler(object):
 
     Parameters
     ----------
-    system : :class:`ipie.hubbard.Hubbard` / system object in general.
-        Container for model input options.
     comm : MPI.COMM_WORLD
         MPI Communicator
+    system : :class:`ipie.hubbard.Hubbard` / system object in general.
+        Container for model input options.
     trial : :class:`ipie.trial_wavefunction.X' object
         Trial wavefunction class.
     verbose : bool
@@ -108,7 +108,7 @@ class EstimatorHandler(object):
             try:
                 est = _predefined_estimators[obs](
                     system=system,
-                    hamiltonian=hamiltonian,
+                    ham=hamiltonian,
                     trial=trial,
                 )
                 self[obs] = est

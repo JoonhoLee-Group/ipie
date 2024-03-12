@@ -46,27 +46,14 @@ from ipie.walkers.pop_controller import PopController
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
-def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, sparse=False, tol=1e-3):
-    h1e, eri = None, None
-    if sparse:
-        h1e = scipy.sparse.random(nmo, nmo).toarray()
-        if cplx:
-            h1e = h1e + 1j * scipy.sparse.random(nmo, nmo).toarray()
+def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
+    h1e = numpy.random.random((nmo, nmo))
+    if cplx:
+        h1e = h1e + 1j * numpy.random.random((nmo, nmo))
 
-        rvs = scipy.stats.norm(scale=0.01).rvs
-        eri = scipy.sparse.random(nmo**2, nmo**2, data_rvs=rvs).toarray()
-        if cplx:
-            eri = eri + 1j * scipy.sparse.random(nmo**2, nmo**2, data_rvs=rvs).toarray()
-        eri = eri.reshape((nmo, nmo, nmo, nmo))
-
-    else:
-        h1e = numpy.random.random((nmo, nmo))
-        if cplx:
-            h1e = h1e + 1j * numpy.random.random((nmo, nmo))
-
-        eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
-        if cplx:
-            eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
+    eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
+    if cplx:
+        eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
 
     # Restore symmetry to the integrals.
     if sym >= 4:

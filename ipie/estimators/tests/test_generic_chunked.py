@@ -71,39 +71,39 @@ def test_generic_chunked():
     chol = chol.reshape((nmo * nmo, nchol))
 
     system = Generic(nelec=nelec)
-    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
-    _, wfn = get_random_nomsd(system.nup, system.ndown, hamiltonian.nbasis, ndet=1, cplx=False)
+    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
+    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(hamiltonian)
+    trial.half_rotate(ham)
 
-    trial.calculate_energy(system, hamiltonian)
+    trial.calculate_energy(system, ham)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
     mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
     if comm.rank == 0:
         print("# Chunking hamiltonian.")
-    hamiltonian.chunk(mpi_handler)
+    ham.chunk(mpi_handler)
     if comm.rank == 0:
         print("# Chunking trial.")
     trial.chunk(mpi_handler)
 
     prop = PhaselessGenericChunked(time_step=qmc["dt"])
-    prop.build(hamiltonian, trial, mpi_handler=mpi_handler)
+    prop.build(ham, trial, mpi_handler=mpi_handler)
 
     init_walker = numpy.hstack([trial.psi0a, trial.psi0b])
     walkers = UHFWalkersTrial(
-        trial, init_walker, system.nup, system.ndown, hamiltonian.nbasis, nwalkers, mpi_handler
+        trial, init_walker, system.nup, system.ndown, ham.nbasis, nwalkers, mpi_handler
     )
     walkers.build(trial)
 
     for i in range(nsteps):
-        prop.propagate_walkers(walkers, hamiltonian, trial, trial.energy)
+        prop.propagate_walkers(walkers, ham, trial, trial.energy)
         walkers.reortho()
 
-    energies = local_energy_single_det_batch(system, hamiltonian, walkers, trial)
+    energies = local_energy_single_det_batch(system, ham, walkers, trial)
 
-    energies_chunked = local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walkers, trial)
+    energies_chunked = local_energy_single_det_uhf_batch_chunked(system, ham, walkers, trial)
 
     assert numpy.allclose(energies, energies_chunked)
 

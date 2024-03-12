@@ -109,12 +109,12 @@ class EnergyEstimator(EstimatorBase):
     def __init__(
         self,
         system=None,
-        hamiltonian=None,
+        ham=None,
         trial=None,
         filename=None,
     ):
         assert system is not None
-        assert hamiltonian is not None
+        assert ham is not None
         assert trial is not None
         super().__init__()
         self._eshift = 0.0

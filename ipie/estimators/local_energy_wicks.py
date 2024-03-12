@@ -32,7 +32,7 @@ from ipie.propagation.overlap import (
 from ipie.utils.linalg import minor_mask, minor_mask4
 
 
-def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial):
+def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -54,11 +54,11 @@ def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial
         Total, one-body and two-body energies.
     """
     nwalkers = walkers.nwalkers
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
+    nbasis = ham.nbasis
+    nchol = ham.nchol
     Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
     Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
-    e1bs = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
+    e1bs = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
     e2bs = []
     for iwalker in range(nwalkers):
@@ -77,15 +77,15 @@ def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial
         G0 = [G0a, G0b]
 
         # contribution 1 (disconnected)
-        cont1 = local_energy_generic_cholesky(system, hamiltonian, G0)[2]
+        cont1 = local_energy_generic_cholesky(system, ham, G0)[2]
 
         # contribution 2 (half-connected, two-leg, one-body-like)
         # First, Coulomb-like term
-        Xa = hamiltonian.chol.T.dot(G0[0].ravel())  # numpy.einsum("m,xm->x", G0[0].ravel(), hamiltonian.chol)
-        Xb = hamiltonian.chol.T.dot(G0[1].ravel())  # numpy.einsum("m,xm->x", G0[1].ravel(), hamiltonian.chol)
+        Xa = ham.chol.T.dot(G0[0].ravel())  # numpy.einsum("m,xm->x", G0[0].ravel(), ham.chol)
+        Xb = ham.chol.T.dot(G0[1].ravel())  # numpy.einsum("m,xm->x", G0[1].ravel(), ham.chol)
 
-        LXa = numpy.einsum("mx,x->m", hamiltonian.chol, Xa, optimize=True)
-        LXb = numpy.einsum("mx,x->m", hamiltonian.chol, Xb, optimize=True)
+        LXa = numpy.einsum("mx,x->m", ham.chol, Xa, optimize=True)
+        LXb = numpy.einsum("mx,x->m", ham.chol, Xb, optimize=True)
         LXa = LXa.reshape((nbasis, nbasis))
         LXb = LXb.reshape((nbasis, nbasis))
 
@@ -103,7 +103,7 @@ def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial
         cont2_Kaa = 0.0 + 0.0j
         cont2_Kbb = 0.0 + 0.0j
         for x in range(nchol):
-            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
             LGL = Lmn.dot(G0a.T).dot(Lmn)
             cont2_Kaa -= numpy.sum(LGL * QCIGa)
 
@@ -119,14 +119,14 @@ def local_energy_multi_det_trial_wicks_batch(system, hamiltonian, walkers, trial
             "iq,pj,ijx->qpx",
             Q0a,
             G0a,
-            hamiltonian.chol.reshape((nbasis, nbasis, nchol)),
+            ham.chol.reshape((nbasis, nbasis, nchol)),
             optimize=True,
         )
         Lbb = numpy.einsum(
             "iq,pj,ijx->qpx",
             Q0b,
             G0b,
-            hamiltonian.chol.reshape((nbasis, nbasis, nchol)),
+            ham.chol.reshape((nbasis, nbasis, nchol)),
             optimize=True,
         )
 
@@ -549,7 +549,7 @@ def build_contributions12(
     return cont1_J + cont1_K, cont2_J + cont2_K
 
 
-def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, walkers, trial, max_mem=2.0):
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -578,11 +578,11 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, wa
         Total, one-body and two-body energies.
     """
     nwalkers = walkers.nwalkers
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
+    nbasis = ham.nbasis
+    nchol = ham.nchol
     Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
     Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
-    e1b = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
     ovlpa0 = walkers.det_ovlpas[:, 0]
     ovlpb0 = walkers.det_ovlpbs[:, 0]
@@ -861,7 +861,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, hamiltonian, wa
     return walker_energies
 
 
-def local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, trial, max_mem=2.0):
+def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walkers, trial, max_mem=2.0):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -891,11 +891,11 @@ def local_energy_multi_det_trial_wicks_batch_opt(system, hamiltonian, walkers, t
         Total, one-body and two-body energies.
     """
     nwalkers = walkers.nwalkers
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol
+    nbasis = ham.nbasis
+    nchol = ham.nchol
     Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
     Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
-    e1b = Ga.dot(hamiltonian.H1[0].ravel()) + Gb.dot(hamiltonian.H1[1].ravel()) + hamiltonian.ecore
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
 
     ovlpa0 = walkers.det_ovlpas[:, 0]
     ovlpb0 = walkers.det_ovlpbs[:, 0]
