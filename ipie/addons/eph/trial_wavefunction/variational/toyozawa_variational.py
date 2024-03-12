@@ -117,7 +117,7 @@ def circ_perm(lst: np.ndarray) -> np.ndarray:
 
 
 def variational_trial_toyozawa(
-    shift_init: np.ndarray, electron_init: np.ndarray, hamiltonian, system
+    shift_init: np.ndarray, electron_init: np.ndarray, hamiltonian, system, verbose=2
 ):
     psi = electron_init.T.real.ravel()
     shift = shift_init.real
@@ -148,7 +148,7 @@ def variational_trial_toyozawa(
         method="L-BFGS-B",
         options={
             "maxls": 20,
-            "iprint": 2,
+            "iprint": verbose,
             "gtol": 1e-10,
             "eps": 1e-10,
             "maxiter": 15000,
