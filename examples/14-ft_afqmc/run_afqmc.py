@@ -39,14 +39,13 @@ options = {
                 },
             
             'qmc': {
-                #'mu': 0.211636,
                 'mu': 0.133579,
                 'beta': 10,
                 'timestep': 0.05,
-                'nwalkers': 12 // comm.size,
+                'nwalkers': 576 // comm.size,
                 'nstack': 10,
                 'seed': 7,
-                'nblocks': 30,
+                'nblocks': 200,
                 },
             }
 
@@ -67,9 +66,6 @@ if verbose:
 afqmc.run(verbose=verbose)
 afqmc.finalise()
 afqmc.estimators.compute_estimators(afqmc.hamiltonian, afqmc.trial, afqmc.walkers)
-
-energy_data = None
-number_data = None
 
 if comm.rank == 0:
     energy_data = extract_observable(afqmc.estimators.filename, "energy")

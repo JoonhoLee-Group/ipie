@@ -125,7 +125,6 @@ def build_thermal_afqmc_driver(
     comm,
     nelec: tuple,
     hamiltonian_file: str = "hamiltonian.h5",
-    estimator_filename: str = "estimates.0.h5",
     seed: int = None,
     options: dict = None,
     verbosity: int = 0,
@@ -136,10 +135,8 @@ def build_thermal_afqmc_driver(
     sys_opts = {"nup": nelec[0], "ndown": nelec[1]}
     ham_opts = {"integrals": hamiltonian_file}
     qmc_opts = {"rng_seed": seed}
-    est_opts = {"overwrite": True, "filename": estimator_filename}
 
     options["system"] = sys_opts
-    options["estimators"] = est_opts
     options["hamiltonian"] = ham_opts
     options["qmc"].update(qmc_opts)
 
