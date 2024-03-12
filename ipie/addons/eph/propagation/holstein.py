@@ -25,7 +25,9 @@ from ipie.propagation.operations import propagate_one_body
 from ipie.propagation.continuous_base import PropagatorTimer
 
 
-def construct_one_body_propagator(hamiltonian: HolsteinModel, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: HolsteinModel, dt: float
+) -> Sequence[np.ndarray, np.ndarray]:
     """Exponentiates the electronic hopping term to apply it later as
     part of the trotterized algorithm.
 
@@ -35,6 +37,11 @@ def construct_one_body_propagator(hamiltonian: HolsteinModel, dt: float):
         Hamiltonian caryying the one-body term as hamiltonian.T
     dt :
         Time step
+
+    Returns
+    -------
+    expH1 :
+        
     """
     H1 = hamiltonian.T
     expH1 = numpy.array(

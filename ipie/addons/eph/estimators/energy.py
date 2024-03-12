@@ -29,7 +29,7 @@ def local_energy(
     hamiltonian: HolsteinModel,
     walkers: EPhWalkers,
     trial: EPhTrialWavefunctionBase,
-):
+) -> np.ndarray:
     return local_energy_holstein(system, hamiltonian, walkers, trial)
 
 
