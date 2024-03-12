@@ -55,6 +55,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
         verbosity = 0
     lowrank = get_input_value(wlk_opts, "lowrank", default=False, alias=["low_rank"], verbose=verbosity)
     batched = get_input_value(qmc_opts, "batched", default=False, verbose=verbosity)
+    debug = get_input_value(qmc_opts, "debug", default=False, verbose=verbosity)
 
     if (lowrank == True) or (batched == True):
         raise ValueError("Option not supported in thermal code.")
@@ -115,6 +116,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
             walkers,
             propagator,
             params,
+            debug=debug,
             verbose=(verbosity and comm.rank == 0),
         )
 

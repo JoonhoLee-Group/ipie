@@ -17,7 +17,6 @@ def local_energy_generic_pno(
     UVT=None,
 ):
     na, nb = nelec
-    M = hamiltonian.nbasis
 
     UVT_aa = UVT[0]
     UVT_bb = UVT[1]
@@ -199,10 +198,6 @@ def local_energy_generic_cholesky_opt_batched(
     for widx in range(nwalker):
         e1b = numpy.sum(hamiltonian.H1[0] * Ga_batch[widx]) + numpy.sum(hamiltonian.H1[1] * Gb_batch[widx])
         e1_vec[widx] = e1b
-        nbasis = hamiltonian.nbasis
-        if rchola is not None:
-            naux = rchola.shape[0]
-
         Xa = rchola.dot(Ghalfa_batch[widx].ravel())
         Xb = rcholb.dot(Ghalfb_batch[widx].ravel())
         ecoul = numpy.dot(Xa, Xa)
@@ -458,6 +453,7 @@ def local_energy_generic_cholesky_opt(hamiltonian, nelec, Ga, Gb, Ghalfa=None, G
     if is_cupy(
         rchola
     ):  # if even one array is a cupy array we should assume the rest is done with cupy
+        # pylint: disable=import-error 
         import cupy
 
         assert cupy.is_available()

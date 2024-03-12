@@ -58,6 +58,8 @@ class ThermalAFQMC(AFQMC):
                  verbose: bool = False):
         super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose)
         self.debug = debug
+        if self.debug:
+            print('# Using legacy `update_weights`.')
     
     @staticmethod
     def build(

@@ -59,9 +59,7 @@ class OneBody(object):
             if verbose:
                 print("# Estimating stack size from BT.")
 
-            eigs, ev = scipy.linalg.eigh(self.dmat[0])
-            emax = numpy.max(eigs)
-            emin = numpy.min(eigs)
+            eigs, _ = scipy.linalg.eigh(self.dmat[0])
             self.cond = numpy.linalg.cond(self.dmat[0])
             # We will end up multiplying many BTs together. Can roughly determine
             # safe stack size from condition number of BT as the condition number of

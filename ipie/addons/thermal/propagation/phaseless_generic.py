@@ -17,8 +17,7 @@ class PhaselessGeneric(PhaselessBase):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
     def __init__(self, time_step, mu, exp_nmax=6, lowrank=False, verbose=False):
-        super().__init__(time_step, mu, lowrank=lowrank, verbose=verbose)
-        self.exp_nmax = exp_nmax
+        super().__init__(time_step, mu, lowrank=lowrank, exp_nmax=exp_nmax, verbose=verbose)
     
     @plum.dispatch
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray):

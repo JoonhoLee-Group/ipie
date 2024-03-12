@@ -1,6 +1,9 @@
 import numpy
 import scipy.linalg
 
+def fermi_factor(ek, beta, mu):
+    return 1.0 / (numpy.exp(beta * (ek - mu)) + 1.0)
+
 def one_rdm_from_G(G):
     r"""Compute one-particle reduced density matrix from Green's function.
 

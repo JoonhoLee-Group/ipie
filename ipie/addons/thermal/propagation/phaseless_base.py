@@ -56,7 +56,7 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial):
 class PhaselessBase(ContinuousBase):
     """A base class for generic continuous HS transform FT-AFQMC propagators."""  
 
-    def __init__(self, timestep, mu, lowrank=False, verbose=False):
+    def __init__(self, timestep, mu, lowrank=False, exp_nmax=6, verbose=False):
         super().__init__(timestep, verbose=verbose)
         self.mu = mu
         self.sqrt_dt = self.dt**0.5
@@ -67,6 +67,7 @@ class PhaselessBase(ContinuousBase):
         self.fbbound = 1.0
         self.mpi_handler = None
         self.lowrank = lowrank
+        self.exp_nmax = exp_nmax
 
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
@@ -275,7 +276,7 @@ class PhaselessBase(ContinuousBase):
         try:
             # Could save M0 rather than recompute.
             oratio = (M0a * M0b) / (Mnewa * Mnewb)
-            # Might want to cap this at some point
+            # Might want to cap this at some point.
             hybrid_energy = cmath.log(oratio) + _cfb + _cmf
             Q = cmath.exp(hybrid_energy)
             #hybrid_energy = -(cmath.log(oratio) + _cfb + _cmf) / self.dt
