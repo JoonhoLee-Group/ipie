@@ -18,6 +18,7 @@ from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefuncti
 from ipie.utils.backend import arraylib as xp
 from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 
+
 class CoherentStateTrial(EPhTrialWavefunctionBase):
     r"""Coherent state trial of the form
 
@@ -33,7 +34,7 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
     wavefunction :
         Concatenation of trial determinants of up and down spin spaces and beta
         specifying the coherent state displacement.
-    w0 : 
+    w0 :
         Phonon frequency
     num_elec :
         Tuple specifying number of up and down spins
@@ -63,10 +64,10 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         else:
             Gb = np.zeros_like(Ga)
         G = [Ga, Gb]
-        
+
         kinetic = np.sum(ham.T[0] * G[0] + ham.T[1] * G[1])
-        
-        e_ph = ham.w0 * np.sum(self.beta_shift ** 2) 
+
+        e_ph = ham.w0 * np.sum(self.beta_shift**2)
         rho = ham.g_tensor * (G[0] + G[1])
         e_eph = np.sum(np.dot(rho, 2 * self.beta_shift))
 
