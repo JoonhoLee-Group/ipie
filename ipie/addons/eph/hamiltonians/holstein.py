@@ -67,3 +67,5 @@ class HolsteinModel:
         self.T *= -self.t
 
         self.T = [self.T.copy(), self.T.copy()]
+
+        self.g_tensor = -self.g * numpy.eye(self.nsites)
