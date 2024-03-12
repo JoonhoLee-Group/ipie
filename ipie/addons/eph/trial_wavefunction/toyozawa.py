@@ -58,7 +58,7 @@ class ToyozawaTrial(CoherentStateTrial):
         self.perms = circ_perm(np.arange(self.nbasis))
         self.nperms = self.perms.shape[0]
 
-    def variational_energy(self, ham, zero_th=1e-12):
+    def calc_energy(self, ham, zero_th=1e-12):
         r"""Computes the variational energy of the trial, i.e.
 
         .. math::

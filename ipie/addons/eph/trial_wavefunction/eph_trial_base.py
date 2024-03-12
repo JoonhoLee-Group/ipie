@@ -52,13 +52,12 @@ class EPhTrialWavefunctionBase(metaclass=ABCMeta):
         self.compute_trial_energy = False
         self.energy = None
 
-    def set_etrial(self, energy: float) -> None:
+    def set_etrial(self, ham) -> None:
+        energy = self.calc_energy(ham)
         self.energy = energy
 
-    # TODO This should be abstract method as well
-    def calculate_energy(self, system, hamiltonian):
-        # TODO variational_energy_coherent_state in ipie.estimators.local_energy
-        ...
+    @abstractmethod
+    def calc_energy(self, hamiltonian) -> float: ...
 
     @abstractmethod
     def calc_overlap(self, walkers) -> np.ndarray: ...

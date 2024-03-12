@@ -16,7 +16,7 @@ import numpy as np
 
 from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
-
+from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 
 class CoherentStateTrial(EPhTrialWavefunctionBase):
     r"""Coherent state trial of the form
@@ -54,6 +54,24 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         self.beta_shift = np.squeeze(wavefunction[:, 0])
         self.psia = wavefunction[:, 1 : self.nup + 1]
         self.psib = wavefunction[:, self.nup + 1 : self.nup + self.ndown + 1]
+
+    def calc_energy(self, ham) -> float:
+        r""""""
+        Ga, _, _ = gab_mod_ovlp(self.psia, self.psia)
+        if self.ndown > 0:
+            Gb, _, _ = gab_mod_ovlp(self.psib, self.psib)
+        else:
+            Gb = np.zeros_like(Ga)
+        G = [Ga, Gb]
+        
+        kinetic = np.sum(ham.T[0] * G[0] + ham.T[1] * G[1])
+        
+        e_ph = ham.w0 * np.sum(self.beta_shift ** 2) 
+        rho = ham.g_tensor * (G[0] + G[1])
+        e_eph = np.sum(np.dot(rho, 2 * self.beta_shift))
+
+        etrial = kinetic + e_ph + e_eph
+        return etrial
 
     def calc_overlap(self, walkers) -> np.ndarray:
         r"""Computes the product of electron and phonon overlaps,
