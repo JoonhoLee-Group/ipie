@@ -1,7 +1,7 @@
 import pytest
 import numpy
 
-from ipie.addons.eph.utils.testing import build_random_trial, get_random_sys_holstein
+from ipie.addons.eph.utils.testing import get_random_sys_holstein
 from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import (
     variational_trial_toyozawa,
@@ -18,7 +18,6 @@ def test_variational_energy_toyozawa():
     numpy.random.seed(seed)
     nelec = (2, 2)
     nbasis = 4
-    trial_type = "toyozawa"
     pbc = True
     sys, ham = get_random_sys_holstein(nelec, nbasis, pbc)
     ie = numpy.random.random((nbasis, nelec[0] + nelec[1]))
@@ -37,7 +36,6 @@ def test_variational_energy_coherent_state():
     numpy.random.seed(seed)
     nelec = (2, 2)
     nbasis = 4
-    trial_type = "coherent_state"
     pbc = True
     sys, ham = get_random_sys_holstein(nelec, nbasis, pbc)
     ie = numpy.random.random((nbasis, nelec[0] + nelec[1]))
