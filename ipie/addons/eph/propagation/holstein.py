@@ -15,6 +15,7 @@
 import numpy
 import time
 import scipy.linalg
+from typing import Sequence
 
 from ipie.addons.eph.hamiltonians.holstein import HolsteinModel
 from ipie.addons.eph.trial_wavefunction.eph_trial_base import EPhTrialWavefunctionBase
@@ -27,7 +28,7 @@ from ipie.propagation.continuous_base import PropagatorTimer
 
 def construct_one_body_propagator(
     hamiltonian: HolsteinModel, dt: float
-) -> Sequence[np.ndarray, np.ndarray]:
+) -> Sequence[numpy.ndarray]:
     """Exponentiates the electronic hopping term to apply it later as
     part of the trotterized algorithm.
 
