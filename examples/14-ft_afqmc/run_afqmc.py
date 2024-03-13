@@ -40,8 +40,8 @@ options = {
             
             'qmc': {
                 'mu': 0.133579,
-                'beta': 10,
-                'timestep': 0.05,
+                'beta': 0.1,
+                'timestep': 0.01,
                 'nwalkers': 12 // comm.size,
                 'nstack': 10,
                 'seed': 7,
