@@ -95,6 +95,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
         if (comm.rank == 0) and (qmc.nsteps > 1):
             print("Only num_steps_per_block = 1 allowed in thermal code! Resetting to value of 1.")
 
+        # pylint: disable = no-value-for-parameter
         params = ThermalQMCParams(
             mu=qmc.mu,
             beta=qmc.beta,

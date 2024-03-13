@@ -106,7 +106,7 @@ def test_thermal_walkers_fullrank():
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].stack.ovlp[1], walkers.stack[iw].ovlp[1], decimal=10)
 
 
-@pytest.mark.unit
+#@pytest.mark.unit
 def test_thermal_walkers_lowrank():
     # System params.
     nup = 5

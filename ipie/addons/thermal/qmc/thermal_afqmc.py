@@ -121,7 +121,8 @@ class ThermalAFQMC(AFQMC):
 
         else:
             comm = mpi_handler.comm
-
+        
+        # pylint: disable = no-value-for-parameter
         params = ThermalQMCParams(
                     mu=mu,
                     beta=beta,
