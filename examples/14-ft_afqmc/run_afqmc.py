@@ -42,10 +42,10 @@ options = {
                 'mu': 0.133579,
                 'beta': 10,
                 'timestep': 0.05,
-                'nwalkers': 576 // comm.size,
+                'nwalkers': 12 // comm.size,
                 'nstack': 10,
                 'seed': 7,
-                'nblocks': 200,
+                'nblocks': 30,
                 },
             }
 

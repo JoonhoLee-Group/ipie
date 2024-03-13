@@ -2,12 +2,7 @@ import numpy
 import pytest
 from typing import Tuple, Union
 
-from ipie.utils.misc import dotdict
-from ipie.utils.testing import build_test_case_handlers as build_test_case_handlers_0T
-from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.estimators.energy import local_energy
-
 from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
@@ -129,54 +124,6 @@ def test_local_energy_vs_eri():
         numpy.testing.assert_allclose(etot, etotref, atol=1e-10)
 
 
-@pytest.mark.unit
-def test_local_energy_0T_single_det():
-    numpy.random.seed(7)
-    nmo = 10
-    nelec = (6, 5)
-    nwalkers = 12
-    nsteps = 25
-    qmc = dotdict(
-        {
-            "dt": 0.005,
-            "nstblz": 5,
-            "nwalkers": nwalkers,
-            "hybrid": True,
-            "num_steps": nsteps,
-        }
-    )
-
-    print('test_local_energy_0T_single_det: here')
-    handler_0T = build_test_case_handlers_0T(
-        nelec,
-        nmo,
-        num_dets=1,
-        options=qmc,
-        seed=7,
-        complex_integrals=False,
-        complex_trial=True,
-        trial_type="single_det",
-        choltol=1e-10,
-    )
-    
-    system = Generic(nelec=nelec)
-    hamiltonian = handler_0T.hamiltonian
-    walkers = handler_0T.walkers
-    trial = handler_0T.trial
-    walkers.ovlp = trial.calc_greens_function(walkers, build_full=True)
-    energy = local_energy(system, hamiltonian, walkers, trial)
-    test_energy = numpy.array(
-                    [local_energy_generic_cholesky(
-                        hamiltonian, 
-                        numpy.array([walkers.Ga[0], walkers.Gb[0]]))])
-
-    print(f'\n0T energy = \n{energy}\n')
-    print(f'test_energy = \n{test_energy}\n')
-    
-    numpy.testing.assert_allclose(energy, test_energy, atol=1e-10)
-
-
 if __name__ == '__main__':
-    #test_local_energy_vs_real()
-    #test_local_energy_vs_eri()
-    test_local_energy_0T_single_det()
+    test_local_energy_vs_real()
+    test_local_energy_vs_eri()
