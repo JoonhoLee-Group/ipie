@@ -86,10 +86,11 @@ class ParticleHole(TrialWavefunctionBase):
             core = [i for i in range(num_melting)]
             occa = [np.array(core + [o + num_melting for o in oa]) for oa in occa0]
             occb = [np.array(core + [o + num_melting for o in ob]) for ob in occb0]
+            self.nmelting = nmelting_a
         else:
             occa = wfn[1][:num_dets]
             occb = wfn[2][:num_dets]
-        self.nmelting = nmelting_a
+            self.nmelting = 0
         # Store alpha electrons first followed by beta electrons.
         # FDM Remove this with wicks helper proper integration
         dets = [list(a) + [i + self.nbasis for i in c] for (a, c) in zip(occa, occb)]
