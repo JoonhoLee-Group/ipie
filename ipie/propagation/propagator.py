@@ -2,4 +2,8 @@ from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol, Gener
 from ipie.propagation.phaseless_generic import PhaselessGeneric, PhaselessGenericChunked
 
 # Propagator = {GenericRealChol: PhaselessGeneric, GenericComplexChol: PhaselessGeneric}
-Propagator = {GenericRealChol: PhaselessGeneric, GenericComplexChol: PhaselessGeneric, GenericRealCholChunked: PhaselessGenericChunked}
+Propagator = {
+    GenericRealChol: PhaselessGeneric,
+    GenericComplexChol: PhaselessGeneric,
+    GenericRealCholChunked: PhaselessGenericChunked,
+}

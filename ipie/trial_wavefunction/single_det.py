@@ -49,7 +49,6 @@ class SingleDet(TrialWavefunctionBase):
         self.psi0a = numpy.ascontiguousarray(self.psi0a.conj())
         self.psi0b = numpy.ascontiguousarray(self.psi0b.conj())
 
-
     def build(self) -> None:
         pass
 
@@ -82,7 +81,7 @@ class SingleDet(TrialWavefunctionBase):
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
             print(f"# Time to evaluate local energy: {time.time() - start} s")
-    
+
     @plum.dispatch
     def half_rotate(
         self: "SingleDet",

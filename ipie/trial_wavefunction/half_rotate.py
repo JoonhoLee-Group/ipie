@@ -29,7 +29,7 @@ def half_rotate_generic(
     if trial.verbose:
         print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
-    
+
     chol = hamiltonian.chol.reshape((M, M, nchol))
 
     shape_a = (ndets, nchol, (M * na))
@@ -114,6 +114,7 @@ def half_rotate_generic(
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)
 
+
 def half_rotate_chunked(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,
@@ -137,7 +138,7 @@ def half_rotate_chunked(
     if trial.verbose:
         print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
-    
+
     chol_chunk = hamiltonian.chol_chunk.reshape((M, M, -1))
 
     shape_a = (ndets, nchol, (M * na))
@@ -181,9 +182,9 @@ def half_rotate_chunked(
     else:
         start_n = 0
         end_n = hamiltonian.nchol
-    
+
     start_n = hamiltonian.chunk_displacements[handler.srank]
-    end_n = hamiltonian.chunk_displacements[handler.srank+1]
+    end_n = hamiltonian.chunk_displacements[handler.srank + 1]
     print([handler.srank, start_n, end_n, hamiltonian.chunk_displacements, hamiltonian.nchol_chunk])
 
     nchol_loc = end_n - start_n
@@ -209,7 +210,6 @@ def half_rotate_chunked(
         rchola_chunk[0][:, :, start_a : start_a + M * na] = rup[:]
         rcholb_chunk[0][:, :, start_b : start_b + M * nb] = rdn[:]
 
-
     if comm is not None:
         comm.barrier()
 
@@ -219,7 +219,7 @@ def half_rotate_chunked(
         rchola = rchola_chunk[0]
         rcholb = rcholb_chunk[0]
 
-    print('half rotation complete')
+    print("half rotation complete")
 
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)

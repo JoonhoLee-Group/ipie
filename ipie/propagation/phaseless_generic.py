@@ -117,7 +117,9 @@ class PhaselessGenericChunked(PhaselessGeneric):
         self.mpi_handler = mpi_handler
 
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: GenericRealCholChunked, xshifted: xp.ndarray) -> xp.ndarray:
+    def construct_VHS(
+        self, hamiltonian: GenericRealCholChunked, xshifted: xp.ndarray
+    ) -> xp.ndarray:
         assert hamiltonian.chunked
         nwalkers = xshifted.shape[-1]
 
@@ -127,10 +129,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
 
-        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real).astype(xshifted.dtype) 
-        VHS_send += 1.0j * chol_packed_chunk.dot(
-            xshifted[idxs, :].imag
-        )
+        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real).astype(xshifted.dtype)
+        VHS_send += 1.0j * chol_packed_chunk.dot(xshifted[idxs, :].imag)
         VHS_recv = xp.zeros_like(VHS_send)
 
         srank = self.mpi_handler.scomm.rank
@@ -140,7 +140,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
             synchronize()
             self.mpi_handler.scomm.Isend(
                 xshifted_send, dest=self.mpi_handler.receivers[srank], tag=1
-                )
+            )
             self.mpi_handler.scomm.Isend(VHS_send, dest=self.mpi_handler.receivers[srank], tag=2)
 
             req1 = self.mpi_handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)

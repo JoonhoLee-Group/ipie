@@ -10,6 +10,7 @@ from ipie.utils.backend import synchronize, cast_to_device
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -18,7 +19,9 @@ from ipie.utils.mpi import make_splits_displacements
 
 
 @plum.dispatch
-def construct_one_body_propagator(hamiltonian: (GenericRealChol, GenericRealCholChunked), mf_shift: xp.ndarray, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: (GenericRealChol, GenericRealCholChunked), mf_shift: xp.ndarray, dt: float
+):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -36,8 +39,10 @@ def construct_one_body_propagator(hamiltonian: (GenericRealChol, GenericRealChol
     nb = hamiltonian.nbasis
     if hasattr(mf_shift, "get"):
         start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
-        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank+1]
-        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]).reshape(nb, nb)
+        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
+        shift = 1j * numpy.einsum(
+            "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
+        ).reshape(nb, nb)
         if MPI is None:
             raise ImportError("mpi4py is not installed.")
         else:
@@ -97,8 +102,12 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
     if MPI is None:
         raise ImportError("mpi4py is not installed.")
     else:
-        trial.handler.scomm.Gatherv(tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
-        trial.handler.scomm.Gatherv(tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
+        trial.handler.scomm.Gatherv(
+            tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+        trial.handler.scomm.Gatherv(
+            tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
 
     trial.handler.scomm.Bcast(recvbuf_real, root=0)
     trial.handler.scomm.Bcast(recvbuf_imag, root=0)
@@ -106,7 +115,7 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
     mf_shift = 1.0j * recvbuf_real - recvbuf_imag
     # mf_shift_1 = numpy.load("../Test_Disk_nochunk/mf_shift.npy")
     # print(f'mf_shift complete,{numpy.allclose(mf_shift, mf_shift_1)}')
-    
+
     return xp.array(mf_shift)
 
 
