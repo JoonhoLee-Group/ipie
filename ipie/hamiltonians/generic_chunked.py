@@ -45,7 +45,7 @@ def construct_h1e_mod(chol, h1e, h1e_mod, handler):
     h1e_mod[1, :, :] = h1e[1] - v0
 
 
-class GenericRealChol(GenericBase):
+class GenericRealCholChunked(GenericBase):
     """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
     Can be created by passing the one and two electron integrals directly.
     """
