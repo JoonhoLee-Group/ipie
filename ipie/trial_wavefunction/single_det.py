@@ -27,7 +27,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 
 # class for UHF trial
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, handler, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, handler=MPIHandler(), verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
