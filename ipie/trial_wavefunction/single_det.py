@@ -82,11 +82,37 @@ class SingleDet(TrialWavefunctionBase):
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
             print(f"# Time to evaluate local energy: {time.time() - start} s")
-
+    
     @plum.dispatch
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
+    ):
+        num_dets = 1
+        orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
+        orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+        rot_1body, rot_chol = half_rotate_generic(
+            self,
+            hamiltonian,
+            comm,
+            orbsa,
+            orbsb,
+            ndets=num_dets,
+            verbose=self.verbose,
+        )
+        # Single determinant functions do not expect determinant index, so just
+        # grab zeroth element.
+        self._rH1a = rot_1body[0][0]
+        self._rH1b = rot_1body[1][0]
+        self._rchola = rot_chol[0][0]
+        self._rcholb = rot_chol[1][0]
+        self.half_rotated = True
+
+    @plum.dispatch
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: GenericRealCholChunked,
         comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
