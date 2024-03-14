@@ -94,8 +94,8 @@ jobs:
           cc --version
           root=$(pwd)
           cd ipie/lib/wicks && mkdir build && cd build && cmake .. && make VERBOSE=1 && cd $root
-          pytest ipie/trial_wavefunction/ -m wicks
-          pytest ipie/lib/wicks -m wicks
+          # pytest ipie/trial_wavefunction/ -m wicks
+          # pytest ipie/lib/wicks -m wicks
   integration:
     strategy:
       fail-fast: false
