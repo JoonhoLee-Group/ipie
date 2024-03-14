@@ -11,6 +11,7 @@ import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from typing import Union
 
 try:
     from mpi4py import MPI
@@ -21,7 +22,7 @@ from ipie.utils.mpi import make_splits_displacements
 
 @plum.dispatch
 def construct_one_body_propagator(
-    hamiltonian: (GenericRealChol, GenericRealCholChunked), mf_shift: xp.ndarray, dt: float
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], mf_shift: xp.ndarray, dt: float
 ):
     r"""Construct mean-field shifted one-body propagator.
 
