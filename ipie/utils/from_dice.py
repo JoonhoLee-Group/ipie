@@ -1,4 +1,5 @@
 """Utilities for runnning dice through the shciscf plugin."""
+
 import glob
 import os
 import struct

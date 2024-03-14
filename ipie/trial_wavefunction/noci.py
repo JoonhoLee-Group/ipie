@@ -31,8 +31,7 @@ class NOCI(TrialWavefunctionBase):
         self.psib = self.psi[:, :, self.nalpha :]
         self.G = self.build_one_rdm()
 
-    def build(self) -> None:
-        ...
+    def build(self) -> None: ...
 
     def calculate_energy(self, system, hamiltonian):
         return variational_energy_noci(system, hamiltonian, self)
