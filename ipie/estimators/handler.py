@@ -232,9 +232,9 @@ class EstimatorHandler(object):
         else:
             shift = None
         walker_factors.eshift = comm.bcast(shift)
-        # if comm.rank == 0:
-        #     self.output.push_to_chunk(self.global_estimates, f"data")
-        #     self.output.increment()
+        if comm.rank == 0:
+            self.output.push_to_chunk(self.global_estimates, f"data")
+            self.output.increment()
         if comm.rank == 0:
             print(f"{block:>17d} " + output_string)
         self.zero()
