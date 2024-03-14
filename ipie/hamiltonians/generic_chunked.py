@@ -26,7 +26,10 @@ from ipie.utils.io import (
     from_qmcpack_sparse,
     read_hamiltonian,
 )
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
 
 
 def construct_h1e_mod(chol, h1e, h1e_mod, handler):
