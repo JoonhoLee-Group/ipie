@@ -10,12 +10,20 @@ from ipie.utils.backend import synchronize, cast_to_device
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from mpi4py import MPI
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from typing import Union
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
 from ipie.utils.mpi import make_splits_displacements
 
 
 @plum.dispatch
-def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], mf_shift: xp.ndarray, dt: float
+):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -31,11 +39,21 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
         Timestep.
     """
     nb = hamiltonian.nbasis
-    if hasattr(mf_shift, "get"):
+    if hamiltonian.chunked:
         start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
-        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank+1]
-        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]).reshape(nb, nb)
-        shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
+        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
+        if hasattr(mf_shift, "get"):
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
+            ).reshape(nb, nb)
+        else:
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift[start_n:end_n]
+            ).reshape(nb, nb)
+        if MPI is None:
+            raise ImportError("mpi4py is not installed.")
+        else:
+            shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
     else:
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     shift = xp.array(shift)
@@ -47,7 +65,6 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
     expH1 = xp.array(
         [scipy.linalg.expm(-0.5 * dt * H1_numpy[0]), scipy.linalg.expm(-0.5 * dt * H1_numpy[1])]
     )
-    # print(f"expH1 {expH1.nbytes/1024**3} GB")
     return expH1
 
 
@@ -67,7 +84,7 @@ def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.
 
 
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
+def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: TrialWavefunctionBase):
     r"""Compute mean field shift.
 
     .. math::
@@ -89,8 +106,15 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     recvbuf_imag = numpy.zeros(hamiltonian.nchol, dtype=tmp_imag.dtype)
 
     # print(split_sizes_np, displacements_np)
-    trial.handler.scomm.Gatherv(tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
-    trial.handler.scomm.Gatherv(tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0)
+    if MPI is None:
+        raise ImportError("mpi4py is not installed.")
+    else:
+        trial.handler.scomm.Gatherv(
+            tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+        trial.handler.scomm.Gatherv(
+            tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
 
     trial.handler.scomm.Bcast(recvbuf_real, root=0)
     trial.handler.scomm.Bcast(recvbuf_imag, root=0)
@@ -98,7 +122,25 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
     mf_shift = 1.0j * recvbuf_real - recvbuf_imag
     # mf_shift_1 = numpy.load("../Test_Disk_nochunk/mf_shift.npy")
     # print(f'mf_shift complete,{numpy.allclose(mf_shift, mf_shift_1)}')
-    
+
+    return xp.array(mf_shift)
+
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [X, M^2]
+    Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
+    tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
+    mf_shift = 1.0j * tmp_real - tmp_imag
     return xp.array(mf_shift)
 
 

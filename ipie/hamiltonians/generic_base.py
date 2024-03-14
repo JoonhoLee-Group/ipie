@@ -66,14 +66,12 @@ class GenericBase(metaclass=ABCMeta):
         del self.chol_packed
 
         # distributing chol
-        handler.comm.barrier()
-
-        self.chol_chunk = handler.scatter_group(self.chol.T)  # distribute over chol
-
         if handler.srank == 0:
             self.chol = self.chol.T.copy()  # [M^2, chol]
         else:
             self.chol = self.chol.T
+        handler.comm.barrier()
+        self.chol_chunk = handler.scatter_group(self.chol)  # distribute over chol
         handler.comm.barrier()
 
         self.chol_chunk = self.chol_chunk.T  # [M^2, chol_chunk]
@@ -81,10 +79,3 @@ class GenericBase(metaclass=ABCMeta):
         tot_size = handler.allreduce_group(self.chol_chunk.size)
         assert self.chol.size == tot_size
         del self.chol
-
-        import h5py
-        with h5py.File(f"chol_{handler.srank}.h5", "w") as fa:
-            fa["chol"] = self.chol_chunk
-            fa["chol_packed"] = self.chol_packed_chunk
-
-        print(f"{handler.srank} saved cholesky chunked")

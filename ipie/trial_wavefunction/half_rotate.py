@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
 
@@ -29,7 +30,7 @@ def half_rotate_generic(
     if trial.verbose:
         print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
-    
+
     chol = hamiltonian.chol.reshape((M, M, nchol))
 
     shape_a = (ndets, nchol, (M * na))
@@ -114,6 +115,7 @@ def half_rotate_generic(
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)
 
+
 def half_rotate_chunked(
     trial: TrialWavefunctionBase,
     hamiltonian: Generic,
@@ -137,24 +139,16 @@ def half_rotate_chunked(
     if trial.verbose:
         print(f"# Shape of alpha half-rotated Cholesky: {ndets, nchol, na * M}")
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
-    
+
     chol_chunk = hamiltonian.chol_chunk.reshape((M, M, -1))
-
-    shape_a = (ndets, nchol, (M * na))
-    shape_b = (ndets, nchol, (M * nb))
-
     ctype = hamiltonian.chol_chunk.dtype
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
-    if isinstance(hamiltonian, GenericComplexChol):
+    if isinstance(hamiltonian, GenericComplexChol) or isinstance(hamiltonian, GenericRealChol):
         raise NotImplementedError
-    elif isinstance(hamiltonian, GenericRealChol):
-        # rchola = [get_shared_array(comm, shape_a, integral_type)]
-        # rcholb = [get_shared_array(comm, shape_b, integral_type)]
+    elif isinstance(hamiltonian, GenericRealCholChunked):
         rchola_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * na)), dtype=integral_type)]
         rcholb_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * nb)), dtype=integral_type)]
-    # rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
-    # rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
     rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
     rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
@@ -181,10 +175,9 @@ def half_rotate_chunked(
     else:
         start_n = 0
         end_n = hamiltonian.nchol
-    
+
     start_n = hamiltonian.chunk_displacements[handler.srank]
-    end_n = hamiltonian.chunk_displacements[handler.srank+1]
-    print([handler.srank, start_n, end_n, hamiltonian.chunk_displacements, hamiltonian.nchol_chunk])
+    end_n = hamiltonian.chunk_displacements[handler.srank + 1]
 
     nchol_loc = end_n - start_n
     if compute:
@@ -195,7 +188,6 @@ def half_rotate_chunked(
             chol_chunk,
             optimize=True,
         )
-        print(orbsa.shape, chol_chunk.shape)
         rup = rup.reshape((ndets, nchol_loc, na * M))
         rdn = np.einsum(
             "Jmi,mnx->Jxin",
@@ -204,22 +196,15 @@ def half_rotate_chunked(
             optimize=True,
         )
         rdn = rdn.reshape((ndets, nchol_loc, nb * M))
-        # rchola[0][:, start_n:end_n, start_a : start_a + M * na] = rup[:]
-        # rcholb[0][:, start_n:end_n, start_b : start_b + M * nb] = rdn[:]
         rchola_chunk[0][:, :, start_a : start_a + M * na] = rup[:]
         rcholb_chunk[0][:, :, start_b : start_b + M * nb] = rdn[:]
-
 
     if comm is not None:
         comm.barrier()
 
-    if isinstance(hamiltonian, GenericRealChol):
-        # rchola = rchola[0]
-        # rcholb = rcholb[0]
+    if isinstance(hamiltonian, GenericRealCholChunked):
         rchola = rchola_chunk[0]
         rcholb = rcholb_chunk[0]
-
-    print('half rotation complete')
 
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)

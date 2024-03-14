@@ -12,6 +12,7 @@ from ipie.estimators.greens_function_single_det import (
 )
 from ipie.estimators.utils import gab_spin
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
@@ -22,11 +23,12 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
+from typing import Union
 
 
 # class for UHF trial
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, handler, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, handler=MPIHandler(), verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
@@ -46,9 +48,8 @@ class SingleDet(TrialWavefunctionBase):
         self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
         self.handler = handler
 
-        self.psi0a = numpy.ascontiguousarray(self.psi0a.conj())
-        self.psi0b = numpy.ascontiguousarray(self.psi0b.conj())
-
+        self.psi0a = numpy.ascontiguousarray(self.psi0a)
+        self.psi0b = numpy.ascontiguousarray(self.psi0b)
 
     def build(self) -> None:
         pass
@@ -87,6 +88,32 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
+    ):
+        num_dets = 1
+        orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
+        orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+        rot_1body, rot_chol = half_rotate_generic(
+            self,
+            hamiltonian,
+            comm,
+            orbsa,
+            orbsb,
+            ndets=num_dets,
+            verbose=self.verbose,
+        )
+        # Single determinant functions do not expect determinant index, so just
+        # grab zeroth element.
+        self._rH1a = rot_1body[0][0]
+        self._rH1b = rot_1body[1][0]
+        self._rchola = rot_chol[0][0]
+        self._rcholb = rot_chol[1][0]
+        self.half_rotated = True
+
+    @plum.dispatch
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: GenericRealCholChunked,
         comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
@@ -158,7 +185,7 @@ class SingleDet(TrialWavefunctionBase):
     @plum.dispatch
     def calc_force_bias(
         self,
-        hamiltonian: GenericRealChol,
+        hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> xp.ndarray:

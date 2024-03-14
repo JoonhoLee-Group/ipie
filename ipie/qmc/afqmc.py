@@ -69,14 +69,22 @@ class AFQMC(object):
     """
 
     def __init__(
-        self, system, hamiltonian, trial, walkers, propagator, mpi_handler, params: QMCParams, verbose: int = 0
+        self,
+        system,
+        hamiltonian,
+        trial,
+        walkers,
+        propagator,
+        mpi_handler,
+        params: QMCParams,
+        verbose: int = 0,
     ):
         self.system = system
         self.hamiltonian = hamiltonian
         self.trial = trial
         self.walkers = walkers
         self.propagator = propagator
-        self.mpi_handler = mpi_handler
+        self.mpi_handler = mpi_handler  # mpi_handler should be passed into here
         self.shared_comm = self.mpi_handler.shared_comm
         self.verbose = verbose
         self.verbosity = int(verbose)
@@ -280,8 +288,8 @@ class AFQMC(object):
         if config.get_option("use_gpu"):
             ngpus = xp.cuda.runtime.getDeviceCount()
             _ = xp.cuda.runtime.getDeviceProperties(0)
-            xp.cuda.runtime.setDevice(self.shared_comm.rank%4)
-            # xp.cuda.runtime.setDevice(comm.rank%4) # ?
+            # xp.cuda.runtime.setDevice(self.shared_comm.rank % 4)
+            xp.cuda.runtime.setDevice(comm.rank % ngpus)
             if comm.rank == 0:
                 if ngpus > comm.size:
                     print(
