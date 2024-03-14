@@ -188,10 +188,10 @@ if __name__ == "__main__":
     # Get the active space ERIs in the CASSCF MO basis
     h1e, e0 = mc.get_h1eff(mc.mo_coeff)
     eris = ao2mo.restore("1", mc.get_h2eff(mc.mo_coeff), ncas).reshape((ncas,) * 4)
-    # you can check how trucnating the wavefunction affects the energy
+    # you can check how truncating the wavefunction affects the energy
     wfn = build_ipie_wavefunction_from_pyscf(fcivec, mc, tol=0.0)
     print(f"Length of truncated CI expansion: {wfn.num_dets}")
-    # you check how trucnating the Cholesky dimension affects the energy
+    # you check how truncating the Cholesky dimension affects the energy
     sys, ham = build_ipie_sys_ham_from_pyscf(mc, chol_cut=1e-12)
 
     ipie_energy = wfn.calculate_energy(sys, ham)[0]
