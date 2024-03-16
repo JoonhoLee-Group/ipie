@@ -10,12 +10,13 @@ from ipie.legacy.systems.ueg import UEG as LegacyUEG
 from ipie.legacy.hamiltonians.ueg import UEG as LegacyHamUEG
 from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.legacy.trial_density_matrices.onebody import OneBody as LegacyOneBody
-from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
 from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.thermal_propagation.continuous import Continuous
 from ipie.legacy.thermal_propagation.planewave import PlaneWave
 from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC as LegacyThermalAFQMC
+
+from ipie.addons.thermal.utils.legacy_mean_field import MeanField as LegacyMeanField
 
 
 def legacy_propagate_walkers(legacy_hamiltonian, legacy_trial, legacy_walkers, legacy_propagator, xi=None):

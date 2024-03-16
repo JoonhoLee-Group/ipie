@@ -227,12 +227,10 @@ class PhaselessBase(ContinuousBase):
             walkers.calc_greens_function(iw, slice_ix=tix, inplace=True)
 
             # 3. Compute det(G/G')
-            # Now apply phaseless approximation
-            if debug:
-                self.update_weight_legacy(walkers, iw, G, cfb, cmf, eshift)
-
-            else:
-                self.update_weight(walkers, iw, G, cfb, cmf, eshift)
+            # Now apply phaseless approximation.
+            # Use legacy thermal weight update for now.
+            self.update_weight_legacy(walkers, iw, G, cfb, cmf, eshift)
+            #self.update_weight(walkers, iw, G, cfb, cmf, eshift)
 
             self.timer.tupdate += time.time() - start_time
 
@@ -279,10 +277,6 @@ class PhaselessBase(ContinuousBase):
             # Might want to cap this at some point.
             hybrid_energy = cmath.log(oratio) + _cfb + _cmf
             Q = cmath.exp(hybrid_energy)
-            #hybrid_energy = -(cmath.log(oratio) + _cfb + _cmf) / self.dt
-            #walkers.hybrid_energy = hybrid_energy + self.mf_core
-            #Q = cmath.exp(-self.dt * hybrid_energy)
-            #hybrid_energy = cmath.log(oratio) + _cfb + _cmf
             expQ = self.mf_const_fac * Q
             (magn, phase) = cmath.polar(expQ)
 

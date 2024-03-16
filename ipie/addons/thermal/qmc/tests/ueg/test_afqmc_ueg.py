@@ -625,7 +625,7 @@ def test_thermal_afqmc_mpi(against_ref=False):
 
 
 if __name__ == '__main__':
-    #test_thermal_afqmc_1walker(against_ref=True)
-    #test_thermal_afqmc(against_ref=True)
-    test_thermal_afqmc_mpi(against_ref=True)
+    test_thermal_afqmc_1walker(against_ref=True)
+    test_thermal_afqmc(against_ref=True)
+    #test_thermal_afqmc_mpi(against_ref=True)
 

@@ -2,7 +2,9 @@ import numpy
 import scipy.sparse
 from ipie.utils.io import write_qmcpack_sparse
 
-
+# -----------------------------------------------------------------------------
+# System class.
+# -----------------------------------------------------------------------------
 class UEG(object):
     """UEG system class (integrals read from fcidump)
 
