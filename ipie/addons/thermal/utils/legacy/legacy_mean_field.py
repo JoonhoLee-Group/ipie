@@ -1,7 +1,7 @@
 import numpy
 import scipy.linalg
 
-from ipie.addons.thermal.utils.legacy_fock import fock_matrix
+from ipie.addons.thermal.utils.legacy.legacy_fock import fock_matrix
 
 from ipie.legacy.estimators.local_energy import local_energy
 from ipie.legacy.estimators.thermal import entropy, greens_function, one_rdm_stable, particle_number

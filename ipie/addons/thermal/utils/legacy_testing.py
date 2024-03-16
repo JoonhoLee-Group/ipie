@@ -14,9 +14,9 @@ from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.thermal_propagation.continuous import Continuous
 from ipie.legacy.thermal_propagation.planewave import PlaneWave
-from ipie.legacy.qmc.thermal_afqmc import ThermalAFQMC as LegacyThermalAFQMC
 
-from ipie.addons.thermal.utils.legacy_mean_field import MeanField as LegacyMeanField
+from ipie.addons.thermal.utils.legacy.legacy_mean_field import MeanField as LegacyMeanField
+from ipie.addons.thermal.utils.legacy.legacy_thermal_afqmc import ThermalAFQMC as LegacyThermalAFQMC
 
 
 def legacy_propagate_walkers(legacy_hamiltonian, legacy_trial, legacy_walkers, legacy_propagator, xi=None):
