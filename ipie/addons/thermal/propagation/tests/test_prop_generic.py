@@ -12,6 +12,13 @@ from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
+
 comm = MPI.COMM_WORLD
 
 # System params.
@@ -62,6 +69,7 @@ options = {
         }
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_mf_shift():
     # Test.
@@ -87,6 +95,8 @@ def test_mf_shift():
     numpy.testing.assert_almost_equal(legacy_propagator.propagator.mf_shift, 
                                       propagator.mf_shift, decimal=10)
 
+
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_BH1():
     # Test.
@@ -113,6 +123,7 @@ def test_BH1():
                                       propagator.BH1, decimal=10)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_construct_two_body_propagator():
     # Test.
@@ -174,6 +185,7 @@ def test_construct_two_body_propagator():
     numpy.testing.assert_almost_equal(legacy_VHS, VHS, decimal=10)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_phaseless_generic_propagator():
     # Test.

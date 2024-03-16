@@ -12,8 +12,16 @@ from ipie.legacy.estimators.generic import local_energy_generic_cholesky as lega
 from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
+
 comm = MPI.COMM_WORLD
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_local_energy_cholesky(mf_trial=False):
     # System params.

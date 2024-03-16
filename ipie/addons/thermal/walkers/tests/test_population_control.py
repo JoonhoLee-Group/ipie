@@ -10,8 +10,16 @@ from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers_m
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers_mpi
 from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
     
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
+
 comm = MPI.COMM_WORLD
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_pair_branch_batch():
     mpi_handler = MPIHandler()
@@ -122,6 +130,7 @@ def test_pair_branch_batch():
         assert numpy.allclose(walkers.unscaled_weight[iw], legacy_walkers.walkers[iw].unscaled_weight)
 
 
+#@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 #@pytest.mark.unit
 def test_pair_branch_batch_lowrank():
     mpi_handler = MPIHandler()
@@ -233,6 +242,7 @@ def test_pair_branch_batch_lowrank():
         assert numpy.allclose(walkers.unscaled_weight[iw], legacy_walkers.walkers[iw].unscaled_weight)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_comb_batch():
     mpi_handler = MPIHandler()
@@ -341,6 +351,7 @@ def test_comb_batch():
         assert numpy.allclose(walkers.unscaled_weight[iw], legacy_walkers.walkers[iw].unscaled_weight)
 
 
+#@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 #@pytest.mark.unit
 def test_comb_batch_lowrank():
     mpi_handler = MPIHandler()

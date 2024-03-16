@@ -19,6 +19,12 @@ from ipie.analysis.extraction import (
 from ipie.addons.thermal.utils.testing import build_driver_ueg_test_instance
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_driver_ueg_test_instance
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
@@ -65,6 +71,7 @@ def compare_test_data(ref_data, test_data):
     return comparison
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_thermal_afqmc_1walker(against_ref=False):
     # UEG params.
@@ -252,6 +259,8 @@ def test_thermal_afqmc_1walker(against_ref=False):
                 if local_err_count == 0:
                     print(f"\n*** PASSED : {test_name} ***\n")
 
+
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_thermal_afqmc(against_ref=False):
     # UEG params.
@@ -438,6 +447,7 @@ def test_thermal_afqmc(against_ref=False):
                     print(f"\n*** PASSED : {test_name} ***\n")
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.mpi
 def test_thermal_afqmc_mpi(against_ref=False):
     # UEG params.

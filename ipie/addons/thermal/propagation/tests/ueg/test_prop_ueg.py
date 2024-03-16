@@ -6,17 +6,26 @@ from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 
 from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
+from ipie.legacy.estimators.ueg import local_energy_ueg as legacy_local_energy_ueg
 
 from ipie.addons.thermal.utils.testing import build_ueg_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_ueg_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
 
-from ipie.addons.thermal.utils.ueg import local_energy_ueg as legacy_local_energy_ueg
+
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
 
 comm = MPI.COMM_WORLD
 
+
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
-def test_phaseless_generic_propagator():
+def test_phaseless_ueg_propagator():
     # UEG params.
     nup = 7
     ndown = 7
@@ -146,4 +155,4 @@ def test_phaseless_generic_propagator():
 
 
 if __name__ == "__main__":
-    test_phaseless_generic_propagator()
+    test_phaseless_ueg_propagator()

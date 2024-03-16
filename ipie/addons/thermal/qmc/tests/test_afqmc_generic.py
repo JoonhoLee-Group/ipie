@@ -15,6 +15,12 @@ from ipie.analysis.extraction import (
 from ipie.addons.thermal.utils.testing import build_driver_generic_test_instance
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_driver_generic_test_instance
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1
@@ -29,6 +35,7 @@ else:
 test_id = comm.bcast(test_id, root=0)
 
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_thermal_afqmc():
     # System params.

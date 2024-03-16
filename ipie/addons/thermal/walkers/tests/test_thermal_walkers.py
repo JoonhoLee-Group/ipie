@@ -13,8 +13,16 @@ from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
 from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
 
+try:
+    from ipie.legacy.estimators.ueg import fock_ueg
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
+
 comm = MPI.COMM_WORLD
 
+@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
 def test_thermal_walkers_fullrank():
     # System params.
@@ -106,6 +114,7 @@ def test_thermal_walkers_fullrank():
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].stack.ovlp[1], walkers.stack[iw].ovlp[1], decimal=10)
 
 
+#@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 #@pytest.mark.unit
 def test_thermal_walkers_lowrank():
     # System params.
