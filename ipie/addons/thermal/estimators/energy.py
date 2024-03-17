@@ -15,7 +15,7 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-import numpy
+from typing import Union
 
 from ipie.utils.backend import arraylib as xp
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
@@ -27,19 +27,20 @@ from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 
 
 def local_energy(
-        hamiltonian: GenericRealChol, 
+        hamiltonian: Union[GenericRealChol, GenericComplexChol], 
         walkers: UHFThermalWalkers):
-    energies = numpy.zeros((walkers.nwalkers, 3), dtype=numpy.complex128)
+    energies = xp.zeros((walkers.nwalkers, 3), dtype=xp.complex128)
     
     for iw in range(walkers.nwalkers):
         walkers.calc_greens_function(iw) # In-place update of GF.
-        P = one_rdm_from_G(numpy.array([walkers.Ga[iw], walkers.Gb[iw]]))
+        P = one_rdm_from_G(xp.array([walkers.Ga[iw], walkers.Gb[iw]]))
         energy = local_energy_generic_cholesky(hamiltonian, P)
 
         for i in range(3):
             energies[iw, i] = energy[i]
 
     return energies
+
 
 class ThermalEnergyEstimator(EstimatorBase):
     def __init__(self, hamiltonian=None, trial=None, filename=None):

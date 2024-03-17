@@ -4,7 +4,6 @@ import numpy
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 
 @plum.dispatch
 def construct_force_bias(hamiltonian: GenericRealChol, walkers):

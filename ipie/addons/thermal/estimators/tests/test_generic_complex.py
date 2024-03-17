@@ -3,6 +3,7 @@ import pytest
 from typing import Tuple, Union
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
@@ -65,12 +66,16 @@ def test_local_energy_vs_real():
     trial = objs['trial']
     walkers = objs['walkers']
     hamiltonian = objs['hamiltonian']
+
+    assert isinstance(hamiltonian, GenericRealChol)
     
     chol = hamiltonian.chol
     cx_chol = numpy.array(chol, dtype=numpy.complex128)
     cx_hamiltonian = HamGeneric(
         numpy.array(hamiltonian.H1, dtype=numpy.complex128), cx_chol, 
                     hamiltonian.ecore, verbose=False)
+
+    assert isinstance(cx_hamiltonian, GenericComplexChol)
     
     for iw in range(walkers.nwalkers):
         P = one_rdm_from_G(numpy.array([walkers.Ga[iw], walkers.Gb[iw]])) 
@@ -91,6 +96,7 @@ def test_local_energy_vs_eri():
     trial = objs['trial']
     walkers = objs['walkers']
     hamiltonian = objs['hamiltonian']
+    assert isinstance(hamiltonian, GenericComplexChol)
     eri = objs['eri'].reshape(nbasis, nbasis, nbasis, nbasis)
     
     chol = hamiltonian.chol.copy()

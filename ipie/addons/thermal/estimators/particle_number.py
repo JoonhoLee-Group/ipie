@@ -1,9 +1,23 @@
-from ipie.estimators.estimator_base import EstimatorBase
-import numpy
-
 from ipie.utils.backend import arraylib as xp
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.addons.thermal.estimators.thermal import particle_number, one_rdm_from_G
+from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
+
+
+def particle_number(dmat):
+    """Compute average particle number from the thermal 1RDM.
+
+    Parameters
+    ----------
+    dmat : :class:`numpy.ndarray`
+        Thermal 1RDM.
+
+    Returns
+    -------
+    nav : float
+        Average particle number.
+    """
+    nav = dmat[0].trace() + dmat[1].trace()
+    return nav
 
 
 class ThermalNumberEstimator(EstimatorBase):
@@ -35,7 +49,7 @@ class ThermalNumberEstimator(EstimatorBase):
         for iw in range(walkers.nwalkers):
             walkers.calc_greens_function(iw)
             nav_iw = particle_number(one_rdm_from_G(
-                        numpy.array([walkers.Ga[iw], walkers.Gb[iw]])))
+                        xp.array([walkers.Ga[iw], walkers.Gb[iw]])))
             self._data["NavNumer"] += walkers.weight[iw] * nav_iw
 
         self._data["NavDenom"] = sum(walkers.weight)

@@ -1,10 +1,11 @@
 import numpy
 import scipy.linalg
 
-from ipie.addons.thermal.estimators.thermal import one_rdm_from_G, particle_number
+from ipie.addons.thermal.estimators.particle_number import particle_number
+from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.addons.thermal.estimators.greens_function import greens_function_qr_strat
 from ipie.addons.thermal.walkers.stack import PropagatorStack
-from ipie.utils.misc import get_numeric_names, update_stack
+from ipie.utils.misc import update_stack
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.addons.thermal.trial.one_body import OneBody
 
@@ -119,7 +120,6 @@ class UHFThermalWalkers(BaseWalkers):
                 nav = particle_number(P)
                 print(f"# Trial electron number for {iw}-th walker: {nav}")
 
-        #self.buff_names, self.buff_size = get_numeric_names(self.__dict__)
         self.buff_names += ["Ga", "Gb"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)

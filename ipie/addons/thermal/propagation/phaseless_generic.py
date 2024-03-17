@@ -1,16 +1,8 @@
-import time
-import math
 import plum
 
-import numpy
-from ipie.config import config
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from ipie.hamiltonians.generic_base import GenericBase
-from ipie.addons.thermal.propagation.operations import apply_exponential
 from ipie.addons.thermal.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
-from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 
 
 class PhaselessGeneric(PhaselessBase):

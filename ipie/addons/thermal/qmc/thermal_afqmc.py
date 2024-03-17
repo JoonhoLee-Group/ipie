@@ -20,7 +20,6 @@ from ipie.estimators.estimator_base import EstimatorBase
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.qmc.afqmc import AFQMC
-from ipie.qmc.utils import set_rng_seed
 
 
 class ThermalAFQMC(AFQMC):
@@ -199,7 +198,6 @@ class ThermalAFQMC(AFQMC):
         self.tsetup += time.time() - ft_setup
 
         # Propagate.
-        nwalkers = self.walkers.nwalkers
         total_steps = self.params.num_steps_per_block * self.params.num_blocks
         # TODO: This magic value of 2 is pretty much never controlled on input.
         # Moreover I'm not convinced having a two stage shift update actually

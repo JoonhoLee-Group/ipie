@@ -1,7 +1,4 @@
-from ipie.config import config
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
-from ipie.utils.misc import is_cupy
 
 def apply_exponential(VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation

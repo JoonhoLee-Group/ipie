@@ -1,6 +1,7 @@
 import numpy
 
-from ipie.addons.thermal.estimators.thermal import one_rdm_stable, particle_number
+from ipie.addons.thermal.estimators.particle_number import particle_number
+from ipie.addons.thermal.estimators.thermal import one_rdm_stable
 from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 
 

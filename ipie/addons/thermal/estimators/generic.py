@@ -1,6 +1,5 @@
 import plum
 import numpy
-from ipie.utils.misc import is_cupy
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 

@@ -71,27 +71,11 @@ def one_rdm_stable(BT, num_slices):
         G.append(numpy.dot(numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)))
     return one_rdm_from_G(numpy.array(G))
 
-def particle_number(dmat):
-    """Compute average particle number from the thermal 1RDM.
-
-    Parameters
-    ----------
-    dmat : :class:`numpy.ndarray`
-        Thermal 1RDM.
-
-    Returns
-    -------
-    nav : float
-        Average particle number.
-    """
-    nav = dmat[0].trace() + dmat[1].trace()
-    return nav
-
 def entropy(beta, mu, H):
     """Compute the entropy.
     """
     assert numpy.linalg.norm(H[0] - H[1]) < 1e-12
-    eigs, eigv = numpy.linalg.eigh(H[0])
+    eigs, _ = numpy.linalg.eigh(H[0])
     p_i = fermi_factor(eigs, beta, mu)
     S = -2.0 * sum(p * numpy.log(p) + (1 - p) * numpy.log(1 - p) for p in p_i)
     # muN = mu * numpy.eye(H[0].shape[-1], dtype=H[0].dtype)

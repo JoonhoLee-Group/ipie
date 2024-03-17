@@ -1,9 +1,9 @@
-
 import numpy
 import scipy.linalg
 
+from ipie.addons.thermal.estimators.particle_number import particle_number
+from ipie.addons.thermal.estimators.thermal import one_rdm_stable
 from ipie.addons.thermal.estimators.greens_function import greens_function
-from ipie.addons.thermal.estimators.thermal import one_rdm_stable, particle_number
 from ipie.addons.thermal.trial.chem_pot import compute_rho, find_chemical_potential
 from ipie.utils.misc import update_stack
 
@@ -59,7 +59,6 @@ class OneBody(object):
             if verbose:
                 print("# Estimating stack size from BT.")
 
-            eigs, _ = scipy.linalg.eigh(self.dmat[0])
             self.cond = numpy.linalg.cond(self.dmat[0])
             # We will end up multiplying many BTs together. Can roughly determine
             # safe stack size from condition number of BT as the condition number of

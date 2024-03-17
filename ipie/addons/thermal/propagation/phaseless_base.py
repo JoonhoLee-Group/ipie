@@ -278,7 +278,7 @@ class PhaselessBase(ContinuousBase):
             hybrid_energy = cmath.log(oratio) + _cfb + _cmf
             Q = cmath.exp(hybrid_energy)
             expQ = self.mf_const_fac * Q
-            (magn, phase) = cmath.polar(expQ)
+            (magn, _) = cmath.polar(expQ)
 
             if not math.isinf(magn):
                 # Determine cosine phase from Arg(det(1+A'(x))/det(1+A(x))).
