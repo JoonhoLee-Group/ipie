@@ -9,8 +9,11 @@ from ipie.utils.misc import update_stack
 
 
 class OneBody(object):
-    def __init__(self, hamiltonian, nelec, beta, dt, options={},
+    def __init__(self, hamiltonian, nelec, beta, dt, options=None,
                  alt_convention=False, H1=None, verbose=False):
+        if options is None:
+            options = {}
+
         self.name = "thermal"
         self.compute_trial_energy = False
         self.verbose = verbose

@@ -9,7 +9,10 @@ from ipie.addons.thermal.trial.chem_pot import compute_rho, find_chemical_potent
 from ipie.addons.thermal.trial.one_body import OneBody
 
 class MeanField(OneBody):
-    def __init__(self, hamiltonian, nelec, beta, dt, options={}, alt_convention=False, H1=None, verbose=False):
+    def __init__(self, hamiltonian, nelec, beta, dt, options=None, alt_convention=False, H1=None, verbose=False):
+        if options is None:
+            options = {}
+
         OneBody.__init__(self, hamiltonian, nelec, beta, dt, options=options, 
                          alt_convention=alt_convention, H1=H1, verbose=verbose)
         if verbose:

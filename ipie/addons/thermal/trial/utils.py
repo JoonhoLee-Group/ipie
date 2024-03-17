@@ -2,7 +2,7 @@ from ipie.addons.thermal.trial.mean_field import MeanField
 from ipie.addons.thermal.trial.one_body import OneBody
 
 
-def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options={}, 
+def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options=None, 
                              comm=None, verbose=False):
     """Wrapper to select trial wavefunction class.
 
@@ -14,6 +14,9 @@ def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options={},
     trial : class or None
         Trial density matrix class.
     """
+    if options is None:
+        options = {}
+
     trial_type = options.get("name", "one_body")
     alt_convention = options.get("alt_convention", False)
     if comm is None or comm.rank == 0:
