@@ -1,24 +1,21 @@
 import pytest
 import numpy
 
-from ipie.config import MPI
-from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
-from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
-
-from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
-from ipie.legacy.estimators.ueg import local_energy_ueg as legacy_local_energy_ueg
-
-from ipie.addons.thermal.utils.testing import build_ueg_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import build_legacy_ueg_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
-
-
 try:
-    from ipie.legacy.estimators.ueg import fock_ueg
+    from ipie.addons.thermal.utils.legacy_testing import build_legacy_ueg_test_case_handlers
+    from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
     _no_cython = False
 
 except ModuleNotFoundError:
     _no_cython = True
+
+from ipie.config import MPI
+from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
+from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
+from ipie.addons.thermal.utils.testing import build_ueg_test_case_handlers
+
+from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
+from ipie.legacy.estimators.ueg import local_energy_ueg as legacy_local_energy_ueg
 
 comm = MPI.COMM_WORLD
 

@@ -2,23 +2,21 @@ import numpy
 import pytest
 from typing import Union
 
-from ipie.config import MPI
-from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
-from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
-
-from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
-from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
-
-from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
-
 try:
-    from ipie.legacy.estimators.ueg import fock_ueg
+    from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
+    from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
     _no_cython = False
 
 except ModuleNotFoundError:
     _no_cython = True
+
+from ipie.config import MPI
+from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
+from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
+from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
+
+from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
+from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
 
 comm = MPI.COMM_WORLD
 

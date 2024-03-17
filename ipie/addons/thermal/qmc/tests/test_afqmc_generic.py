@@ -6,6 +6,13 @@ import pytest
 import numpy
 from typing import Union
 
+try:
+    from ipie.addons.thermal.utils.legacy_testing import build_legacy_driver_generic_test_instance
+    _no_cython = False
+
+except ModuleNotFoundError:
+    _no_cython = True
+
 from ipie.config import MPI
 from ipie.analysis.extraction import (
         extract_test_data_hdf5, 
@@ -13,14 +20,6 @@ from ipie.analysis.extraction import (
         extract_observable, 
         extract_mixed_estimates)
 from ipie.addons.thermal.utils.testing import build_driver_generic_test_instance
-from ipie.addons.thermal.utils.legacy_testing import build_legacy_driver_generic_test_instance
-
-try:
-    from ipie.legacy.estimators.ueg import fock_ueg
-    _no_cython = False
-
-except ModuleNotFoundError:
-    _no_cython = True
 
 comm = MPI.COMM_WORLD
 serial_test = comm.size == 1

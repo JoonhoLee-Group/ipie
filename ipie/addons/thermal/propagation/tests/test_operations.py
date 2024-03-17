@@ -1,18 +1,17 @@
 import numpy
 import pytest
 
-from ipie.config import MPI
-from ipie.addons.thermal.propagation.operations import apply_exponential
-from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
-from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
-
 try:
-    from ipie.legacy.estimators.ueg import fock_ueg
+    from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
+    from ipie.addons.thermal.utils.legacy_testing import legacy_propagate_walkers
     _no_cython = False
 
 except ModuleNotFoundError:
     _no_cython = True
+
+from ipie.config import MPI
+from ipie.addons.thermal.propagation.operations import apply_exponential
+from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 
 comm = MPI.COMM_WORLD
 
