@@ -54,11 +54,13 @@ class ThermalAFQMC(AFQMC):
                  propagator, 
                  params: ThermalQMCParams, 
                  debug: bool = False,
-                 verbose: bool = False):
+                 verbose: int = 0):
         super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose)
         self.debug = debug
-        if self.debug:
+
+        if self.debug and verbose:
             print('# Using legacy `update_weights`.')
+
     
     @staticmethod
     def build(
@@ -78,7 +80,7 @@ class ThermalAFQMC(AFQMC):
             lowrank: bool = False,
             lowrank_thresh: float = 1e-6,
             debug: bool = False,
-            verbose: bool = True,
+            verbose: int = 0,
             mpi_handler=None,) -> "Thermal AFQMC":
         """Factory method to build thermal AFQMC driver from hamiltonian and trial density matrix.
 
@@ -151,7 +153,7 @@ class ThermalAFQMC(AFQMC):
                 propagator,
                 params,
                 debug=debug,
-                verbose=(verbose and comm.rank == 0))
+                verbose=verbose)
 
 
     def run(self, 

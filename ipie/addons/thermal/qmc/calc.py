@@ -118,7 +118,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
             propagator,
             params,
             debug=debug,
-            verbose=(verbosity and comm.rank == 0),
+            verbose=verbosity,
         )
 
     return afqmc
@@ -142,6 +142,7 @@ def build_thermal_afqmc_driver(
     options["system"] = sys_opts
     options["hamiltonian"] = ham_opts
     options["qmc"].update(qmc_opts)
+    options["verbosity"] = verbosity
 
     return get_driver(options, comm)
 

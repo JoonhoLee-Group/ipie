@@ -57,7 +57,7 @@ def test_thermal_afqmc():
     #pop_control_method = 'comb'
     lowrank = False
 
-    verbose = False if (comm.rank != 0) else True
+    verbose = 0 if (comm.rank != 0) else 1
     complex_integrals = False
     debug = True
     seed = 7
@@ -92,7 +92,7 @@ def test_thermal_afqmc():
             print('\n-----------------------')
             print('Running ThermalAFQMC...')
             print('-----------------------')
-
+    
         afqmc = build_driver_generic_test_instance(options, seed, debug, verbose)
         afqmc.run(verbose=verbose, estimator_filename=tmpf1.name)
         afqmc.finalise()

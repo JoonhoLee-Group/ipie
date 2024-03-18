@@ -19,7 +19,7 @@ def build_generic_test_case_handlers(options: dict,
                                      seed: Union[int, None],
                                      debug: bool = False,
                                      with_eri: bool = False,
-                                     verbose: bool = False):
+                                     verbose: int = 0):
     # Unpack options
     nelec = options['nelec']
     nbasis = options['nbasis']
@@ -90,7 +90,7 @@ def build_generic_test_case_handlers_mpi(options: dict,
                                          mpi_handler: MPIHandler,
                                          seed: Union[int, None],
                                          debug: bool = False,
-                                         verbose: bool = False):
+                                         verbose: int = 0):
     # Unpack options
     nelec = options['nelec']
     nbasis = options['nbasis']
@@ -157,7 +157,7 @@ def build_generic_test_case_handlers_mpi(options: dict,
 def build_driver_generic_test_instance(options: Union[dict, None],
                                        seed: Union[int, None],
                                        debug: bool = False,
-                                       verbose: bool = False):
+                                       verbose: int = 0):
     # Unpack options
     nelec = options['nelec']
     nbasis = options['nbasis']
@@ -208,7 +208,7 @@ def build_driver_generic_test_instance(options: Union[dict, None],
 def build_ueg_test_case_handlers(options: dict,
                                  seed: Union[int, None],
                                  debug: bool = False,
-                                 verbose: bool = False):
+                                 verbose: int = 0):
     # Unpack options
     ueg_opts = options['ueg_opts']
     nelec = options['nelec']
@@ -278,7 +278,7 @@ def build_ueg_test_case_handlers(options: dict,
 def build_driver_ueg_test_instance(options: Union[dict, None],
                                    seed: Union[int, None],
                                    debug: bool = False,
-                                   verbose: bool = False):
+                                   verbose: int = 0):
     # Unpack options
     ueg_opts = options['ueg_opts']
     nelec = options['nelec']

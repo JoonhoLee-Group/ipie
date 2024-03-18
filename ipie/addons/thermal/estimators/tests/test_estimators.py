@@ -16,13 +16,14 @@ from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 nup = 5
 ndown = 5
 nelec = (nup, ndown)
+ne = nup + ndown
 nbasis = 10
 
 # Thermal AFQMC params.
 mu = -10.
 beta = 0.1
 timestep = 0.01
-nwalkers = 12
+nwalkers = 10
 # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
 nsteps_per_block = 1
 nblocks = 12
@@ -77,8 +78,11 @@ def test_energy_estimator():
     re_estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial)
     re_estim.compute_estimator(walkers, hamiltonian, trial)
     assert len(re_estim.names) == 5
+    assert re_estim["ENumer"].real == pytest.approx(24.66552451455761)
+    assert re_estim["ETotal"] == pytest.approx(0.0)
     tmp = re_estim.data.copy()
     re_estim.post_reduce_hook(tmp)
+    assert tmp[re_estim.get_index("ETotal")] == pytest.approx(2.4665524514557613)
     assert re_estim.print_to_stdout
     assert re_estim.ascii_filename == None
     assert re_estim.shape == (5,)
@@ -97,8 +101,11 @@ def test_energy_estimator():
     cx_estim = ThermalEnergyEstimator(hamiltonian=cx_hamiltonian, trial=trial)
     cx_estim.compute_estimator(walkers, cx_hamiltonian, trial)
     assert len(cx_estim.names) == 5
+    assert cx_estim["ENumer"].real == pytest.approx(24.66552451455761)
+    assert cx_estim["ETotal"] == pytest.approx(0.0)
     tmp = cx_estim.data.copy()
     cx_estim.post_reduce_hook(tmp)
+    assert tmp[cx_estim.get_index("ETotal")] == pytest.approx(2.4665524514557613)
     assert cx_estim.print_to_stdout
     assert cx_estim.ascii_filename == None
     assert cx_estim.shape == (5,)
@@ -124,8 +131,11 @@ def test_number_estimator():
     estim = ThermalNumberEstimator(hamiltonian=hamiltonian, trial=trial)
     estim.compute_estimator(walkers, hamiltonian, trial)
     assert len(estim.names) == 3
+    assert estim["NavNumer"].real == pytest.approx(ne * nwalkers)
+    assert estim["Nav"] == pytest.approx(0.0)
     tmp = estim.data.copy()
     estim.post_reduce_hook(tmp)
+    assert tmp[estim.get_index("Nav")] == pytest.approx(ne)
     assert estim.print_to_stdout
     assert estim.ascii_filename == None
     assert estim.shape == (3,)

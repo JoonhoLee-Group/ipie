@@ -50,7 +50,7 @@ class ThermalNumberEstimator(EstimatorBase):
             walkers.calc_greens_function(iw)
             nav_iw = particle_number(one_rdm_from_G(
                         xp.array([walkers.Ga[iw], walkers.Gb[iw]])))
-            self._data["NavNumer"] += walkers.weight[iw] * nav_iw
+            self._data["NavNumer"] += walkers.weight[iw] * nav_iw.real
 
         self._data["NavDenom"] = sum(walkers.weight)
 
