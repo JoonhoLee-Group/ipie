@@ -27,14 +27,13 @@ import numpy as np
 import scipy.linalg
 
 # pylint: disable=import-error
-from pyscf import gto, lib, scf
+from pyscf import fci, gto, lib, mcscf, scf
 
-from ipie.estimators.generic import core_contribution_cholesky
 from ipie.hamiltonians.generic import GenericRealChol
-from ipie.legacy.estimators.generic import local_energy_generic_cholesky
-from ipie.legacy.estimators.greens_function import gab
+from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.particle_hole import ParticleHole
+from ipie.utils.frozen_core import freeze_core
 from ipie.utils.io import write_hamiltonian, write_wavefunction
-from ipie.utils.misc import dotdict
 
 
 def gen_ipie_input_from_pyscf_chk(
@@ -650,50 +649,6 @@ def load_from_pyscf_chkfile(chkfile, base="scf"):
     return scf_data
 
 
-def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
-    # 1. Construct one-body hamiltonian
-    nbasis = h1e.shape[-1]
-    nchol = chol.shape[0]
-    chol = chol.reshape((nchol, nbasis, nbasis))
-    ham = dotdict(
-        {
-            "H1": np.array([h1e, h1e]),
-            "chol_vecs": chol.T.copy().reshape((nbasis * nbasis, nchol)),
-            "nchol": nchol,
-            "ecore": ecore,
-            "nbasis": nbasis,
-        }
-    )
-    system = dotdict({"nup": 0, "ndown": 0})
-    if len(X.shape) == 2:
-        psi_a = np.identity(nbasis)[:, :nfrozen]
-        psi_b = np.identity(nbasis)[:, :nfrozen]
-    elif len(X.shape) == 3:
-        C = X
-        psi_a = np.identity(nbasis)[:, :nfrozen]
-        Xinv = scipy.linalg.inv(X[0])
-        psi_b = np.dot(Xinv, C[1])[:, :nfrozen]
-
-    Gcore_a = gab(psi_a, psi_a)
-    Gcore_b = gab(psi_b, psi_b)
-    ecore = local_energy_generic_cholesky(system, ham, [Gcore_a, Gcore_b])[0]
-
-    (hc_a, hc_b) = core_contribution_cholesky(chol, [Gcore_a, Gcore_b])
-    h1e = np.array([h1e, h1e])
-    h1e[0] = h1e[0] + 2 * hc_a
-    h1e[1] = h1e[1] + 2 * hc_b
-    h1e = h1e[:, nfrozen:, nfrozen:]
-    nchol = chol.shape[0]
-    nact = h1e.shape[-1]
-    chol = chol[:, nfrozen:, nfrozen:].reshape((nchol, nact, nact))
-    # 4. Subtract one-body term from writing H2 as sum of squares.
-    if verbose:
-        print(f"# Number of active orbitals: {nact}")
-        print(f"# Freezing {nfrozen} core orbitals.")
-        print(f"# Frozen core energy : {ecore.real:15.12e}")
-    return h1e, chol, ecore.real
-
-
 def integrals_from_scf(mf, chol_cut=1e-5, verbose=0, ortho_ao=False):
     mol = mf.mol
     hcore = mf.get_hcore()
@@ -720,3 +675,33 @@ def integrals_from_chkfile(chkfile, chol_cut=1e-5, verbose=False, ortho_ao=False
             X = X[0]
     h1e, chol, enuc = generate_integrals(mol, hcore, X, chol_cut=chol_cut, verbose=verbose)
     return h1e, chol, enuc, X
+
+
+def build_ipie_wavefunction_from_pyscf(
+    fcivec: np.ndarray, mc: Union[mcscf.CASCI, mcscf.CASSCF], tol: float = 1e-12
+) -> ParticleHole:
+    """Build ipie wavefunction in the full space (i.e. with "melting cores")"""
+    coeff, occa, occb = zip(
+        *fci.addons.large_ci(fcivec, mc.ncas, mc.nelecas, tol=tol, return_strs=False)
+    )
+    ix = np.argsort(np.abs(coeff))[::-1]
+    nelec = mc._scf.mol.nelec
+    nmo = mc._scf.mo_coeff.shape[-1]
+    return ParticleHole((np.array(coeff)[ix], np.array(occa)[ix], np.array(occb)[ix]), nelec, nmo, num_dets_for_props=len(occa))
+
+
+def build_ipie_sys_ham_from_pyscf(
+    mc: Union[mcscf.CASCI, mcscf.CASSCF], chol_cut: float = 1e-6
+) -> Tuple[Generic, GenericRealChol]:
+    """Build ipie system and hamiltonian from MCSCF object."""
+    ham = generate_hamiltonian(
+        mc._scf.mol,
+        mc.mo_coeff,
+        mc._scf.get_hcore(),
+        mc.mo_coeff,
+        chol_cut=chol_cut,
+        num_frozen_core=0,
+        verbose=False,
+    )
+    nelec = (mc._scf.mol.nelec[0], mc._scf.mol.nelec[1])
+    return Generic(nelec), ham

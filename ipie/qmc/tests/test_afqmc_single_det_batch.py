@@ -73,7 +73,11 @@ def test_generic_single_det_batch():
         }
 
         afqmc = build_driver_test_instance(
-            nelec, nmo, trial_type="single_det", options=driver_options, seed=7
+            nelec,
+            nmo,
+            trial_type="single_det",
+            options=driver_options,
+            seed=7,
         )
         afqmc.run(verbose=False, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)

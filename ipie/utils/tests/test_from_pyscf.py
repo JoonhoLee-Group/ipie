@@ -23,10 +23,14 @@ import h5py
 import numpy as np
 import pytest
 
+from ipie.lib.libci import _HAVE_OPT_CI_CODE
+
 try:
     from pyscf import ao2mo, fci, gto, mcscf, scf
 
     from ipie.utils.from_pyscf import (
+        build_ipie_sys_ham_from_pyscf,
+        build_ipie_wavefunction_from_pyscf,
         freeze_core,
         gen_ipie_input_from_pyscf_chk,
         integrals_from_chkfile,
@@ -37,6 +41,7 @@ try:
 except (ImportError, OSError, ValueError):
     no_pyscf = True
 
+from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.utils.io import read_hamiltonian, read_wavefunction, write_json_input_file
 
 
@@ -249,3 +254,38 @@ def test_frozen_rohf():
         assert wfn[0][1].shape[-1] == mol.nelec[1] - 1
         assert wfn[1][0].shape[-1] == mol.nelec[0] - 1
         assert wfn[1][1].shape[-1] == mol.nelec[1] - 1
+
+
+@pytest.mark.libci
+@pytest.mark.skipif(not _HAVE_OPT_CI_CODE, reason="lib.libci not found.")
+@pytest.mark.skipif(no_pyscf, reason="pyscf not found.")
+def test_opt_opdm_variational_energy():
+    mol = gto.Mole(atom=[("N", (0.0, 0.0, 0.0)), ("N", (0.0, 0.0, 1.45))], spin=0, basis="sto-3g")
+    mol.build()
+    mf = scf.RHF(mol)
+    mf.verbose = 0
+    mf.kernel()
+
+    ncas, nelecas = (6, 6)
+    mc = mcscf.CASSCF(mf, nelecas, ncas)
+    mc.verbose = 0
+
+    e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
+    casdm1 = mc.fcisolver.make_rdm1(fcivec, ncas, nelecas)
+    sys, ham = build_ipie_sys_ham_from_pyscf(mc, chol_cut=1e-12)
+    # ham.ecore = 0.0
+    trial = build_ipie_wavefunction_from_pyscf(fcivec, mc)
+    ref = variational_energy_ortho_det(sys, ham, trial.spin_occs, trial.coeffs)
+    test = trial.calculate_energy(sys, ham)
+    ref_dm = trial.compute_1rdm(ham.nbasis)
+    nm = trial.num_melting
+    from ipie.utils.frozen_core import active_space_hamiltonian
+
+    h1e, _, e0 = active_space_hamiltonian(6, mc.ncore, ham)
+    assert np.allclose((ref_dm[0] + ref_dm[1])[nm:, nm:], casdm1)
+    assert np.allclose((trial.G[0] + trial.G[1])[nm:, nm:], casdm1)
+    assert np.allclose(trial.G[0], ref_dm[0])
+    assert np.allclose(trial.G[1], ref_dm[1])
+    assert np.allclose(np.einsum("pq,pq->", casdm1, h1e) + e0, trial.e1b)
+    assert np.isclose(ref[0], e_tot)
+    assert np.isclose(test[0], e_tot, atol=1e-12)

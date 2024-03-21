@@ -200,7 +200,9 @@ def test_generic():
             "trial": {"name": "MultiSlater"},
         }
         numpy.random.seed(7)
-        h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+        h1e, chol, enuc, eri = generate_hamiltonian(
+            nmo, nelec, cplx=False, symmetric_one_body=False
+        )
         sys = Generic(nelec=nelec)
         ham = HamGeneric(
             h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nmo * nmo)).T.copy(), ecore=enuc
@@ -246,7 +248,7 @@ def test_generic_single_det():
             },
         }
         numpy.random.seed(7)
-        h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+        h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False, symmetric_one_body=False)
         sys_opts = {"sparse": True}
         sys = Generic(nelec=nelec)
         ham = HamGeneric(

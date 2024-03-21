@@ -18,7 +18,7 @@
 
 import itertools
 from dataclasses import dataclass
-from typing import Tuple, Union
+from typing import Dict, Sequence, Tuple, Union
 
 import numpy
 
@@ -44,14 +44,41 @@ from ipie.walkers.pop_controller import PopController
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 
-def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
+def generate_hamiltonian(
+    nmo: int,
+    nelec: Tuple[int, int],
+    cplx: bool = False,
+    sym: int = 8,
+    tol: float = 1e-3,
+    symmetric_one_body: bool = True,
+):
+    """Generate a random Hamiltonian.
+
+    Args:
+        nmo: The number of spatial orbitals.
+        nelec: The number of alpha and beta electrons.
+        cplx: Complex integrals or not.
+        sym: Symmetry of the 2-electron integrals. Can be 4 or 8.
+        tol: Cholesky tolerance.
+        symmetric_one_body: Symmetrize the one body Hamiltonian. There was a bug
+            where the one-body integrals were not being symmetrized. For backwards
+            compatability keep this around.
+    Returns:
+        h1e: The one-body hamiltonian
+        chol: The cholesky vectors.
+        enuc: The constant term in the Hamiltonian.
+        eri: The electron repulsion integrals.
+    """
     h1e = numpy.random.random((nmo, nmo))
     if cplx:
         h1e = h1e + 1j * numpy.random.random((nmo, nmo))
+    if symmetric_one_body:
+        h1e = 0.5 * (h1e + h1e.conj().T)
     eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
     if cplx:
         eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
     # Restore symmetry to the integrals.
+    assert sym in (4, 8), "sym must be 4 or 8"
     if sym >= 4:
         # (ik|jl) = (jl|ik)
         # (ik|jl) = (ki|lj)*
@@ -199,10 +226,16 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
         init_wfn = None
     if dist is None:
         # want to evenly distribute determinants among N excitation levels
-        ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
-        dist_a = [ndet_level] * (nup + 1)
-        ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
-        dist_b = [ndet_level] * (ndown + 1)
+        if nup > 0:
+            ndet_level = max(int(ndet**0.5) // (int(nup**0.5)), 1)
+            dist_a = [ndet_level] * (nup + 1)
+        else:
+            dist_a = [0]
+        if ndown > 0:
+            ndet_level = max(int(ndet**0.5) // (int(ndown**0.5)), 1)
+            dist_b = [ndet_level] * (ndown + 1)
+        else:
+            dist_b = [0]
     else:
         assert len(dist) == 2
         dist_a, dist_b = dist
@@ -218,6 +251,7 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
     vir_b = numpy.arange(ndown, nbasis, dtype=numpy.int32)
     # dets = [(d0a, d0b)]
     dets = []
+    # loop over excitation levels from reference for alpha / beta determinants
     for ialpha in range(0, nup + 1):
         oa = _gen_det_selection(d0a, vir_a, occ_a, dist_a, ialpha)
         if oa is None:
@@ -226,11 +260,26 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
             ob = _gen_det_selection(d0b, vir_b, occ_b, dist_b, ibeta)
             if ob is None:
                 continue
-            dets += list(itertools.product(oa, ob))
+            if nup == 0:
+                dets += [[[], b] for b in ob]
+            elif ndown == 0:
+                dets += [[a, []] for a in oa]
+            else:
+                dets += list(itertools.product(oa, ob))
     occ_a, occ_b = zip(*dets)
     _ndet = min(len(occ_a), ndet)
+    # remove any duplicates, don't really care what they are since it's a random wavefunction
     wfn = (coeffs[:_ndet], list(occ_a[:_ndet]), list(occ_b[:_ndet]))
-    return wfn, init_wfn
+    wfn_dedupe = {}
+    for c, a, b in zip(*wfn):
+        wfn_dedupe[tuple([tuple(a), tuple(b)])] = c
+    coeffs = numpy.array(list(wfn_dedupe.values()))
+    occ_a = []
+    occ_b = []
+    for x in wfn_dedupe.keys():
+        occ_a.append(numpy.array(x[0]))
+        occ_b.append(numpy.array(x[1]))
+    return (coeffs, numpy.array(occ_a), numpy.array(occ_b)), init_wfn
 
 
 def get_random_wavefunction(nelec, nbasis):
@@ -251,6 +300,38 @@ def generate_hamiltonian_low_mem(nmo, nelec, cplx=False):
     return h1e, chol, enuc
 
 
+def build_random_ci_wfn(
+    num_spat: int, num_elec: Tuple[int, int], num_det: int, cmplx_coeffs: bool = True
+):
+    num_alpha, num_beta = num_elec
+    wfn = {}
+    for _ in range(num_det):
+        oa = sorted(
+            int(i) for i in numpy.random.choice(numpy.arange(num_spat), num_alpha, replace=False)
+        )
+        ob = sorted(
+            int(i) for i in numpy.random.choice(numpy.arange(num_spat), num_beta, replace=False)
+        )
+        wfn[tuple((tuple(oa), tuple(ob)))] = numpy.random.random()
+
+    occ_a = []
+    occ_b = []
+    for x in wfn.keys():
+        occ_a.append(numpy.array(x[0]))
+        occ_b.append(numpy.array(x[1]))
+
+    return numpy.array(list(wfn.values())), occ_a, occ_b
+
+
+def wfn_as_a_dict(
+    occa: Sequence[Sequence[int, ...]], occb: Sequence[Sequence[int, ...]], coeff: Sequence[complex]
+) -> Dict[Tuple[Tuple[int, ...], Tuple[int, ...]], complex]:
+    for c, oa, ob in zip(coeff, occa, occb):
+        wfn[tuple((tuple(oa), tuple(ob)))] = c
+
+    return wfn
+
+
 def shaped_normal(shape, cmplx=False):
     size = numpy.prod(shape)
     if cmplx:
@@ -264,14 +345,17 @@ def shaped_normal(shape, cmplx=False):
     return arr.reshape(shape)
 
 
-def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
+def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False, symmetrize=False):
     sys = Generic(nelec=(nalpha, nbeta))
     chol = shaped_normal((naux, nmo, nmo), cmplx=cmplx)
     h1e = shaped_normal((nmo, nmo), cmplx=cmplx)
+    if symmetrize:
+        h1e = h1e + h1e.conj().T
+        assert not cmplx, "Can't symmetrize cholesky like this if complex integrals desired."
+        chol = chol + chol.transpose((0, 2, 1))
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
-        # h1e_mod=h1e.copy(),
         ecore=0,
         verbose=False,
     )
@@ -428,10 +512,13 @@ def build_test_case_handlers_mpi(
     rhf_trial: bool = False,
     two_body_only: bool = False,
     options: Union[dict, None] = None,
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    h1e, chol, _, _ = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, symmetric_one_body=symmetric_one_body
+    )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
@@ -497,6 +584,7 @@ def build_test_case_handlers(
     choltol: float = 1e-3,
     reortho: bool = True,
     options: Union[dict, None] = None,
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         numpy.random.seed(seed)
@@ -504,7 +592,12 @@ def build_test_case_handlers(
     if complex_integrals:
         sym = 4
     h1e, chol, _, eri = generate_hamiltonian(
-        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+        num_basis,
+        num_elec,
+        cplx=complex_integrals,
+        sym=sym,
+        tol=choltol,
+        symmetric_one_body=symmetric_one_body,
     )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
@@ -562,10 +655,13 @@ def build_driver_test_instance(
     seed: Union[int, None] = None,
     density_diff=False,
     options: Union[dict, None] = None,
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    h1e, chol, _, _ = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, symmetric_one_body=symmetric_one_body
+    )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),

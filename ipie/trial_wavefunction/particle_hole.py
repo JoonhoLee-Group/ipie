@@ -10,6 +10,7 @@ from ipie.estimators.greens_function_multi_det import (
 )
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
+from ipie.lib.libci import obervables as ph_obs
 from ipie.propagation.force_bias import construct_force_bias_batch_multi_det_trial
 from ipie.propagation.overlap import (
     calc_overlap_multi_det,
@@ -18,14 +19,7 @@ from ipie.propagation.overlap import (
 )
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-
-# FDM Clean this up!
-try:
-    from ipie.lib.wicks import wicks_helper
-
-    _use_wicks_helper = True
-except ImportError:
-    _use_wicks_helper = False
+from ipie.utils.frozen_core import active_space_hamiltonian
 
 
 class ParticleHole(TrialWavefunctionBase):
@@ -86,11 +80,11 @@ class ParticleHole(TrialWavefunctionBase):
             core = [i for i in range(num_melting)]
             occa = [np.array(core + [o + num_melting for o in oa]) for oa in occa0]
             occb = [np.array(core + [o + num_melting for o in ob]) for ob in occb0]
-            self.nmelting = nmelting_a
+            self.num_melting = nmelting_a
         else:
             occa = wfn[1][:num_dets]
             occb = wfn[2][:num_dets]
-            self.nmelting = 0
+            self.num_melting = 0
         # Store alpha electrons first followed by beta electrons.
         # FDM Remove this with wicks helper proper integration
         dets = [list(a) + [i + self.nbasis for i in c] for (a, c) in zip(occa, occb)]
@@ -355,6 +349,19 @@ class ParticleHole(TrialWavefunctionBase):
 
         return slices_alpha, slices_beta
 
+    @staticmethod
+    def strip_melting_cores(
+        occa: np.ndarray, occb: np.ndarray, n_melting: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Strip any melting cores from ipie wavefunction."""
+        occa_new = []
+        occb_new = []
+        for oa, ob in zip(occa, occb):
+            occa_new.append(np.array([o - n_melting for o in oa[n_melting:]]))
+            occb_new.append(np.array([o - n_melting for o in ob[n_melting:]]))
+
+        return np.array(occa_new), np.array(occb_new)
+
     def half_rotate(self, hamiltonian, comm=None):
         # First get half rotated integrals for reference determinant
         ndets = 1
@@ -401,10 +408,22 @@ class ParticleHole(TrialWavefunctionBase):
     def calculate_energy(self, system, hamiltonian):
         if self.verbose:
             print("# Computing trial wavefunction energy.")
-        # Cannot use usual energy evaluation routines if trial is orthogonal.
-        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
-            system, hamiltonian, self.spin_occs, self.coeffs
-        )
+        try:
+            occa, occb = self.strip_melting_cores(self.occa, self.occb, self.num_melting)
+            _keep = self.num_dets_for_props
+            h1e, eri, e0 = active_space_hamiltonian(self.nact, self.nfrozen, hamiltonian)
+            self.energy, self.e1b, self.e2b = ph_obs.variational_energy(
+                self.coeffs[:_keep],
+                occa[:_keep],
+                occb[:_keep],
+                h1e,
+                eri,
+                e0,
+            )
+        except ImportError:
+            self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
+                system, hamiltonian, self.spin_occs, self.coeffs
+            )
         if self.verbose:
             print(f"# Variational energy of trial wavefunction: {self.energy.real}")
             if abs(self.energy.imag) > 1e-10:
@@ -416,30 +435,25 @@ class ParticleHole(TrialWavefunctionBase):
             print("# Computing 1-RDM of the trial wfn for mean-field shift.")
             print(f"# Using first {self.num_dets_for_props} determinants for evaluation.")
         start = time.time()
-        if _use_wicks_helper:
-            if self.verbose:
-                print("# Using Wicks helper to compute 1-RDM.")
-            assert wicks_helper is not None
-            max_orb = max(np.max(self.occa), np.max(self.occb))
-            err_msg = (
-                f"Number of orbitals is too large for wicks_helper {max_orb} "
-                f"vs {64*wicks_helper.DET_LEN}."
-            )
-            assert 2 * max_orb < 64 * wicks_helper.DET_LEN, err_msg
-            dets = wicks_helper.encode_dets(self.occa, self.occb)
-            phases = wicks_helper.convert_phase(self.occa, self.occb)
+        try:
+            occa, occb = self.strip_melting_cores(self.occa, self.occb, self.num_melting)
             _keep = self.num_dets_for_props
-            self.G = wicks_helper.compute_opdm(
-                phases[:_keep] * self.coeffs[:_keep].copy(),
-                dets[:_keep],
+            self.G = ph_obs.one_rdm(
+                self.coeffs[:_keep],
+                occa[:_keep],
+                occb[:_keep],
+                self.nact,
+                self.nelec,
                 self.nbasis,
-                sum(self.nelec),
+                self.num_melting,
             )
-            end = time.time()
+        except ImportError:
             if self.verbose:
-                print(f"# Time to compute 1-RDM: {end - start} s")
-        else:
+                print("Using slow routine to compute trial RDM.")
             self.G = self.compute_1rdm(self.nbasis)
+        end = time.time()
+        if self.verbose:
+            print(f"# Time to compute 1-RDM: {end - start} s")
         tr_g = self.G[0].trace() + self.G[1].trace()
         err_msg = f"Tr(G_T) is incorrect {tr_g} vs {self.nalpha + self.nbeta}"
         assert np.isclose(tr_g, self.nalpha + self.nbeta), err_msg
@@ -456,6 +470,7 @@ class ParticleHole(TrialWavefunctionBase):
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
 
     def compute_1rdm(self, nbasis):
+        """Slow function using python routines."""
         assert self.ortho_expansion == True
         denom = np.sum(
             self.coeffs[: self.num_dets_for_props].conj() * self.coeffs[: self.num_dets_for_props]

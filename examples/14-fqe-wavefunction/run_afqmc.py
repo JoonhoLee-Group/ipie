@@ -37,7 +37,11 @@ from pyscf import ao2mo, gto, mcscf, scf
 from ipie.hamiltonians.generic import GenericRealChol as GenericHam
 from ipie.systems.generic import Generic as GenericSys
 from ipie.trial_wavefunction.particle_hole import ParticleHole
-from ipie.utils.from_pyscf import generate_hamiltonian
+from ipie.utils.from_pyscf import (
+    build_ipie_sys_ham_from_pyscf,
+    build_ipie_wavefunction_from_pyscf,
+    generate_hamiltonian,
+)
 
 
 def get_occa_occb_coeff_from_fqe_wfn(
@@ -53,7 +57,6 @@ def get_occa_occb_coeff_from_fqe_wfn(
                     alpha_str = sector._core.string_alpha(inda)
                     beta_str = sector._core.string_beta(indb)
                     coeff = sector.coeff[inda, indb]
-
                     occa_list.append(fqe.bitstring.integer_index(alpha_str))
                     occb_list.append(fqe.bitstring.integer_index(beta_str))
                     coeffs.append(coeff)
@@ -122,57 +125,16 @@ def get_fqe_variational_energy(
     fqe_ham = fqe.restricted_hamiltonian.RestrictedHamiltonian(
         (h1e, np.einsum("ijlk", -0.5 * of_eris)), e_0=ecore
     )
-    return wfn.expectationValue(fqe_ham).real
+    import time
 
-
-def build_ipie_wavefunction_from_pyscf(
-    fcivec: np.ndarray, mc: Union[pyscf.mcscf.CASCI, pyscf.mcscf.CASSCF], tol: float = 1e-12
-) -> ParticleHole:
-    """Build ipie wavefunction in the full space (i.e. with "melting cores")"""
-    coeff, occa, occb = zip(
-        *pyscf.fci.addons.large_ci(fcivec, mc.ncas, mc.nelecas, tol=tol, return_strs=False)
-    )
-    ix = np.argsort(np.abs(coeff))[::-1]
-    nelec = mc._scf.mol.nelec
-    nmo = mc._scf.mo_coeff.shape[-1]
-    return ParticleHole((np.array(coeff)[ix], np.array(occa)[ix], np.array(occb)[ix]), nelec, nmo)
-
-
-def strip_melting_cores(
-    occa: np.ndarray, occb: np.ndarray, n_melting: int
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Strip any melting cores from ipie wavefunction."""
-    occa_new = []
-    occb_new = []
-    for oa, ob in zip(occa, occb):
-        # ipie typically builds the cas wavefunction in the full space by inserting "melting" cores
-        # To map back to the active space you need to strip these and then shift
-        # the orbital indices back by the number of melting cores (n_melting)
-        occa_new.append(np.array([o - n_melting for o in oa[n_melting:]]))
-        occb_new.append(np.array([o - n_melting for o in ob[n_melting:]]))
-
-    return np.array(occa_new), np.array(occb_new)
-
-
-def build_ipie_sys_ham_from_pyscf(
-    mc: Union[pyscf.mcscf.CASCI, pyscf.mcscf.CASSCF], chol_cut: float = 1e-6
-) -> Tuple[GenericSys, GenericHam]:
-    """Build ipie system and hamiltonian from MCSCF object."""
-    ham = generate_hamiltonian(
-        mc._scf.mol,
-        mc.mo_coeff,
-        mc._scf.get_hcore(),
-        mc.mo_coeff,
-        chol_cut=chol_cut,
-        num_frozen_core=0,
-        verbose=False,
-    )
-    nelec = (mol.nelec[0], mol.nelec[1])
-    return GenericSys(nelec), ham
+    start = time.time()
+    energy = wfn.expectationValue(fqe_ham).real
+    print(time.time() - start)
+    return energy
 
 
 if __name__ == "__main__":
-    mol = gto.Mole(atom=[("N", (0.0, 0.0, 0.0)), ("N", (0.0, 0.0, 1.45))], spin=0, basis="sto-3g")
+    mol = gto.Mole(atom=[("N", (0.0, 0.0, 0.0)), ("N", (0.0, 0.0, 2.1))], spin=0, basis="cc-pvdz")
     mol.build()
     mf = scf.RHF(mol)
     mf.kernel()
@@ -180,39 +142,65 @@ if __name__ == "__main__":
     nalpha, nbeta = mol.nelec
     nmo = mf.mo_coeff.shape[1]
 
-    ncas, nelecas = (6, 6)
+    ncas, nelecas = (12, 12)
     mc = mcscf.CASSCF(mf, nelecas, ncas)
 
     e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
     print(f"DIM(H) = {fcivec.ravel().shape}")
+    import time
+
+    start = time.time()
+    casdm1 = mc.fcisolver.make_rdm1(fcivec, ncas, nelecas)
+    print(time.time() - start)
     # Get the active space ERIs in the CASSCF MO basis
     h1e, e0 = mc.get_h1eff(mc.mo_coeff)
     eris = ao2mo.restore("1", mc.get_h2eff(mc.mo_coeff), ncas).reshape((ncas,) * 4)
     # you can check how truncating the wavefunction affects the energy
-    wfn = build_ipie_wavefunction_from_pyscf(fcivec, mc, tol=0.0)
+    wfn = build_ipie_wavefunction_from_pyscf(fcivec, mc, tol=1e-4)
     print(f"Length of truncated CI expansion: {wfn.num_dets}")
     # you check how truncating the Cholesky dimension affects the energy
-    sys, ham = build_ipie_sys_ham_from_pyscf(mc, chol_cut=1e-12)
+    sys, ham = build_ipie_sys_ham_from_pyscf(mc, chol_cut=1e-8)
+    start = time.time()
+    wfn.build_one_rdm()
+    print("rdm: ", time.time() - start)
 
+    import time
+
+    start = time.time()
     ipie_energy = wfn.calculate_energy(sys, ham)[0]
+    print(time.time() - start)
     msg = f"{ipie_energy.real:.10f}"
-    print(f"ipie energy: {msg}")
     assert np.isclose(e_tot, ipie_energy, atol=1e-8), f"{e_tot} != {msg}"
 
     # Convert to FQE and check the energy
-    occa_fqe, occb_fqe = strip_melting_cores(wfn.occa, wfn.occb, wfn.nmelting)
+    occa_fqe, occb_fqe = wfn.strip_melting_cores(wfn.occa, wfn.occb, wfn.num_melting)
     fqe_wfn = get_fqe_wfn_from_occ_coeff(
         wfn.coeffs, occa_fqe, occb_fqe, nelecas, ncas, ms=0, threshold=0.0
     )
+    sector = fqe_wfn.sector((10, 0))
+    coeff = sector.coeff.ravel()
+    ix = np.argsort(np.abs(coeff))[::-1]
+    coeff = coeff[ix]
     fqe_energy = get_fqe_variational_energy(e0, h1e, eris, fqe_wfn)
     msg = f"{fqe_energy.real:.10f}"
     print(f"FQE energy: {msg}")
     assert np.isclose(e_tot, fqe_energy, atol=1e-8), f"{e_tot} != {msg}"
 
     # round trip back to ipie
+    # note sorting may cause degeneracies
     coeff, occa, occb = get_occa_occb_coeff_from_fqe_wfn(fqe_wfn, threshold=0.0)
-    wfn_round_trip = ParticleHole((coeff, occa, occb), mc._scf.mol.nelec, mc.mo_coeff.shape[-1])
+    ix = np.argsort(np.abs(coeff))[::-1]
+    occa = occa[ix]
+    occb = occb[ix]
+    coeff = coeff[ix]
+    wfn_round_trip = ParticleHole(
+        (coeff, occa, occb),
+        mc._scf.mol.nelec,
+        mc.mo_coeff.shape[-1],
+        verbose=False,
+        num_dets_for_props=len(coeff),
+    )
     ipie_energy = wfn_round_trip.calculate_energy(sys, ham)[0]
     msg = f"{ipie_energy.real:.10f}"
-    print(f"ipie energy from round trip: {msg}")
+    print(f"# ipie energy from round trip: {msg}")
     assert np.isclose(e_tot, ipie_energy, atol=1e-8), f"{e_tot} != {msg}"

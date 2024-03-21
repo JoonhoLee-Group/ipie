@@ -88,11 +88,14 @@ def build_legacy_test_case_handlers_mpi(
     two_body_only: bool = False,
     # pylint: disable=dangerous-default-value
     options={},
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    h1e, chol, _, _ = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, symmetric_one_body=symmetric_one_body
+    )
     system = Generic(nelec=num_elec)
     ham_legacy = HamGeneric(
         h1e=np.array([h1e, h1e]),
@@ -166,11 +169,14 @@ def build_legacy_test_case_handlers(
     two_body_only: bool = False,
     # pylint: disable=dangerous-default-value
     options={},
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         np.random.seed(seed)
     assert len(options) > 0
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    h1e, chol, _, _ = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, symmetric_one_body=symmetric_one_body
+    )
     system = Generic(nelec=num_elec)
     ham_legacy = HamGeneric(
         h1e=np.array([h1e, h1e]),

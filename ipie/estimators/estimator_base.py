@@ -89,7 +89,8 @@ class EstimatorBase(metaclass=ABCMeta):
         self._shape = shape
 
     @abstractmethod
-    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray: ...
+    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray:
+        ...
 
     @property
     def names(self):
@@ -141,4 +142,5 @@ class EstimatorBase(metaclass=ABCMeta):
             else:
                 self._data[k] = 0.0j
 
-    def post_reduce_hook(self, data) -> None: ...
+    def post_reduce_hook(self, data) -> None:
+        ...

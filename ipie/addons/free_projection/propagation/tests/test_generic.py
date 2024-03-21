@@ -42,7 +42,9 @@ def test_free_projection():
         }
     )
     qmc.batched = True
-    batched_data = build_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
+    batched_data = build_test_case_handlers(
+        nelec, nmo, num_dets=1, options=qmc, seed=7, symmetric_one_body=False
+    )
     prop_fp = FreePropagation(time_step=0.005, verbose=False, ene_0=-1.0)
     prop_fp.build(batched_data.hamiltonian, batched_data.trial)
 

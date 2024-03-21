@@ -19,7 +19,7 @@ def test_nomsd():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5, 5)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False, symmetric_one_body=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
@@ -40,7 +40,7 @@ def test_hybrid():
     numpy.random.seed(7)
     nmo = 10
     nelec = (5, 5)
-    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False)
+    h1e, chol, enuc, eri = generate_hamiltonian(nmo, nelec, cplx=False, symmetric_one_body=False)
     system = Generic(nelec=nelec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),

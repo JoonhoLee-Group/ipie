@@ -48,11 +48,25 @@ def test_pair_branch_batch():
         }
     )
     legacy_data = build_legacy_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+        nelec,
+        nmo,
+        mpi_handler,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
+        symmetric_one_body=False,
     )
     qmc.batched = True
     batched_data = build_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+        nelec,
+        nmo,
+        mpi_handler,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
+        symmetric_one_body=False,
     )
     nup = nelec[0]
     for iw in range(nwalkers):
@@ -106,6 +120,7 @@ def test_comb_batch():
         complex_trial=True,
         options=qmc,
         seed=7,
+        symmetric_one_body=False,
     )
     qmc.batched = True
     batched_data = build_test_case_handlers_mpi(
@@ -116,6 +131,7 @@ def test_comb_batch():
         complex_trial=True,
         options=qmc,
         seed=7,
+        symmetric_one_body=False,
     )
     nup = nelec[0]
 
@@ -163,7 +179,14 @@ def test_stochastic_reconfiguration_batch():
     )
     qmc.batched = True
     batched_data = build_test_case_handlers_mpi(
-        nelec, nmo, mpi_handler, num_dets=1, complex_trial=True, options=qmc, seed=7
+        nelec,
+        nmo,
+        mpi_handler,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=7,
+        symmetric_one_body=False,
     )
 
     assert pytest.approx(batched_data.walkers.weight[0]) == 1.0

@@ -74,6 +74,7 @@ def test_generic_single_det_batch_fp():
             trial_type="single_det",
             options=driver_options,
             seed=7,
+            symmetric_one_body=False,
         )
         afqmc.setup_estimators(tmpf.name)
         afqmc.run(verbose=False, estimator_filename=tmpf.name)

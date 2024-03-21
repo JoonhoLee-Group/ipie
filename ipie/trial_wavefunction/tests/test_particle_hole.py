@@ -2,19 +2,14 @@ import numpy as np
 import pytest
 
 from ipie.config import MPI
-
-try:
-    from ipie.lib.wicks import wicks_helper
-
-    no_wicks = False
-except ImportError:
-    no_wicks = True
+from ipie.estimators.local_energy import variational_energy_ortho_det
+from ipie.lib.libci import _HAVE_OPT_CI_CODE
 from ipie.trial_wavefunction.particle_hole import (
     ParticleHole,
     ParticleHoleNonChunked,
     ParticleHoleSlow,
 )
-from ipie.utils.testing import get_random_phmsd_opt, get_random_sys_ham
+from ipie.utils.testing import build_random_ci_wfn, get_random_phmsd_opt, get_random_sys_ham
 
 
 @pytest.mark.unit
@@ -157,13 +152,13 @@ def test_wicks_opt_chunked():
     assert trial._rcholb_act.shape == (naux, nbasis * trial.nact)
 
 
-@pytest.mark.wicks
-@pytest.mark.skipif(no_wicks, reason="lib.wicks not found.")
+@pytest.mark.libci
+@pytest.mark.skipif(not _HAVE_OPT_CI_CODE, reason="lib.libci not found.")
 @pytest.mark.parametrize(
-    "nalpha,nbeta,nbasis", ((4, 4, 10), (4, 7, 12), (36, 36, 47), (64, 65, 72))
+    "nalpha,nbeta,nbasis", ((4, 4, 10), (4, 7, 12), (36, 36, 47), (64, 65, 72), (8, 9, 109))
 )
-def test_opt_one_rdm(nalpha, nbeta, nbasis):
-    wavefunction, _ = get_random_phmsd_opt(nalpha, nbeta, nbasis, ndet=100, cmplx_coeffs=False)
+def test_opt_opdm(nalpha, nbeta, nbasis):
+    wavefunction = build_random_ci_wfn(nbasis, (nalpha, nbeta), 100, cmplx_coeffs=False)
     trial = ParticleHole(
         wavefunction,
         (nalpha, nbeta),
@@ -173,8 +168,37 @@ def test_opt_one_rdm(nalpha, nbeta, nbasis):
     )
     ref = trial.compute_1rdm(nbasis)
     assert np.allclose(trial.G, ref)
-    wavefunction, _ = get_random_phmsd_opt(
-        nalpha, nbeta, nbasis, ndet=len(wavefunction[0]), cmplx_coeffs=True
+    wavefunction = build_random_ci_wfn(nbasis, (nalpha, nbeta), 100, cmplx_coeffs=True)
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=False,
+        num_dets_for_props=(len(wavefunction[0])),
+    )
+    ref = trial.compute_1rdm(nbasis)
+    assert np.allclose(trial.G[0], ref[0].T)
+    assert np.allclose(trial.G[1], ref[1].T)
+
+
+@pytest.mark.libci
+@pytest.mark.skipif(not _HAVE_OPT_CI_CODE, reason="lib.libci not found.")
+@pytest.mark.parametrize("nmelting,nalpha,nbeta,nbasis", ((18, 64, 65, 72), (3, 8, 9, 109)))
+def test_opt_opdm_melting(nmelting, nalpha, nbeta, nbasis):
+    wavefunction = build_random_ci_wfn(
+        nbasis - nmelting, (nalpha - nmelting, nbeta - nmelting), 100, cmplx_coeffs=False
+    )
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=True,
+        num_dets_for_props=len(wavefunction[0]),
+    )
+    ref = trial.compute_1rdm(nbasis)
+    assert np.allclose(trial.G, ref)
+    wavefunction = build_random_ci_wfn(
+        nbasis - nmelting, (nalpha - nmelting, nbeta - nmelting), 100, cmplx_coeffs=True
     )
     trial = ParticleHole(
         wavefunction,
@@ -184,6 +208,35 @@ def test_opt_one_rdm(nalpha, nbeta, nbasis):
         num_dets_for_props=(len(wavefunction[0])),
     )
     ref = trial.compute_1rdm(nbasis)
-    # TODO: Fix convention.
     assert np.allclose(trial.G[0], ref[0].T)
     assert np.allclose(trial.G[1], ref[1].T)
+
+
+@pytest.mark.libci
+@pytest.mark.skipif(not _HAVE_OPT_CI_CODE, reason="lib.libci not found.")
+@pytest.mark.parametrize("nalpha,nbeta,nbasis", ((10, 10, 44), (8, 9, 32)))
+def test_opt_opdm_variational_energy(nalpha, nbeta, nbasis):
+    wavefunction = build_random_ci_wfn(nbasis, (nalpha, nbeta), 100, cmplx_coeffs=False)
+
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=True,
+        num_dets_for_props=len(wavefunction[0]),
+    )
+    sys, ham = get_random_sys_ham(nalpha, nbeta, nbasis, 4 * nbasis, symmetrize=True)
+    ref = variational_energy_ortho_det(sys, ham, trial.spin_occs, trial.coeffs)
+    test = trial.calculate_energy(sys, ham)
+    assert np.allclose(ref, test)
+    wavefunction = build_random_ci_wfn(nbasis, (nalpha, nbeta), 100, cmplx_coeffs=True)
+    trial = ParticleHole(
+        wavefunction,
+        (nalpha, nbeta),
+        nbasis,
+        verbose=False,
+        num_dets_for_props=(len(wavefunction[0])),
+    )
+    ref = variational_energy_ortho_det(sys, ham, trial.spin_occs, trial.coeffs)
+    test = trial.calculate_energy(sys, ham)
+    assert np.allclose(ref, test)

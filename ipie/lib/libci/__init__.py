@@ -1,4 +1,3 @@
-
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +13,14 @@
 # limitations under the License.
 #
 # Author: Fionn Malone <fionn.malone@gmail.com>
-#
 
+# try:
+
+from . import obervables
+
+try:
+    import ipie.lib.libci
+
+    _HAVE_OPT_CI_CODE = True
+except ImportError:
+    _HAVE_OPT_CI_CODE = False

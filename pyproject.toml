@@ -9,7 +9,7 @@ requires = [
 
 [tool.black]
 line-length = 100
-exclude = '''/(ipie/legacy)/|(ipie/lib)/'''
+exclude = '''/(ipie/legacy)/'''
 
 [tool.isort]
 profile = 'black'

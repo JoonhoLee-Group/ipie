@@ -108,10 +108,13 @@ def build_driver_test_instance_fp(
     seed: Union[int, None] = None,
     density_diff=False,
     options: Union[dict, None] = None,
+    symmetric_one_body: bool = True,
 ):
     if seed is not None:
         numpy.random.seed(seed)
-    h1e, chol, _, _ = generate_hamiltonian(num_basis, num_elec, cplx=complex_integrals)
+    h1e, chol, _, _ = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, symmetric_one_body=symmetric_one_body
+    )
     system = Generic(nelec=num_elec)
     ham = HamGeneric(
         h1e=numpy.array([h1e, h1e]),
