@@ -27,7 +27,7 @@ def build_generic_test_case_handlers(options: dict,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     stabilize_freq = options.get('stabilize_freq', 5)
     pop_control_freq = options.get('pop_control_freq', 1)
@@ -64,7 +64,7 @@ def build_generic_test_case_handlers(options: dict,
 
     # 4. Build walkers.
     walkers = UHFThermalWalkers(
-                trial, nbasis, nwalkers, nstack=nstack, lowrank=lowrank, 
+                trial, nbasis, nwalkers, stack_size=stack_size, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, verbose=verbose)
     
     # 5. Build propagator.
@@ -98,7 +98,7 @@ def build_generic_test_case_handlers_mpi(options: dict,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     stabilize_freq = options.get('stabilize_freq', 5)
     pop_control_freq = options.get('pop_control_freq', 1)
@@ -135,7 +135,7 @@ def build_generic_test_case_handlers_mpi(options: dict,
 
     # 4. Build walkers.
     walkers = UHFThermalWalkers(
-                trial, nbasis, nwalkers, nstack=nstack, lowrank=lowrank, 
+                trial, nbasis, nwalkers, stack_size=stack_size, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, mpi_handler=mpi_handler, verbose=verbose)
     
     # 5. Build propagator.
@@ -165,7 +165,7 @@ def build_driver_generic_test_instance(options: Union[dict, None],
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     stabilize_freq = options.get('stabilize_freq', 5)
     pop_control_freq = options.get('pop_control_freq', 1)
@@ -198,7 +198,7 @@ def build_driver_generic_test_instance(options: Union[dict, None],
     # 4. Build Thermal AFQMC driver.
     afqmc = ThermalAFQMC.build(
                 nelec, mu, beta, hamiltonian, trial, nwalkers=nwalkers, 
-                nstack=nstack, seed=seed, nblocks=nblocks, timestep=timestep, 
+                stack_size=stack_size, seed=seed, nblocks=nblocks, timestep=timestep, 
                 stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq, 
                 pop_control_method=pop_control_method, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, debug=debug, verbose=verbose)
@@ -216,7 +216,7 @@ def build_ueg_test_case_handlers(options: dict,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 101)
     stabilize_freq = options.get('stabilize_freq', 5)
     pop_control_freq = options.get('pop_control_freq', 1)
@@ -257,7 +257,7 @@ def build_ueg_test_case_handlers(options: dict,
 
     # 4. Build walkers.
     walkers = UHFThermalWalkers(
-                trial, nbasis, nwalkers, nstack=nstack, lowrank=lowrank, 
+                trial, nbasis, nwalkers, stack_size=stack_size, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, verbose=verbose)
     
     # 5. Build propagator.
@@ -286,7 +286,7 @@ def build_driver_ueg_test_instance(options: Union[dict, None],
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     stabilize_freq = options.get('stabilize_freq', 5)
     pop_control_freq = options.get('pop_control_freq', 1)
@@ -326,7 +326,7 @@ def build_driver_ueg_test_instance(options: Union[dict, None],
     # 4. Build Thermal AFQMC driver.
     afqmc = ThermalAFQMC.build(
                 nelec, mu, beta, hamiltonian, trial, nwalkers=nwalkers,
-                nstack=nstack, seed=seed, nblocks=nblocks, timestep=timestep, 
+                stack_size=stack_size, seed=seed, nblocks=nblocks, timestep=timestep, 
                 stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq, 
                 pop_control_method=pop_control_method, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, debug=debug, verbose=verbose)

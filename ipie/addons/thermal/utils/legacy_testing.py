@@ -41,7 +41,7 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     nsteps_per_block = 1
     stabilize_freq = options.get('stabilize_freq', 5)
@@ -58,7 +58,7 @@ def build_legacy_generic_test_case_handlers(hamiltonian,
     
     legacy_options = {
         "walkers": {
-            "stack_size": nstack,
+            "stack_size": stack_size,
             "low_rank": lowrank,
             "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
@@ -137,7 +137,7 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     nsteps_per_block = 1
     stabilize_freq = options.get('stabilize_freq', 5)
@@ -155,7 +155,7 @@ def build_legacy_generic_test_case_handlers_mpi(hamiltonian,
 
     legacy_options = {
         "walkers": {
-            "stack_size": nstack,
+            "stack_size": stack_size,
             "low_rank": lowrank,
             "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
@@ -234,7 +234,7 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options['nwalkers']
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     nsteps_per_block = 1
     stabilize_freq = options.get('stabilize_freq', 5)
@@ -266,7 +266,7 @@ def build_legacy_driver_generic_test_instance(hamiltonian,
         },
 
         "walkers": {
-            "stack_size": nstack,
+            "stack_size": stack_size,
             "low_rank": lowrank,
             "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
@@ -312,7 +312,7 @@ def build_legacy_ueg_test_case_handlers(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     nsteps_per_block = 1
     stabilize_freq = options.get('stabilize_freq', 5)
@@ -331,7 +331,7 @@ def build_legacy_ueg_test_case_handlers(hamiltonian,
         },
 
         "walkers": {
-            "stack_size": nstack,
+            "stack_size": stack_size,
             "low_rank": lowrank,
             "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,
@@ -392,7 +392,7 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
     beta = options['beta']
     timestep = options['timestep']
     nwalkers = options.get('nwalkers', 100)
-    nstack = options.get('nstack', 10)
+    stack_size = options.get('stack_size', 10)
     nblocks = options.get('nblocks', 100)
     nsteps_per_block = 1
     stabilize_freq = options.get('stabilize_freq', 5)
@@ -423,7 +423,7 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
         },
 
         "walkers": {
-            "stack_size": nstack,
+            "stack_size": stack_size,
             "low_rank": lowrank,
             "low_rank_thresh": lowrank_thresh,
             "pop_control_freq": pop_control_freq,

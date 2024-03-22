@@ -10,13 +10,13 @@ from ipie.legacy.trial_density_matrices.chem_pot import find_chemical_potential 
 def test_find_chemical_potential():
     dt = 0.01
     beta = 1
-    nstack = 3
+    stack_size = 3
     stack_length = 20
     nav = 7
     nbsf = 14
     alt_convention = False
 
-    dtau = dt * nstack
+    dtau = dt * stack_size
     h1e = numpy.random.random((nbsf, nbsf))
     rho = numpy.array([scipy.linalg.expm(-dtau * h1e),
                        scipy.linalg.expm(-dtau * h1e)])

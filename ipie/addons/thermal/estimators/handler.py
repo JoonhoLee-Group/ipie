@@ -217,6 +217,32 @@ class ThermalEstimatorHandler(object):
         if comm.rank == 0:
             print(f"{block:>17d} " + output_string)
         self.zero()
+    
+    def print_cut(self, comm, block, t, walker_factors):
+        comm.Reduce(self.local_estimates, self.global_estimates, op=MPI.SUM)
+        # Get walker data.
+        offset = walker_factors.size
+
+        if comm.rank == 0:
+            k = 'energy'
+            e = self[k]
+            start = offset + self.get_offset(k)
+            end = start + int(self[k].size)
+            estim_data = self.global_estimates[start:end]
+            e.post_reduce_hook(estim_data)
+            etotal = estim_data[e.get_index("ETotal")]
+
+            k = 'nav'
+            e = self[k]
+            start = offset + self.get_offset(k)
+            end = start + int(self[k].size)
+            estim_data = self.global_estimates[start:end]
+            e.post_reduce_hook(estim_data)
+            nav = estim_data[e.get_index("Nav")]
+            
+            print(f"cut : {t} {nav.real} {etotal.real}")
+
+        self.zero()
 
     def zero(self):
         self.local_estimates[:] = 0.0

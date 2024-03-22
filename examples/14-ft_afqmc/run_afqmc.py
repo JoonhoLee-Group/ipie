@@ -43,7 +43,7 @@ options = {
                 'beta': 10.,
                 'timestep': 1.,
                 'nwalkers': 12 // comm.size,
-                'nstack': 10,
+                'stack_size': 10,
                 'seed': 7,
                 'nblocks': 50,
                 },

@@ -15,7 +15,7 @@ class UHFThermalWalkers(BaseWalkers):
         trial: OneBody,
         nbasis: int,
         nwalkers: int,
-        nstack = None,
+        stack_size = None,
         lowrank: bool = False,
         lowrank_thresh: float = 1e-6,
         mpi_handler = None,
@@ -29,22 +29,22 @@ class UHFThermalWalkers(BaseWalkers):
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
         self.nslice = trial.nslice
-        self.nstack = nstack
+        self.stack_size = stack_size
 
-        if self.nstack == None:
-            self.nstack = trial.nstack
+        if self.stack_size == None:
+            self.stack_size = trial.stack_size
 
-        if (self.nslice // self.nstack) * self.nstack != self.nslice:
+        if (self.nslice // self.stack_size) * self.stack_size != self.nslice:
             if verbose:
                 print("# Input stack size does not divide number of slices.")
-            self.nstack = update_stack(self.nstack, self.nslice, verbose)
+            self.stack_size = update_stack(self.stack_size, self.nslice, verbose)
 
-        if self.nstack > trial.nstack:
+        if self.stack_size > trial.stack_size:
             if verbose:
                 print("# Walker stack size differs from that estimated from trial density matrix.")
-                print(f"# Be careful. cond(BT)**nstack: {trial.cond ** self.nstack:10.3e}.")
+                print(f"# Be careful. cond(BT)**stack_size: {trial.cond ** self.stack_size:10.3e}.")
 
-        self.stack_length = self.nslice // self.nstack
+        self.stack_length = self.nslice // self.stack_size
         self.lowrank = lowrank
         self.lowrank_thresh = lowrank_thresh
 
@@ -70,11 +70,11 @@ class UHFThermalWalkers(BaseWalkers):
                 print("# Trial density matrix is not diagonal.")
 
         if verbose:
-            print(f"# Walker stack size: {self.nstack}")
+            print(f"# Walker stack size: {self.stack_size}")
             print(f"# Using low rank trick: {self.lowrank}")
 
         self.stack = [PropagatorStack(
-            self.nstack,
+            self.stack_size,
             self.nslice,
             self.nbasis,
             numpy.complex128,

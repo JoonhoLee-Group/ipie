@@ -86,10 +86,10 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
             comm=comm,
             verbose=verbosity,
         )
-        nstack = get_input_value(wlk_opts, 'nstack', default=10, alias=["stack_size"], verbose=verbosity)
+        stack_size = get_input_value(wlk_opts, 'stack_size', default=10, verbose=verbosity)
         lowrank_thresh = get_input_value(wlk_opts, 'lowrank_thresh', default=1e-6, alias=["low_rank_thresh"], verbose=verbosity)
         walkers = UHFThermalWalkers(
-                    trial, hamiltonian.nbasis, qmc.nwalkers, nstack=nstack, 
+                    trial, hamiltonian.nbasis, qmc.nwalkers, stack_size=stack_size, 
                     lowrank=lowrank, lowrank_thresh=lowrank_thresh, verbose=verbosity)
 
         if (comm.rank == 0) and (qmc.nsteps > 1):

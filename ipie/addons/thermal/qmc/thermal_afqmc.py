@@ -10,6 +10,7 @@ from ipie.addons.thermal.propagation.propagator import Propagator
 from ipie.addons.thermal.estimators.handler import ThermalEstimatorHandler
 from ipie.addons.thermal.qmc.options import ThermalQMCParams
 
+from ipie.config import MPI
 from ipie.utils.io import to_json
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
@@ -70,7 +71,7 @@ class ThermalAFQMC(AFQMC):
             hamiltonian,
             trial,
             nwalkers: int = 100,
-            nstack: int = 10,
+            stack_size: int = 10,
             seed: int = None,
             nblocks: int = 100,
             timestep: float = 0.005,
@@ -138,7 +139,7 @@ class ThermalAFQMC(AFQMC):
 
         system = Generic(nelec) 
         walkers = UHFThermalWalkers(
-                    trial, hamiltonian.nbasis, nwalkers, nstack=nstack,
+                    trial, hamiltonian.nbasis, nwalkers, stack_size=stack_size,
                     lowrank=lowrank, lowrank_thresh=lowrank_thresh, 
                     mpi_handler=mpi_handler, verbose=verbose)
         propagator = Propagator[type(hamiltonian)](
@@ -240,7 +241,6 @@ class ThermalAFQMC(AFQMC):
                 self.tprop_barrier += time.time() - start_barrier
                 self.tprop += time.time() - start
                 
-                #print(f'self.walkers.weight = {self.walkers.weight}')
                 if (t > 0) and (t % self.params.pop_control_freq == 0):
                     start = time.time()
                     self.pcontrol.pop_control(self.walkers, comm)
@@ -250,6 +250,17 @@ class ThermalAFQMC(AFQMC):
                     self.tpopc_recv = self.pcontrol.timer.recv_time
                     self.tpopc_comm = self.pcontrol.timer.communication_time
                     self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
+                
+                # Print cut.
+                self.estimators.compute_estimators(
+                        self.hamiltonian, self.trial, self.walkers)
+
+                #if comm.rank == 0:
+                    #print(self.walkers.stack[0].time_slice)
+
+                self.estimators.print_cut(
+                        comm, step // self.params.num_steps_per_block, t, self.accumulators)
+
             
             # Accumulate weight, hybrid energy etc. across block.
             start = time.time()
@@ -259,8 +270,8 @@ class ThermalAFQMC(AFQMC):
             # Calculate estimators.
             start = time.time()
             if step % self.params.num_steps_per_block == 0:
-                self.estimators.compute_estimators(self.hamiltonian,
-                                                   self.trial, self.walkers)
+                self.estimators.compute_estimators(
+                        self.hamiltonian, self.trial, self.walkers)
 
                 self.estimators.print_block(
                     comm, step // self.params.num_steps_per_block, self.accumulators)

@@ -6,7 +6,7 @@ from ipie.utils.misc import get_numeric_names
 class PropagatorStack:
     def __init__(
         self,
-        nstack,
+        stack_size,
         nslice,
         nbasis,
         dtype,
@@ -18,9 +18,9 @@ class PropagatorStack:
         thresh=1e-6,
     ):
         self.time_slice = 0
-        self.nstack = nstack
+        self.stack_size = stack_size
         self.nslice = nslice
-        self.stack_length = self.nslice // self.nstack
+        self.nstack = self.nslice // self.stack_size
         self.nbasis = nbasis
         self.diagonal_trial = diagonal
         self.averaging = averaging
@@ -32,9 +32,9 @@ class PropagatorStack:
         if self.lowrank:
             assert diagonal
 
-        if self.stack_length * self.nstack < self.nslice:
-            print("nstack must divide the total path length")
-            assert self.stack_length * self.nstack == self.nslice
+        if self.nstack * self.stack_size < self.nslice:
+            print("stack_size must divide the total path length")
+            assert self.nstack * self.stack_size == self.nslice
 
         self.dtype = dtype
         self.BT = BT
@@ -42,9 +42,9 @@ class PropagatorStack:
         self.counter = 0
         self.block = 0
 
-        self.stack = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
-        self.left = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
-        self.right = numpy.zeros((self.stack_length, 2, nbasis, nbasis), dtype=dtype)
+        self.stack = numpy.zeros((self.nstack, 2, nbasis, nbasis), dtype=dtype)
+        self.left = numpy.zeros((self.nstack, 2, nbasis, nbasis), dtype=dtype)
+        self.right = numpy.zeros((self.nstack, 2, nbasis, nbasis), dtype=dtype)
 
         self.G = numpy.asarray([numpy.eye(self.nbasis, dtype=dtype),  # Ga
                                 numpy.eye(self.nbasis, dtype=dtype)]) # Gb
@@ -111,7 +111,7 @@ class PropagatorStack:
         # Diagonal = True assumes BT is diagonal and left is also diagonal
         if self.diagonal_trial:
             for i in range(0, self.nslice):
-                ix = i // self.nstack  # bin index
+                ix = i // self.stack_size  # bin index
                 # Commenting out these two. It is only useful for Hubbard
                 self.left[ix, 0] = numpy.diag(
                     numpy.multiply(BT[0].diagonal(), self.left[ix, 0].diagonal())
@@ -123,7 +123,7 @@ class PropagatorStack:
                 self.stack[ix, 1] = self.left[ix, 1].copy()
         else:
             for i in range(0, self.nslice):
-                ix = i // self.nstack  # bin index
+                ix = i // self.stack_size  # bin index
                 self.left[ix, 0] = numpy.dot(BT[0], self.left[ix, 0])
                 self.left[ix, 1] = numpy.dot(BT[1], self.left[ix, 1])
                 self.stack[ix, 0] = self.left[ix, 0].copy()
@@ -139,7 +139,7 @@ class PropagatorStack:
     def reset(self):
         self.time_slice = 0
         self.block = 0
-        for i in range(0, self.stack_length):
+        for i in range(0, self.nstack):
             self.stack[i, 0] = numpy.identity(self.nbasis, dtype=self.dtype)
             self.stack[i, 1] = numpy.identity(self.nbasis, dtype=self.dtype)
             self.right[i, 0] = numpy.identity(self.nbasis, dtype=self.dtype)
@@ -165,8 +165,8 @@ class PropagatorStack:
             self.Ql[spin] = numpy.identity(B[spin].shape[0])
             self.Tl[spin] = numpy.identity(B[spin].shape[0])
 
-            # for ix in range(2, self.stack_length):
-            for ix in range(1, self.stack_length):
+            # for ix in range(2, self.nstack):
+            for ix in range(1, self.nstack):
                 B = self.stack[ix]
                 C2 = numpy.einsum("ii,i->i", B[spin], self.Dl[spin])
                 self.Dl[spin] = C2
@@ -178,8 +178,8 @@ class PropagatorStack:
         self.stack[self.block, 0] = B[0].dot(self.stack[self.block, 0])
         self.stack[self.block, 1] = B[1].dot(self.stack[self.block, 1])
         self.time_slice += 1
-        self.block = self.time_slice // self.nstack
-        self.counter = (self.counter + 1) % self.nstack
+        self.block = self.time_slice // self.stack_size
+        self.counter = (self.counter + 1) % self.stack_size
 
     def update_full_rank(self, B):
         # Diagonal = True assumes BT is diagonal and left is also diagonal
@@ -213,8 +213,8 @@ class PropagatorStack:
             self.stack[self.block, 1] = self.left[self.block, 1].dot(self.right[self.block, 1])
 
         self.time_slice += 1  # Count the time slice
-        self.block = self.time_slice // self.nstack  # Move to the next block if necessary
-        self.counter = (self.counter + 1) % self.nstack  # Counting within a stack
+        self.block = self.time_slice // self.stack_size  # Move to the next block if necessary
+        self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack
 
     def update_low_rank(self, B):
         assert not self.averaging
@@ -228,7 +228,7 @@ class PropagatorStack:
         mR = B.shape[-1]  # initial mR
         mL = B.shape[-1]  # initial mR
         mT = B.shape[-1]  # initial mR
-        next_block = (self.time_slice + 1) // self.nstack  # move to the next block if necessary
+        next_block = (self.time_slice + 1) // self.stack_size  # move to the next block if necessary
         # print("next_block", next_block)
         # print("self.block", self.block)
         if next_block > self.block:  # Do QR and update here?
@@ -386,5 +386,5 @@ class PropagatorStack:
         # print("ovlp = {}".format(self.ovlp))
         self.mT = mT
         self.time_slice += 1  # Count the time slice
-        self.block = self.time_slice // self.nstack  # move to the next block if necessary
-        self.counter = (self.counter + 1) % self.nstack  # Counting within a stack
+        self.block = self.time_slice // self.stack_size  # move to the next block if necessary
+        self.counter = (self.counter + 1) % self.stack_size  # Counting within a stack

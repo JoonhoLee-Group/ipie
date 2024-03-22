@@ -264,6 +264,8 @@ class PhaselessBase(ContinuousBase):
     def update_weight_legacy(self, walkers, iw, G, cfb, cmf, eshift):
         """Update weight for walker `iw` using legacy code.
         """
+        #M0a = walkers.M0a[iw]
+        #M0b = walkers.M0b[iw]
         M0a = scipy.linalg.det(G[0], check_finite=False)
         M0b = scipy.linalg.det(G[1], check_finite=False)
         Mnewa = scipy.linalg.det(walkers.Ga[iw], check_finite=False)

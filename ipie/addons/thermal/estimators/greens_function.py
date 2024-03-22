@@ -40,10 +40,10 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
     if slice_ix == None:
         slice_ix = stack_iw.time_slice
 
-    bin_ix = slice_ix // stack_iw.nstack
+    bin_ix = slice_ix // stack_iw.stack_size
     # For final time slice want first block to be the rightmost (for energy
     # evaluation).
-    if bin_ix == stack_iw.stack_length:
+    if bin_ix == stack_iw.nstack:
         bin_ix = -1
 
     Ga_iw, Gb_iw = None, None
@@ -55,7 +55,7 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
         # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1} in
         # stable way. Iteratively construct column pivoted QR decompositions
         # (A = QDT) starting from the rightmost (product of) propagator(s).
-        B = stack_iw.get((bin_ix + 1) % stack_iw.stack_length)
+        B = stack_iw.get((bin_ix + 1) % stack_iw.nstack)
 
         (Q1, R1, P1) = scipy.linalg.qr(B[spin], pivoting=True, check_finite=False)
         # Form D matrices
@@ -65,8 +65,8 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
         # permute them
         T1[:, P1] = T1[:, range(walkers.nbasis)]
 
-        for i in range(2, stack_iw.stack_length + 1):
-            ix = (bin_ix + i) % stack_iw.stack_length
+        for i in range(2, stack_iw.nstack + 1):
+            ix = (bin_ix + i) % stack_iw.nstack
             B = stack_iw.get(ix)
             C2 = numpy.dot(numpy.dot(B[spin], Q1), D1)
             (Q1, R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)

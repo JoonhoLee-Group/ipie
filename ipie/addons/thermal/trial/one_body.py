@@ -56,9 +56,9 @@ class OneBody(object):
         self.mu = options.get("mu", None)
 
         self.nslice = int(beta / dt)
-        self.nstack = options.get("nstack", None)
+        self.stack_size = options.get("stack_size", None)
 
-        if self.nstack == None:
+        if self.stack_size == None:
             if verbose:
                 print("# Estimating stack size from BT.")
 
@@ -68,15 +68,15 @@ class OneBody(object):
             # the product will scale roughly as cond(BT)^(number of products).
             # We can determine a conservative stack size by requiring that the
             # condition number of the product does not exceed 1e3.
-            self.nstack = min(self.nslice, int(3.0 / numpy.log10(self.cond)))
+            self.stack_size = min(self.nslice, int(3.0 / numpy.log10(self.cond)))
 
             if verbose:
                 print("# Initial stack size, # of slices: {}, {}".format(
-                    self.nstack, self.nslice))
+                    self.stack_size, self.nslice))
 
         # Adjust stack size
-        self.nstack = update_stack(self.nstack, self.nslice, verbose=verbose)
-        self.stack_length = int(beta / (self.nstack * dt))
+        self.stack_size = update_stack(self.stack_size, self.nslice, verbose=verbose)
+        self.stack_length = int(beta / (self.stack_size * dt))
 
         if verbose:
             print(f"# Number of stacks: {self.stack_length}")
@@ -88,7 +88,7 @@ class OneBody(object):
 
             sign = -1
 
-        self.dtau = self.nstack * dt
+        self.dtau = self.stack_size * dt
 
         if self.mu is None:
             self.rho = numpy.array([scipy.linalg.expm(-self.dtau * (self.H1[0])),
