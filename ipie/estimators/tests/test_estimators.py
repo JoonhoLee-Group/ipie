@@ -74,8 +74,3 @@ def test_estimator_handler():
         handler.initialize(comm)
         handler.compute_estimators(comm, system, ham, trial, walker_batch)
         handler.compute_estimators(comm, system, ham, trial, walker_batch)
-
-
-if __name__ == "__main__":
-    test_energy_estimator()
-    test_estimator_handler()

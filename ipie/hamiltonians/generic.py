@@ -30,7 +30,7 @@ from ipie.utils.io import (
 
 def construct_h1e_mod(chol, h1e, h1e_mod):
     # Subtract one-body bit following reordering of 2-body operators.
-    # Eqn (17) of [Motta17]_
+    # Eqn (17) of [Motta17].
     nbasis = h1e.shape[-1]
     nchol = chol.shape[-1]
     chol_view = chol.reshape((nbasis, nbasis * nchol))
@@ -109,7 +109,7 @@ class GenericComplexChol(GenericBase):
 
         self.chol = numpy.array(chol, dtype=numpy.complex128)  # [M^2, nchol]
         self.nchol = self.chol.shape[-1]
-        self.nfields = self.nchol * 2
+        self.nfields = 2 * self.nchol
         assert self.nbasis**2 == chol.shape[0]
 
         self.chunked = False

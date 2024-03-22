@@ -41,7 +41,7 @@ class MeanField(OneBody):
         mu_old = self.mu
         P = self.P.copy()
         if self.verbose:
-            print("# Determining Thermal Hartree--Fock Density Matrix.")
+            print("# Determining Thermal Hartree-Fock Density Matrix.")
         for it in range(self.max_macro_it):
             if self.verbose:
                 print(f"# Macro iteration: {it}")
@@ -49,7 +49,7 @@ class MeanField(OneBody):
             rho = numpy.array([scipy.linalg.expm(-dt * HMF[0]), scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                    system,
+                    system._alt_convention,
                     rho,
                     dt,
                     self.num_bins,
@@ -96,16 +96,16 @@ class MeanField(OneBody):
             change = numpy.linalg.norm(Pnew - Pold)
             if change < self.deps:
                 break
-            if self.verbose:
-                N = particle_number(P).real
-                E = local_energy(system, P)[0].real
-                S = entropy(beta, mu, HMF)
-                omega = E - mu * N - 1.0 / beta * S
-                print(
-                    " # Iteration: {:4d} dP: {:13.8e} Omega: {:13.8e}".format(
-                        it, change, omega.real
-                    )
-                )
+            #if self.verbose:
+            #    N = particle_number(P).real
+            #    E = local_energy(system, P)[0].real
+            #    S = entropy(beta, mu, HMF)
+            #    omega = E - mu * N - 1.0 / beta * S
+            #    print(
+            #        " # Iteration: {:4d} dP: {:13.8e} Omega: {:13.8e}".format(
+            #            it, change, omega.real
+            #        )
+            #    )
             Pold = Pnew.copy()
         if self.verbose:
             N = particle_number(P).real

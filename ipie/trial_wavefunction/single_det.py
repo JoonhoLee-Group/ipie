@@ -26,7 +26,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 
 # class for UHF trial
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, cplx=False, verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
@@ -37,8 +37,8 @@ class SingleDet(TrialWavefunctionBase):
         self._num_dets = 1
         self._max_num_dets = 1
         imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
-        if imag_norm <= 1e-8:
-            # print("# making trial wavefunction MO coefficient real")
+        if (not cplx) and (imag_norm <= 1e-8):
+            #print("# making trial wavefunction MO coefficient real")
             self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
 
         self.psi0a = self.psi[:, : self.nalpha]
@@ -72,6 +72,7 @@ class SingleDet(TrialWavefunctionBase):
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
+            print("# (Ej, Ek) = {}, {}".format(self.ej, self.ek))
             print(
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)

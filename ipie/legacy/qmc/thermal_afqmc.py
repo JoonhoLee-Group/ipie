@@ -116,10 +116,10 @@ class ThermalAFQMC(object):
                 self.sha1, self.branch, self.local_mods = get_git_info()
             else:
                 self.sha1 = "None"
-            if verbose:
-                self.sys_info = print_env_info(
-                    self.sha1, self.branch, self.local_mods, self.uuid, comm.size
-                )
+            #if verbose:
+            #    self.sys_info = print_env_info(
+            #        self.sha1, self.branch, self.local_mods, self.uuid, comm.size
+            #    )
         # Hack - this is modified later if running in parallel on
         # initialisation.
         self.root = comm.rank == 0

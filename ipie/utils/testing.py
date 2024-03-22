@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
+import scipy.sparse
+import scipy.stats
 
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
@@ -48,9 +50,11 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
     h1e = numpy.random.random((nmo, nmo))
     if cplx:
         h1e = h1e + 1j * numpy.random.random((nmo, nmo))
+
     eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
     if cplx:
         eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
+
     # Restore symmetry to the integrals.
     if sym >= 4:
         # (ik|jl) = (jl|ik)

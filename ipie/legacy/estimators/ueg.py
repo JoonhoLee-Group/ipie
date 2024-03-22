@@ -25,7 +25,7 @@ def coulomb_greens_function(nq, kpq_i, kpq, pmq_i, pmq, Gkpq, Gpmq, G):
             Gpmq[iq] += G[i, idxpmq]
 
 
-def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None):
+def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None, debug=False):
     """Local energy computation for uniform electron gas
     Parameters
     ----------
@@ -69,19 +69,30 @@ def local_energy_ueg(system, ham, G, Ghalf=None, two_rdm=None):
 
     if two_rdm is None:
         two_rdm = numpy.zeros((2, 2, len(ham.qvecs)), dtype=numpy.complex128)
+
     two_rdm[0, 0] = numpy.multiply(Gkpq[0], Gpmq[0]) - Gprod[0]
-    essa = (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(two_rdm[0, 0])
-
     two_rdm[1, 1] = numpy.multiply(Gkpq[1], Gpmq[1]) - Gprod[1]
-    essb = (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(two_rdm[1, 1])
-
     two_rdm[0, 1] = numpy.multiply(Gkpq[0], Gpmq[1])
     two_rdm[1, 0] = numpy.multiply(Gkpq[1], Gpmq[0])
-    eos = (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(two_rdm[0, 1]) + (
-        1.0 / (2.0 * ham.vol)
-    ) * ham.vqvec.dot(two_rdm[1, 0])
 
+    essa = (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(two_rdm[0, 0])
+    essb = (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(two_rdm[1, 1])
+    eos = (1.0 / (2.0 * ham.vol)) * (
+            ham.vqvec.dot(two_rdm[0, 1]) + ham.vqvec.dot(two_rdm[1, 0]))
     pe = essa + essb + eos
+
+    if debug:
+        ecoul, exx = 0., 0. 
+
+        for s1 in range(2):
+            exx -= (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(Gprod[s1])
+
+            for s2 in range(2):
+                ecoul += (1.0 / (2.0 * ham.vol)) * ham.vqvec.dot(numpy.multiply(Gkpq[s1], Gpmq[s2]))
+
+        print(f'\n# ueg ecoul = {ecoul}')
+        print(f'# ueg exx = {exx}')
+        print(f'# ueg e2 = {(ecoul + exx)}')
 
     return (ke + pe, ke, pe)
 

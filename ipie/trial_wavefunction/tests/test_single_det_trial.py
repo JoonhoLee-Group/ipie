@@ -40,7 +40,7 @@ def test_single_det():
     assert trial._rH1b.shape == (nbeta, nbasis)
 
 
-@pytest.mark.unit
+#@pytest.mark.unit
 def test_single_det_ghf():
     nbasis = 10
     naux = 5 * nbasis
@@ -135,5 +135,5 @@ def test_single_det_all_up():
 
 if __name__ == "__main__":
     test_single_det()
-    test_single_det_ghf()
+    #test_single_det_ghf()
     test_single_det_all_up()

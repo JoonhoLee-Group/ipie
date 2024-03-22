@@ -230,7 +230,10 @@ def extract_test_data_hdf5(filename, skip=10):
         data = extract_mixed_estimates(filename)
         # use list so can json serialise easily.
         data = data.drop(["Iteration", "Time"], axis=1)[::skip].to_dict(orient="list")
-    data["sys_info"] = get_metadata(filename)["sys_info"]
+    try:
+        data["sys_info"] = get_metadata(filename)["sys_info"]
+    except KeyError:
+        print("\n# No 'sys_info' metadata!")
     try:
         mrdm = extract_rdm(filename, est_type="mixed", rdm_type="one_rdm")
     except (KeyError, TypeError, AttributeError):

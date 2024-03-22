@@ -4,7 +4,7 @@ import numpy
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
-
+from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 
 class PopControllerTimer:
     def __init__(self):
@@ -138,7 +138,7 @@ def get_buffer(walkers, iw):
     buff = xp.zeros(walkers.buff_size, dtype=numpy.complex128)
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
-        if data is None:
+        if (data is None) or isinstance(data, (int, float, complex, numpy.float64, numpy.complex128)):
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], (xp.ndarray)):
@@ -155,6 +155,11 @@ def get_buffer(walkers, iw):
         else:
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
+
+    if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
+        stack_buff = walkers.stack[iw].get_buffer()
+        buff = numpy.concatenate((buff, stack_buff))
+
     return buff
 
 
@@ -168,20 +173,18 @@ def set_buffer(walkers, iw, buff):
     s = 0
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
-        if data is None:
+        if (data is None) or isinstance(data, (int, float, complex, numpy.float64, numpy.complex128)):
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], xp.ndarray):
             walkers.__dict__[d][iw] = xp.array(
-                buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-            )
+                buff[s : s + data[iw].size].reshape(data[iw].shape).copy())
             s += data[iw].size
         elif isinstance(data[iw], list):
             for ix, l in enumerate(data[iw]):
                 if isinstance(l, (xp.ndarray)):
                     walkers.__dict__[d][iw][ix] = xp.array(
-                        buff[s : s + l.size].reshape(l.shape).copy()
-                    )
+                        buff[s : s + l.size].reshape(l.shape).copy())
                     s += l.size
                 elif isinstance(l, (int, float, complex)):
                     walkers.__dict__[d][iw][ix] = buff[s]
@@ -194,6 +197,9 @@ def set_buffer(walkers, iw, buff):
             else:
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
+        
+    if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
+        walkers.stack[iw].set_buffer(buff[walkers.buff_size:])
 
 
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
@@ -272,14 +278,19 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             source_proc = c // walkers.nwalkers
             # Location of walker to kill in local list of walkers.
             kill_pos = k % walkers.nwalkers
+            buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
-            comm.Recv(walkers.walker_buffer, source=source_proc, tag=i)
+            if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
+                buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
+                comm.Recv(buffer, source=source_proc, tag=i)
+            else:
+                comm.Recv(buffer, source=source_proc, tag=i)
             # with h5py.File('walkers_recv.h5', 'w') as fh5:
             # fh5['walk_{}'.format(k)] = walkers.walker_buffer.copy()
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers, kill_pos, walkers.walker_buffer)
+            set_buffer(walkers, kill_pos, buffer)
             timer.add_non_communication()
             # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
             # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = walkers.walkers[kill_pos].get_buffer()
@@ -318,12 +329,10 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         glob_inf_1.fill(1)
         glob_inf_2 = numpy.array(
             [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
-        )
+            dtype=numpy.int64)
         glob_inf_3 = numpy.array(
             [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
-        )
+            dtype=numpy.int64)
 
     timer.add_non_communication()
 
@@ -341,15 +350,9 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         # Rescale weights.
         glob_inf = numpy.zeros((walkers.nwalkers * comm.size, 4), dtype=numpy.float64)
         glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
-        glob_inf[:, 1] = (
-            glob_inf_1.ravel()
-        )  # all initialized to 1 when it becomes 2 then it will be "branched"
-        glob_inf[:, 2] = (
-            glob_inf_2.ravel()
-        )  # contain processor+walker indices (initial) (i.e., where walkers live)
-        glob_inf[:, 3] = (
-            glob_inf_3.ravel()
-        )  # contain processor+walker indices (final) (i.e., where walkers live)
+        glob_inf[:, 1] = glob_inf_1.ravel()  # all initialized to 1 when it becomes 2 then it will be "branched"
+        glob_inf[:, 2] = glob_inf_2.ravel()  # contain processor+walker indices (initial) (i.e., where walkers live)
+        glob_inf[:, 3] = glob_inf_3.ravel()  # contain processor+walker indices (final) (i.e., where walkers live)
         sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
         isort = numpy.argsort(sort, kind="mergesort")
         glob_inf = glob_inf[sort]
@@ -418,12 +421,17 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         if walker[1] == 0:
             timer.start_time()
             tag = walker[3] * walkers.nwalkers + comm.rank
+            buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
-            comm.Recv(walkers.walker_buffer, source=int(round(walker[3])), tag=tag)
+            if isinstance(walkers, UHFThermalWalkers) and (walkers.stack is not None):
+                buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
+                comm.Recv(buffer, source=int(round(walker[3])), tag=tag)
+            else:
+                comm.Recv(buffer, source=int(round(walker[3])), tag=tag)
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers, iw, walkers.walker_buffer)
+            set_buffer(walkers, iw, buffer)
             timer.add_non_communication()
     timer.start_time()
     for r in reqs:

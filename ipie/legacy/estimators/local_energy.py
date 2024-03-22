@@ -5,10 +5,10 @@ try:
     from ipie.legacy.estimators.ueg import local_energy_ueg
 except ImportError as e:
     print(e)
-from ipie.estimators.generic import local_energy_generic_opt
 from ipie.legacy.estimators.ci import get_hmatel
 from ipie.legacy.estimators.generic import (
     local_energy_generic,
+    local_energy_generic_opt,
     local_energy_generic_cholesky,
     local_energy_generic_cholesky_opt,
     local_energy_generic_cholesky_opt_stochastic,

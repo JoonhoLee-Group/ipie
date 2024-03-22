@@ -5,7 +5,7 @@ import sys
 import numpy
 import scipy
 
-from ipie.estimators.utils import convolve, scipy_fftconvolve
+from ipie.legacy.estimators.utils import convolve, scipy_fftconvolve
 from ipie.legacy.propagation.operations import kinetic_real
 
 
