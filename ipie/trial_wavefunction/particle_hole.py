@@ -1,12 +1,15 @@
 import time
 from typing import Tuple
 
+from ipie.utils.backend import arraylib as xp
+
 import numpy as np
 
 from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det,
     greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt,
+    greens_function_multi_det_wicks_opt_gpu,
 )
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
@@ -15,6 +18,7 @@ from ipie.propagation.overlap import (
     calc_overlap_multi_det,
     calc_overlap_multi_det_wicks,
     calc_overlap_multi_det_wicks_opt,
+    calc_overlap_multi_det_wicks_opt_gpu,
 )
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -49,11 +53,9 @@ class ParticleHole(TrialWavefunctionBase):
         self.setup_basic_wavefunction(
             wfn, num_dets=num_dets_for_trial, use_active_space=use_active_space
         )
+        self._num_dets_for_props = num_dets_for_props
         self._num_dets = len(self.coeffs)
-        self._num_dets_for_props = (
-            self._num_dets if num_dets_for_props == -1 else num_dets_for_props
-        )
-        self._num_dets_for_props = min(self._num_dets, self._num_dets_for_props)
+        self._num_dets_for_props = num_dets_for_props
         self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
         self.ortho_expansion = True
@@ -86,11 +88,9 @@ class ParticleHole(TrialWavefunctionBase):
             core = [i for i in range(num_melting)]
             occa = [np.array(core + [o + num_melting for o in oa]) for oa in occa0]
             occb = [np.array(core + [o + num_melting for o in ob]) for ob in occb0]
-            self.nmelting = nmelting_a
         else:
             occa = wfn[1][:num_dets]
             occb = wfn[2][:num_dets]
-            self.nmelting = 0
         # Store alpha electrons first followed by beta electrons.
         # FDM Remove this with wicks helper proper integration
         dets = [list(a) + [i + self.nbasis for i in c] for (a, c) in zip(occa, occb)]
@@ -420,12 +420,6 @@ class ParticleHole(TrialWavefunctionBase):
             if self.verbose:
                 print("# Using Wicks helper to compute 1-RDM.")
             assert wicks_helper is not None
-            max_orb = max(np.max(self.occa), np.max(self.occb))
-            err_msg = (
-                f"Number of orbitals is too large for wicks_helper {max_orb} "
-                f"vs {64*wicks_helper.DET_LEN}."
-            )
-            assert 2 * max_orb < 64 * wicks_helper.DET_LEN, err_msg
             dets = wicks_helper.encode_dets(self.occa, self.occb)
             phases = wicks_helper.convert_phase(self.occa, self.occb)
             _keep = self.num_dets_for_props
@@ -440,26 +434,25 @@ class ParticleHole(TrialWavefunctionBase):
                 print(f"# Time to compute 1-RDM: {end - start} s")
         else:
             self.G = self.compute_1rdm(self.nbasis)
-        tr_g = self.G[0].trace() + self.G[1].trace()
-        err_msg = f"Tr(G_T) is incorrect {tr_g} vs {self.nalpha + self.nbeta}"
-        assert np.isclose(tr_g, self.nalpha + self.nbeta), err_msg
-        if self.verbose:
-            print(f"# Tr(G_T): {tr_g}")
 
-    def calc_greens_function(self, walkers) -> np.ndarray:
-        return greens_function_multi_det_wicks_opt(walkers, self)
+    def calc_greens_function(self, walkers) -> xp.ndarray:
+        if config.get_option("use_gpu"):
+            return greens_function_multi_det_wicks_opt_gpu(walkers, self)
+        else:
+            return greens_function_multi_det_wicks_opt(walkers, self)
 
-    def calc_overlap(self, walkers) -> np.ndarray:
-        return calc_overlap_multi_det_wicks_opt(walkers, self)
+    def calc_overlap(self, walkers) -> xp.ndarray:
+        if config.get_option("use_gpu"):
+            return calc_overlap_multi_det_wicks_opt_gpu(walkers, self)
+        else:
+            return calc_overlap_multi_det_wicks_opt(walkers, self)
 
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> xp.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
 
     def compute_1rdm(self, nbasis):
         assert self.ortho_expansion == True
-        denom = np.sum(
-            self.coeffs[: self.num_dets_for_props].conj() * self.coeffs[: self.num_dets_for_props]
-        )
+        denom = np.sum(self.coeffs.conj() * self.coeffs)
         Pa = np.zeros((nbasis, nbasis), dtype=np.complex128)
         Pb = np.zeros((nbasis, nbasis), dtype=np.complex128)
         P = [Pa, Pb]
@@ -474,13 +467,13 @@ class ParticleHole(TrialWavefunctionBase):
                 ix = orb - nbasis
             return ix, s
 
-        for idet in range(self.num_dets_for_props):
+        for idet in range(self.num_dets):
             di = self.spin_occs[idet]
             # zero excitation case
             for iorb in range(len(di)):
                 ii, spin_ii = map_orb(di[iorb], nbasis)
                 P[spin_ii][ii, ii] += self.coeffs[idet].conj() * self.coeffs[idet]
-            for jdet in range(idet + 1, self.num_dets_for_props):
+            for jdet in range(idet + 1, self.num_dets):
                 dj = self.spin_occs[jdet]
                 from_orb = list(set(dj) - set(di))
                 to_orb = list(set(di) - set(dj))
