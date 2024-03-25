@@ -2,16 +2,23 @@ import numpy
 import scipy.linalg
 from numba import jit
 
-from ipie.estimators.kernels.cpu import wicks as wk
-from ipie.legacy.estimators.greens_function import gab_mod
+from ipie.config import config
 from ipie.propagation.overlap import (
     compute_determinants_batched,
-    get_cofactor_matrix_batched,
-    get_det_matrix_batched,
     get_overlap_one_det_wicks,
-    reduce_to_CI_tensor,
+    get_cofactor_matrix_batched,
 )
 from ipie.utils.linalg import minor_mask
+from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
+if config.get_option("use_gpu"):
+    from ipie.estimators.kernels.gpu import wicks_gpu as wk
+else:
+    from ipie.estimators.kernels.cpu import wicks as wk
+
+from ipie.legacy.estimators.greens_function import gab_mod
+
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
 
 
 def greens_function_multi_det(walker_batch, trial, build_full=False):
@@ -73,64 +80,6 @@ def greens_function_multi_det(walker_batch, trial, build_full=False):
     return tot_ovlps
 
 
-def greens_function_noci(walker_batch, trial, build_full=False):
-    """Compute walker's green's function.
-
-    Parameters
-    ----------
-    walker_batch : object
-        MultiDetTrialWalkerBatch object.
-    trial : object
-        Trial wavefunction object.
-    Returns
-    -------
-    det : float64 / complex128
-        Determinant of overlap matrix.
-    """
-    nup = walker_batch.nup
-    walker_batch.Ga.fill(0.0)
-    walker_batch.Gb.fill(0.0)
-    tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
-    for iw in range(walker_batch.nwalkers):
-        for ix, detix in enumerate(trial.psi):
-            Oup = numpy.dot(walker_batch.phia[iw].T, detix[:, :nup].conj())
-            sign_a, logdet_a = numpy.linalg.slogdet(Oup)
-            ovlpa = sign_a * numpy.exp(logdet_a)
-            walker_batch.det_ovlpas[iw, ix] = ovlpa
-            if abs(ovlpa) < 1e-16:
-                continue
-
-            Odn = numpy.dot(walker_batch.phib[iw].T, detix[:, nup:].conj())
-            sign_b, logdet_b = numpy.linalg.slogdet(Odn)
-            ovlpb = sign_b * numpy.exp(logdet_b)
-            ovlp = ovlpa * ovlpb
-            walker_batch.det_ovlpbs[iw, ix] = ovlpb
-            if abs(ovlp) < 1e-16:
-                continue
-
-            inv_ovlp = scipy.linalg.inv(Oup)
-            walker_batch.Ghalfa[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phia[iw].T)
-            walker_batch.Gia[ix, iw, :, :] = numpy.dot(
-                detix[:, :nup].conj(), walker_batch.Ghalfa[ix, iw, :, :]
-            )
-
-            inv_ovlp = scipy.linalg.inv(Odn)
-            walker_batch.Ghalfb[ix, iw, :, :] = numpy.dot(inv_ovlp, walker_batch.phib[iw].T)
-            walker_batch.Gib[ix, iw, :, :] = numpy.dot(
-                detix[:, nup:].conj(), walker_batch.Ghalfb[ix, iw, :, :]
-            )
-
-            tot_ovlps[iw] += trial.coeffs[ix].conj() * ovlp
-
-            walker_batch.Ga[iw] += walker_batch.Gia[ix, iw, :, :] * ovlp * trial.coeffs[ix].conj()
-            walker_batch.Gb[iw] += walker_batch.Gib[ix, iw, :, :] * ovlp * trial.coeffs[ix].conj()
-
-        walker_batch.Ga[iw] /= tot_ovlps[iw]
-        walker_batch.Gb[iw] /= tot_ovlps[iw]
-
-    return tot_ovlps
-
-
 def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
@@ -145,7 +94,7 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
-    tot_ovlps = numpy.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
+    tot_ovlps = xp.zeros(walker_batch.nwalkers, dtype=numpy.complex128)
     nbasis = walker_batch.Ga.shape[-1]
 
     walker_batch.Ga.fill(0.0 + 0.0j)
@@ -155,15 +104,15 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
         phia = walker_batch.phia[iw]  # walker wfn
         phib = walker_batch.phib[iw]  # walker wfn
 
-        Oalpha = numpy.dot(trial.psi0a.conj().T, phia)
-        sign_a, logdet_a = numpy.linalg.slogdet(Oalpha)
+        Oalpha = xp.dot(trial.psi0a.conj().T, phia)
+        sign_a, logdet_a = xp.linalg.slogdet(Oalpha)
         logdet_b, sign_b = 0.0, 1.0
-        Obeta = numpy.dot(trial.psi0b.conj().T, phib)
-        sign_b, logdet_b = numpy.linalg.slogdet(Obeta)
+        Obeta = xp.dot(trial.psi0b.conj().T, phib)
+        sign_b, logdet_b = xp.linalg.slogdet(Obeta)
 
-        ovlp0 = sign_a * sign_b * numpy.exp(logdet_a + logdet_b)
-        walker_batch.det_ovlpas[iw, 0] = sign_a * numpy.exp(logdet_a)
-        walker_batch.det_ovlpbs[iw, 0] = sign_b * numpy.exp(logdet_b)
+        ovlp0 = sign_a * sign_b * xp.exp(logdet_a + logdet_b)
+        walker_batch.det_ovlpas[iw, 0] = sign_a * xp.exp(logdet_a)
+        walker_batch.det_ovlpbs[iw, 0] = sign_b * xp.exp(logdet_b)
 
         # G0, G0H = gab_spin(trial.psi0, phi, nup, ndown)
         G0a, G0Ha = gab_mod(trial.psi0a, phia)
@@ -172,8 +121,8 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
         walker_batch.G0b[iw] = G0b
         walker_batch.Ghalfa[iw] = G0Ha
         walker_batch.Ghalfb[iw] = G0Hb
-        walker_batch.Q0a[iw] = numpy.eye(nbasis) - walker_batch.G0a[iw]
-        walker_batch.Q0b[iw] = numpy.eye(nbasis) - walker_batch.G0b[iw]
+        walker_batch.Q0a[iw] = xp.eye(nbasis) - walker_batch.G0a[iw]
+        walker_batch.Q0b[iw] = xp.eye(nbasis) - walker_batch.G0b[iw]
 
         G0a = walker_batch.G0a[iw]
         G0b = walker_batch.G0b[iw]
@@ -268,13 +217,13 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
                 )  # 2 2
 
             elif nex_a > 3:
-                det_a = numpy.zeros((nex_a, nex_a), dtype=numpy.complex128)
+                det_a = xp.zeros((nex_a, nex_a), dtype=numpy.complex128)
                 for iex in range(nex_a):
                     det_a[iex, iex] = G0a[trial.cre_a[jdet][iex], trial.anh_a[jdet][iex]]
                     for jex in range(iex + 1, nex_a):
                         det_a[iex, jex] = G0a[trial.cre_a[jdet][iex], trial.anh_a[jdet][jex]]
                         det_a[jex, iex] = G0a[trial.cre_a[jdet][jex], trial.anh_a[jdet][iex]]
-                cofactor = numpy.zeros((nex_a - 1, nex_a - 1), dtype=numpy.complex128)
+                cofactor = xp.zeros((nex_a - 1, nex_a - 1), dtype=numpy.complex128)
                 for iex in range(nex_a):
                     p = trial.cre_a[jdet][iex]
                     for jex in range(nex_a):
@@ -334,13 +283,13 @@ def greens_function_multi_det_wicks(walker_batch, trial, build_full=False):
                 )  # 2 2
 
             elif nex_b > 3:
-                det_b = numpy.zeros((nex_b, nex_b), dtype=numpy.complex128)
+                det_b = xp.zeros((nex_b, nex_b), dtype=numpy.complex128)
                 for iex in range(nex_b):
                     det_b[iex, iex] = G0b[trial.cre_b[jdet][iex], trial.anh_b[jdet][iex]]
                     for jex in range(iex + 1, nex_b):
                         det_b[iex, jex] = G0b[trial.cre_b[jdet][iex], trial.anh_b[jdet][jex]]
                         det_b[jex, iex] = G0b[trial.cre_b[jdet][jex], trial.anh_b[jdet][iex]]
-                cofactor = numpy.zeros((nex_b - 1, nex_b - 1), dtype=numpy.complex128)
+                cofactor = xp.zeros((nex_b - 1, nex_b - 1), dtype=numpy.complex128)
                 for iex in range(nex_b):
                     p = trial.cre_b[jdet][iex]
                     for jex in range(nex_b):
@@ -414,7 +363,9 @@ def build_CI_single_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
             c_phaseb_ovlpa[:, trial.excit_map_b[1]],
         )
 
-
+        
+        
+        
 def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     """Single excitation contributions to CI intermediate for wicks.
 
@@ -434,28 +385,54 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
+
+        
     if trial.cre_ex_a[1].shape[0] == 0:
         pass
     else:
-        phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
-        wk.reduce_CI_singles(
-            trial.cre_ex_a[1],
-            trial.anh_ex_a[1],
-            trial.occ_map_a,
-            phases,
-            walker_batch.CIa,
-        )
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[1]])
+            # print(type(trial.cre_ex_a[1]),type(trial.anh_ex_a[1]),type(trial.occ_map_a),type(phases),type(walker_batch_CIa))
+            wk.reduce_CI_singles_gpu(
+                trial.cre_ex_a[1],
+                trial.anh_ex_a[1],
+                trial.occ_map_a,
+                phases,
+                walker_batch.CIa,
+            )
+        else:
+            phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
+            wk.reduce_CI_singles(
+                trial.cre_ex_a[1],
+                trial.anh_ex_a[1],
+                trial.occ_map_a,
+                phases,
+                walker_batch.CIa,
+            )
     if trial.cre_ex_b[1].shape[0] == 0:
         pass
     else:
-        phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
-        wk.reduce_CI_singles(
-            trial.cre_ex_b[1],
-            trial.anh_ex_b[1],
-            trial.occ_map_b,
-            phases,
-            walker_batch.CIb,
-        )
+        if config.get_option("use_gpu"):
+        # print(type(trial.cre_ex_b[1]),type(trial.anh_ex_b[1]),type(trial.occ_map_b),type(phases),type(walker_batch_CIb))
+            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[1]])
+            wk.reduce_CI_singles_gpu(
+                trial.cre_ex_b[1],
+                trial.anh_ex_b[1],
+                trial.occ_map_b,
+                phases,
+                walker_batch.CIb,
+            )
+        else:
+            phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
+            wk.reduce_CI_singles(
+                trial.cre_ex_b[1],
+                trial.anh_ex_b[1],
+                trial.occ_map_b,
+                phases,
+                walker_batch.CIb,
+            )
+
+
 
 
 def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
@@ -568,6 +545,8 @@ def build_CI_double_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovl
         )
 
 
+        
+
 def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     """Double excitation contributions to CI intermediate for wicks.
 
@@ -587,32 +566,59 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
+        
     if trial.cre_ex_a[2].shape[0] == 0:
         pass
     else:
-        phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
-        wk.reduce_CI_doubles(
-            trial.cre_ex_a[2],
-            trial.anh_ex_a[2],
-            trial.occ_map_a,
-            trial.nfrozen,
-            phases,
-            walker_batch.Ghalfa,
-            walker_batch.CIa,
-        )
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[2]])
+            # print(type(phases),type(walker_batch_Ghalfa),type(walker_batch_CIa))
+            wk.reduce_CI_doubles_gpu(
+                trial.cre_ex_a[2],
+                trial.anh_ex_a[2],
+                trial.occ_map_a,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfa,
+                walker_batch.CIa,
+            )
+        else:
+            phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
+            wk.reduce_CI_doubles(
+                trial.cre_ex_a[2],
+                trial.anh_ex_a[2],
+                trial.occ_map_a,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfa,
+                walker_batch.CIa,
+            )
     if trial.cre_ex_b[2].shape[0] == 0:
         pass
     else:
-        phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
-        wk.reduce_CI_doubles(
-            trial.cre_ex_b[2],
-            trial.anh_ex_b[2],
-            trial.occ_map_b,
-            trial.nfrozen,
-            phases,
-            walker_batch.Ghalfb,
-            walker_batch.CIb,
-        )
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[2]])
+            wk.reduce_CI_doubles_gpu(
+                trial.cre_ex_b[2],
+                trial.anh_ex_b[2],
+                trial.occ_map_b,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfb,
+                walker_batch.CIb,
+            )
+        else:
+            phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
+            wk.reduce_CI_doubles(
+                trial.cre_ex_b[2],
+                trial.anh_ex_b[2],
+                trial.occ_map_b,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfb,
+                walker_batch.CIb,
+            )
+            
 
 
 def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
@@ -634,32 +640,58 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
+    
     if trial.cre_ex_a[3].shape[0] == 0:
         pass
     else:
-        phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
-        wk.reduce_CI_triples(
-            trial.cre_ex_a[3],
-            trial.anh_ex_a[3],
-            trial.occ_map_a,
-            trial.nfrozen,
-            phases,
-            walker_batch.Ghalfa,
-            walker_batch.CIa,
-        )
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[3]])
+            wk.reduce_CI_triples_gpu(
+                trial.cre_ex_a[3],
+                trial.anh_ex_a[3],
+                trial.occ_map_a,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfa,
+                walker_batch.CIa,
+            )
+        else:
+            phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
+            wk.reduce_CI_triples(
+                trial.cre_ex_a[3],
+                trial.anh_ex_a[3],
+                trial.occ_map_a,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfa,
+                walker_batch.CIa,
+            )
     if trial.cre_ex_b[3].shape[0] == 0:
         pass
     else:
-        phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
-        wk.reduce_CI_triples(
-            trial.cre_ex_b[3],
-            trial.anh_ex_b[3],
-            trial.occ_map_b,
-            trial.nfrozen,
-            phases,
-            walker_batch.Ghalfb,
-            walker_batch.CIb,
-        )
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[3]])
+            wk.reduce_CI_triples_gpu(
+                trial.cre_ex_b[3],
+                trial.anh_ex_b[3],
+                trial.occ_map_b,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfb,
+                walker_batch.CIb,
+            )
+        else:
+            phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
+            wk.reduce_CI_triples(
+                trial.cre_ex_b[3],
+                trial.anh_ex_b[3],
+                trial.occ_map_b,
+                trial.nfrozen,
+                phases,
+                walker_batch.Ghalfb,
+                walker_batch.CIb,
+            )
+        
 
 
 def build_CI_triple_excitation(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
@@ -1012,6 +1044,7 @@ def build_CI_nfold_excitation(nexcit, walker_batch, trial, c_phasea_ovlpb, c_pha
                 )
     return dets_a, dets_b
 
+        
 
 def build_CI_nfold_excitation_opt(nexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa):
     """N-fold excitation contributions to CI intermediate for wicks.
@@ -1034,60 +1067,119 @@ def build_CI_nfold_excitation_opt(nexcit, walker_batch, trial, c_phasea_ovlpb, c
     -------
     None, modifies walker_batch.CIa, and walker_batch.CIb inplace.
     """
+    
+
     ndets_a = len(trial.cre_ex_a[nexcit])
     nwalkers = walker_batch.G0a.shape[0]
     if ndets_a == 0:
         pass
     else:
-        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
-        det_mat = numpy.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
-        wk.build_det_matrix(
-            trial.cre_ex_a[nexcit],
-            trial.anh_ex_a[nexcit],
-            trial.occ_map_a,
-            trial.nfrozen,
-            walker_batch.Ghalfa,
-            det_mat,
-        )
-        cof_mat = numpy.zeros((nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
-        wk.reduce_CI_nfold(
-            trial.cre_ex_a[nexcit],
-            trial.anh_ex_a[nexcit],
-            trial.occ_map_a,
-            trial.nfrozen,
-            phases,
-            det_mat,
-            cof_mat,
-            walker_batch.CIa,
-        )
+        det_mat = xp.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[nexcit]])
+            wk.build_det_matrix_gpu(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                walker_batch.Ghalfa,
+                det_mat,
+            )
+        else:
+            phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+            wk.build_det_matrix(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                walker_batch.Ghalfa,
+                det_mat,
+            )
+
+        cof_mat = xp.zeros((nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
+        if config.get_option("use_gpu"):
+            wk.reduce_CI_nfold_gpu(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                nexcit,
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIa,
+            )
+        else:
+            wk.reduce_CI_nfold(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIa,
+            )
+
     ndets_b = len(trial.cre_ex_b[nexcit])
+
     if ndets_b == 0:
-        pass
+        if nexcit>4:
+            pass
+        else:
+            walker_batch.CIb = xp.asarray(walker_batch.CIb)
+        # pass
     else:
-        phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
-        det_mat = numpy.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
-        wk.build_det_matrix(
-            trial.cre_ex_b[nexcit],
-            trial.anh_ex_b[nexcit],
-            trial.occ_map_b,
-            trial.nfrozen,
-            walker_batch.Ghalfb,
-            det_mat,
-        )
-        cof_mat = numpy.zeros((nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
-        wk.reduce_CI_nfold(
-            trial.cre_ex_b[nexcit],
-            trial.anh_ex_b[nexcit],
-            trial.occ_map_b,
-            trial.nfrozen,
-            phases,
-            det_mat,
-            cof_mat,
-            walker_batch.CIb,
-        )
+
+        det_mat = xp.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
+        if config.get_option("use_gpu"):
+            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]])
+            wk.build_det_matrix_gpu(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                walker_batch.Ghalfb,
+                det_mat,
+            )
+        else:
+            phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
+            wk.build_det_matrix(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                walker_batch.Ghalfb,
+                det_mat,
+            )
+        cof_mat = xp.zeros((nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
+        if config.get_option("use_gpu"):
+            wk.reduce_CI_nfold_gpu(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                nexcit,
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIb,
+            )
+        else:
+            wk.reduce_CI_nfold(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                phases,
+                det_mat,
+                cof_mat,
+                walker_batch.CIb,
+            )
 
 
-@jit(nopython=True, fastmath=True)
+
+# @jit(nopython=True, fastmath=True)
 def contract_CI(Q0_act, CI, Ghalf, G):
     """numba kernel to contract Q, CI and Ghalf to form G
 
@@ -1106,10 +1198,12 @@ def contract_CI(Q0_act, CI, Ghalf, G):
     None, modifies G in place
     """
     nwalkers = Ghalf.shape[0]
-    for iw in range(nwalkers):
-        G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))
+    G += xp.einsum("wOa, wae, weo-> wOo", Q0_act, CI, Ghalf)
+    # for iw in range(nwalkers):
+    #     G[iw] += numpy.dot(Q0_act[iw], xp.dot(CI[iw], Ghalf[iw]))
+        
 
-
+             
 def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     """Compute walker's green's function using Wick's theorem.
 
@@ -1124,7 +1218,6 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     det : float64 / complex128
         Determinant of overlap matrix.
     """
-
     nbasis = walker_batch.Ga.shape[-1]
 
     walker_batch.Ga.fill(0.0 + 0.0j)
@@ -1189,6 +1282,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     if trial.max_excite >= 3:
         build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     for iexcit in range(4, trial.max_excite + 1):
+        # print(type(walker_batch.CIb))
         build_CI_nfold_excitation_opt(iexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     # contribution 2 (connected diagrams)
     # Frozen orbitals not in original active space calculation but reincluded in
@@ -1213,4 +1307,141 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     walker_batch.Gb *= (ovlps0 / ovlps)[:, None, None]
     walker_batch.det_ovlpas[:, 0] = signs_a * numpy.exp(logdets_a)
     walker_batch.det_ovlpbs[:, 0] = signs_b * numpy.exp(logdets_b)
+    
     return ovlps
+
+
+
+def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=False):
+    """Compute walker's green's function using Wick's theorem.
+
+    Parameters
+    ----------
+    walker_batch : object
+        MultiDetTrialWalkerBatch object.
+    trial : object
+        Trial wavefunction object.
+    Returns
+    -------
+    det : float64 / complex128
+        Determinant of overlap matrix.
+    """
+    
+    
+    nbasis = walker_batch.Ga.shape[-1]
+
+    walker_batch.Ga.fill(0.0 + 0.0j)
+    walker_batch.Gb.fill(0.0 + 0.0j)
+
+    # Build reference Green's functions and overlaps
+    # Note abuse of naming convention this is really theta for the reference
+    # determinant.
+    G0a = xp.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    G0b = xp.zeros((walker_batch.nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    ovlps0 = xp.zeros((walker_batch.nwalkers), dtype=numpy.complex128)
+    signs_a = xp.zeros_like(ovlps0)
+    signs_b = xp.zeros_like(ovlps0)
+    logdets_a = xp.zeros_like(ovlps0)
+    logdets_b = xp.zeros_like(ovlps0)
+    
+    trial_psi0a_conj = xp.zeros_like(trial.psi0a.conj())
+    trial_psi0a_conj.set(trial.psi0a.conj())
+    trial_psi0b_conj = xp.zeros_like(trial.psi0b.conj())
+    trial_psi0b_conj.set(trial.psi0b.conj())
+    
+    
+    ovlp = xp.einsum("wex,xE->weE",walker_batch.phia.transpose(0,2,1),trial_psi0a_conj)
+    ovlp_inv = xp.linalg.inv(ovlp)
+    walker_batch.Ghalfa = xp.einsum("weE,wEo->weo", ovlp_inv, walker_batch.phia.transpose(0,2,1))
+    G0a = xp.einsum("ox,wxO->woO",trial_psi0a_conj,walker_batch.Ghalfa)
+    signs_a, logdets_a = xp.linalg.slogdet(ovlp)
+    signs_b = [1.0 for i in range(walker_batch.nwalkers)]
+    logdets_b = [0.0 for i in range(walker_batch.nwalkers)]
+    ovlp = xp.einsum("wex,xE->weE",walker_batch.phib.transpose(0,2,1),trial_psi0b_conj)
+    signs_b, logdets_b = xp.linalg.slogdet(ovlp)
+    ovlp_inv = xp.linalg.inv(ovlp)
+    walker_batch.Ghalfb = xp.einsum("weE,wEo->weo", ovlp_inv, walker_batch.phib.transpose(0,2,1))
+    G0b = xp.einsum("ox,wxO->woO",trial_psi0b_conj,walker_batch.Ghalfb)
+    
+    trial_psi0a_conj = None
+    trial_psi0b_conj = None
+    ovlp = None
+    ovlp_inv = None
+
+    
+    walker_batch.Ghalfa = xp.ascontiguousarray(walker_batch.Ghalfa)
+    walker_batch.Ghalfb = xp.ascontiguousarray(walker_batch.Ghalfb)
+    
+    ovlps0 = signs_a * signs_b * xp.exp(logdets_a + logdets_b)
+    walker_batch.G0a = G0a
+    walker_batch.G0b = G0b
+    walker_batch.Q0a = xp.eye(nbasis)[None, :] - G0a
+    walker_batch.Q0b = xp.eye(nbasis)[None, :] - G0b
+    walker_batch.CIa.fill(0.0 + 0.0j)
+    walker_batch.CIb.fill(0.0 + 0.0j)
+
+    
+    dets_a_full, dets_b_full = compute_determinants_batched(
+        walker_batch.Ghalfa, walker_batch.Ghalfb, trial
+    )
+    
+
+    walker_batch.det_ovlpas = dets_a_full * xp.asarray(trial.phase_a[None, :])  # phase included
+    walker_batch.det_ovlpbs = dets_b_full * xp.asarray(trial.phase_b[None, :])  # phase included
+    ovlpa = walker_batch.det_ovlpas
+    ovlpb = walker_batch.det_ovlpbs
+
+    c_phasea_ovlpb = xp.einsum(
+        "wJ,J->wJ", ovlpb, xp.asarray(trial.phase_a * trial.coeffs.conj()), optimize=True
+    )
+    c_phaseb_ovlpa = xp.einsum(
+        "wJ,J->wJ", ovlpa, xp.asarray(trial.phase_b * trial.coeffs.conj()), optimize=True
+    )
+    # contribution 1 (disconnected diagrams)
+    ovlps = xp.einsum("wJ,J->w", ovlpa * ovlpb, xp.asarray(trial.coeffs.conj()), optimize=True)
+    walker_batch.Ga += xp.einsum("w,wpq->wpq", ovlps, G0a, optimize=True)
+    walker_batch.Gb += xp.einsum("w,wpq->wpq", ovlps, G0b, optimize=True)
+    # intermediates for contribution 2 (connected diagrams)
+
+    
+    if trial.max_excite >= 1:
+        build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)       
+
+    if trial.max_excite >= 2:
+        build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
+
+    if trial.max_excite >= 3:
+        build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
+
+    for iexcit in range(4, trial.max_excite + 1):
+        build_CI_nfold_excitation_opt(iexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
+        
+    # contribution 2 (connected diagrams)
+    # Frozen orbitals not in original active space calculation but reincluded in
+    # AFQMC
+    
+    act_orb = trial.act_orb_alpha
+    contract_CI(
+        walker_batch.Q0a[:, :, act_orb].copy(),
+        walker_batch.CIa,
+        walker_batch.Ghalfa[:, act_orb].copy(),
+        walker_batch.Ga,
+    )
+    # print(walker_batch.Ghalfa[:, act_orb].copy().shape)
+    act_orb = trial.act_orb_beta
+    contract_CI(
+        walker_batch.Q0b[:, :, act_orb].copy(),
+        walker_batch.CIb,
+        walker_batch.Ghalfb[:, act_orb].copy(),
+        walker_batch.Gb,
+    )
+    # multiplying everything by reference overlap
+    ovlps *= ovlps0
+    walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]
+    walker_batch.Gb *= (ovlps0 / ovlps)[:, None, None]
+    walker_batch.det_ovlpas[:, 0] = signs_a * xp.exp(logdets_a)
+    walker_batch.det_ovlpbs[:, 0] = signs_b * xp.exp(logdets_b)
+    
+    
+    return ovlps
+
