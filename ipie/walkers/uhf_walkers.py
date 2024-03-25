@@ -222,6 +222,12 @@ class UHFWalkersParticleHole(UHFWalkers):
             shape=(self.nwalkers, trial.nact, trial.nocc_beta),
             dtype=numpy.complex128,
         )
+        if config.get_option("use_gpu"):
+            self.cast_to_cupy()            
+            trial._rchola = xp.asarray(trial._rchola)
+            trial._rcholb = xp.asarray(trial._rcholb)
+            trial._rchola_act = xp.asarray(trial._rchola_act)
+            
         self.ovlp = trial.calc_greens_function(self)
 
 
