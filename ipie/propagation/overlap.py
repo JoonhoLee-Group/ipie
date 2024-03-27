@@ -21,13 +21,13 @@ import itertools
 import numpy
 import scipy.linalg
 
+from ipie.config import config
 if config.get_option("use_gpu"):
     from ipie.estimators.kernels.gpu import wicks_gpu as wk
 else:
     from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from ipie.config import config
 
 from time_profiler import timer
 
