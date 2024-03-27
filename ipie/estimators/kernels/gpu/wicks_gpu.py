@@ -922,7 +922,7 @@ def fill_os_singles_gpu(cre, anh, mapping, offset, chol_factor, spin_buffer_cupy
     
     
     fill_os_singles_kernel = cupy.ElementwiseKernel(
-            'raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 nchol, raw int32 nact_shape1, raw int32 nact_shape2, complex128 spin_buff',
+            'raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 nchol, raw int32 nact_shape1, raw int32 nact_shape2',
             'complex128 spin_buffer',
             '''
                 int q, mappingp;
@@ -933,7 +933,7 @@ def fill_os_singles_gpu(cre, anh, mapping, offset, chol_factor, spin_buffer_cupy
             ''',
             'fill_os_singles_kernel')
     
-    spin_buffer_cupy[:, start:start+ndets, :] = fill_os_singles_kernel(ps, qs, chol_factor, mapping, ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
+    fill_os_singles_kernel(ps, qs, chol_factor, mapping, ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
     
     return spin_buffer_cupy
 
@@ -981,7 +981,7 @@ def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     G0_imag = G0.imag.copy()
         
     fill_os_doubles_kernel = cupy.ElementwiseKernel(
-        'raw int32 cre1, raw int32 cre2, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 Gshape0, int32 Gshape1, complex128 spin_buff',
+        'raw int32 cre1, raw int32 cre2, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 Gshape0, int32 Gshape1',
         'complex128 spin_buffer',
         '''
                 #include <cupy/complex.cuh>
@@ -1012,7 +1012,7 @@ def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
         ''',
         'fill_os_doubles_kernel')       
         
-    spin_buffer_cupy[:, start:start+ndets, :] = fill_os_doubles_kernel(cre[:, 0], cre[:, 1], anh[:, 0], anh[:, 1], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[0], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
+    fill_os_doubles_kernel(cre[:, 0], cre[:, 1], anh[:, 0], anh[:, 1], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[0], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
 
 
 
@@ -1057,7 +1057,7 @@ def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     G0_imag = G0.imag.copy()
         
     fill_os_triples_kernel = cupy.ElementwiseKernel(
-        'raw int32 cre0, raw int32 cre1, raw int32 cre2, raw int32 anh0, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 G0_dim2, int32 G0_dim3, complex128 spin_buff',
+        'raw int32 cre0, raw int32 cre1, raw int32 cre2, raw int32 anh0, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 G0_dim2, int32 G0_dim3',
         'complex128 spin_buffer',
         '''
                 #include <cupy/complex.cuh>
@@ -1147,7 +1147,7 @@ def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
         ''',
         'fill_os_triples_kernel')
         
-    spin_buffer_cupy[:, start:start+ndets, :] = fill_os_triples_kernel(cre[:, 0], cre[:, 1], cre[:, 2], anh[:, 0], anh[:, 1], anh[:, 2], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[1], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
+    fill_os_triples_kernel(cre[:, 0], cre[:, 1], cre[:, 2], anh[:, 0], anh[:, 1], anh[:, 2], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[1], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
 
     
 
