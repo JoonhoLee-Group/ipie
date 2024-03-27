@@ -140,22 +140,14 @@ def half_rotate_chunked(
         print(f"# Shape of beta half-rotated Cholesky: {ndets, nchol, nb * M}")
 
     chol_chunk = hamiltonian.chol_chunk.reshape((M, M, -1))
-
-    shape_a = (ndets, nchol, (M * na))
-    shape_b = (ndets, nchol, (M * nb))
-
     ctype = hamiltonian.chol_chunk.dtype
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
     if isinstance(hamiltonian, GenericComplexChol):
         raise NotImplementedError
     elif isinstance(hamiltonian, GenericRealChol):
-        # rchola = [get_shared_array(comm, shape_a, integral_type)]
-        # rcholb = [get_shared_array(comm, shape_b, integral_type)]
         rchola_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * na)), dtype=integral_type)]
         rcholb_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * nb)), dtype=integral_type)]
-    # rH1a = get_shared_array(comm, (ndets, na, M), integral_type)
-    # rH1b = get_shared_array(comm, (ndets, nb, M), integral_type)
     rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
     rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
