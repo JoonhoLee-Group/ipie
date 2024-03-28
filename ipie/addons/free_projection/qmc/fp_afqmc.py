@@ -46,10 +46,13 @@ class FPAFQMC(AFQMC):
         trial,
         walkers,
         propagator,
+        mpi_handler,
         params: QMCParamsFP,
         verbose: int = 0,
     ):
-        super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose=verbose)
+        super().__init__(
+            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose=verbose
+        )
 
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type
@@ -155,6 +158,7 @@ class FPAFQMC(AFQMC):
             driver.trial,
             driver.walkers,
             fp_prop,
+            mpi_handler,
             params,
             verbose=(verbose and comm.rank == 0),
         )

@@ -5,12 +5,8 @@ import sys
 import h5py
 import numpy
 
-from ipie.utils.from_pyscf import (
-        gen_ipie_input_from_pyscf_chk,
-        load_from_pyscf_chkfile
-        )
+from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk, load_from_pyscf_chkfile
 from ipie.utils.io import write_json_input_file
-
 
 
 def parse_args(args):
@@ -89,12 +85,18 @@ def parse_args(args):
         help="Number of core orbitals to freeze.",
     )
     parser.add_argument(
-        "-o", "--ortho-ao", dest="oao", action="store_true", help="Whether to do"
-        " use orthogonalized AO basis."
+        "-o",
+        "--ortho-ao",
+        dest="oao",
+        action="store_true",
+        help="Whether to do" " use orthogonalized AO basis.",
     )
     parser.add_argument(
-        "--lin-dep", dest="lin_dep", type=float, default=0, help="Linear "
-        "dependency threshold for canonical orthogonalization."
+        "--lin-dep",
+        dest="lin_dep",
+        type=float,
+        default=0,
+        help="Linear " "dependency threshold for canonical orthogonalization.",
     )
     parser.add_argument(
         "-v", "--verbose", dest="verbose", action="store_true", help="Verbose output."
@@ -131,15 +133,17 @@ def main(args):
         linear_dep_thresh=options.lin_dep,
     )
     scf_data = load_from_pyscf_chkfile(options.input_scf)
-    nelec_mol = scf_data['mol'].nelec
+    nelec_mol = scf_data["mol"].nelec
     nfzn = options.num_frozen_core
-    nelec_sim = (nelec_mol[0]-nfzn, nelec_mol[1]-nfzn)
+    nelec_sim = (nelec_mol[0] - nfzn, nelec_mol[1] - nfzn)
     write_json_input_file(
-        options.json_input, options.output, options.wfn, nelec_sim,
+        options.json_input,
+        options.output,
+        options.wfn,
+        nelec_sim,
         estimates_filename=options.est,
     )
 
 
 if __name__ == "__main__":
-
     main(sys.argv[1:])

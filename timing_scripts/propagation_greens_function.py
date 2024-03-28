@@ -1,14 +1,18 @@
 try:
     import cupy as np
+
     _gpu = True
 except ImportError:
     import numpy as np
+
     _gpu = False
 import time
 
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.legacy.estimators.greens_function import (
-    greens_function_single_det, greens_function_single_det_batch)
+    greens_function_single_det,
+    greens_function_single_det_batch,
+)
 from ipie.legacy.walkers.single_det import SingleDetWalker
 from ipie.legacy.walkers.single_det_batch import SingleDetWalkerBatch
 from ipie.systems.generic import Generic
@@ -18,9 +22,10 @@ from ipie.utils.testing import get_random_nomsd
 divide = 5
 
 nao = 1000 // divide
-nocc = 200  // divide
-naux = 4000  // divide
+nocc = 200 // divide
+naux = 4000 // divide
 nwalkers = 20
+
 
 def time_overlap():
     def loop_based(a, b):
@@ -32,7 +37,7 @@ def time_overlap():
             s, o = np.linalg.slogdet(inv)
 
     def einsum_based(a, b):
-        ovlps = np.einsum('wmi,mj->wij', a, b.conj(), optimize=True)
+        ovlps = np.einsum("wmi,mj->wij", a, b.conj(), optimize=True)
         invs = np.linalg.inv(ovlps)
         s, o = np.linalg.slogdet(invs)
 
@@ -46,7 +51,8 @@ def time_overlap():
         start = time.time()
         einsum_based(psi, trial)
         t_einsum = time.time() - start
-        print(nwalkers, t_einsum/t_loop)
+        print(nwalkers, t_einsum / t_loop)
+
 
 def time_dets():
     def loop_based(ovlp):
@@ -67,7 +73,8 @@ def time_dets():
         start = time.time()
         einsum_based(ovlps)
         t_einsum = time.time() - start
-        print(nwalkers, t_einsum/t_loop)
+        print(nwalkers, t_einsum / t_loop)
+
 
 def time_ghalf():
     def loop_based(a, b, out):
@@ -75,14 +82,14 @@ def time_ghalf():
             out[iw] = np.dot(b[iw], a[iw].T)
 
     def einsum_based(a, b, out):
-        out = np.einsum('wij,wmj->wim', b, a, optimize=True)
+        out = np.einsum("wij,wmj->wim", b, a, optimize=True)
 
     def dot_based(a, b, out):
         nw = a.shape[0]
         no = b.shape[1]
         nb = a.shape[1]
-        a_ = a.reshape((nw*nb, no))
-        b_ = b.reshape((nw*no,no))
+        a_ = a.reshape((nw * nb, no))
+        b_ = b.reshape((nw * no, no))
         out = np.dot(b_, a_.T)
 
     # Ghalf construction
@@ -99,7 +106,8 @@ def time_ghalf():
         start = time.time()
         dot_based(walkers, ovlps, gf)
         t_dot = time.time() - start
-        print(nwalkers, t_einsum/t_loop, t_dot/t_loop)
+        print(nwalkers, t_einsum / t_loop, t_dot / t_loop)
+
 
 def time_gfull():
     def loop_based(a, b, out):
@@ -107,7 +115,7 @@ def time_gfull():
             out[iw] = np.dot(b.conj(), a[iw])
 
     def einsum_based(a, b, out):
-        out = np.einsum('mi,win->wmn', b.conj(), a, optimize=True)
+        out = np.einsum("mi,win->wmn", b.conj(), a, optimize=True)
 
     # Ghalf construction
     for nwalkers in range(1, 40, 5):
@@ -121,24 +129,25 @@ def time_gfull():
         start = time.time()
         einsum_based(ghalf, trial, gf)
         t_einsum = time.time() - start
-        print(nwalkers, t_einsum/t_loop)
+        print(nwalkers, t_einsum / t_loop)
+
 
 # Full GF test
 def time_routines():
     for nwalkers in range(1, 40, 5):
         wfn = get_random_nomsd(nocc, nocc, nao, ndet=1)
         h1e = np.random.random((nao, nao))
-        system = Generic(nelec=(nocc,nocc))
+        system = Generic(nelec=(nocc, nocc))
         nmo = nao
         chol = np.zeros((naux, nmo, nmo))
-        ham = HamGeneric(h1e=np.array([h1e,h1e]),
-                         chol=chol.reshape((naux,nmo*nmo)).T.copy(),
-                         ecore=0)
+        ham = HamGeneric(
+            h1e=np.array([h1e, h1e]), chol=chol.reshape((naux, nmo * nmo)).T.copy(), ecore=0
+        )
         if _gpu:
             ham.cast_to_cupy()
         trial = MultiSlater(system, ham, wfn)
-        trial.psia = trial.psi[0,:,:nocc].copy()
-        trial.psib = trial.psi[0,:,nocc:].copy()
+        trial.psia = trial.psi[0, :, :nocc].copy()
+        trial.psib = trial.psi[0, :, nocc:].copy()
         trial.psi = trial.psi[0]
         walkers = [SingleDetWalker(system, ham, trial) for _ in range(nwalkers)]
         walker_batch = SingleDetWalkerBatch(system, ham, trial, nwalkers)
@@ -147,10 +156,11 @@ def time_routines():
         loop = time.time() - start
         start = time.time()
         greens_function_single_det_batch(walker_batch, trial)
-        print(nwalkers, (time.time() - start)/loop)
+        print(nwalkers, (time.time() - start) / loop)
 
-if __name__ == '__main__':
-    tmp = np.dot(np.random.random((100,100)), np.eye(100))
+
+if __name__ == "__main__":
+    tmp = np.dot(np.random.random((100, 100)), np.eye(100))
     print(">>>> Overlap <<<<<")
     time_overlap()
     print(">>>> Dets <<<<<")

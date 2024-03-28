@@ -21,6 +21,8 @@ import pytest
 
 from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
@@ -30,7 +32,7 @@ from ipie.systems.generic import Generic
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import get_shared_array, MPIHandler
 from ipie.utils.pack_numba import pack_cholesky
-from ipie.utils.testing import build_random_single_det_trial, generate_hamiltonian
+from ipie.utils.testing import build_random_single_det_trial, generate_hamiltonian, get_random_nomsd
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial
 
 comm = MPI.COMM_WORLD
@@ -71,17 +73,25 @@ def test_generic_propagation_chunked():
 
     chol = chol.reshape((nmo * nmo, nchol))
 
+    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
+
     system = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
-    trial, _ = build_random_single_det_trial(nelec, nmo)
+    ham = GenericRealCholChunked(
+        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc, handler=mpi_handler
+    )
+    ham_nochunk = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
+    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    trial = SingleDet(wfn[0], nelec, nmo)
+    trial.handler = mpi_handler
+    if comm.rank == 0:
+        print("# Chunking trial.")
     trial.half_rotate(ham)
-    trial.calculate_energy(system, ham)
+
+    trial_nochunk = SingleDet(wfn[0], nelec, nmo)
+    trial_nochunk.half_rotate(ham_nochunk)
+    trial_nochunk.calculate_energy(system, ham_nochunk)
 
     qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-
-    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
-    ham.chunk(mpi_handler)
-    trial.chunk(mpi_handler)
 
     prop = PhaselessGenericChunked(qmc["dt"])
     prop.build(ham, trial, mpi_handler=mpi_handler)
@@ -94,10 +104,10 @@ def test_generic_propagation_chunked():
     walker_batch.build(trial)
 
     for i in range(nsteps):
-        prop.propagate_walkers(walker_batch, ham, trial, trial.energy)
+        prop.propagate_walkers(walker_batch, ham, trial, trial_nochunk.energy)
         walker_batch.reortho()
 
-    vfb = construct_force_bias_batch_single_det(ham, walker_batch, trial)
+    vfb = construct_force_bias_batch_single_det(ham_nochunk, walker_batch, trial_nochunk)
     vfb_chunked = construct_force_bias_batch_single_det_chunked(
         ham, walker_batch, trial, mpi_handler
     )
@@ -113,8 +123,8 @@ def test_generic_propagation_chunked():
         xshifted.T.copy(),
     )
     prop = PhaselessGeneric(qmc["dt"])
-    prop.build(ham, trial)
-    VHS = prop.construct_VHS(ham, xshifted.T.copy())
+    prop.build(ham_nochunk, trial_nochunk)
+    VHS = prop.construct_VHS(ham_nochunk, xshifted.T.copy())
     assert numpy.allclose(VHS, VHS_chunked)
 
 

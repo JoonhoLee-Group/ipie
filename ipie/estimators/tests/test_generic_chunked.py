@@ -21,7 +21,11 @@ import pytest
 
 from ipie.config import MPI
 from ipie.estimators.local_energy_sd import local_energy_single_det_batch
-from ipie.estimators.local_energy_sd_chunked import local_energy_single_det_uhf_batch_chunked
+from ipie.estimators.local_energy_sd_chunked import (
+    local_energy_single_det_uhf_batch_chunked,
+    local_energy_single_det_uhf_batch_chunked_gpu,
+)
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessGenericChunked
 from ipie.systems.generic import Generic
@@ -62,31 +66,36 @@ def test_generic_chunked():
 
     idx = numpy.triu_indices(nmo)
     cp_shape = (nmo * (nmo + 1) // 2, chol.shape[-1])
-    # chol_packed = numpy.zeros(cp_shape, dtype = chol.dtype)
     chol_packed = get_shared_array(comm, cp_shape, chol.dtype)
 
     if comm.rank == 0:
         pack_cholesky(idx[0], idx[1], chol_packed, chol)
 
     chol = chol.reshape((nmo * nmo, nchol))
+    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
 
     system = Generic(nelec=nelec)
-    ham = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
-    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
-    trial = SingleDet(wfn[0], nelec, nmo)
-    trial.half_rotate(ham)
-
-    trial.calculate_energy(system, ham)
-
-    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
-
-    mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
     if comm.rank == 0:
         print("# Chunking hamiltonian.")
-    ham.chunk(mpi_handler)
+    ham = GenericRealCholChunked(
+        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc, handler=mpi_handler
+    )
+    ham_nochunk = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
+    _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
+    trial = SingleDet(wfn[0], nelec, nmo)
+    trial.handler = mpi_handler
     if comm.rank == 0:
         print("# Chunking trial.")
-    trial.chunk(mpi_handler)
+    trial.half_rotate(ham)
+
+    # work around to compute the trial energy
+    trial_nochunk = SingleDet(wfn[0], nelec, nmo)
+    trial_nochunk.half_rotate(ham_nochunk)
+    trial_nochunk.calculate_energy(system, ham_nochunk)
+
+    comm.barrier()
+
+    qmc = dotdict({"dt": 0.005, "nstblz": 5, "batched": True, "nwalkers": nwalkers})
 
     prop = PhaselessGenericChunked(time_step=qmc["dt"])
     prop.build(ham, trial, mpi_handler=mpi_handler)
@@ -98,10 +107,10 @@ def test_generic_chunked():
     walkers.build(trial)
 
     for i in range(nsteps):
-        prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        prop.propagate_walkers(walkers, ham, trial, trial_nochunk.energy)
         walkers.reortho()
 
-    energies = local_energy_single_det_batch(system, ham, walkers, trial)
+    energies = local_energy_single_det_batch(system, ham_nochunk, walkers, trial_nochunk)
 
     energies_chunked = local_energy_single_det_uhf_batch_chunked(system, ham, walkers, trial)
 

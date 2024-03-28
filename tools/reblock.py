@@ -15,11 +15,7 @@ _script_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(_script_dir, "analysis"))
 import glob
 
-from ipie.analysis.blocking import (
-        analyse_estimates,
-        reblock_minimal,
-        average_fp
-        )
+from ipie.analysis.blocking import analyse_estimates, reblock_minimal, average_fp
 from ipie.analysis.extraction import extract_data_sets
 
 
@@ -52,8 +48,7 @@ def parse_args(args):
         type=int,
         dest="block_start",
         default=0,
-        help="Simulation block to start blocking analysis from (equilibration "
-        "time): Default 0",
+        help="Simulation block to start blocking analysis from (equilibration " "time): Default 0",
     )
     parser.add_argument(
         "-m",
