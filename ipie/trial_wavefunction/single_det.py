@@ -48,8 +48,8 @@ class SingleDet(TrialWavefunctionBase):
         self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
         self.handler = handler
 
-        self.psi0a = numpy.ascontiguousarray(self.psi0a.conj())
-        self.psi0b = numpy.ascontiguousarray(self.psi0b.conj())
+        self.psi0a = numpy.ascontiguousarray(self.psi0a)
+        self.psi0b = numpy.ascontiguousarray(self.psi0b)
 
     def build(self) -> None:
         pass
