@@ -66,14 +66,12 @@ class GenericBase(metaclass=ABCMeta):
         del self.chol_packed
 
         # distributing chol
-        handler.comm.barrier()
-
-        self.chol_chunk = handler.scatter_group(self.chol.T)  # distribute over chol
-
         if handler.srank == 0:
             self.chol = self.chol.T.copy()  # [M^2, chol]
         else:
             self.chol = self.chol.T
+        handler.comm.barrier()
+        self.chol_chunk = handler.scatter_group(self.chol)  # distribute over chol
         handler.comm.barrier()
 
         self.chol_chunk = self.chol_chunk.T  # [M^2, chol_chunk]

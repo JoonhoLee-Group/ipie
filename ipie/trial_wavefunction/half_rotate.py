@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
 
@@ -143,9 +144,9 @@ def half_rotate_chunked(
     ctype = hamiltonian.chol_chunk.dtype
     ptype = orbsa.dtype
     integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
-    if isinstance(hamiltonian, GenericComplexChol):
+    if isinstance(hamiltonian, GenericComplexChol) or isinstance(hamiltonian, GenericRealChol):
         raise NotImplementedError
-    elif isinstance(hamiltonian, GenericRealChol):
+    elif isinstance(hamiltonian, GenericRealCholChunked):
         rchola_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * na)), dtype=integral_type)]
         rcholb_chunk = [np.zeros((ndets, hamiltonian.nchol_chunk, (M * nb)), dtype=integral_type)]
     rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
@@ -177,7 +178,6 @@ def half_rotate_chunked(
 
     start_n = hamiltonian.chunk_displacements[handler.srank]
     end_n = hamiltonian.chunk_displacements[handler.srank + 1]
-    print([handler.srank, start_n, end_n, hamiltonian.chunk_displacements, hamiltonian.nchol_chunk])
 
     nchol_loc = end_n - start_n
     if compute:
@@ -188,7 +188,6 @@ def half_rotate_chunked(
             chol_chunk,
             optimize=True,
         )
-        print(orbsa.shape, chol_chunk.shape)
         rup = rup.reshape((ndets, nchol_loc, na * M))
         rdn = np.einsum(
             "Jmi,mnx->Jxin",
@@ -197,21 +196,15 @@ def half_rotate_chunked(
             optimize=True,
         )
         rdn = rdn.reshape((ndets, nchol_loc, nb * M))
-        # rchola[0][:, start_n:end_n, start_a : start_a + M * na] = rup[:]
-        # rcholb[0][:, start_n:end_n, start_b : start_b + M * nb] = rdn[:]
         rchola_chunk[0][:, :, start_a : start_a + M * na] = rup[:]
         rcholb_chunk[0][:, :, start_b : start_b + M * nb] = rdn[:]
 
     if comm is not None:
         comm.barrier()
 
-    if isinstance(hamiltonian, GenericRealChol):
-        # rchola = rchola[0]
-        # rcholb = rcholb[0]
+    if isinstance(hamiltonian, GenericRealCholChunked):
         rchola = rchola_chunk[0]
         rcholb = rcholb_chunk[0]
-
-    print("half rotation complete")
 
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)

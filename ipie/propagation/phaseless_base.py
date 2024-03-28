@@ -39,12 +39,17 @@ def construct_one_body_propagator(
         Timestep.
     """
     nb = hamiltonian.nbasis
-    if hasattr(mf_shift, "get"):
+    if hamiltonian.chunked:
         start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
         end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
-        shift = 1j * numpy.einsum(
-            "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
-        ).reshape(nb, nb)
+        if hasattr(mf_shift, "get"):
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
+            ).reshape(nb, nb)
+        else:
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift[start_n:end_n]
+            ).reshape(nb, nb)
         if MPI is None:
             raise ImportError("mpi4py is not installed.")
         else:

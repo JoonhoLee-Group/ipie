@@ -23,6 +23,7 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
+from typing import Union
 
 
 # class for UHF trial
@@ -184,7 +185,7 @@ class SingleDet(TrialWavefunctionBase):
     @plum.dispatch
     def calc_force_bias(
         self,
-        hamiltonian: GenericRealChol,
+        hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> xp.ndarray:

@@ -18,8 +18,9 @@
 
 import numpy
 from ipie.hamiltonians.generic_base import GenericBase
+from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
-
+from ipie.utils.mpi import make_splits_displacements
 try:
     from mpi4py import MPI
 except ImportError:
@@ -47,32 +48,46 @@ class GenericRealCholChunked(GenericBase):
     Can be created by passing the one and two electron integrals directly.
     """
 
-    def __init__(self, h1e, chol_chunk, chol_packed_chunk, ecore=0.0, handler=None, verbose=False):
+    def __init__(self, h1e, chol=None, chol_chunk=None, chol_packed_chunk=None, ecore=0.0, handler=None, verbose=False):
+        if not ((chol is not None and chol_chunk is None and chol_packed_chunk is None) or
+                (chol is None and chol_chunk is not None and chol_packed_chunk is not None)):
+            raise ValueError("Invalid argument combination. Provide either 'chol' alone or both 'chol_chunk' and 'chol_packed_chunk' together.")
+        super().__init__(h1e, ecore, verbose)
+        self.handler = handler
         assert (
             h1e.shape[0] == 2
         )  # assuming each spin component is given. this should be fixed for GHF...?
-        super().__init__(h1e, ecore, verbose)
+        
+        self.sym_idx = numpy.triu_indices(self.nbasis)
+        self.sym_idx_i = self.sym_idx[0].copy()
+        self.sym_idx_j = self.sym_idx[1].copy()
 
-        chunked_chols = chol_chunk.shape[-1]
+        if chol is not None:
+            self.chol = chol  # [M^2, nchol]
+            self.nchol = self.chol.shape[-1]  
+            self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
+            cp_shape = (self.nbasis * (self.nbasis + 1) // 2, self.chol.shape[-1])
+            self.chol_packed = numpy.zeros(cp_shape, dtype=self.chol.dtype)
+            pack_cholesky(self.sym_idx[0], self.sym_idx[1], self.chol_packed, self.chol)
+            self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))   
+            self.chunk(handler)
+        else:
+            self.chol_chunk = chol_chunk  # [M^2, nchol]
+            self.chol_packed_chunk = chol_packed_chunk
+
+        chunked_chols = self.chol_chunk.shape[-1]
         num_chol = handler.scomm.allreduce(chunked_chols, op=MPI.SUM)
         self.nchol = num_chol
 
         chol_idxs = [i for i in range(self.nchol)]
         self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
 
-        assert chol_chunk.dtype == numpy.dtype("float64")
-        assert chol_packed_chunk.dtype == numpy.dtype("float64")
+        assert self.chol_chunk.dtype == numpy.dtype("float64")
+        assert self.chol_packed_chunk.dtype == numpy.dtype("float64")
 
-        self.chol_chunk = chol_chunk  # [M^2, nchol]
         self.nchol_chunk = self.chol_chunk.shape[-1]
         self.nfields = self.nchol
-        assert self.nbasis**2 == chol_chunk.shape[0]
-
-        self.sym_idx = numpy.triu_indices(self.nbasis)
-        self.sym_idx_i = self.sym_idx[0].copy()
-        self.sym_idx_j = self.sym_idx[1].copy()
-
-        self.chol_packed_chunk = chol_packed_chunk
+        assert self.nbasis**2 == self.chol_chunk.shape[0]
 
         self.chunked = True
 
@@ -80,6 +95,9 @@ class GenericRealCholChunked(GenericBase):
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
         construct_h1e_mod(self.chol_chunk, self.H1, h1e_mod, handler)
         self.h1e_mod = xp.array(h1e_mod)
+
+        split_size = make_splits_displacements(num_chol, handler.nmembers)[0]
+        self.chunk_displacements = [0] + numpy.cumsum(split_size).tolist()
 
         if verbose:
             mem = self.chol_chunk.nbytes / (1024.0**3)
