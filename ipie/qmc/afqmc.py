@@ -84,7 +84,7 @@ class AFQMC(object):
         self.trial = trial
         self.walkers = walkers
         self.propagator = propagator
-        self.mpi_handler = mpi_handler # mpi_handler should be passed into here
+        self.mpi_handler = mpi_handler  # mpi_handler should be passed into here
         self.shared_comm = self.mpi_handler.shared_comm
         self.verbose = verbose
         self.verbosity = int(verbose)

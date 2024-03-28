@@ -50,7 +50,9 @@ class FPAFQMC(AFQMC):
         params: QMCParamsFP,
         verbose: int = 0,
     ):
-        super().__init__(system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose=verbose)
+        super().__init__(
+            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose=verbose
+        )
 
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type

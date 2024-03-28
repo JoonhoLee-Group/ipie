@@ -21,7 +21,7 @@ import pytest
 
 from ipie.config import MPI
 from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.hamiltonians.generic_chunked import GenericRealCholChunked 
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
@@ -76,7 +76,9 @@ def test_generic_propagation_chunked():
     mpi_handler = MPIHandler(nmembers=3, verbose=(rank == 0))
 
     system = Generic(nelec=nelec)
-    ham = GenericRealCholChunked(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc, handler=mpi_handler)
+    ham = GenericRealCholChunked(
+        h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc, handler=mpi_handler
+    )
     ham_nochunk = HamGeneric(h1e=numpy.array([h1e, h1e]), chol=chol, ecore=enuc)
     _, wfn = get_random_nomsd(system.nup, system.ndown, ham.nbasis, ndet=1, cplx=False)
     trial = SingleDet(wfn[0], nelec, nmo)
@@ -84,7 +86,7 @@ def test_generic_propagation_chunked():
     if comm.rank == 0:
         print("# Chunking trial.")
     trial.half_rotate(ham)
-    
+
     trial_nochunk = SingleDet(wfn[0], nelec, nmo)
     trial_nochunk.half_rotate(ham_nochunk)
     trial_nochunk.calculate_energy(system, ham_nochunk)

@@ -1,5 +1,4 @@
-
-NOTICE="""
+NOTICE = """
 # Copyright 2022 The ipie Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,7 @@ from pathlib import Path
 from pathlib import Path
 import subprocess
 
+
 def get_authors(file_path):
     authors = subprocess.check_output(f"git shortlog {file_path} -n -s --email".split())
     first_names = [name.decode("utf_8") for name in authors.split()[1::4]]
@@ -27,18 +27,19 @@ def get_authors(file_path):
     email = [name.decode("utf_8") for name in authors.split()[3::4]]
     return list(zip(first_names, last_names, email))
 
+
 files = [("bin/ipie", get_authors("bin/ipie"))]
-for path in Path('bin').rglob('*.py'):
+for path in Path("bin").rglob("*.py"):
     files.append((path, get_authors(path)))
-for path in Path('examples').rglob('*.py'):
+for path in Path("examples").rglob("*.py"):
     files.append((path, get_authors(path)))
-for path in Path('ipie').rglob('*.py'):
+for path in Path("ipie").rglob("*.py"):
     files.append((path, get_authors(path)))
-for path in Path('lib').rglob('*.c'):
+for path in Path("lib").rglob("*.c"):
     files.append((path, get_authors(path)))
-for path in Path('lib').rglob('*.h'):
+for path in Path("lib").rglob("*.h"):
     files.append((path, get_authors(path)))
-for path in Path('lib').rglob('*.py'):
+for path in Path("lib").rglob("*.py"):
     files.append((path, get_authors(path)))
 
 for file_path, names in files:
@@ -52,18 +53,20 @@ for file_path, names in files:
         if len(names) > 0:
             num_authors = 0
             string = ""
-            for (f, l, e) in names:
+            for f, l, e in names:
                 if f in string:
                     continue
                 if ".com" not in e:
                     _email = ""
-                    string += '{:s} {:s}\n# {:9s}'.format(f, l, "")
+                    string += "{:s} {:s}\n# {:9s}".format(f, l, "")
                 else:
                     _email = e
-                    string += '{:s} {:s} {:s}\n# {:9s}'.format(f, l, _email, "")
+                    string += "{:s} {:s} {:s}\n# {:9s}".format(f, l, _email, "")
                 num_authors += 1
             authors = """#
 # Author{:s}: {}
-""".format("s" if num_authors > 1 else "", string.strip())
+""".format(
+                "s" if num_authors > 1 else "", string.strip()
+            )
         file.seek(0, 0)
-        file.write(NOTICE + authors + '\n' + file_data)
+        file.write(NOTICE + authors + "\n" + file_data)

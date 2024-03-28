@@ -6,12 +6,12 @@ import cupy as cp
 import numpy as np
 from mpi4py import MPI
 
-os.environ["I_MPI_PMI_LIBRARY"] = '/cm/shared/apps/slurm/20.02.6/lib64/libpmi2.so'
+os.environ["I_MPI_PMI_LIBRARY"] = "/cm/shared/apps/slurm/20.02.6/lib64/libpmi2.so"
 
 divide = 5
 nao = 1000 // divide
-nocc = 200  // divide
-naux = 4000  // divide
+nocc = 200 // divide
+naux = 4000 // divide
 nwalkers = int(sys.argv[1])
 
 comm = MPI.COMM_WORLD
@@ -29,10 +29,10 @@ rank = comm.Get_rank()
 
 
 """ MPI GPU """
-rchol = np.random.rand(naux,nocc*nao)
+rchol = np.random.rand(naux, nocc * nao)
 walkers_batch_Ghalf = np.random.rand(2, nwalkers, nao * nocc)
 with cp.cuda.Device(rank % 2):
-    warmup = cp.dot(cp.array(np.random.rand(2,2)),cp.array(np.random.rand(2,2)))
+    warmup = cp.dot(cp.array(np.random.rand(2, 2)), cp.array(np.random.rand(2, 2)))
     rchol_gpu = cp.asarray(rchol)
     walkers_batch_Ghalf_gpu = cp.asarray(walkers_batch_Ghalf)
     recvbuf = cp.empty_like(walkers_batch_Ghalf_gpu)
@@ -46,8 +46,7 @@ if rank == 0:
     comm.Send(walkers_batch_Ghalf_gpu, dest=1, tag=13)
 elif rank == 1:
     comm.Recv(recvbuf, source=0, tag=13)
-   
+
 with cp.cuda.Device(rank % 2):
     print("send   : ", walkers_batch_Ghalf_gpu.device, walkers_batch_Ghalf_gpu.sum())
     print("receive: ", recvbuf.device, recvbuf.sum())
-

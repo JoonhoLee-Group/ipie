@@ -21,6 +21,7 @@ from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import make_splits_displacements
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -48,28 +49,41 @@ class GenericRealCholChunked(GenericBase):
     Can be created by passing the one and two electron integrals directly.
     """
 
-    def __init__(self, h1e, chol=None, chol_chunk=None, chol_packed_chunk=None, ecore=0.0, handler=None, verbose=False):
-        if not ((chol is not None and chol_chunk is None and chol_packed_chunk is None) or
-                (chol is None and chol_chunk is not None and chol_packed_chunk is not None)):
-            raise ValueError("Invalid argument combination. Provide either 'chol' alone or both 'chol_chunk' and 'chol_packed_chunk' together.")
+    def __init__(
+        self,
+        h1e,
+        chol=None,
+        chol_chunk=None,
+        chol_packed_chunk=None,
+        ecore=0.0,
+        handler=None,
+        verbose=False,
+    ):
+        if not (
+            (chol is not None and chol_chunk is None and chol_packed_chunk is None)
+            or (chol is None and chol_chunk is not None and chol_packed_chunk is not None)
+        ):
+            raise ValueError(
+                "Invalid argument combination. Provide either 'chol' alone or both 'chol_chunk' and 'chol_packed_chunk' together."
+            )
         super().__init__(h1e, ecore, verbose)
         self.handler = handler
         assert (
             h1e.shape[0] == 2
         )  # assuming each spin component is given. this should be fixed for GHF...?
-        
+
         self.sym_idx = numpy.triu_indices(self.nbasis)
         self.sym_idx_i = self.sym_idx[0].copy()
         self.sym_idx_j = self.sym_idx[1].copy()
 
         if chol is not None:
             self.chol = chol  # [M^2, nchol]
-            self.nchol = self.chol.shape[-1]  
+            self.nchol = self.chol.shape[-1]
             self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
             cp_shape = (self.nbasis * (self.nbasis + 1) // 2, self.chol.shape[-1])
             self.chol_packed = numpy.zeros(cp_shape, dtype=self.chol.dtype)
             pack_cholesky(self.sym_idx[0], self.sym_idx[1], self.chol_packed, self.chol)
-            self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))   
+            self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))
             self.chunk(handler)
         else:
             self.chol_chunk = chol_chunk  # [M^2, nchol]
