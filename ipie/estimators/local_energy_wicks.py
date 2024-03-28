@@ -41,18 +41,8 @@ else:
 
 from mpi4py import MPI 
 
-from time_profiler import timer
-
-import cProfile
-
 import cupy, cupyx
     
-def get_used_memory(des):
-    cupy.cuda.Device(0).synchronize()
-    free_bytes, total_bytes = cupy.cuda.Device(0).mem_info
-    used_bytes = total_bytes - free_bytes
-    print("Local energy estimator is:{}  G at check point: {}".format(used_bytes/(1024**3), des))
-
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
     """Compute local energy for walker batch (all walkers at once).
