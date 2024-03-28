@@ -39,6 +39,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 
 
 class AFQMC(object):
@@ -288,7 +289,10 @@ class AFQMC(object):
                     )
             self.propagator.cast_to_cupy(self.verbose and comm.rank == 0)
             self.hamiltonian.cast_to_cupy(self.verbose and comm.rank == 0)
-            self.trial.cast_to_cupy(self.verbose and comm.rank == 0)
+            if type(self.trial)==ParticleHole:
+                pass
+            else:
+                self.trial.cast_to_cupy(self.verbose and comm.rank == 0)
             self.walkers.cast_to_cupy(self.verbose and comm.rank == 0)
 
     def get_env_info(self):
