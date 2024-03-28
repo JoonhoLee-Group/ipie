@@ -5,6 +5,7 @@ from ipie.utils.backend import arraylib as xp
 
 import numpy as np
 
+from ipie.config import config
 from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det,
     greens_function_multi_det_wicks,

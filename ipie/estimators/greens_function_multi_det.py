@@ -1385,7 +1385,6 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
         Determinant of overlap matrix.
     """
     
-    
     nbasis = walker_batch.Ga.shape[-1]
 
     walker_batch.Ga.fill(0.0 + 0.0j)
@@ -1403,6 +1402,7 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
     logdets_b = xp.zeros_like(ovlps0)
     
     trial_psi0a_conj = xp.zeros_like(trial.psi0a.conj())
+    # print(type(trial_psi0a_conj),type(trial.psi0a.conj()))
     trial_psi0a_conj.set(trial.psi0a.conj())
     trial_psi0b_conj = xp.zeros_like(trial.psi0b.conj())
     trial_psi0b_conj.set(trial.psi0b.conj())

@@ -930,7 +930,7 @@ def build_contributions12_gpu(
     Lvo_a = xp.zeros((nwalkers, nchol, trial_nact, trial_alpha), dtype=numpy.complex128)
     Lvo_b = xp.zeros((nwalkers, nchol, trial_nact, trial_beta), dtype=numpy.complex128)
 
-    nchunks = nwalkers #the number of chunks in the Cholesky dimension, we find in practice setting it to be nwalkers gives a better balance between efficiency and memory-use for large systems
+    nchunks = 1#nwalkers #the number of chunks in the Cholesky dimension, we find in practice setting it to be nwalkers gives a better balance between efficiency and memory-use for large systems
     Lvo_a = xp.array_split(Lvo_a, nchunks, axis=1)
     Lvo_b = xp.array_split(Lvo_b, nchunks, axis=1)
     
