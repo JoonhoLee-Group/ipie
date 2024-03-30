@@ -11,3 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Directory for additions to ipie which depend on the core ipie library.
+# New features should mirror the ipie layout e.g.
+# ipie/addons/finite_temperature/qmc/afqmc.py etc.
