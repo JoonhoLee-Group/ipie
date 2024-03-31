@@ -199,6 +199,7 @@ afqmc = AFQMC(
     trial,
     walkers,
     propagator,
+    mpi_handler,
     params,
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)

@@ -30,6 +30,7 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
@@ -41,11 +42,15 @@ from ipie.trial_wavefunction.particle_hole import (
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkers
+from typing import Union
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    system: Generic,
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
+    walkers: UHFWalkers,
+    trial: SingleDet,
 ):
     return local_energy_batch(system, hamiltonian, walkers, trial)
 
