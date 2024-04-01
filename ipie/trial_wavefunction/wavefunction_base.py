@@ -96,3 +96,6 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         assert self._rchola.size == tot_size
         tot_size = handler.allreduce_group(self._rcholb_chunk.size)
         assert self._rcholb.size == tot_size
+
+        del self._rchola
+        del self._rcholb

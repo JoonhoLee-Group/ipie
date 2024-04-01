@@ -141,7 +141,7 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
         Force bias.
     """
     assert hamiltonian.chunked
-    assert xp.isrealobj(trial._rchola)
+    assert xp.isrealobj(trial._rchola_chunk)
 
     Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
     Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
