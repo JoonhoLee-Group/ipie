@@ -878,7 +878,6 @@ def build_contributions12_gpu(
     rchol_a,
     rchol_b,
     rchol_act_a,
-    # rchol_act_b,
     theta_a,
     theta_b,
     CI_a,
@@ -886,9 +885,6 @@ def build_contributions12_gpu(
     trial_nact,
     trial_alpha,
     trial_beta,
-    # Lvo_a,
-    # Lvo_b,
-    # n_devices,
 ):
     """Build contributions one and two for wicks local energy.
 
@@ -920,7 +916,7 @@ def build_contributions12_gpu(
     Lvo_a = xp.zeros((nwalkers, nchol, trial_nact, trial_alpha), dtype=numpy.complex128)
     Lvo_b = xp.zeros((nwalkers, nchol, trial_nact, trial_beta), dtype=numpy.complex128)
 
-    nchunks = 1#nwalkers #the number of chunks in the Cholesky dimension, we find in practice setting it to be nwalkers gives a better balance between efficiency and memory-use for large systems
+    nchunks = int(nbasis/2) #the number of chunks in the Cholesky dimension, we find in practice setting it to be norb/2 gives a better balance between efficiency and memory-use for large systems
     Lvo_a = xp.array_split(Lvo_a, nchunks, axis=1)
     Lvo_b = xp.array_split(Lvo_b, nchunks, axis=1)
     
@@ -1026,11 +1022,6 @@ def build_contributions12_gpu(
     Lvo_a = xp.concatenate(Lvo_a, axis = 1)
     Lvo_b = xp.concatenate(Lvo_b, axis = 1)
     
-#     free_bytes, total_bytes = xp.cuda.Device().mem_info
-#     used_bytes = total_bytes - free_bytes
-        
-#     print("post_build12",used_bytes)
-    
     return cont1_J + cont1_K, cont2_J + cont2_K, Lvo_a, Lvo_b
 
 
@@ -1081,9 +1072,8 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(system, ham, walker
         trial._rchola,
         trial._rcholb,
         trial._rchola_act,
-        # trial._rcholb_act,
-        walkers.Ghalfa,#.copy(),
-        walkers.Ghalfb,#.copy(),
+        walkers.Ghalfa,
+        walkers.Ghalfb,
         walkers.CIa,
         walkers.CIb,
         trial.nact,
@@ -1155,7 +1145,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(system, ham, walker
             ].reshape(cof_sizex).copy()
             _start = time.time()
             if ndets_a > 0:
-                wk.build_det_matrix_gpu(
+                wk.build_det_matrix(
                     trial.cre_ex_a_chunk[ichunk][iexcit],
                     trial.anh_ex_a_chunk[ichunk][iexcit],
                     trial.occ_map_a,
@@ -1258,7 +1248,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(system, ham, walker
             ].reshape(cof_sizex).copy()
             if ndets_b > 0:
                 
-                wk.build_det_matrix_gpu(
+                wk.build_det_matrix(
                     trial.cre_ex_b_chunk[ichunk][iexcit],
                     trial.anh_ex_b_chunk[ichunk][iexcit],
                     trial.occ_map_b,

@@ -286,46 +286,26 @@ def get_dets_single_excitation_batched_opt(G0wa, G0wb, trial):
     else:
         # arrays of length ndet_per_single_excitation
         dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.get_dets_singles_gpu(
-                trial.cre_ex_a[1],
-                trial.anh_ex_a[1],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
-        else:
-            wk.get_dets_singles(
-                trial.cre_ex_a[1],
-                trial.anh_ex_a[1],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
+        wk.get_dets_singles(
+            trial.cre_ex_a[1],
+            trial.anh_ex_a[1],
+            trial.occ_map_a,
+            trial.nfrozen,
+            G0wa,
+            dets_a,
+        )
     if ndets_b == 0:
         dets_b = None
     else:
         dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.get_dets_singles_gpu(
-                trial.cre_ex_b[1],
-                trial.anh_ex_b[1],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
-        else:
-            wk.get_dets_singles(
-                trial.cre_ex_b[1],
-                trial.anh_ex_b[1],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
+        wk.get_dets_singles(
+            trial.cre_ex_b[1],
+            trial.anh_ex_b[1],
+            trial.occ_map_b,
+            trial.nfrozen,
+            G0wb,
+            dets_b,
+        )
     return dets_a, dets_b
 
 
@@ -493,46 +473,26 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
     else:
         # arrays of length ndet_per_single_excitation
         dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.get_dets_doubles_gpu(
-                trial.cre_ex_a[2],
-                trial.anh_ex_a[2],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
-        else:
-            wk.get_dets_doubles(
-                trial.cre_ex_a[2],
-                trial.anh_ex_a[2],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
+        wk.get_dets_doubles(
+            trial.cre_ex_a[2],
+            trial.anh_ex_a[2],
+            trial.occ_map_a,
+            trial.nfrozen,
+            G0wa,
+            dets_a,
+        )
     if ndets_b == 0:
         dets_b = None
     else:
         dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.get_dets_doubles_gpu(
-                trial.cre_ex_b[2],
-                trial.anh_ex_b[2],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
-        else:
-            wk.get_dets_doubles(
-                trial.cre_ex_b[2],
-                trial.anh_ex_b[2],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
+        wk.get_dets_doubles(
+            trial.cre_ex_b[2],
+            trial.anh_ex_b[2],
+            trial.occ_map_b,
+            trial.nfrozen,
+            G0wb,
+            dets_b,
+        )
     return dets_a, dets_b
 
 
@@ -562,47 +522,27 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
         dets_a = None
     else:
         dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-        # arrays of length ndet_per_single_excitation
-            wk.get_dets_triples_gpu(
-                trial.cre_ex_a[3],
-                trial.anh_ex_a[3],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
-        else:
-            wk.get_dets_triples(
-                trial.cre_ex_a[3],
-                trial.anh_ex_a[3],
-                trial.occ_map_a,
-                trial.nfrozen,
-                G0wa,
-                dets_a,
-            )
+        # # arrays of length ndet_per_single_excitation
+        wk.get_dets_triples(
+            trial.cre_ex_a[3],
+            trial.anh_ex_a[3],
+            trial.occ_map_a,
+            trial.nfrozen,
+            G0wa,
+            dets_a,
+        )
     if ndets_b == 0:
         dets_b = None
     else:
         dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.get_dets_triples_gpu(
-                trial.cre_ex_b[3],
-                trial.anh_ex_b[3],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
-        else:
-            wk.get_dets_triples(
-                trial.cre_ex_b[3],
-                trial.anh_ex_b[3],
-                trial.occ_map_b,
-                trial.nfrozen,
-                G0wb,
-                dets_b,
-            )
+        wk.get_dets_triples(
+            trial.cre_ex_b[3],
+            trial.anh_ex_b[3],
+            trial.occ_map_b,
+            trial.nfrozen,
+            G0wb,
+            dets_b,
+        )
     return dets_a, dets_b
 
 
@@ -635,15 +575,13 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
         dets_a = None
     else:
         # arrays of length ndet_per_single_excitation
-        # dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
         if config.get_option("use_gpu"):
-            dets_a = wk.get_dets_nfold_gpu(
+            dets_a = wk.get_dets_nfold(
                 trial.cre_ex_a[nexcit],
                 trial.anh_ex_a[nexcit],
                 trial.occ_map_a,
                 trial.nfrozen,
                 G0wa,
-                # dets_a,
             )
         else:
             dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
@@ -658,15 +596,13 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
     if ndets_b == 0:
         dets_b = None
     else:
-        # dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
         if config.get_option("use_gpu"):
-            dets_b = wk.get_dets_nfold_gpu(
+            dets_b = wk.get_dets_nfold(
                 trial.cre_ex_b[nexcit],
                 trial.anh_ex_b[nexcit],
                 trial.occ_map_b,
                 trial.nfrozen,
                 G0wb,
-                # dets_b,
             )
         else:
             dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
@@ -712,67 +648,6 @@ def compute_determinants_batched(G0a, G0b, trial):
         
 
     return dets_a_full, dets_b_full
-
-
-# def compute_determinants_batched(G0a, G0b, trial):
-#     nwalker = G0a.shape[0]
-#     ndets = len(trial.coeffs)
-#     dets_a_full = xp.ones((nwalker, ndets), dtype=numpy.complex128)
-#     dets_b_full = xp.ones((nwalker, ndets), dtype=numpy.complex128)
-#     # Use low level excitation optimizations
-#     # TODO: Optimization Use one buffer + one remapping at the end.
-#     # time1 = time.time()
-    
-#     map_streams = []
-#     # stop_events = []
-#     # reduce_stream = cupy.cuda.stream.Stream()
-#     for i in range(4):
-#         map_streams.append(cupy.cuda.stream.Stream())
-    
-#     # xp.cuda.Device(0).synchronize()
-#     for stream in map_streams:
-#         with stream: 
-#             if stream == map_streams[0]:
-#                 dets_a, dets_b = get_dets_single_excitation_batched_opt(G0a, G0b, trial)
-#                 dets_a_full[:, trial.excit_map_a[1]] = dets_a
-#                 dets_b_full[:, trial.excit_map_b[1]] = dets_b
-#                 if trial.max_excite < 2:
-#                     return dets_a_full, dets_b_full
-    
-#             # xp.cuda.Device(0).synchronize()
-#             # time2 = time.time()
-#             # print(time2-time1)
-#             elif stream == map_streams[1]:
-#                 dets_a, dets_b = get_dets_double_excitation_batched_opt(G0a, G0b, trial)
-#                 dets_a_full[:, trial.excit_map_a[2]] = dets_a
-#                 dets_b_full[:, trial.excit_map_b[2]] = dets_b
-#                 if trial.max_excite < 3:
-#                     return dets_a_full, dets_b_full
-
-#             # xp.cuda.Device(0).synchronize()
-#             # time3 = time.time()
-#             # print(time3-time2)
-#             elif stream == map_streams[2]:
-#                 dets_a, dets_b = get_dets_triple_excitation_batched_opt(G0a, G0b, trial)
-#                 dets_a_full[:, trial.excit_map_a[3]] = dets_a
-#                 dets_b_full[:, trial.excit_map_b[3]] = dets_b
-
-#             # time4 = time.time()
-#             # print(time4-time3)
-#             else:
-#                 for iexcit in range(4, trial.max_excite + 1):
-#                     dets_a, dets_b = get_dets_nfold_excitation_batched_opt(iexcit, G0a, G0b, trial)
-#                     dets_a_full[:, trial.excit_map_a[iexcit]] = dets_a
-#                     dets_b_full[:, trial.excit_map_b[iexcit]] = dets_b
-                    
-#         # stop_event = stream.record()
-#         # stop_events.append(stop_event)
-        
-#     # time5 = time.time()
-#     # print(time5-time4)
-#     xp.cuda.Device(0).synchronize()
-
-#     return dets_a_full, dets_b_full
 
 
 

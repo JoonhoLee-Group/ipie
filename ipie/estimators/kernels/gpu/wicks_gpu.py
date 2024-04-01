@@ -23,35 +23,6 @@ import cupyx
 from ipie.utils.backend import synchronize
 
 
-# # element wise
-# @jit(nopython=True, fastmath=True)
-# def dot_real_cplx(
-#     A,
-#     B_real,
-#     B_cplx,
-# ):
-#     """Element wise multiplication of a real number with a complex one.
-
-#     C = A * B
-
-#     Numba complains if types aren't matched so split it up.
-
-#     Parameters
-#     ----------
-#     A : float
-#         Real number / array.
-#     B : complex
-#         Complex number / array.
-
-#     Returns
-#     -------
-#     C : complex
-#         result
-#     """
-
-#     return A * B_real + 1j * (A * B_cplx)
-
-
 # Overlap
 
 # Note mapping arrays account for occupied indices not matching compressed
@@ -62,7 +33,7 @@ from ipie.utils.backend import synchronize
 # similar (half rotated Green's functio) and avoid out of bounds errors.
 
         
-def get_dets_singles_gpu(cre, anh, mapping, offset, G0, dets):
+def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from singly excited Slater-Determinants.
 
     Parameters
@@ -123,7 +94,7 @@ def get_dets_singles_gpu(cre, anh, mapping, offset, G0, dets):
 
             
             
-def get_dets_doubles_gpu(cre, anh, mapping, offset, G0, dets):
+def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from double excited Slater-Determinants.
 
     Parameters
@@ -188,7 +159,7 @@ def get_dets_doubles_gpu(cre, anh, mapping, offset, G0, dets):
 
             
             
-def get_dets_triples_gpu(cre, anh, mapping, offset, G0, dets):
+def get_dets_triples(cre, anh, mapping, offset, G0, dets):
     """Get overlap from double excited Slater-Determinants.
 
     Parameters
@@ -259,7 +230,7 @@ def get_dets_triples_gpu(cre, anh, mapping, offset, G0, dets):
     
             
             
-def get_dets_nfold_gpu(cre, anh, mapping, offset, G0):#, dets):
+def get_dets_nfold(cre, anh, mapping, offset, G0):
     """Get overlap from n-fold excited Slater-Determinants.
 
     Parameters
@@ -334,7 +305,7 @@ def get_dets_nfold_gpu(cre, anh, mapping, offset, G0):#, dets):
     
 
 
-def build_det_matrix_gpu(cre, anh, mapping, offset, G0, det_mat):
+def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
     """Build matrix of determinants for n-fold excitations.
 
     Parameters
@@ -408,7 +379,7 @@ def build_det_matrix_gpu(cre, anh, mapping, offset, G0, det_mat):
     
             
             
-def reduce_CI_singles_gpu(cre, anh, mapping, phases, CI):
+def reduce_CI_singles(cre, anh, mapping, phases, CI):
     """Reduction to CI intermediate for singles.
 
     Parameters
@@ -431,6 +402,8 @@ def reduce_CI_singles_gpu(cre, anh, mapping, phases, CI):
 
     ndets = len(cre)
     nwalkers = phases.shape[0] 
+    
+    phases = cupy.ascontiguousarray(phases)
     
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
@@ -468,13 +441,12 @@ def reduce_CI_singles_gpu(cre, anh, mapping, phases, CI):
             ''',
             'reduce_CI_singles_kernel')
     
-    # print("Shape:",spin_buffer.shape[0], ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1])
     reduce_CI_singles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, mapping, nwalkers, ndets, CI.shape[1], CI.shape[2], phases, CI))
 
 
 
             
-def reduce_CI_doubles_gpu(cre, anh, mapping, offset, phases, G0, CI):
+def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
     """Reduction to CI intermediate for triples.
 
     Parameters
@@ -499,6 +471,8 @@ def reduce_CI_doubles_gpu(cre, anh, mapping, offset, phases, G0, CI):
 
     ndets = len(cre)
     nwalkers = G0.shape[0] 
+    
+    phases = cupy.ascontiguousarray(phases)
     
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
@@ -553,14 +527,13 @@ def reduce_CI_doubles_gpu(cre, anh, mapping, offset, phases, G0, CI):
             ''',
             'reduce_CI_doubles_kernel')
     
-    # print("Shape:",spin_buffer.shape[0], ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1])
     reduce_CI_doubles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, rs, ss, mapping, offset, nwalkers, ndets, CI.shape[1], CI.shape[2], G0.shape[1], G0.shape[2], phases, G0, CI))
 
 
 
             
             
-def reduce_CI_triples_gpu(cre, anh, mapping, offset, phases, G0, CI):
+def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
     """Reduction to CI intermediate for triples.
 
     Parameters
@@ -585,6 +558,8 @@ def reduce_CI_triples_gpu(cre, anh, mapping, offset, phases, G0, CI):
 
     ndets = len(cre)
     nwalkers = G0.shape[0] 
+    
+    phases = cupy.ascontiguousarray(phases)
     
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
@@ -670,126 +645,15 @@ def reduce_CI_triples_gpu(cre, anh, mapping, offset, phases, G0, CI):
             ''',
             'reduce_CI_triples_kernel')
     
-    # print("Shape:",spin_buffer.shape[0], ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1])
     reduce_CI_triples_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, rs, ss, ts, us, mapping, offset, nwalkers, ndets, CI.shape[1], CI.shape[2], G0.shape[1], G0.shape[2], phases, G0, CI))
     
     
 
             
-            
-
-
-# def _reduce_nfold_cofactor_contribution_gpu(ps, qs, mapping, sign, phases, cofactor_matrix, CI):
-#     """Reduction to CI intermediate from cofactor contributions.
-
-#     Parameters
-#     ----------
-#     ps : np.ndarray
-#         Array containing orbitals excitations of occupied.
-#     qs : np.ndarray
-#         Array containing orbitals excitations to virtuals.
-#     mapping : np.ndarray
-#         Map original (occupied) orbital to index in compressed form.
-#     signs : int
-#         Phase factor arrising from excitation level.
-#     cofactor_matrix : np.ndarray
-#         Cofactor matrix previously constructed.
-#     CI : np.ndarray
-#         Output array for CI intermediate.
-
-#     Returns
-#     -------
-#     None
-#     """
-#     nwalkers = cofactor_matrix.shape[0]
-#     ndets = cofactor_matrix.shape[1]
-
-#     det = cupy.linalg.det(cofactor_matrix)
-    
-#     rhs = cupy.zeros_like(det)
-    
-#     reduce_nfold_cofac_kernel = cupy.RawKernel(
-#         r'''
-#             #include<cuComplex.h>
-#             extern "C" __global__
-#             void reduce_nfold_cofac_kernel(int* ps, int* qs, int* mapping, cuDoubleComplex sign, int nwalkers, int ndets, int CI_dim2, int CI_dim3, cuDoubleComplex* phases, cuDoubleComplex* det, cuDoubleComplex* mul_tmp, cuDoubleComplex* CI){  
-#                 int idx = threadIdx.x + blockIdx.x * blockDim.x;
-#                 int stride = gridDim.x * blockDim.x;
-#                 int iw, idet;
-#                 int p, q, i, j;
-#                 size_t max_size;
-#                 max_size = ndets*nwalkers;
-
-#                 for (int thread = idx; thread < max_size; thread += stride){
-#                     iw = thread/ndets;
-
-#                     idet =  thread%ndets;
-                    
-#                     p = mapping[ps[idet]];
-#                     q = qs[idet];
-#                     //*(&CI + iw*CI_dim2*CI_dim3 + q*CI_dim3 + p) = *(&det + iw*ndets + idet);
-#                     mul_tmp[iw*ndets + idet] = cuCmul(sign, cuCmul(det[iw*ndets + idet],phases[iw*ndets + idet]));
-#                     atomicAdd((double*)(CI+iw*CI_dim2*CI_dim3 + q*CI_dim3 + p), mul_tmp[iw*ndets + idet].x);
-#                     atomicAdd((double*)(CI+iw*CI_dim2*CI_dim3 + q*CI_dim3 + p)+1, mul_tmp[iw*ndets + idet].y);
-#                 }
-                
-#             }   
-#             ''',
-#             'reduce_nfold_cofac_kernel')
-    
-#     reduce_nfold_cofac_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, mapping, complex(sign,0), nwalkers, ndets, CI.shape[1], CI.shape[2], phases, det, rhs, CI))
-    
-            
-
-
-            
-# def reduce_CI_nfold_gpu(cre, anh, mapping, offset, nexcit, phases, det_mat, cof_mat, CI):
-#     """Reduction to CI intermediate for n-fold excitations.
-
-#     Parameters
-#     ----------
-#     cre : np.ndarray
-#         Array containing orbitals excitations of occupied.
-#     anh : np.ndarray
-#         Array containing orbitals excitations to virtuals.
-#     mapping : np.ndarray
-#         Map original (occupied) orbital to index in compressed form.
-#     offset : int
-#         Offset for frozen core.
-#     phases : np.ndarray
-#         Phase factors.
-#     det_mat: np.ndarray
-#         Array of determinants <D_I|phi>.
-#     cof_mat: np.ndarray
-#         Cofactor matrix previously constructed.
-#     CI : np.ndarray
-#         Output array for CI intermediate.
-
-#     Returns
-#     -------
-#     None
-#     """
-#     nexcit = det_mat.shape[-1]
-#     cre = cupy.asarray(cre)
-#     anh = cupy.asarray(anh)
-#     mapping = cupy.asarray(mapping)
-    
-#     for iex in range(nexcit):
-#         p = cupy.ascontiguousarray(cre[:, iex])
-#         for jex in range(nexcit):
-#             q = cupy.ascontiguousarray(anh[:, jex])
-#             # TODO FDM: effectively looping over wavefunction twice here, for
-#             # CPU may be better to squash building and reduction.
-#             build_cofactor_matrix_gpu(iex, jex, det_mat, cof_mat)
-#             sign = (-1 + 0.0j) ** (iex + jex)
-#             _reduce_nfold_cofactor_contribution_gpu(p, q, mapping, sign, phases, cof_mat, CI)
-
-
-### The commented-out version above is slower but more memory-friendly.
 
             
             
-def reduce_CI_nfold_gpu(cre, anh, mapping, offset, nexcit, phases, det_mat, cof_mat, CI):
+def reduce_CI_nfold(cre, anh, mapping, offset, nexcit, phases, det_mat, cof_mat, CI):
     """Reduction to CI intermediate for n-fold excitations.
 
     Parameters
@@ -821,15 +685,15 @@ def reduce_CI_nfold_gpu(cre, anh, mapping, offset, nexcit, phases, det_mat, cof_
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
     
+    phases = cupy.ascontiguousarray(phases)
+    
     nwalkers = cof_mat.shape[0]
     ndets = cof_mat.shape[1]
     
     cof_mat_all = cupy.zeros((nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]), dtype=numpy.complex128)
     
     for iex in range(nexcit):
-        # p = cupy.ascontiguousarray(cre[:, iex])
         for jex in range(nexcit):
-            # q = cupy.ascontiguousarray(anh[:, jex])
             build_cofactor_matrix_gpu(iex, jex, det_mat, cof_mat)
             cof_mat_all[iex, jex, :, :, :, :] = cof_mat.copy()
             
@@ -1514,95 +1378,6 @@ def fill_os_nfold_gpu(
     det_cofactor = None
      
 
-
-     
-      
-# def reduce_ss_spin_factor_gpu(
-#     ps, qs, rs, ss, mapping, phase, cof_mat, chol_factor, spin_buffer, det_sls
-# ):
-#     """Reduce same-spin (ss) n-fold contributions into spin_buffer.
-
-#     Parameters
-#     ----------
-#     ps : np.ndarray
-#         Array containing orbitals excitations of occupied.
-#     qs : np.ndarray
-#         Array containing orbitals excitations to virtuals.
-#     rs : np.ndarray
-#         Array containing orbitals excitations of occupied.
-#     ss : np.ndarray
-#         Array containing orbitals excitations to virtuals.
-#     mapping : np.ndarray
-#         Map original (occupied) orbital to index in compressed form.
-#     phases : np.ndarray
-#         Phase factors.
-#     cof_mat: np.ndarray
-#         Cofactor matrix buffer.
-#     chol_factor : np.ndarray
-#         Lxqp intermediate constructed elsewhere.
-#     spin_buffer : np.ndarray
-#         Buffer for holding contribution.
-#     det_sls : np.ndarray
-#         Index slice for this exctitation level's contributions.
-
-#     Returns
-#     -------
-#     None
-#     """
-#     nwalkers = chol_factor.shape[0]
-#     ndets = cof_mat.shape[1]
-#     start = det_sls.start
-    
-#     ps = cupy.asarray(ps)
-#     qs = cupy.asarray(qs)
-#     rs = cupy.asarray(rs)
-#     ss = cupy.asarray(ss)
-#     mapping = cupy.asarray(mapping)
-
-#     det_cofactor = phase * cupy.linalg.det(cof_mat)
-#     cof_mat = None
-    
-#     cholsum_tmp = cupy.zeros_like(spin_buffer)
-    
-#     get_ss_nfold_kernel = cupy.RawKernel(r'''
-#                 #include<cuComplex.h>
-#                 extern "C" __global__
-#                 void get_ss_nfold_kernel(int* ps, int* qs, int* rs, int* ss, int* mapping, int start, int det_dim, int nwalkers, int ndets, int nact, int nelec, int nchol, cuDoubleComplex* chol_factor, cuDoubleComplex* cholsum_tmp){
-#                     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-#                     int stride = gridDim.x * blockDim.x;
-#                     int iw, idet, ichol;
-#                     size_t max_size;
-                    
-#                     int p, r;
-#                     max_size = ndets*nwalkers;
-
-#                     for (int thread = idx; thread < max_size; thread += stride){
-                    
-#                         iw = thread/ndets;
-
-#                         idet =  thread%ndets;
-
-#                         p = mapping[ps[idet]];
-          
-#                         r = mapping[rs[idet]];
-
-    
-#                         for(ichol=0; ichol < nchol; ichol++){
-                            
-#                             cholsum_tmp[iw*det_dim + start + idet] = cuCadd(cholsum_tmp[iw*det_dim + start + idet], cuCsub(cuCmul(chol_factor[iw*nact*nelec*nchol + ss[idet]*nelec*nchol + r*nchol + ichol],chol_factor[iw*nact*nelec*nchol + qs[idet]*nelec*nchol + p*nchol + ichol]), cuCmul(chol_factor[iw*nact*nelec*nchol + qs[idet]*nelec*nchol + r*nchol + ichol],chol_factor[iw*nact*nelec*nchol + ss[idet]*nelec*nchol + p*nchol + ichol])));
-            
-#                         }
-                              
-#                     }
-#                 }
-#                 ''', 
-#                 'get_ss_nfold_kernel',                              
-#         )
-#     get_ss_nfold_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, rs, ss, mapping, start, spin_buffer.shape[1], nwalkers, ndets, chol_factor[0].shape[0], chol_factor[0].shape[1], chol_factor[0].shape[2], chol_factor, cholsum_tmp))
-#     spin_buffer[:,start:start+ndets] += cupy.multiply(cholsum_tmp[:,start:start+ndets],det_cofactor)
-    
-#     cholsum_tmp = None
-#     det_cofactor = None
 
 
 ### using cooperative groups to make reduction more efficient

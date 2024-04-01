@@ -448,47 +448,25 @@ def build_CI_single_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     if trial.cre_ex_a[1].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[1]])
-            # print(type(trial.cre_ex_a[1]),type(trial.anh_ex_a[1]),type(trial.occ_map_a),type(phases),type(walker_batch_CIa))
-            wk.reduce_CI_singles_gpu(
-                trial.cre_ex_a[1],
-                trial.anh_ex_a[1],
-                trial.occ_map_a,
-                phases,
-                walker_batch.CIa,
-            )
-        else:
-            phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
-            wk.reduce_CI_singles(
-                trial.cre_ex_a[1],
-                trial.anh_ex_a[1],
-                trial.occ_map_a,
-                phases,
-                walker_batch.CIa,
-            )
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[1]]
+        wk.reduce_CI_singles(
+            trial.cre_ex_a[1],
+            trial.anh_ex_a[1],
+            trial.occ_map_a,
+            phases,
+            walker_batch.CIa,
+        )
     if trial.cre_ex_b[1].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-        # print(type(trial.cre_ex_b[1]),type(trial.anh_ex_b[1]),type(trial.occ_map_b),type(phases),type(walker_batch_CIb))
-            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[1]])
-            wk.reduce_CI_singles_gpu(
-                trial.cre_ex_b[1],
-                trial.anh_ex_b[1],
-                trial.occ_map_b,
-                phases,
-                walker_batch.CIb,
-            )
-        else:
-            phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
-            wk.reduce_CI_singles(
-                trial.cre_ex_b[1],
-                trial.anh_ex_b[1],
-                trial.occ_map_b,
-                phases,
-                walker_batch.CIb,
-            )
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[1]]
+        wk.reduce_CI_singles(
+            trial.cre_ex_b[1],
+            trial.anh_ex_b[1],
+            trial.occ_map_b,
+            phases,
+            walker_batch.CIb,
+        )
 
 
 
@@ -628,54 +606,29 @@ def build_CI_double_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     if trial.cre_ex_a[2].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[2]])
-            # print(type(phases),type(walker_batch_Ghalfa),type(walker_batch_CIa))
-            wk.reduce_CI_doubles_gpu(
-                trial.cre_ex_a[2],
-                trial.anh_ex_a[2],
-                trial.occ_map_a,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfa,
-                walker_batch.CIa,
-            )
-        else:
-            phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
-            wk.reduce_CI_doubles(
-                trial.cre_ex_a[2],
-                trial.anh_ex_a[2],
-                trial.occ_map_a,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfa,
-                walker_batch.CIa,
-            )
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[2]]
+        wk.reduce_CI_doubles(
+            trial.cre_ex_a[2],
+            trial.anh_ex_a[2],
+            trial.occ_map_a,
+            trial.nfrozen,
+            phases,
+            walker_batch.Ghalfa,
+            walker_batch.CIa,
+        )
     if trial.cre_ex_b[2].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[2]])
-            wk.reduce_CI_doubles_gpu(
-                trial.cre_ex_b[2],
-                trial.anh_ex_b[2],
-                trial.occ_map_b,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfb,
-                walker_batch.CIb,
-            )
-        else:
-            phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
-            wk.reduce_CI_doubles(
-                trial.cre_ex_b[2],
-                trial.anh_ex_b[2],
-                trial.occ_map_b,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfb,
-                walker_batch.CIb,
-            )
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[2]]
+        wk.reduce_CI_doubles(
+            trial.cre_ex_b[2],
+            trial.anh_ex_b[2],
+            trial.occ_map_b,
+            trial.nfrozen,
+            phases,
+            walker_batch.Ghalfb,
+            walker_batch.CIb,
+        )
             
 
 
@@ -702,53 +655,29 @@ def build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb
     if trial.cre_ex_a[3].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[3]])
-            wk.reduce_CI_triples_gpu(
-                trial.cre_ex_a[3],
-                trial.anh_ex_a[3],
-                trial.occ_map_a,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfa,
-                walker_batch.CIa,
-            )
-        else:
-            phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
-            wk.reduce_CI_triples(
-                trial.cre_ex_a[3],
-                trial.anh_ex_a[3],
-                trial.occ_map_a,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfa,
-                walker_batch.CIa,
-            )
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[3]]
+        wk.reduce_CI_triples(
+            trial.cre_ex_a[3],
+            trial.anh_ex_a[3],
+            trial.occ_map_a,
+            trial.nfrozen,
+            phases,
+            walker_batch.Ghalfa,
+            walker_batch.CIa,
+        )
     if trial.cre_ex_b[3].shape[0] == 0:
         pass
     else:
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[3]])
-            wk.reduce_CI_triples_gpu(
-                trial.cre_ex_b[3],
-                trial.anh_ex_b[3],
-                trial.occ_map_b,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfb,
-                walker_batch.CIb,
-            )
-        else:
-            phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
-            wk.reduce_CI_triples(
-                trial.cre_ex_b[3],
-                trial.anh_ex_b[3],
-                trial.occ_map_b,
-                trial.nfrozen,
-                phases,
-                walker_batch.Ghalfb,
-                walker_batch.CIb,
-            )
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[3]]
+        wk.reduce_CI_triples(
+            trial.cre_ex_b[3],
+            trial.anh_ex_b[3],
+            trial.occ_map_b,
+            trial.nfrozen,
+            phases,
+            walker_batch.Ghalfb,
+            walker_batch.CIb,
+        )
         
 
 
@@ -1133,111 +1062,62 @@ def build_CI_nfold_excitation_opt(nexcit, walker_batch, trial, c_phasea_ovlpb, c
         pass
     else:
         det_mat = xp.zeros((nwalkers, ndets_a, nexcit, nexcit), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phasea_ovlpb[:, trial.excit_map_a[nexcit]])
-            wk.build_det_matrix_gpu(
-                trial.cre_ex_a[nexcit],
-                trial.anh_ex_a[nexcit],
-                trial.occ_map_a,
-                trial.nfrozen,
-                walker_batch.Ghalfa,
-                det_mat,
-            )
-        else:
-            phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
-            wk.build_det_matrix(
-                trial.cre_ex_a[nexcit],
-                trial.anh_ex_a[nexcit],
-                trial.occ_map_a,
-                trial.nfrozen,
-                walker_batch.Ghalfa,
-                det_mat,
-            )
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+
+        wk.build_det_matrix(
+            trial.cre_ex_a[nexcit],
+            trial.anh_ex_a[nexcit],
+            trial.occ_map_a,
+            trial.nfrozen,
+            walker_batch.Ghalfa,
+            det_mat,
+        )
 
         cof_mat = xp.zeros((nwalkers, ndets_a, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.reduce_CI_nfold_gpu(
-                trial.cre_ex_a[nexcit],
-                trial.anh_ex_a[nexcit],
-                trial.occ_map_a,
-                trial.nfrozen,
-                nexcit,
-                phases,
-                det_mat,
-                cof_mat,
-                walker_batch.CIa,
-            )
-        else:
-            wk.reduce_CI_nfold(
-                trial.cre_ex_a[nexcit],
-                trial.anh_ex_a[nexcit],
-                trial.occ_map_a,
-                trial.nfrozen,
-                phases,
-                det_mat,
-                cof_mat,
-                walker_batch.CIa,
-            )
+        phases = c_phasea_ovlpb[:, trial.excit_map_a[nexcit]]
+        
+        wk.reduce_CI_nfold(
+            trial.cre_ex_a[nexcit],
+            trial.anh_ex_a[nexcit],
+            trial.occ_map_a,
+            trial.nfrozen,
+            phases,
+            det_mat,
+            cof_mat,
+            walker_batch.CIa,
+        )
 
     ndets_b = len(trial.cre_ex_b[nexcit])
 
     if ndets_b == 0:
-        if nexcit>4:
-            pass
-        else:
-            walker_batch.CIb = xp.asarray(walker_batch.CIb)
-        # pass
+        pass
     else:
 
         det_mat = xp.zeros((nwalkers, ndets_b, nexcit, nexcit), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            phases = xp.ascontiguousarray(c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]])
-            wk.build_det_matrix_gpu(
-                trial.cre_ex_b[nexcit],
-                trial.anh_ex_b[nexcit],
-                trial.occ_map_b,
-                trial.nfrozen,
-                walker_batch.Ghalfb,
-                det_mat,
-            )
-        else:
-            phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
-            wk.build_det_matrix(
-                trial.cre_ex_b[nexcit],
-                trial.anh_ex_b[nexcit],
-                trial.occ_map_b,
-                trial.nfrozen,
-                walker_batch.Ghalfb,
-                det_mat,
-            )
+        wk.build_det_matrix(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
+            trial.nfrozen,
+            walker_batch.Ghalfb,
+            det_mat,
+        )
         cof_mat = xp.zeros((nwalkers, ndets_b, nexcit - 1, nexcit - 1), dtype=numpy.complex128)
-        if config.get_option("use_gpu"):
-            wk.reduce_CI_nfold_gpu(
-                trial.cre_ex_b[nexcit],
-                trial.anh_ex_b[nexcit],
-                trial.occ_map_b,
-                trial.nfrozen,
-                nexcit,
-                phases,
-                det_mat,
-                cof_mat,
-                walker_batch.CIb,
-            )
-        else:
-            wk.reduce_CI_nfold(
-                trial.cre_ex_b[nexcit],
-                trial.anh_ex_b[nexcit],
-                trial.occ_map_b,
-                trial.nfrozen,
-                phases,
-                det_mat,
-                cof_mat,
-                walker_batch.CIb,
-            )
+        phases = c_phaseb_ovlpa[:, trial.excit_map_b[nexcit]]
+        
+        wk.reduce_CI_nfold(
+            trial.cre_ex_b[nexcit],
+            trial.anh_ex_b[nexcit],
+            trial.occ_map_b,
+            trial.nfrozen,
+            phases,
+            det_mat,
+            cof_mat,
+            walker_batch.CIb,
+        )
 
 
 
-# @jit(nopython=True, fastmath=True)
 def contract_CI(Q0_act, CI, Ghalf, G):
     """numba kernel to contract Q, CI and Ghalf to form G
 
@@ -1257,8 +1137,7 @@ def contract_CI(Q0_act, CI, Ghalf, G):
     """
     nwalkers = Ghalf.shape[0]
     G += xp.einsum("wOa, wae, weo-> wOo", Q0_act, CI, Ghalf)
-    # for iw in range(nwalkers):
-    #     G[iw] += numpy.dot(Q0_act[iw], xp.dot(CI[iw], Ghalf[iw]))
+
         
 
              
