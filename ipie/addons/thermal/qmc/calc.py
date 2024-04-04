@@ -116,6 +116,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
             trial,
             walkers,
             propagator,
+            mpi_handler,
             params,
             debug=debug,
             verbose=verbosity,
