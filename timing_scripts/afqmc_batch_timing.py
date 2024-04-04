@@ -17,7 +17,7 @@ import cProfile
 
 from mpi4py import MPI
 
-nelec = (5,5)
+nelec = (5, 5)
 nwalkers = 10
 nsteps = 10
 
@@ -26,21 +26,10 @@ options = {
         "nup": nelec[0],
         "ndown": nelec[1],
     },
-    "hamiltonian": {
-        "name": "Generic",
-        "integrals": "afqmc.h5"
-    },
-    "qmc": {
-        "dt": 0.01,
-        "nsteps": nsteps,
-        "nwalkers": nwalkers,
-        "blocks": 1,
-        "batched": True
-    },
-    "trial": {
-        "filename": "afqmc.h5"
-    },
-    "estimators": {}
+    "hamiltonian": {"name": "Generic", "integrals": "afqmc.h5"},
+    "qmc": {"dt": 0.01, "nsteps": nsteps, "nwalkers": nwalkers, "blocks": 1, "batched": True},
+    "trial": {"filename": "afqmc.h5"},
+    "estimators": {},
 }
 
 numpy.random.seed(7)
@@ -49,33 +38,24 @@ comm = MPI.COMM_WORLD
 verbose = True
 shared_comm = get_shared_comm(comm, verbose=verbose)
 
-qmc_opts = get_input_value(options, 'qmc',
-                           default={},
-                           verbose=verbose)
-ham_opts = get_input_value(options, 'hamiltonian',
-                           default={},
-                           verbose=verbose)
-twf_opts = get_input_value(options, 'trial',
-                           default={},
-                           verbose=verbose)
-prop_opts = get_input_value(options, 'propoagator',
-                           default={},
-                           verbose=verbose)
-qmc = QMCOpts(qmc_opts,verbose=True)
-ham = get_hamiltonian (sys, ham_opts, verbose = True, comm=shared_comm)
+qmc_opts = get_input_value(options, "qmc", default={}, verbose=verbose)
+ham_opts = get_input_value(options, "hamiltonian", default={}, verbose=verbose)
+twf_opts = get_input_value(options, "trial", default={}, verbose=verbose)
+prop_opts = get_input_value(options, "propoagator", default={}, verbose=verbose)
+qmc = QMCOpts(qmc_opts, verbose=True)
+ham = get_hamiltonian(sys, ham_opts, verbose=True, comm=shared_comm)
 
-trial = ( get_trial_wavefunction(sys, ham, options=twf_opts,
-                       comm=comm,
-                       scomm=shared_comm,
-                       verbose=verbose) )
-trial.psi = trial.psi[0] # Super hacky thing to do; this needs to be fixed...
-trial.psia = trial.psia[0] # Super hacky thing to do; this needs to be fixed...
-trial.psib = trial.psib[0] # Super hacky thing to do; this needs to be fixed...
-trial.calculate_energy(sys, ham) # this is to get the energy shift
-prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
+trial = get_trial_wavefunction(
+    sys, ham, options=twf_opts, comm=comm, scomm=shared_comm, verbose=verbose
+)
+trial.psi = trial.psi[0]  # Super hacky thing to do; this needs to be fixed...
+trial.psia = trial.psia[0]  # Super hacky thing to do; this needs to be fixed...
+trial.psib = trial.psib[0]  # Super hacky thing to do; this needs to be fixed...
+trial.calculate_energy(sys, ham)  # this is to get the energy shift
+prop = get_propagator_driver(sys, ham, trial, qmc, options=prop_opts, verbose=verbose)
 
 walker_batch = SingleDetWalkerBatch(sys, ham, trial, nwalkers)
-for i in range (nsteps):
+for i in range(nsteps):
     prop.propagate_walker_batch(walker_batch, sys, ham, trial, trial.energy)
     walker_batch.reortho()
 
@@ -84,21 +64,10 @@ options = {
         "nup": nelec[0],
         "ndown": nelec[1],
     },
-    "hamiltonian": {
-        "name": "Generic",
-        "integrals": "afqmc.h5"
-    },
-    "qmc": {
-        "dt": 0.01,
-        "nsteps": nsteps,
-        "nwalkers": nwalkers,
-        "blocks": 1,
-        "batched": False
-    },
-    "trial": {
-        "filename": "afqmc.h5"
-    },
-    "estimators": {}
+    "hamiltonian": {"name": "Generic", "integrals": "afqmc.h5"},
+    "qmc": {"dt": 0.01, "nsteps": nsteps, "nwalkers": nwalkers, "blocks": 1, "batched": False},
+    "trial": {"filename": "afqmc.h5"},
+    "estimators": {},
 }
 
 numpy.random.seed(7)
@@ -107,29 +76,18 @@ comm = MPI.COMM_WORLD
 verbose = True
 shared_comm = get_shared_comm(comm, verbose=verbose)
 
-qmc_opts = get_input_value(options, 'qmc',
-                           default={},
-                           verbose=verbose)
-ham_opts = get_input_value(options, 'hamiltonian',
-                           default={},
-                           verbose=verbose)
-twf_opts = get_input_value(options, 'trial',
-                           default={},
-                           verbose=verbose)
-prop_opts = get_input_value(options, 'propoagator',
-                           default={},
-                           verbose=verbose)
-qmc = QMCOpts(qmc_opts,verbose=True)
-prop = get_propagator_driver_legacy(sys, ham, trial, qmc, options=prop_opts,verbose=verbose)
+qmc_opts = get_input_value(options, "qmc", default={}, verbose=verbose)
+ham_opts = get_input_value(options, "hamiltonian", default={}, verbose=verbose)
+twf_opts = get_input_value(options, "trial", default={}, verbose=verbose)
+prop_opts = get_input_value(options, "propoagator", default={}, verbose=verbose)
+qmc = QMCOpts(qmc_opts, verbose=True)
+prop = get_propagator_driver_legacy(sys, ham, trial, qmc, options=prop_opts, verbose=verbose)
 walkers = [SingleDetWalker(sys, ham, trial) for iw in range(nwalkers)]
-for i in range (nsteps):
+for i in range(nsteps):
     for walker in walkers:
         prop.propagate_walker(walker, sys, ham, trial, trial.energy)
-        detR = walker.reortho(trial) # reorthogonalizing to stablize
+        detR = walker.reortho(trial)  # reorthogonalizing to stablize
 
 for iw in range(nwalkers):
-    assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:,:nelec[0]])
-    assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:,nelec[0]:])
-
-
-
+    assert numpy.allclose(walker_batch.phia[iw], walkers[iw].phi[:, : nelec[0]])
+    assert numpy.allclose(walker_batch.phib[iw], walkers[iw].phi[:, nelec[0] :])

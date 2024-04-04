@@ -53,10 +53,11 @@ class ThermalAFQMC(AFQMC):
                  trial, 
                  walkers, 
                  propagator, 
+                 mpi_handler,
                  params: ThermalQMCParams, 
                  debug: bool = False,
                  verbose: int = 0):
-        super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose)
+        super().__init__(system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose)
         self.debug = debug
 
         if self.debug and verbose:
@@ -152,6 +153,7 @@ class ThermalAFQMC(AFQMC):
                 trial,
                 walkers,
                 propagator,
+                mpi_handler,
                 params,
                 debug=debug,
                 verbose=verbose)
