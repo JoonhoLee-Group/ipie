@@ -47,7 +47,8 @@ class ThermalNumberEstimator(EstimatorBase):
 
     def compute_estimator(self, walkers, hamiltonian, trial):
         for iw in range(walkers.nwalkers):
-            walkers.calc_greens_function(iw)
+            # Want the full Green's function when calculating observables.
+            walkers.calc_greens_function(iw, slice_ix=walkers.stack[iw].nslice)
             nav_iw = particle_number(one_rdm_from_G(
                         xp.array([walkers.Ga[iw], walkers.Gb[iw]])))
             self._data["NavNumer"] += walkers.weight[iw] * nav_iw.real

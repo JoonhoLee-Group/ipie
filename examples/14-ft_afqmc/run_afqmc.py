@@ -41,11 +41,11 @@ options = {
             'qmc': {
                 'mu': 0.133579,
                 'beta': 10.,
-                'timestep': 1.,
+                'timestep': 0.5,
                 'nwalkers': 12 // comm.size,
                 'stack_size': 10,
                 'seed': 7,
-                'nblocks': 50,
+                'nblocks': 20,
                 },
             }
 

@@ -400,6 +400,7 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
     pop_control_method = options.get('pop_control_method', 'pair_branch')
     lowrank = options.get('lowrank', False)
     lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+    optimised = options.get('optimised', False)
     alt_convention = options.get('alt_convention', False)
     numpy.random.seed(seed)
     
@@ -419,7 +420,7 @@ def build_legacy_driver_ueg_test_instance(hamiltonian,
         },
 
         "propagator": {
-            "optimised": False
+            "optimised": optimised
         },
 
         "walkers": {

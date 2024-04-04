@@ -252,16 +252,11 @@ class ThermalAFQMC(AFQMC):
                     self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
                 
                 # Print cut.
-                self.estimators.compute_estimators(
-                        self.hamiltonian, self.trial, self.walkers)
+                #self.estimators.compute_estimators(
+                #        self.hamiltonian, self.trial, self.walkers)
+                #self.estimators.print_cut(
+                #        comm, step // self.params.num_steps_per_block, t, self.accumulators)
 
-                #if comm.rank == 0:
-                    #print(self.walkers.stack[0].time_slice)
-
-                self.estimators.print_cut(
-                        comm, step // self.params.num_steps_per_block, t, self.accumulators)
-
-            
             # Accumulate weight, hybrid energy etc. across block.
             start = time.time()
             self.accumulators.update(self.walkers)
