@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Fionn Malone <fmalone@google.com>
+# Authors: Fionn Malone <fmalone@google.com>
+#          Joonho Lee
 #
 
 from typing import Union
