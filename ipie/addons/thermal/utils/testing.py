@@ -1,6 +1,6 @@
 import numpy
 import pytest
-from typing import Union
+from typing import Tuple, Union
 
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import generate_hamiltonian
@@ -15,31 +15,24 @@ from ipie.addons.thermal.qmc.options import ThermalQMCParams
 from ipie.addons.thermal.qmc.thermal_afqmc import ThermalAFQMC
 
 
-def build_generic_test_case_handlers(options: dict,
-                                     seed: Union[int, None],
-                                     debug: bool = False,
-                                     with_eri: bool = False,
-                                     verbose: int = 0):
-    # Unpack options
-    nelec = options['nelec']
-    nbasis = options['nbasis']
-    mu = options['mu']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options.get('nwalkers', 100)
-    stack_size = options.get('stack_size', 10)
-    nblocks = options.get('nblocks', 100)
-    stabilize_freq = options.get('stabilize_freq', 5)
-    pop_control_freq = options.get('pop_control_freq', 1)
-    pop_control_method = options.get('pop_control_method', 'pair_branch')
-    lowrank = options.get('lowrank', False)
-    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
-
-    complex_integrals = options.get('complex_integrals', True)
-    mf_trial = options.get('mf_trial', True)
-    propagate = options.get('propagate', False)
-    diagonal = options.get('diagonal', False)
-
+def build_generic_test_case_handlers(
+        nelec: Tuple[int, int],
+        nbasis: int,
+        mu: float,
+        beta: float,
+        timestep: float,
+        nwalkers: int = 100,
+        stack_size: int = 10,
+        lowrank: bool = False,
+        lowrank_thresh: float = 1e-6,
+        diagonal: bool = False,
+        mf_trial: bool = True,
+        propagate: bool = False,
+        complex_integrals: bool = False,
+        debug: bool = False,
+        with_eri: bool = False,
+        seed: Union[int, None] = None,
+        verbose: int = 0):
     sym = 8
     if complex_integrals: sym = 4
     numpy.random.seed(seed)
@@ -86,31 +79,24 @@ def build_generic_test_case_handlers(options: dict,
     return objs
 
 
-def build_generic_test_case_handlers_mpi(options: dict,
-                                         mpi_handler: MPIHandler,
-                                         seed: Union[int, None],
-                                         debug: bool = False,
-                                         verbose: int = 0):
-    # Unpack options
-    nelec = options['nelec']
-    nbasis = options['nbasis']
-    mu = options['mu']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options.get('nwalkers', 100)
-    stack_size = options.get('stack_size', 10)
-    nblocks = options.get('nblocks', 100)
-    stabilize_freq = options.get('stabilize_freq', 5)
-    pop_control_freq = options.get('pop_control_freq', 1)
-    pop_control_method = options.get('pop_control_method', 'pair_branch')
-    lowrank = options.get('lowrank', False)
-    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
-
-    complex_integrals = options.get('complex_integrals', True)
-    mf_trial = options.get('mf_trial', True)
-    propagate = options.get('propagate', False)
-    diagonal = options.get('diagonal', False)
-
+def build_generic_test_case_handlers_mpi(
+        nelec: Tuple[int, int],
+        nbasis: int,
+        mu: float,
+        beta: float,
+        timestep: float,
+        mpi_handler: MPIHandler,
+        nwalkers: int = 100,
+        stack_size: int = 10,
+        lowrank: bool = False,
+        lowrank_thresh: float = 1e-6,
+        diagonal: bool = False,
+        mf_trial: bool = True,
+        propagate: bool = False,
+        complex_integrals: bool = False,
+        debug: bool = False,
+        seed: Union[int, None] = None,
+        verbose: int = 0):
     sym = 8
     if complex_integrals: sym = 4
     numpy.random.seed(seed)
@@ -154,28 +140,25 @@ def build_generic_test_case_handlers_mpi(options: dict,
     return objs
 
 
-def build_driver_generic_test_instance(options: Union[dict, None],
-                                       seed: Union[int, None],
-                                       debug: bool = False,
-                                       verbose: int = 0):
-    # Unpack options
-    nelec = options['nelec']
-    nbasis = options['nbasis']
-    mu = options['mu']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options.get('nwalkers', 100)
-    stack_size = options.get('stack_size', 10)
-    nblocks = options.get('nblocks', 100)
-    stabilize_freq = options.get('stabilize_freq', 5)
-    pop_control_freq = options.get('pop_control_freq', 1)
-    pop_control_method = options.get('pop_control_method', 'pair_branch')
-    lowrank = options.get('lowrank', False)
-    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
-
-    complex_integrals = options.get('complex_integrals', True)
-    diagonal = options.get('diagonal', False)
-
+def build_driver_generic_test_instance(
+        nelec: Tuple[int, int],
+        nbasis: int,
+        mu: float,
+        beta: float,
+        timestep: float,
+        nblocks: int,
+        nwalkers: int = 100,
+        stack_size: int = 10,
+        lowrank: bool = False,
+        lowrank_thresh: float = 1e-6,
+        stabilize_freq: int = 5,
+        pop_control_freq: int = 5,
+        pop_control_method: str = 'pair_branch',
+        diagonal: bool = False,
+        complex_integrals: bool = False,
+        debug: bool = False,
+        seed: Union[int, None] = None,
+        verbose: int = 0):
     sym = 8
     if complex_integrals: sym = 4
     numpy.random.seed(seed)
@@ -199,32 +182,38 @@ def build_driver_generic_test_instance(options: Union[dict, None],
     afqmc = ThermalAFQMC.build(
                 nelec, mu, beta, hamiltonian, trial, nwalkers=nwalkers, 
                 stack_size=stack_size, seed=seed, nblocks=nblocks, timestep=timestep, 
-                stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq, 
+                stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq,
                 pop_control_method=pop_control_method, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, debug=debug, verbose=verbose)
     return afqmc
 
 
-def build_ueg_test_case_handlers(options: dict,
-                                 seed: Union[int, None],
-                                 debug: bool = False,
-                                 verbose: int = 0):
-    # Unpack options
-    ueg_opts = options['ueg_opts']
-    nelec = options['nelec']
-    mu = options['mu']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options.get('nwalkers', 100)
-    stack_size = options.get('stack_size', 10)
-    nblocks = options.get('nblocks', 101)
-    stabilize_freq = options.get('stabilize_freq', 5)
-    pop_control_freq = options.get('pop_control_freq', 1)
-    pop_control_method = options.get('pop_control_method', 'pair_branch')
-    lowrank = options.get('lowrank', False)
-    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+def build_ueg_test_case_handlers(
+        nelec: Tuple[int, int],
+        rs: float,
+        ecut: float,
+        mu: float,
+        beta: float,
+        timestep: float,
+        nwalkers: int = 100,
+        stack_size: int = 10,
+        lowrank: bool = False,
+        lowrank_thresh: float = 1e-6,
+        propagate: bool = False,
+        debug: bool = False,
+        seed: Union[int, None] = None,
+        verbose: int = 0):
+    nup, ndown = nelec
+    ueg_opts = {
+                "nup": nup,
+                "ndown": ndown,
+                "rs": rs,
+                "ecut": ecut,
+                "thermal": True,
+                "write_integrals": False,
+                "low_rank": lowrank
+                }
 
-    propagate = options.get('propagate', False)
     numpy.random.seed(seed)
 
     # 1. Generate UEG integrals.
@@ -232,7 +221,6 @@ def build_ueg_test_case_handlers(options: dict,
     ueg.build(verbose=verbose)
     nbasis = ueg.nbasis
     nchol = ueg.nchol
-    nup, ndown = nelec
 
     if verbose:
         print(f"# nbasis = {nbasis}")
@@ -242,7 +230,6 @@ def build_ueg_test_case_handlers(options: dict,
         
     h1 = ueg.H1[0]
     chol = 2. * ueg.chol_vecs.toarray().copy()
-    #ecore = ueg.ecore
     ecore = 0.
 
     # 2. Build Hamiltonian.
@@ -275,24 +262,35 @@ def build_ueg_test_case_handlers(options: dict,
     return objs
 
 
-def build_driver_ueg_test_instance(options: Union[dict, None],
-                                   seed: Union[int, None],
-                                   debug: bool = False,
-                                   verbose: int = 0):
-    # Unpack options
-    ueg_opts = options['ueg_opts']
-    nelec = options['nelec']
-    mu = options['mu']
-    beta = options['beta']
-    timestep = options['timestep']
-    nwalkers = options.get('nwalkers', 100)
-    stack_size = options.get('stack_size', 10)
-    nblocks = options.get('nblocks', 100)
-    stabilize_freq = options.get('stabilize_freq', 5)
-    pop_control_freq = options.get('pop_control_freq', 1)
-    pop_control_method = options.get('pop_control_method', 'pair_branch')
-    lowrank = options.get('lowrank', False)
-    lowrank_thresh = options.get('lowrank_thresh', 1e-6)
+def build_driver_ueg_test_instance(
+        nelec: Tuple[int, int],
+        rs: float,
+        ecut: float,
+        mu: float,
+        beta: float,
+        timestep: float,
+        nblocks: int,
+        nwalkers: int = 100,
+        stack_size: int = 10,
+        lowrank: bool = False,
+        lowrank_thresh: float = 1e-6,
+        stabilize_freq: int = 5,
+        pop_control_freq: int = 5,
+        pop_control_method: str = 'pair_branch',
+        debug: bool = False,
+        seed: Union[int, None] = None,
+        verbose: int = 0):
+    nup, ndown = nelec
+    ueg_opts = {
+                "nup": nup,
+                "ndown": ndown,
+                "rs": rs,
+                "ecut": ecut,
+                "thermal": True,
+                "write_integrals": False,
+                "low_rank": lowrank
+                }
+
     numpy.random.seed(seed)
 
     # 1. Generate UEG integrals.
@@ -300,7 +298,6 @@ def build_driver_ueg_test_instance(options: Union[dict, None],
     ueg.build(verbose=verbose)
     nbasis = ueg.nbasis
     nchol = ueg.nchol
-    nup, ndown = nelec
 
     if verbose:
         print(f"# nbasis = {nbasis}")
@@ -310,7 +307,6 @@ def build_driver_ueg_test_instance(options: Union[dict, None],
         
     h1 = ueg.H1[0]
     chol = 2. * ueg.chol_vecs.toarray().copy()
-    #ecore = ueg.ecore
     ecore = 0.
 
     # 2. Build Hamiltonian.
@@ -327,7 +323,7 @@ def build_driver_ueg_test_instance(options: Union[dict, None],
     afqmc = ThermalAFQMC.build(
                 nelec, mu, beta, hamiltonian, trial, nwalkers=nwalkers,
                 stack_size=stack_size, seed=seed, nblocks=nblocks, timestep=timestep, 
-                stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq, 
+                stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq,
                 pop_control_method=pop_control_method, lowrank=lowrank, 
                 lowrank_thresh=lowrank_thresh, debug=debug, verbose=verbose)
     return afqmc

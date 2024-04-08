@@ -4,32 +4,11 @@ import numpy
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
-
-class PopControllerTimer:
-    def __init__(self):
-        self.start_time_const = 0.0
-        self.communication_time = 0.0
-        self.non_communication_time = 0.0
-        self.recv_time = 0.0
-        self.send_time = 0.0
-
-    def start_time(self):
-        self.start_time_const = time.time()
-
-    def add_non_communication(self):
-        self.non_communication_time += time.time() - self.start_time_const
-
-    def add_communication(self):
-        self.communication_time += time.time() - self.start_time_const
-
-    def add_recv_time(self):
-        self.recv_time += time.time() - self.start_time_const
-
-    def add_send_time(self):
-        self.send_time += time.time() - self.start_time_const
+from ipie.walkers.pop_controller import PopController, PopControllerTimer
+from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 
 
-class PopController:
+class ThermalPopController(PopController):
     def __init__(
         self,
         num_walkers_local,
@@ -41,38 +20,9 @@ class PopController:
         reconfiguration_freq=50,
         verbose=False,
     ):
-        self.verbose = verbose
-
-        self.num_walkers_local = num_walkers_local
-        self.num_steps = num_steps
-        self.mpi_handler = mpi_handler
-
-        self.method = pop_control_method
-        if verbose:
-            print(f"# Using {self.method} population control " "algorithm.")
-
-        self.min_weight = min_weight
-        self.max_weight = max_weight
-        self.reconfiguration_counter = 0
-        self.reconfiguration_freq = reconfiguration_freq
-
-        self.mpi_handler = mpi_handler
-
-        if self.mpi_handler is not None:
-            self.size = self.mpi_handler.size
-            self.ntot_walkers = num_walkers_local * self.size
-        else:
-            self.size = 1
-            self.ntot_walkers = num_walkers_local
-
-        self.target_weight = self.ntot_walkers
-        self.total_weight = self.ntot_walkers
-
-        if verbose:
-            print(f"# target weight is {self.target_weight}")
-            print(f"# total weight is {self.total_weight}")
-
-        self.timer = PopControllerTimer()
+        super().__init__(
+                num_walkers_local, num_steps, mpi_handler, pop_control_method,
+                min_weight, max_weight, reconfiguration_freq, verbose)
 
     def pop_control(self, walkers, comm):
         self.timer.start_time()
@@ -137,7 +87,7 @@ def get_buffer(walkers, iw):
     buff = xp.zeros(walkers.buff_size, dtype=numpy.complex128)
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
-        if data is None:
+        if (data is None) or isinstance(data, (int, float, complex, numpy.float64, numpy.complex128)):
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], (xp.ndarray)):
@@ -155,6 +105,8 @@ def get_buffer(walkers, iw):
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
 
+    stack_buff = walkers.stack[iw].get_buffer()
+    buff = numpy.concatenate((buff, stack_buff))
     return buff
 
 
@@ -168,7 +120,7 @@ def set_buffer(walkers, iw, buff):
     s = 0
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
-        if data is None:
+        if (data is None) or isinstance(data, (int, float, complex, numpy.float64, numpy.complex128)):
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], xp.ndarray):
@@ -192,6 +144,8 @@ def set_buffer(walkers, iw, buff):
             else:
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
+        
+    walkers.stack[iw].set_buffer(buff[walkers.buff_size:])
 
 
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
@@ -271,14 +225,15 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             # Location of walker to kill in local list of walkers.
             kill_pos = k % walkers.nwalkers
             buffer = walkers.walker_buffer
+            buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
             timer.add_non_communication()
             timer.start_time()
-            comm.Recv(walkers.walker_buffer, source=source_proc, tag=i)
+            comm.Recv(buffer, source=source_proc, tag=i)
             # with h5py.File('walkers_recv.h5', 'w') as fh5:
             # fh5['walk_{}'.format(k)] = walkers.walker_buffer.copy()
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers, kill_pos, walkers.walker_buffer)
+            set_buffer(walkers, kill_pos, buffer)
             timer.add_non_communication()
             # with h5py.File('after_{}.h5'.format(comm.rank), 'a') as fh5:
             # fh5['walker_{}_{}_{}'.format(c,k,comm.rank)] = walkers.walkers[kill_pos].get_buffer()
@@ -410,12 +365,13 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
             timer.start_time()
             tag = walker[3] * walkers.nwalkers + comm.rank
             buffer = walkers.walker_buffer
+            buffer = numpy.concatenate((walkers.walker_buffer, walkers.stack[0].stack_buffer))
             timer.add_non_communication()
             timer.start_time()
-            comm.Recv(walkers.walker_buffer, source=int(round(walker[3])), tag=tag)
+            comm.Recv(buffer, source=int(round(walker[3])), tag=tag)
             timer.add_recv_time()
             timer.start_time()
-            set_buffer(walkers, iw, walkers.walker_buffer)
+            set_buffer(walkers, iw, buffer)
             timer.add_non_communication()
     timer.start_time()
     for r in reqs:

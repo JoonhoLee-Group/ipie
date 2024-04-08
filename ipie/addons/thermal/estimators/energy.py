@@ -36,9 +36,7 @@ def local_energy(
         walkers.calc_greens_function(iw, slice_ix=walkers.stack[iw].nslice)
         P = one_rdm_from_G(xp.array([walkers.Ga[iw], walkers.Gb[iw]]))
         energy = local_energy_generic_cholesky(hamiltonian, P)
-
-        for i in range(3):
-            energies[iw, i] = energy[i]
+        energies[iw] = energy
 
     return energies
 

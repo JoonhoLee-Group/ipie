@@ -35,54 +35,20 @@ def test_phaseless_ueg_propagator():
     beta = 0.1
     timestep = 0.01
     nwalkers = 1
-    # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
-    nsteps_per_block = 1
-    nblocks = 11
-    stabilize_freq = 10
-    pop_control_freq = 1
-
-    # `pop_control_method` doesn't matter for 1 walker.
-    pop_control_method = "pair_branch"
-    #pop_control_method = "comb"
     lowrank = False
-    propagate = False
     
-    verbose = False if (comm.rank != 0) else True
     debug = True
+    verbose = False if (comm.rank != 0) else True
     seed = 7
     numpy.random.seed(seed)
-    
-    options = {
-                'nelec': nelec,
-                'mu': mu,
-                'beta': beta,
-                'timestep': timestep,
-                'nwalkers': nwalkers,
-                'seed': seed,
-                'nsteps_per_block': nsteps_per_block,
-                'nblocks': nblocks,
-                'stabilize_freq': stabilize_freq,
-                'pop_control_freq': pop_control_freq,
-                'pop_control_method': pop_control_method,
-                'lowrank': lowrank,
-                'propagate': propagate,
-
-                "ueg_opts": {
-                    "nup": nup,
-                    "ndown": ndown,
-                    "rs": rs,
-                    "ecut": ecut,
-                    "thermal": True,
-                    "write_integrals": False,
-                    "low_rank": lowrank
-                },
-            }
     
     # Test.
     print('\n----------------------------')
     print('Constructing test objects...')
     print('----------------------------')
-    objs =  build_ueg_test_case_handlers(options, seed, debug, verbose)
+    objs =  build_ueg_test_case_handlers(
+            nelec, rs, ecut, mu, beta, timestep, nwalkers=nwalkers, 
+            lowrank=lowrank, debug=debug, seed=seed, verbose=verbose)
     trial = objs['trial']
     hamiltonian = objs['hamiltonian']
     walkers = objs['walkers']
@@ -93,7 +59,8 @@ def test_phaseless_ueg_propagator():
     print('Constructing legacy objects...')
     print('------------------------------')
     legacy_objs = build_legacy_ueg_test_case_handlers(
-            hamiltonian, comm, options, seed=seed, verbose=verbose)
+                    comm, nelec, rs, ecut, mu, beta, timestep, nwalkers=nwalkers, 
+                    lowrank=lowrank, seed=seed, verbose=verbose)
     legacy_system = legacy_objs['system']
     legacy_trial = legacy_objs['trial']
     legacy_hamiltonian = legacy_objs['hamiltonian']

@@ -1,9 +1,6 @@
 import numpy
 import scipy.linalg
 
-def fermi_factor(ek, beta, mu):
-    return 1.0 / (numpy.exp(beta * (ek - mu)) + 1.0)
-
 def one_rdm_from_G(G):
     r"""Compute one-particle reduced density matrix from Green's function.
 
@@ -70,19 +67,3 @@ def one_rdm_stable(BT, num_slices):
         # Q is unitary.
         G.append(numpy.dot(numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)))
     return one_rdm_from_G(numpy.array(G))
-
-def entropy(beta, mu, H):
-    """Compute the entropy.
-    """
-    assert numpy.linalg.norm(H[0] - H[1]) < 1e-12
-    eigs, _ = numpy.linalg.eigh(H[0])
-    p_i = fermi_factor(eigs, beta, mu)
-    S = -2.0 * sum(p * numpy.log(p) + (1 - p) * numpy.log(1 - p) for p in p_i)
-    # muN = mu * numpy.eye(H[0].shape[-1], dtype=H[0].dtype)
-    # rho = numpy.array([scipy.linalg.expm(-beta*(H[0]-muN)),
-    # scipy.linalg.expm(-beta*(H[1]-muN))])
-    # W = rho[0] + rho[1]
-    # W = W / W.trace()
-    # logW = -numpy.trace(scipy.linalg.logm(W))
-    # S = -numpy.trace(numpy.dot(W,logW))
-    return S

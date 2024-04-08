@@ -4,7 +4,13 @@ import pytest
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
 from ipie.hamiltonians.generic import Generic as HamGeneric
+
 from ipie.addons.thermal.trial.mean_field import MeanField
+
+from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
+from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
+
+
 
 
 @pytest.mark.unit
@@ -17,7 +23,9 @@ def test_mean_field():
     mu = -10.
     beta = 0.1
     timestep = 0.01
-
+    
+    alt_convention = False
+    sparse = False
     complex_integrals = True
     verbose = True
 
@@ -36,12 +44,38 @@ def test_mean_field():
                              ecore=0)
     trial = MeanField(hamiltonian, nelec, beta, timestep, verbose=verbose)
 
+    # Lgeacy.
+    print('\n------------------------------')
+    print('Constructing legacy objects...')
+    print('------------------------------')
+    legacy_system = Generic(nelec, verbose=verbose)
+    legacy_system.mu = mu
+    legacy_hamiltonian = LegacyHamGeneric(
+                            h1e=hamiltonian.H1,
+                            chol=hamiltonian.chol,
+                            ecore=hamiltonian.ecore, verbose=verbose)
+    legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
+    legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
+            (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
+    legacy_hamiltonian.mu = mu
+    legacy_hamiltonian._alt_convention = alt_convention
+    legacy_hamiltonian.sparse = sparse
+    legacy_trial = LegacyMeanField(legacy_system, legacy_hamiltonian, beta, 
+                                   timestep, verbose=verbose)
+
     assert trial.nelec == nelec
     numpy.testing.assert_almost_equal(trial.nav, numpy.sum(nelec), decimal=5)
     assert trial.rho.shape == (2, nbasis, nbasis)
     assert trial.dmat.shape == (2, nbasis, nbasis)
     assert trial.P.shape == (2, nbasis, nbasis)
     assert trial.G.shape == (2, nbasis, nbasis)
+
+    numpy.testing.assert_allclose(trial.mu, legacy_trial.mu)
+    numpy.testing.assert_allclose(trial.nav, legacy_trial.nav)
+    numpy.testing.assert_allclose(trial.P, legacy_trial.P)
+    numpy.testing.assert_allclose(trial.G, legacy_trial.G)
+    numpy.testing.assert_allclose(trial.dmat, legacy_trial.dmat)
+    numpy.testing.assert_allclose(trial.dmat_inv, legacy_trial.dmat_inv)
 
 
 if __name__ == '__main__':

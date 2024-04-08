@@ -5,6 +5,7 @@ import json
 import uuid
 from typing import Dict, Optional, Tuple
 
+from ipie.addons.thermal.walkers.pop_controller import ThermalPopController
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.addons.thermal.propagation.propagator import Propagator
 from ipie.addons.thermal.estimators.handler import ThermalEstimatorHandler
@@ -18,7 +19,6 @@ from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
 from ipie.estimators.estimator_base import EstimatorBase
-from ipie.walkers.pop_controller import PopController
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.qmc.afqmc import AFQMC
 
@@ -188,7 +188,7 @@ class ThermalAFQMC(AFQMC):
         if walkers is not None:
             self.walkers = walkers
 
-        self.pcontrol = PopController(
+        self.pcontrol = ThermalPopController(
                             self.params.num_walkers,
                             self.params.num_steps_per_block,
                             self.mpi_handler,

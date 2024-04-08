@@ -6,12 +6,13 @@ import numpy
 import scipy.linalg
 
 from abc import abstractmethod
+from ipie.utils.backend import arraylib as xp
 from ipie.propagation.continuous_base import ContinuousBase
+from ipie.propagation.operations import apply_exponential
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.addons.thermal.propagation.force_bias import construct_force_bias
-from ipie.addons.thermal.propagation.operations import apply_exponential
-from ipie.utils.backend import arraylib as xp
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 
 # TODO: Add lowrank implementation.
 # Ref: 10.1103/PhysRevB.80.214116 for bounds.
@@ -210,7 +211,8 @@ class PhaselessBase(ContinuousBase):
         start_time = time.time()
         for iw in range(walkers.nwalkers):
             stack = walkers.stack[iw]
-            BV = apply_exponential(VHS[iw], self.exp_nmax) # Shape (nbasis, nbasis).
+            phi = xp.identity(VHS[iw].shape[-1], dtype=xp.complex128)
+            BV = apply_exponential(phi, VHS[iw], self.exp_nmax) # Shape (nbasis, nbasis).
             B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
             B = numpy.array([self.BH1[0].dot(B[0]), self.BH1[1].dot(B[1])])
 

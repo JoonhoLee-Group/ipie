@@ -16,7 +16,7 @@ class MeanField(OneBody):
         OneBody.__init__(self, hamiltonian, nelec, beta, dt, options=options, 
                          alt_convention=alt_convention, H1=H1, verbose=verbose)
         if verbose:
-            print(" # Building THF density matrix.")
+            print("# Building THF density matrix.")
 
         self.alpha = options.get("alpha", 0.75)
         self.max_scf_it = options.get("max_scf_it", self.max_it)
@@ -49,14 +49,14 @@ class MeanField(OneBody):
                                scipy.linalg.expm(-dt * HMF[1])])
             if self.find_mu:
                 mu = find_chemical_potential(
-                        self.alt_convention, rho, dt, self.stack_length, self.nav, 
+                        self.alt_convention, rho, dt, self.nstack, self.nav, 
                         deps=self.deps, max_it=self.max_it, verbose=self.verbose)
 
             else:
                 mu = self.mu
 
             rho_mu = compute_rho(rho, mu_old, dt)
-            P = one_rdm_stable(rho_mu, self.stack_length)
+            P = one_rdm_stable(rho_mu, self.nstack)
             dmu = abs(mu - mu_old)
 
             if self.verbose:
@@ -76,7 +76,7 @@ class MeanField(OneBody):
         muN = mu * numpy.eye(hamiltonian.nbasis, dtype=self.G.dtype)
         rho = numpy.array([scipy.linalg.expm(-dt * (HMF[0] - muN)),
                            scipy.linalg.expm(-dt * (HMF[1] - muN))])
-        Pold = one_rdm_stable(rho, self.stack_length)
+        Pold = one_rdm_stable(rho, self.nstack)
 
         if self.verbose:
             print("# Running Thermal SCF.")
@@ -85,7 +85,7 @@ class MeanField(OneBody):
             HMF = fock_generic(hamiltonian, Pold)
             rho = numpy.array([scipy.linalg.expm(-dt * (HMF[0] - muN)),
                                scipy.linalg.expm(-dt * (HMF[1] - muN))])
-            Pnew = (1 - self.alpha) * one_rdm_stable(rho, self.stack_length) + self.alpha * Pold
+            Pnew = (1 - self.alpha) * one_rdm_stable(rho, self.nstack) + self.alpha * Pold
             change = numpy.linalg.norm(Pnew - Pold)
 
             if change < self.deps:

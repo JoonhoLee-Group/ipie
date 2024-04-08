@@ -48,8 +48,6 @@ def test_thermal_afqmc():
     beta = 0.1
     timestep = 0.01
     nwalkers = 32 // comm.size
-    # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
-    nsteps_per_block = 1
     nblocks = 12
     stabilize_freq = 10
     pop_control_freq = 1
@@ -58,33 +56,13 @@ def test_thermal_afqmc():
     lowrank = False
 
     verbose = 0 if (comm.rank != 0) else 1
+     # Local energy evaluation in legacy code seems wrong.
     complex_integrals = False
     debug = True
     seed = 7
     numpy.random.seed(seed)
 
     with tempfile.NamedTemporaryFile() as tmpf1, tempfile.NamedTemporaryFile() as tmpf2:
-        options = {
-                    'nelec': nelec,
-                    'nbasis': nbasis,
-                    'mu': mu,
-                    'beta': beta,
-                    'timestep': timestep,
-                    'nwalkers': nwalkers,
-                    'seed': seed,
-                    'nsteps_per_block': nsteps_per_block,
-                    'nblocks': nblocks,
-                    'stabilize_freq': stabilize_freq,
-                    'pop_control_freq': pop_control_freq,
-                    'pop_control_method': pop_control_method,
-                    'lowrank': lowrank,
-                    'complex_integrals': complex_integrals,
-
-                    "estimators": {
-                        "filename": tmpf2.name, # For legacy.
-                    },
-                }
-    
         # ---------------------------------------------------------------------
         # Test.
         # ---------------------------------------------------------------------
@@ -93,7 +71,12 @@ def test_thermal_afqmc():
             print('Running ThermalAFQMC...')
             print('-----------------------')
     
-        afqmc = build_driver_generic_test_instance(options, seed, debug, verbose)
+        afqmc = build_driver_generic_test_instance(
+                nelec, nbasis, mu, beta, timestep, nblocks, nwalkers=nwalkers, 
+                lowrank=lowrank, pop_control_method=pop_control_method, 
+                stabilize_freq=stabilize_freq, pop_control_freq=pop_control_freq,
+                complex_integrals=complex_integrals, debug=debug, seed=seed, 
+                verbose=verbose)
         afqmc.run(verbose=verbose, estimator_filename=tmpf1.name)
         afqmc.finalise()
         afqmc.estimators.compute_estimators(afqmc.hamiltonian, afqmc.trial, afqmc.walkers)
@@ -118,7 +101,12 @@ def test_thermal_afqmc():
             print('------------------------------')
 
         legacy_afqmc = build_legacy_driver_generic_test_instance(
-                        afqmc.hamiltonian, comm, options, seed, verbose)
+                        afqmc.hamiltonian, comm, nelec, mu, beta, timestep, 
+                        nblocks, nwalkers=nwalkers, lowrank=lowrank, 
+                        stabilize_freq=stabilize_freq,
+                        pop_control_freq=pop_control_freq,
+                        pop_control_method=pop_control_method, seed=seed, 
+                        estimator_filename=tmpf2.name, verbose=verbose)
         legacy_afqmc.run(comm=comm)
         legacy_afqmc.finalise(verbose=False)
         legacy_afqmc.estimators.estimators["mixed"].update(
@@ -141,8 +129,7 @@ def test_thermal_afqmc():
             legacy_energy_numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
             legacy_energy_denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
         
-            print(f'\nThermal AFQMC options: \n{json.dumps(options, indent=4)}\n')
-            print(f'test filename: {afqmc.estimators.filename}')
+            print(f'\ntest filename: {afqmc.estimators.filename}')
             print(f'legacy filename: {legacy_afqmc.estimators.filename}')
             print(f'\ntest_energy_data: \n{test_energy_data}\n')
             print(f'test_number_data: \n{test_number_data}\n')

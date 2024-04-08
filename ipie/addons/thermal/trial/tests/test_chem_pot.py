@@ -11,7 +11,7 @@ def test_find_chemical_potential():
     dt = 0.01
     beta = 1
     stack_size = 3
-    stack_length = 20
+    nstack = 20
     nav = 7
     nbsf = 14
     alt_convention = False
@@ -21,8 +21,8 @@ def test_find_chemical_potential():
     rho = numpy.array([scipy.linalg.expm(-dtau * h1e),
                        scipy.linalg.expm(-dtau * h1e)])
 
-    mu = find_chemical_potential(alt_convention, rho, dt, stack_length, nav)
-    legacy_mu = legacy_find_chemical_potential(alt_convention, rho, dt, stack_length, nav)
+    mu = find_chemical_potential(alt_convention, rho, dt, nstack, nav)
+    legacy_mu = legacy_find_chemical_potential(alt_convention, rho, dt, nstack, nav)
 
     numpy.testing.assert_allclose(mu, legacy_mu)
 

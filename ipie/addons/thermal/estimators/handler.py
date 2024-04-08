@@ -1,7 +1,5 @@
 """Routines and classes for estimation of observables."""
 
-from __future__ import print_function
-
 import os
 from typing import Tuple, Union
 

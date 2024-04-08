@@ -19,50 +19,22 @@ mu = -10.
 beta = 0.1
 timestep = 0.01
 nwalkers = 12
-# Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
-nsteps_per_block = 1
-nblocks = 12
-stabilize_freq = 10
-pop_control_freq = 1
-pop_control_method = 'pair_branch'
-#pop_control_method = 'comb'
 lowrank = False
 
-verbose = True
+mf_trial = True
 complex_integrals = False
 debug = True
-mf_trial = True
-propagate = False
+verbose = True
 seed = 7
 numpy.random.seed(seed)
-
-options = {
-            'nelec': nelec,
-            'nbasis': nbasis,
-            'mu': mu,
-            'beta': beta,
-            'timestep': timestep,
-            'nwalkers': nwalkers,
-            'seed': seed,
-            'nsteps_per_block': nsteps_per_block,
-            'nblocks': nblocks,
-            'stabilize_freq': stabilize_freq,
-            'pop_control_freq': pop_control_freq,
-            'pop_control_method': pop_control_method,
-            'lowrank': lowrank,
-            'complex_integrals': complex_integrals,
-            'mf_trial': mf_trial,
-            'propagate': propagate,
-        }
-
 
 @pytest.mark.unit
 def test_local_energy_vs_real():
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
-    objs =  build_generic_test_case_handlers(options, seed, debug, verbose)
+    objs = build_generic_test_case_handlers(
+            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
+            mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
+            seed=seed, verbose=verbose)
     trial = objs['trial']
     walkers = objs['walkers']
     hamiltonian = objs['hamiltonian']
@@ -87,12 +59,10 @@ def test_local_energy_vs_real():
 @pytest.mark.unit
 def test_local_energy_vs_eri():
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
-    options['complex_integrals'] = True
-    objs =  build_generic_test_case_handlers(options, seed, debug, with_eri=True,
-                                             verbose=verbose)
+    objs = build_generic_test_case_handlers(
+            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
+            mf_trial=mf_trial, debug=debug, complex_integrals=True, with_eri=True,
+            seed=seed, verbose=verbose)
     trial = objs['trial']
     walkers = objs['walkers']
     hamiltonian = objs['hamiltonian']
@@ -108,7 +78,6 @@ def test_local_energy_vs_eri():
     numpy.testing.assert_allclose(eri, eri_chol, atol=1e-10)
 
     for iw in range(walkers.nwalkers):
-        print(iw)
         P = one_rdm_from_G(numpy.array([walkers.Ga[iw], walkers.Gb[iw]])) 
         Pa, Pb = P
         Ptot = Pa + Pb

@@ -11,7 +11,7 @@ from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.addons.thermal.trial.utils import get_trial_density_matrix
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.addons.thermal.propagation.propagator import Propagator
-from ipie.addons.thermal.qmc.options import ThermalQMCParams
+from ipie.addons.thermal.qmc.options import ThermalQMCOpts, ThermalQMCParams
 from ipie.addons.thermal.qmc.thermal_afqmc import ThermalAFQMC
 
 
@@ -60,9 +60,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
     if (lowrank == True) or (batched == True):
         raise ValueError("Option not supported in thermal code.")
     else:
-        from ipie.qmc.options import QMCOpts
-
-        qmc = QMCOpts(qmc_opts, verbose=0)
+        qmc = ThermalQMCOpts(qmc_opts, verbose=0)
         mpi_handler = MPIHandler(nmembers=qmc_opts.get("nmembers", 1), verbose=verbosity)
         system = get_system(
             sys_opts, verbose=verbosity, comm=comm

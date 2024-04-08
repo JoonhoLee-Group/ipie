@@ -33,58 +33,29 @@ def test_local_energy_cholesky(mf_trial=False):
     beta = 0.1
     timestep = 0.01
     nwalkers = 12
-    # Must be fixed at 1 for Thermal AFQMC--legacy code overides whatever input!
-    nsteps_per_block = 1
-    nblocks = 12
-    stabilize_freq = 10
-    pop_control_freq = 1
-    pop_control_method = 'pair_branch'
-    #pop_control_method = 'comb'
     lowrank = False
 
-    verbose = True
+    mf_trial = True
     complex_integrals = False
     debug = True
-    mf_trial = True
-    propagate = False
+    verbose = True
     seed = 7
     numpy.random.seed(seed)
 
-    options = {
-                'nelec': nelec,
-                'nbasis': nbasis,
-                'mu': mu,
-                'beta': beta,
-                'timestep': timestep,
-                'nwalkers': nwalkers,
-                'seed': seed,
-                'nsteps_per_block': nsteps_per_block,
-                'nblocks': nblocks,
-                'stabilize_freq': stabilize_freq,
-                'pop_control_freq': pop_control_freq,
-                'pop_control_method': pop_control_method,
-                'lowrank': lowrank,
-                'complex_integrals': complex_integrals,
-                'mf_trial': mf_trial,
-                'propagate': propagate,
-            }
-
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
-    objs =  build_generic_test_case_handlers(options, seed, debug, verbose)
+    objs = build_generic_test_case_handlers(
+            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
+            mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
+            seed=seed, verbose=verbose)
     trial = objs['trial']
     hamiltonian = objs['hamiltonian']
     P = one_rdm_from_G(trial.G) 
     eloc = local_energy_generic_cholesky(hamiltonian, P)
 
     # Legacy.
-    print('\n------------------------------')
-    print('Constructing legacy objects...')
-    print('------------------------------')
     legacy_objs = build_legacy_generic_test_case_handlers(
-            hamiltonian, comm, options, seed=seed, verbose=verbose)
+                    hamiltonian, comm, nelec, mu, beta, timestep, nwalkers=nwalkers, 
+                    lowrank=lowrank, mf_trial=mf_trial, seed=seed, verbose=verbose)
     legacy_system = legacy_objs['system']
     legacy_trial = legacy_objs['trial']
     legacy_hamiltonian = legacy_objs['hamiltonian']
