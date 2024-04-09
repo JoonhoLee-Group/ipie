@@ -18,11 +18,11 @@ def split_cholesky(ham_filename: str, nmembers: int, verbose=True):
         The number of members among which the Cholesky vectors will be distributed.
     """
     with h5py.File(ham_filename, "r") as source_file:
-        dataset = source_file["LXmn"][()]  # pylint: disable=no-member
+        # for huge chol file, should read in slices at one time instead of this
+        dataset = np.array(source_file["LXmn"][:])
         num_chol = dataset.shape[0]
     split_sizes, displacements = make_splits_displacements(num_chol, nmembers)
-    assert isinstance(dataset, np.ndarray), "Dataset should be a numpy array"
-    dataset = dataset.transpose(1, 2, 0).reshape(-1, num_chol)  # pylint: disable=no-member
+    dataset = dataset.transpose(1, 2, 0).reshape(-1, num_chol)
 
     for i, (size, displacement) in enumerate(zip(split_sizes, displacements)):
         # Prepare row indices for slicing

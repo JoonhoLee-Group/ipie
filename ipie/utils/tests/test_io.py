@@ -25,13 +25,15 @@ from ipie.utils.io import read_hamiltonian, read_wavefunction, write_hamiltonian
 from ipie.utils.testing import get_random_phmsd_opt
 import h5py
 from ipie.utils.chunk_large_chol import split_cholesky
+import tempfile
 
 
 @pytest.mark.unit
 def test_split_cholesky():
     naux = 105
     nbas = 10
-    temp_hdf5_filename = "temp_chol_test.h5"
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as temp_file:
+        temp_hdf5_filename = temp_file.name
     mock_data = np.random.rand(naux, nbas, nbas)
 
     with h5py.File(temp_hdf5_filename, "w") as f:
@@ -53,7 +55,6 @@ def test_split_cholesky():
     collected_data = np.hstack(collected_data)
     assert np.allclose(mock_data, collected_data.T.reshape(naux, nbas, nbas))
 
-    os.remove(temp_hdf5_filename)
     for i in range(nmembers):
         os.remove(f"chol_{i}.h5")
 
