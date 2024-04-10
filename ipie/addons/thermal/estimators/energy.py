@@ -44,24 +44,8 @@ def local_energy(
 
 
 class ThermalEnergyEstimator(EnergyEstimator):
-    def __init__(self, hamiltonian=None, trial=None, filename=None):
-        assert hamiltonian is not None
-        assert trial is not None
-        EstimatorBase.__init__(self)
-        self._eshift = 0.0
-        self.scalar_estimator = True
-        self._data = {
-            "ENumer": 0.0j,
-            "EDenom": 0.0j,
-            "ETotal": 0.0j,
-            "E1Body": 0.0j,
-            "E2Body": 0.0j,
-        }
-
-        self._shape = (len(self.names),)
-        self._data_index = {k: i for i, k in enumerate(list(self._data.keys()))}
-        self.print_to_stdout = True
-        self.ascii_filename = filename
+    def __init__(self, system=None, hamiltonian=None, trial=None, filename=None):
+        super().__init__(system=system, ham=hamiltonian, trial=trial, filename=filename)
 
     def compute_estimator(self, walkers, hamiltonian, trial, istep=1):
         # Need to be able to dispatch here.

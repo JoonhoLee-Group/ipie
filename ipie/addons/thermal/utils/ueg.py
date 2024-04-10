@@ -375,28 +375,6 @@ class UEG:
         return 4 * numpy.pi / numpy.dot(q, q)
 
 
-    def density_operator(self, iq):
-        """Density operator as defined in Eq.(6) of Phys. Rev. B 75, 245123.
-
-        Parameters
-        ----------
-        q : float
-            a plane-wave vector
-
-        Returns
-        -------
-        rho_q: float
-            density operator
-        """
-        nnz = self.rho_ikpq_kpq[iq].shape[0]  # Number of non-zeros
-        ones = numpy.ones((nnz), dtype=numpy.complex128)
-        rho_q = scipy.sparse.csc_matrix(
-            (ones, (self.rho_ikpq_kpq[iq], self.rho_ikpq_i[iq])),
-            shape=(self.nbasis, self.nbasis),
-            dtype=numpy.complex128)
-        return rho_q
-
-
     def scaled_density_operator_incore(self, transpose):
         """Density operator as defined in Eq.(6) of PRB(75)245123
 
