@@ -181,7 +181,8 @@ class ThermalAFQMC(AFQMC):
             walkers = None, 
             verbose: bool = True,
             estimator_filename = None,
-            additional_estimators: Optional[Dict[str, EstimatorBase]] = None):
+            additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
+            print_time_slice: bool = False):
         """Perform Thermal AFQMC simulation on state object using open-ended random walk.
 
         Parameters
@@ -230,7 +231,7 @@ class ThermalAFQMC(AFQMC):
 
         for step in range(1, total_steps + 1):
             synchronize()
-            start_path = time.time()
+            start_step = time.time()
 
             for t in range(nslices):
                 if self.verbosity >= 2 and comm.rank == 0:
@@ -271,11 +272,11 @@ class ThermalAFQMC(AFQMC):
                     self.tpopc_comm = self.pcontrol.timer.communication_time
                     self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
                 
-                # Print cut.
-                #self.estimators.compute_estimators(
-                #        self.hamiltonian, self.trial, self.walkers)
-                #self.estimators.print_cut(
-                #        comm, step // self.params.num_steps_per_block, t, self.accumulators)
+                # Print estimators at each time slice.
+                if print_time_slice:
+                    self.estimators.compute_estimators(
+                            self.hamiltonian, self.trial, self.walkers)
+                    self.estimators.print_time_slice(comm, t, self.accumulators)
 
             # Accumulate weight, hybrid energy etc. across block.
             start = time.time()
@@ -304,125 +305,7 @@ class ThermalAFQMC(AFQMC):
             self.walkers.reset(self.trial) # Reset stack, weights, phase.
 
             synchronize()
-            self.tpath += time.time() - start_path
-
-
-    def finalise(self, verbose=False):
-        """Tidy up.
-
-        Parameters
-        ----------
-        verbose : bool
-            If true print out some information to stdout.
-        """
-        nsteps_per_block = max(self.params.num_steps_per_block, 1)
-        nblocks = max(self.params.num_blocks, 1)
-        nstblz = max(nsteps_per_block // self.params.num_stblz, 1)
-        npcon = max(nsteps_per_block // self.params.pop_control_freq, 1)
-
-        if self.mpi_handler.rank == 0:
-            if verbose:
-                print(f"# End Time: {time.asctime():s}")
-                print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
-                print("# Timing breakdown (per call, total calls per block, total blocks):")
-                print(f"# - Setup: {self.tsetup:.6f} s")
-                print(
-                    "# - Path update: {:.6f} s / block for {} total blocks".format(
-                        self.tpath / (nblocks), nblocks
-                    )
-                )
-                print(
-                    "# - Propagation: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     -       Force bias: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_fbias / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     -              VHS: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_vhs / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     - Green's Function: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_gf / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     -          Overlap: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_ovlp / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     -   Weights Update: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        (self.tprop_update + self.tprop_clip) / (nblocks * nsteps_per_block),
-                        nsteps_per_block,
-                        nblocks,
-                    )
-                )
-                print(
-                    "#     -  GEMM operations: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_gemm / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "#     -          Barrier: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tprop_barrier / (nblocks * nsteps_per_block), nsteps_per_block, nblocks
-                    )
-                )
-                print(
-                    "# - Estimators: {:.6f} s / call for {} call(s)".format(
-                        self.testim / nblocks, nblocks
-                    )
-                )
-                print(
-                    "# - Orthogonalisation: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tortho / (nstblz * nblocks), nstblz, nblocks
-                    )
-                )
-                print(
-                    "# - Population control: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tpopc / (npcon * nblocks), npcon, nblocks
-                    )
-                )
-                print(
-                    "#       -     Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tpopc_comm / (npcon * nblocks), npcon, nblocks
-                    )
-                )
-                print(
-                    "#       - Non-Commnication: {:.6f} s / call for {} call(s) in each of {} blocks".format(
-                        self.tpopc_non_comm / (npcon * nblocks), npcon, nblocks
-                    )
-                )
-
-
-    def get_env_info(self):
-        this_uuid = str(uuid.uuid1())
-
-        try:
-            sha1, branch, local_mods = get_git_info()
-
-        except:
-            sha1 = "None"
-            branch = "None"
-            local_mods = []
-
-        if self.verbose:
-            self.sys_info = print_env_info(
-                sha1,
-                branch,
-                local_mods,
-                this_uuid,
-                self.mpi_handler.size,
-            )
-
-            mem_avail = get_host_memory()
-            print(f"# Available memory on the node is {mem_avail:4.3f} GB")
-    
+            self.tstep += time.time() - start_step
 
     def setup_estimators(
         self,
@@ -456,17 +339,3 @@ class ThermalAFQMC(AFQMC):
         self.estimators.print_block(comm, 0, self.accumulators)
         self.accumulators.zero()
 
-
-    def setup_timers(self):
-        self.tsetup = 0
-        self.tpath = 0
-        
-        self.tprop = 0
-        self.tprop_barrier = 0
-        self.tprop_fbias = 0
-        self.tprop_update = 0
-        self.tprop_vhs = 0
-        self.tprop_clip = 0
-
-        self.testim = 0
-        self.tpopc = 0

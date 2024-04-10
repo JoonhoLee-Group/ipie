@@ -16,12 +16,13 @@
 #          Joonho Lee
 #
 
+import numpy
 from ipie.utils.backend import arraylib as xp
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 
 
-def particle_number(dmat):
+def particle_number(dmat: numpy.ndarray):
     """Compute average particle number from the thermal 1RDM.
 
     Parameters

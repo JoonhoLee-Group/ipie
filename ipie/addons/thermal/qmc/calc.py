@@ -25,26 +25,13 @@ from ipie.utils.io import get_input_value
 
 from ipie.systems.utils import get_system
 from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.qmc.calc import init_communicator, setup_calculation, read_input
 
 from ipie.addons.thermal.trial.utils import get_trial_density_matrix
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.addons.thermal.propagation.propagator import Propagator
 from ipie.addons.thermal.qmc.options import ThermalQMCOpts, ThermalQMCParams
 from ipie.addons.thermal.qmc.thermal_afqmc import ThermalAFQMC
-
-
-def init_communicator():
-    return MPI.COMM_WORLD
-
-
-def setup_calculation(input_options):
-    comm = init_communicator()
-    if isinstance(input_options, str):
-        options = read_input(input_options, comm, verbose=True)
-    else:
-        options = input_options
-    afqmc = get_driver(options, comm)
-    return (afqmc, comm)
 
 
 def get_driver(options: dict, comm: MPI.COMM_WORLD) -> ThermalAFQMC:
@@ -162,38 +149,3 @@ def build_thermal_afqmc_driver(
     options["verbosity"] = verbosity
 
     return get_driver(options, comm)
-
-
-def read_input(input_file, comm, verbose=False):
-    """Helper function to parse input file and setup parallel calculation.
-
-    Parameters
-    ----------
-    input_file : string
-        Input filename.
-    verbose : bool
-        If true print out set up information.
-
-    Returns
-    -------
-    options : dict
-        Python dict of input options.
-    comm : MPI communicator
-        Communicator object. If mpi4py is not installed then we return a fake
-        communicator.
-    """
-    if comm.rank == 0:
-        if verbose:
-            print(f"# Initialising pie simulation from {input_file}")
-        try:
-            with open(input_file) as inp:
-                options = json.load(inp)
-        except FileNotFoundError:
-            options = None
-    else:
-        options = None
-    options = comm.bcast(options, root=0)
-    if options == None:
-        raise FileNotFoundError
-
-    return options

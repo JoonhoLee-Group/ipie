@@ -31,7 +31,7 @@ class MeanField(OneBody):
         if options is None:
             options = {}
 
-        OneBody.__init__(self, hamiltonian, nelec, beta, dt, options=options, 
+        super().__init__(hamiltonian, nelec, beta, dt, options=options, 
                          alt_convention=alt_convention, H1=H1, verbose=verbose)
         if verbose:
             print("# Building THF density matrix.")

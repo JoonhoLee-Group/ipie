@@ -20,7 +20,7 @@ import numpy
 import pytest
 
 try:
-    import ipie.legacy.estimators.ueg_kernels
+    from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
     _no_cython = False
 
 except ModuleNotFoundError:
@@ -29,11 +29,8 @@ except ModuleNotFoundError:
 from ipie.systems.generic import Generic
 from ipie.utils.testing import generate_hamiltonian
 from ipie.hamiltonians.generic import Generic as HamGeneric
-
 from ipie.addons.thermal.trial.mean_field import MeanField
-
 from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
-from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
 
 
 @pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
@@ -57,9 +54,6 @@ def test_mean_field():
     if complex_integrals: sym = 4
     
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
     system = Generic(nelec)
     h1e, chol, _, eri = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
                                              sym=sym, tol=1e-10)
@@ -69,9 +63,6 @@ def test_mean_field():
     trial = MeanField(hamiltonian, nelec, beta, timestep, verbose=verbose)
 
     # Lgeacy.
-    print('\n------------------------------')
-    print('Constructing legacy objects...')
-    print('------------------------------')
     legacy_system = Generic(nelec, verbose=verbose)
     legacy_system.mu = mu
     legacy_hamiltonian = LegacyHamGeneric(

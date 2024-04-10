@@ -61,9 +61,6 @@ def test_phaseless_ueg_propagator():
     numpy.random.seed(seed)
     
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
     objs =  build_ueg_test_case_handlers(
             nelec, rs, ecut, mu, beta, timestep, nwalkers=nwalkers, 
             lowrank=lowrank, debug=debug, seed=seed, verbose=verbose)
@@ -73,9 +70,6 @@ def test_phaseless_ueg_propagator():
     propagator = objs['propagator']
 
     # Legacy.
-    print('\n------------------------------')
-    print('Constructing legacy objects...')
-    print('------------------------------')
     legacy_objs = build_legacy_ueg_test_case_handlers(
                     comm, nelec, rs, ecut, mu, beta, timestep, nwalkers=nwalkers, 
                     lowrank=lowrank, seed=seed, verbose=verbose)
@@ -109,15 +103,6 @@ def test_phaseless_ueg_propagator():
             exx -= 0.5 * numpy.einsum('ijkl,il,kj->', eri, Pb, Pb)
             ref_e2 = ecoul + exx
             ref_eloc = (ref_e1 + ref_e2, ref_e1, ref_e2)
-        
-            if verbose:
-                print(f'\nt = {t}')
-                print(f'iw = {iw}')
-                print(f'eloc = \n{eloc}\n')
-                print(f'legacy_eloc = \n{legacy_eloc}\n')
-                print(f'ref_eloc = \n{ref_eloc}\n')
-                print(f'walkers.weight = \n{walkers.weight[iw]}\n')
-                print(f'legacy_walkers.weight = \n{legacy_walkers.walkers[iw].weight}\n')
 
             numpy.testing.assert_almost_equal(legacy_P, P, decimal=10)
             numpy.testing.assert_almost_equal(legacy_trial.dmat, trial.dmat, decimal=10)

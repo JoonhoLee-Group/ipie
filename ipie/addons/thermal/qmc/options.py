@@ -17,12 +17,11 @@
 #
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from ipie.utils.io import get_input_value
 from ipie.qmc.options import QMCOpts, QMCParams
 
-_no_default = object()
 
 class ThermalQMCOpts(QMCOpts):
     r"""Input options and certain constants / parameters derived from them.
@@ -110,20 +109,14 @@ class ThermalQMCParams(QMCParams):
     """
     # Due to structure of FT algorithm, `num_steps_per_block` is fixed at 1.
     # Overide whatever input for backward compatibility.
-    num_steps_per_block: ClassVar[float] = 1 
-    mu: float = _no_default
-    beta: float = _no_default
+    num_steps_per_block: ClassVar[int] = 1 
+    mu: Optional[float] = None
+    beta: Optional[float] = None
     pop_control_method: str = 'pair_branch'
     
-    # This is a hack to get around the error:
-    #
-    #   TypeError: non-default argument <arg> follows default argument
-    #
-    # due to inheritance from the QMCParams dataclass which has default attributes.
-    # Ref: https://stackoverflow.com/questions/51575931/class-inheritance-in-python-3-7-dataclasses
     def __post_init__(self):
-        if self.mu is _no_default:
+        if self.mu is None:
             raise TypeError("__init__ missing 1 required argument: 'mu'")
-        if self.beta is _no_default:
+        if self.beta is None:
             raise TypeError("__init__ missing 1 required argument: 'beta'")
 

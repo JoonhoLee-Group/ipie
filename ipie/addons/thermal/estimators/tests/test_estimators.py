@@ -54,9 +54,6 @@ numpy.random.seed(seed)
 @pytest.mark.unit
 def test_energy_estimator():
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
     objs = build_generic_test_case_handlers(
             nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
             mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
@@ -113,9 +110,6 @@ def test_energy_estimator():
 @pytest.mark.unit
 def test_number_estimator():
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
     objs =  build_generic_test_case_handlers(
             nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
             mf_trial=mf_trial, complex_integrals=True, debug=debug, 
@@ -144,9 +138,6 @@ def test_number_estimator():
 def test_estimator_handler():
     with tempfile.NamedTemporaryFile() as tmp1, tempfile.NamedTemporaryFile() as tmp2:
         # Test.
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
         objs =  build_generic_test_case_handlers(
                 nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
                 mf_trial=mf_trial, complex_integrals=True, debug=debug, 
@@ -164,7 +155,6 @@ def test_estimator_handler():
                     comm,
                     hamiltonian,
                     trial,
-                    block_size=10,
                     observables=("energy",),
                     filename=tmp2.name)
         handler["energy1"] = estim

@@ -78,7 +78,6 @@ class SingleDet(TrialWavefunctionBase):
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
-            print("# (Ej, Ek) = {}, {}".format(self.ej, self.ek))
             print(
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)

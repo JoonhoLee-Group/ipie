@@ -62,11 +62,6 @@ def test_thermal_walkers_fullrank():
     numpy.random.seed(seed)
     
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
-
     objs =  build_generic_test_case_handlers(
             nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
             mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
@@ -76,11 +71,6 @@ def test_thermal_walkers_fullrank():
     walkers = objs['walkers']
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-
     legacy_objs = build_legacy_generic_test_case_handlers(
                     hamiltonian, comm, nelec, mu, beta, timestep, nwalkers=nwalkers, 
                     lowrank=lowrank, mf_trial=mf_trial, seed=seed, verbose=verbose)
@@ -97,14 +87,7 @@ def test_thermal_walkers_fullrank():
         legacy_eloc = legacy_local_energy_generic_cholesky(
                         legacy_system, legacy_hamiltonian, legacy_P)
 
-        if verbose:
-            print(f'\niw = {iw}')
-            print(f'eloc = \n{eloc}\n')
-            print(f'legacy_eloc = \n{legacy_eloc}\n')
-            print(f'walkers.weight = \n{walkers.weight[iw]}\n')
-            print(f'legacy_walkers.weight = \n{legacy_walkers.walkers[iw].weight}\n')
-
-        #numpy.testing.assert_almost_equal(legacy_eloc, eloc, decimal=10)
+        numpy.testing.assert_almost_equal(legacy_eloc, eloc, decimal=10)
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].G[0], walkers.Ga[iw], decimal=10)
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].G[1], walkers.Gb[iw], decimal=10)
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].stack.ovlp[0], walkers.stack[iw].ovlp[0], decimal=10)
@@ -137,10 +120,6 @@ def test_thermal_walkers_lowrank():
     numpy.random.seed(seed)
     
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
     objs =  build_generic_test_case_handlers(
             nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
             mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
@@ -150,11 +129,6 @@ def test_thermal_walkers_lowrank():
     walkers = objs['walkers']
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-
     legacy_objs = build_legacy_generic_test_case_handlers(
                     hamiltonian, comm, nelec, mu, beta, timestep, nwalkers=nwalkers, 
                     lowrank=lowrank, mf_trial=mf_trial, seed=seed, verbose=verbose)
@@ -170,13 +144,6 @@ def test_thermal_walkers_lowrank():
         legacy_P = legacy_one_rdm_from_G(numpy.array(legacy_walkers.walkers[iw].G))
         legacy_eloc = legacy_local_energy_generic_cholesky(
                         legacy_system, legacy_hamiltonian, legacy_P)
-
-        if verbose:
-            print(f'\niw = {iw}')
-            print(f'eloc = \n{eloc}\n')
-            print(f'legacy_eloc = \n{legacy_eloc}\n')
-            print(f'walkers.weight = \n{walkers.weight[iw]}\n')
-            print(f'legacy_walkers.weight = \n{legacy_walkers.walkers[iw].weight}\n')
 
         numpy.testing.assert_almost_equal(legacy_eloc, eloc, decimal=10)
         numpy.testing.assert_almost_equal(legacy_walkers.walkers[iw].G[0], walkers.Ga[iw], decimal=10)

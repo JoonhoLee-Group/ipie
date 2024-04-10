@@ -26,7 +26,7 @@ from ipie.addons.thermal.trial.chem_pot import compute_rho, find_chemical_potent
 from ipie.utils.misc import update_stack
 
 
-class OneBody(object):
+class OneBody:
     def __init__(self, hamiltonian, nelec, beta, dt, options=None,
                  alt_convention=False, H1=None, verbose=False):
         if options is None:

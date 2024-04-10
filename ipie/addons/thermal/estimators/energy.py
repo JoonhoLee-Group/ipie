@@ -20,6 +20,7 @@ from typing import Union
 
 from ipie.utils.backend import arraylib as xp
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
@@ -42,9 +43,11 @@ def local_energy(
     return energies
 
 
-class ThermalEnergyEstimator(EstimatorBase):
+class ThermalEnergyEstimator(EnergyEstimator):
     def __init__(self, hamiltonian=None, trial=None, filename=None):
-        super().__init__()
+        assert hamiltonian is not None
+        assert trial is not None
+        EstimatorBase.__init__(self)
         self._eshift = 0.0
         self.scalar_estimator = True
         self._data = {
@@ -69,21 +72,3 @@ class ThermalEnergyEstimator(EstimatorBase):
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
         self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
         return self.data
-
-    def get_index(self, name):
-        index = self._data_index.get(name, None)
-
-        if index is None:
-            raise RuntimeError(f"Unknown estimator {name}")
-
-        return index
-
-    def post_reduce_hook(self, data):
-        ix_proj = self._data_index["ETotal"]
-        ix_nume = self._data_index["ENumer"]
-        ix_deno = self._data_index["EDenom"]
-        data[ix_proj] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E1Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E2Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]

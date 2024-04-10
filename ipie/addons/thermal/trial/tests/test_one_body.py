@@ -43,9 +43,6 @@ def test_one_body():
     if complex_integrals: sym = 4
     
     # Test.
-    print('\n----------------------------')
-    print('Constructing test objects...')
-    print('----------------------------')
     system = Generic(nelec)
     h1e, chol, _, eri = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
                                              sym=sym, tol=1e-10)

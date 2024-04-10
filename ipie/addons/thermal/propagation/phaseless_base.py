@@ -32,7 +32,7 @@ from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.addons.thermal.propagation.force_bias import construct_force_bias
 
-# TODO: Add lowrank implementation.
+# TODO: Add lowrank implementation. See: https://github.com/JoonhoLee-Group/ipie/issues/302
 # Ref: 10.1103/PhysRevB.80.214116 for bounds.
 
 @plum.dispatch

@@ -16,6 +16,9 @@
 #          Joonho Lee
 #
 
+# TODO: Incorporate the `stack` buffer in the `walkers` buffer for MPI. See:
+#       https://github.com/JoonhoLee-Group/ipie/issues/301
+
 import numpy
 import scipy.linalg
 

@@ -57,7 +57,7 @@ def local_energy_generic_cholesky(hamiltonian: GenericRealChol, P):
     T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
 
-    for x in range(nchol):  # write a cython function that calls blas for this.
+    for x in range(nchol):  # Write a numba function that calls BLAS for this.
         Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
         T[:, :].real = PaT.real.dot(Lmn)
         T[:, :].imag = PaT.imag.dot(Lmn)

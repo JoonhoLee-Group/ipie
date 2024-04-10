@@ -82,10 +82,6 @@ def test_local_energy_cholesky(mf_trial=False):
     legacy_eloc = legacy_local_energy_generic_cholesky(
                     legacy_system, legacy_hamiltonian, legacy_P)
     
-    if verbose:
-        print(f'\neloc = \n{eloc}\n')
-        print(f'legacy_eloc = \n{legacy_eloc}\n')
-            
     numpy.testing.assert_allclose(trial.G, legacy_trial.G, atol=1e-10)
     numpy.testing.assert_allclose(P, legacy_P, atol=1e-10)
     numpy.testing.assert_allclose(eloc, legacy_eloc, atol=1e-10)

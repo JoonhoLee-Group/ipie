@@ -119,17 +119,6 @@ class UHFThermalWalkers(BaseWalkers):
         for iw in range(self.nwalkers):
             self.stack[iw].ovlp = numpy.array([1.0 / self.M0a[iw], 1.0 / self.M0b[iw]])
 
-        # # Temporary storage for stacks...
-        # We should kill these here and store them in stack (10/02/2023)
-        # I = numpy.identity(self.nbasis, dtype=numpy.complex128)
-        # One = numpy.ones(self.nbasis, dtype=numpy.complex128)
-        # self.Tl = numpy.array([I, I])
-        # self.Ql = numpy.array([I, I])
-        # self.Dl = numpy.array([One, One])
-        # self.Tr = numpy.array([I, I])
-        # self.Qr = numpy.array([I, I])
-        # self.Dr = numpy.array([One, One])
-
         self.hybrid_energy = 0.0
         if verbose:
             for iw in range(self.nwalkers):

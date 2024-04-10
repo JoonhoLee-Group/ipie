@@ -65,11 +65,6 @@ def test_pair_branch_batch():
     numpy.random.seed(seed)
 
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
-        
     objs =  build_generic_test_case_handlers_mpi(
             nelec, nbasis, mu, beta, timestep, mpi_handler, nwalkers=nwalkers, 
             lowrank=lowrank, mf_trial=mf_trial, complex_integrals=complex_integrals, 
@@ -82,11 +77,6 @@ def test_pair_branch_batch():
                                     pop_control_method, verbose=verbose)
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-
     legacy_objs = build_legacy_generic_test_case_handlers_mpi(
                     hamiltonian, mpi_handler, nelec, mu, beta, timestep, 
                     nwalkers=nwalkers, lowrank=lowrank, mf_trial=mf_trial,
@@ -99,16 +89,6 @@ def test_pair_branch_batch():
     
     for block in range(nblocks): 
         for t in range(walkers.stack[0].nslice):
-            if verbose:
-                print('\n------------------------------------------')
-                print(f'block = {block}, t = {t}')
-                print(f'walkers.weight[0] = {walkers.weight[0]}')
-                print(f'legacy_walkers.walkers[0].weight = {legacy_walkers.walkers[0].weight}')
-                print(f'diff = {walkers.weight[0] - legacy_walkers.walkers[0].weight}')
-                print(f'\nwalkers.unscaled_weight[0] = {walkers.unscaled_weight[0]}')
-                print(f'legacy_walkers.walkers[0].unscaled_weight = {legacy_walkers.walkers[0].unscaled_weight}')
-                print(f'diff = {walkers.unscaled_weight[0] - legacy_walkers.walkers[0].unscaled_weight}')
-
             propagator.propagate_walkers(walkers, hamiltonian, trial, debug=True)
             legacy_walkers = legacy_propagate_walkers(
                                 legacy_hamiltonian, legacy_trial, legacy_walkers, 
@@ -127,7 +107,7 @@ def test_pair_branch_batch():
         assert numpy.allclose(walkers.weight[iw], legacy_walkers.walkers[iw].weight)
         assert numpy.allclose(walkers.unscaled_weight[iw], legacy_walkers.walkers[iw].unscaled_weight)
 
-# TODO: Lowrank code is WIP.
+# TODO: Lowrank code is WIP. See: https://github.com/JoonhoLee-Group/ipie/issues/302
 #@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 #@pytest.mark.unit
 def test_pair_branch_batch_lowrank():
@@ -179,11 +159,6 @@ def test_pair_branch_batch_lowrank():
             }
     
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
-        
     objs =  build_generic_test_case_handlers_mpi(
             nelec, nbasis, mu, beta, timestep, mpi_handler, nwalkers=nwalkers, 
             lowrank=lowrank, mf_trial=mf_trial, complex_integrals=complex_integrals, 
@@ -196,11 +171,6 @@ def test_pair_branch_batch_lowrank():
                              pop_control_method=pop_control_method, verbose=verbose)
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-        
     legacy_objs = build_legacy_generic_test_case_handlers_mpi(
                     hamiltonian, mpi_handler, nelec, mu, beta, timestep, 
                     nwalkers=nwalkers, lowrank=lowrank, mf_trial=mf_trial,
@@ -213,16 +183,6 @@ def test_pair_branch_batch_lowrank():
     
     for block in range(nblocks): 
         for t in range(walkers.stack[0].nslice):
-            if verbose:
-                print('\n------------------------------------------')
-                print(f'block = {block}, t = {t}')
-                print(f'walkers.weight[0] = {walkers.weight[0]}')
-                print(f'legacy_walkers.walkers[0].weight = {legacy_walkers.walkers[0].weight}')
-                print(f'diff = {walkers.weight[0] - legacy_walkers.walkers[0].weight}')
-                print(f'\nwalkers.unscaled_weight[0] = {walkers.unscaled_weight[0]}')
-                print(f'legacy_walkers.walkers[0].unscaled_weight = {legacy_walkers.walkers[0].unscaled_weight}')
-                print(f'diff = {walkers.unscaled_weight[0] - legacy_walkers.walkers[0].unscaled_weight}')
-
             propagator.propagate_walkers(walkers, hamiltonian, trial, debug=True)
             legacy_walkers = legacy_propagate_walkers(
                                 legacy_hamiltonian, legacy_trial, legacy_walkers, 
@@ -271,11 +231,6 @@ def test_comb_batch():
     numpy.random.seed(seed)
 
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
-
     objs =  build_generic_test_case_handlers_mpi(
             nelec, nbasis, mu, beta, timestep, mpi_handler, nwalkers=nwalkers, 
             lowrank=lowrank, mf_trial=mf_trial, complex_integrals=complex_integrals, 
@@ -288,11 +243,6 @@ def test_comb_batch():
                              pop_control_method=pop_control_method, verbose=verbose)
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-        
     legacy_objs = build_legacy_generic_test_case_handlers_mpi(
                     hamiltonian, mpi_handler, nelec, mu, beta, timestep, 
                     nwalkers=nwalkers, lowrank=lowrank, mf_trial=mf_trial,
@@ -306,16 +256,6 @@ def test_comb_batch():
     
     for block in range(nblocks): 
         for t in range(walkers.stack[0].nslice):
-            if verbose:
-                print('\n------------------------------------------')
-                print(f'block = {block}, t = {t}')
-                print(f'walkers.weight[0] = {walkers.weight[0]}')
-                print(f'legacy_walkers.walkers[0].weight = {legacy_walkers.walkers[0].weight}')
-                print(f'diff = {walkers.weight[0] - legacy_walkers.walkers[0].weight}')
-                print(f'\nwalkers.unscaled_weight[0] = {walkers.unscaled_weight[0]}')
-                print(f'legacy_walkers.walkers[0].unscaled_weight = {legacy_walkers.walkers[0].unscaled_weight}')
-                print(f'diff = {walkers.unscaled_weight[0] - legacy_walkers.walkers[0].unscaled_weight}')
-
             propagator.propagate_walkers(walkers, hamiltonian, trial, debug=True)
             legacy_walkers = legacy_propagate_walkers(
                                 legacy_hamiltonian, legacy_trial, legacy_walkers, 
@@ -335,6 +275,7 @@ def test_comb_batch():
         assert numpy.allclose(walkers.unscaled_weight[iw], legacy_walkers.walkers[iw].unscaled_weight)
 
 
+# TODO: Lowrank code is WIP. See: https://github.com/JoonhoLee-Group/ipie/issues/302
 #@pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 #@pytest.mark.unit
 def test_comb_batch_lowrank():
@@ -366,11 +307,6 @@ def test_comb_batch_lowrank():
     numpy.random.seed(seed)
     
     # Test.
-    if verbose:
-        print('\n----------------------------')
-        print('Constructing test objects...')
-        print('----------------------------')
-
     objs =  build_generic_test_case_handlers_mpi(
             nelec, nbasis, mu, beta, timestep, mpi_handler, nwalkers=nwalkers, 
             lowrank=lowrank, mf_trial=mf_trial, complex_integrals=complex_integrals, 
@@ -383,11 +319,6 @@ def test_comb_batch_lowrank():
                              pop_control_method=pop_control_method, verbose=verbose)
     
     # Legacy.
-    if verbose:
-        print('\n------------------------------')
-        print('Constructing legacy objects...')
-        print('------------------------------')
-        
     legacy_objs = build_legacy_generic_test_case_handlers_mpi(
                     hamiltonian, mpi_handler, nelec, mu, beta, timestep, 
                     nwalkers=nwalkers, lowrank=lowrank, mf_trial=mf_trial,
@@ -400,16 +331,6 @@ def test_comb_batch_lowrank():
     
     for block in range(nblocks): 
         for t in range(walkers.stack[0].nslice):
-            if verbose:
-                print('\n------------------------------------------')
-                print(f'block = {block}, t = {t}')
-                print(f'walkers.weight[0] = {walkers.weight[0]}')
-                print(f'legacy_walkers.walkers[0].weight = {legacy_walkers.walkers[0].weight}')
-                print(f'diff = {walkers.weight[0] - legacy_walkers.walkers[0].weight}')
-                print(f'\nwalkers.unscaled_weight[0] = {walkers.unscaled_weight[0]}')
-                print(f'legacy_walkers.walkers[0].unscaled_weight = {legacy_walkers.walkers[0].unscaled_weight}')
-                print(f'diff = {walkers.unscaled_weight[0] - legacy_walkers.walkers[0].unscaled_weight}')
-
             propagator.propagate_walkers(walkers, hamiltonian, trial, debug=True)
             legacy_walkers = legacy_propagate_walkers(
                                 legacy_hamiltonian, legacy_trial, legacy_walkers, 

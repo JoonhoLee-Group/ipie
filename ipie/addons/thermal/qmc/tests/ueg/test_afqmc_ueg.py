@@ -121,11 +121,6 @@ def test_thermal_afqmc_1walker(against_ref=False):
         # ---------------------------------------------------------------------
         # Test.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n-----------------------')
-            print('Running ThermalAFQMC...')
-            print('-----------------------')
-        
         afqmc = build_driver_ueg_test_instance(
                 nelec, rs, ecut, mu, beta, timestep, nblocks, nwalkers=nwalkers, 
                 lowrank=lowrank, pop_control_method=pop_control_method, 
@@ -149,11 +144,6 @@ def test_thermal_afqmc_1walker(against_ref=False):
         # ---------------------------------------------------------------------
         # Legacy.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n------------------------------')
-            print('Running Legacy ThermalAFQMC...')
-            print('------------------------------')
-
         legacy_afqmc = build_legacy_driver_ueg_test_instance(
                         comm, nelec, rs, ecut, mu, beta, timestep, nblocks, 
                         nwalkers=nwalkers, lowrank=lowrank, 
@@ -183,12 +173,6 @@ def test_thermal_afqmc_1walker(against_ref=False):
             legacy_energy_numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
             legacy_energy_denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
         
-            print(f'\ntest filename: {afqmc.estimators.filename}')
-            print(f'legacy filename: {legacy_afqmc.estimators.filename}')
-            print(f'\ntest_energy_data: \n{test_energy_data}\n')
-            print(f'test_number_data: \n{test_number_data}\n')
-            print(f'legacy_mixed_data: \n{legacy_mixed_data}\n')
-            
             # Check.
             assert test_energy_numer.real == pytest.approx(legacy_energy_numer.real)
             assert test_energy_denom.real == pytest.approx(legacy_energy_denom.real)
@@ -287,11 +271,6 @@ def test_thermal_afqmc(against_ref=False):
         # ---------------------------------------------------------------------
         # Test.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n-----------------------')
-            print('Running ThermalAFQMC...')
-            print('-----------------------')
-        
         afqmc = build_driver_ueg_test_instance(
                 nelec, rs, ecut, mu, beta, timestep, nblocks, nwalkers=nwalkers, 
                 lowrank=lowrank, pop_control_method=pop_control_method, 
@@ -315,11 +294,6 @@ def test_thermal_afqmc(against_ref=False):
         # ---------------------------------------------------------------------
         # Legacy.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n------------------------------')
-            print('Running Legacy ThermalAFQMC...')
-            print('------------------------------')
-
         legacy_afqmc = build_legacy_driver_ueg_test_instance(
                         comm, nelec, rs, ecut, mu, beta, timestep, nblocks, 
                         nwalkers=nwalkers, lowrank=lowrank,
@@ -349,12 +323,6 @@ def test_thermal_afqmc(against_ref=False):
             legacy_energy_numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
             legacy_energy_denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
         
-            print(f'\ntest filename: {afqmc.estimators.filename}')
-            print(f'legacy filename: {legacy_afqmc.estimators.filename}')
-            print(f'\ntest_energy_data: \n{test_energy_data}\n')
-            print(f'test_number_data: \n{test_number_data}\n')
-            print(f'legacy_mixed_data: \n{legacy_mixed_data}\n')
-            
             # Check.
             assert test_energy_numer.real == pytest.approx(legacy_energy_numer.real)
             assert test_energy_denom.real == pytest.approx(legacy_energy_denom.real)
@@ -453,11 +421,6 @@ def test_thermal_afqmc_mpi(against_ref=False):
         # ---------------------------------------------------------------------
         # Test.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n-----------------------')
-            print('Running ThermalAFQMC...')
-            print('-----------------------')
-        
         afqmc = build_driver_ueg_test_instance(
                 nelec, rs, ecut, mu, beta, timestep, nblocks, nwalkers=nwalkers, 
                 lowrank=lowrank, pop_control_method=pop_control_method, 
@@ -481,11 +444,6 @@ def test_thermal_afqmc_mpi(against_ref=False):
         # ---------------------------------------------------------------------
         # Legacy.
         # ---------------------------------------------------------------------
-        if verbose:
-            print('\n------------------------------')
-            print('Running Legacy ThermalAFQMC...')
-            print('------------------------------')
-
         legacy_afqmc = build_legacy_driver_ueg_test_instance(
                         comm, nelec, rs, ecut, mu, beta, timestep, nblocks, 
                         nwalkers=nwalkers, lowrank=lowrank,
@@ -515,12 +473,6 @@ def test_thermal_afqmc_mpi(against_ref=False):
             legacy_energy_numer = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
             legacy_energy_denom = legacy_afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
         
-            print(f'\ntest filename: {afqmc.estimators.filename}')
-            print(f'legacy filename: {legacy_afqmc.estimators.filename}')
-            print(f'\ntest_energy_data: \n{test_energy_data}\n')
-            print(f'test_number_data: \n{test_number_data}\n')
-            print(f'legacy_mixed_data: \n{legacy_mixed_data}\n')
-            
             # Check.
             assert test_energy_numer.real == pytest.approx(legacy_energy_numer.real)
             assert test_energy_denom.real == pytest.approx(legacy_energy_denom.real)
