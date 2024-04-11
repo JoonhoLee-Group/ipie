@@ -17,7 +17,6 @@
 #
 
 import numpy
-import pytest
 from typing import Tuple, Union
 
 from ipie.utils.mpi import MPIHandler
@@ -29,7 +28,6 @@ from ipie.addons.thermal.trial.one_body import OneBody
 from ipie.addons.thermal.trial.mean_field import MeanField
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.addons.thermal.propagation.phaseless_generic import PhaselessGeneric
-from ipie.addons.thermal.qmc.options import ThermalQMCParams
 from ipie.addons.thermal.qmc.thermal_afqmc import ThermalAFQMC
 
 

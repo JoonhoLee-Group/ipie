@@ -17,7 +17,6 @@
 #
 
 import numpy
-import pytest
 from typing import Tuple, Union
 
 from ipie.systems.generic import Generic
@@ -30,7 +29,6 @@ from ipie.legacy.hamiltonians.ueg import UEG as LegacyHamUEG
 from ipie.legacy.hamiltonians._generic import Generic as LegacyHamGeneric
 from ipie.legacy.trial_density_matrices.onebody import OneBody as LegacyOneBody
 from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
-from ipie.legacy.walkers.thermal import ThermalWalker
 from ipie.legacy.walkers.handler import Walkers
 from ipie.legacy.thermal_propagation.continuous import Continuous
 from ipie.legacy.thermal_propagation.planewave import PlaneWave

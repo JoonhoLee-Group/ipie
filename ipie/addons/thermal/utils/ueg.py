@@ -143,7 +143,7 @@ class UEG:
 
         # ---------------------------------------------------------------------
         # Allowed momentum transfers (4*ecut).
-        eigs, qvecs, self.qnmax = self.sp_energies(self.ktwist, self.kfac, 4 * self.ecut)
+        _, qvecs, self.qnmax = self.sp_energies(self.ktwist, self.kfac, 4 * self.ecut)
 
         # Omit Q = 0 term.
         self.qvecs = numpy.copy(qvecs[1:])
@@ -201,7 +201,6 @@ class UEG:
         nmax = int(numpy.ceil(numpy.sqrt((2 * ecut))))
 
         spval = []
-        vec = []
         kval = []
 
         for ni in range(-nmax, nmax + 1):

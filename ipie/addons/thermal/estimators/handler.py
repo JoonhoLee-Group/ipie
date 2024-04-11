@@ -19,8 +19,6 @@
 """Routines and classes for estimation of observables."""
 
 import os
-import h5py
-import numpy
 from typing import Tuple, Union
 
 from ipie.config import config, MPI

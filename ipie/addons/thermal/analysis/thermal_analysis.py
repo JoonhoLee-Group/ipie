@@ -20,17 +20,12 @@
 
 import sys
 import argparse
-import pprint
 
-import json
 import glob
 import numpy
 import scipy.optimize
 import pandas as pd
 
-from ipie.analysis.blocking import (
-        average_ratio
-        )
 from ipie.analysis.extraction import (
         extract_observable,
         get_metadata, 

@@ -270,7 +270,6 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
             source_proc = c // walkers.nwalkers
             # Location of walker to kill in local list of walkers.
             kill_pos = k % walkers.nwalkers
-            buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
             comm.Recv(walkers.walker_buffer, source=source_proc, tag=i)
@@ -409,7 +408,6 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         if walker[1] == 0:
             timer.start_time()
             tag = walker[3] * walkers.nwalkers + comm.rank
-            buffer = walkers.walker_buffer
             timer.add_non_communication()
             timer.start_time()
             comm.Recv(walkers.walker_buffer, source=int(round(walker[3])), tag=tag)

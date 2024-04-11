@@ -17,10 +17,10 @@
 #
 
 """Driver to perform Thermal AFQMC calculation"""
+
 import numpy
 import time
 import json
-import uuid
 from typing import Dict, Optional, Tuple
 
 from ipie.addons.thermal.walkers.pop_controller import ThermalPopController
@@ -29,11 +29,9 @@ from ipie.addons.thermal.propagation.propagator import Propagator
 from ipie.addons.thermal.estimators.handler import ThermalEstimatorHandler
 from ipie.addons.thermal.qmc.options import ThermalQMCParams
 
-from ipie.config import MPI
 from ipie.utils.io import to_json
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import get_host_memory, synchronize
-from ipie.utils.misc import get_git_info, print_env_info
+from ipie.utils.backend import synchronize
 from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
 from ipie.estimators.estimator_base import EstimatorBase

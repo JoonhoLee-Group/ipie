@@ -21,7 +21,6 @@ from typing import Union
 from ipie.utils.backend import arraylib as xp
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.estimators.energy import EnergyEstimator
-from ipie.estimators.estimator_base import EstimatorBase
 
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G

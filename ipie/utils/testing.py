@@ -21,8 +21,6 @@ from dataclasses import dataclass
 from typing import Tuple, Union
 
 import numpy
-import scipy.sparse
-import scipy.stats
 
 from ipie.hamiltonians import Generic as HamGeneric
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric

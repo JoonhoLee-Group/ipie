@@ -16,13 +16,11 @@
 #          Joonho Lee
 #
 
-import time
 import numpy
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.pop_controller import PopController, PopControllerTimer
-from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 
 
 class ThermalPopController(PopController):

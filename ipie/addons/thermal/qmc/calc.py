@@ -17,7 +17,6 @@
 #
 
 """Helper Routines for setting up a calculation"""
-import json
 
 from ipie.config import MPI
 from ipie.utils.mpi import MPIHandler
@@ -25,7 +24,6 @@ from ipie.utils.io import get_input_value
 
 from ipie.systems.utils import get_system
 from ipie.hamiltonians.utils import get_hamiltonian
-from ipie.qmc.calc import init_communicator, setup_calculation, read_input
 
 from ipie.addons.thermal.trial.utils import get_trial_density_matrix
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers

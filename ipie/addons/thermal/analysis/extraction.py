@@ -16,13 +16,9 @@
 #          Joonho Lee
 #
 
-import json
-
-import h5py
-import numpy
-import pandas as pd
 
 from ipie.utils.misc import get_from_dict
+
 def set_info(frame, md):
     ncols = len(frame.columns)
     system = md.get("system")
@@ -32,7 +28,6 @@ def set_info(frame, md):
     fp = get_from_dict(md, ["propagators", "free_projection"])
     bp = get_from_dict(md, ["estimates", "estimates", "back_prop"])
 
-    beta = qmc.get("beta")
     br = qmc.get("beta_scaled")
 
     ints = system.get("integral_file")
