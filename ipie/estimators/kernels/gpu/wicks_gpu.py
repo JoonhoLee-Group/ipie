@@ -653,7 +653,7 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
 
             
             
-def reduce_CI_nfold(cre, anh, mapping, offset, nexcit, phases, det_mat, cof_mat, CI):
+def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
     """Reduction to CI intermediate for n-fold excitations.
 
     Parameters
