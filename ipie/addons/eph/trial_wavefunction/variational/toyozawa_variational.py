@@ -15,6 +15,7 @@
 import numpy as np
 from scipy.optimize import minimize
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
+from ipie.addons.eph.trial_wavefunction.toyozawa import circ_perm
 
 import jax
 import jax.numpy as npj
@@ -93,21 +94,6 @@ def objective_function_toyozawa_mo(
     etot = num_energy / denom
     return etot.real
 
-
-def circ_perm(lst: np.ndarray) -> np.ndarray:
-    """Returns a matrix which rows consist of all possible
-    cyclic permutations given an initial array lst.
-
-    Parameters
-    ----------
-    lst :
-        Initial array which is to be cyclically permuted
-    """
-    circs = lst
-    for shift in range(1, len(lst)):
-        new_circ = np.roll(lst, -shift)
-        circs = np.vstack([circs, new_circ])
-    return circs
 
 
 def variational_trial_toyozawa(

@@ -17,10 +17,23 @@ from typing import Tuple
 
 from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
-from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import circ_perm
 from ipie.utils.backend import arraylib as xp
 from ipie.estimators.greens_function_single_det import gab_mod_ovlp
 
+def circ_perm(lst: np.ndarray) -> np.ndarray:
+    """Returns a matrix which rows consist of all possible
+    cyclic permutations given an initial array lst.
+
+    Parameters
+    ----------
+    lst :
+        Initial array which is to be cyclically permuted
+    """
+    circs = lst
+    for shift in range(1, len(lst)):
+        new_circ = np.roll(lst, -shift)
+        circs = np.vstack([circs, new_circ])
+    return circs
 
 class ToyozawaTrial(CoherentStateTrial):
     r"""The Toyozawa trial
