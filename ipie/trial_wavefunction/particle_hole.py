@@ -453,7 +453,9 @@ class ParticleHole(TrialWavefunctionBase):
 
     def compute_1rdm(self, nbasis):
         assert self.ortho_expansion == True
-        denom = np.sum(self.coeffs.conj() * self.coeffs)
+        denom = np.sum(
+            self.coeffs[: self.num_dets_for_props].conj() * self.coeffs[: self.num_dets_for_props]
+        )
         Pa = np.zeros((nbasis, nbasis), dtype=np.complex128)
         Pb = np.zeros((nbasis, nbasis), dtype=np.complex128)
         P = [Pa, Pb]
@@ -468,13 +470,13 @@ class ParticleHole(TrialWavefunctionBase):
                 ix = orb - nbasis
             return ix, s
 
-        for idet in range(self.num_dets):
+        for idet in range(self.num_dets_for_props):
             di = self.spin_occs[idet]
             # zero excitation case
             for iorb in range(len(di)):
                 ii, spin_ii = map_orb(di[iorb], nbasis)
                 P[spin_ii][ii, ii] += self.coeffs[idet].conj() * self.coeffs[idet]
-            for jdet in range(idet + 1, self.num_dets):
+            for jdet in range(idet + 1, self.num_dets_for_props):
                 dj = self.spin_occs[jdet]
                 from_orb = list(set(dj) - set(di))
                 to_orb = list(set(di) - set(dj))
