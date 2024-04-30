@@ -53,7 +53,6 @@ def version_number(path: str) -> str:
     return version
 
 
-
 def main() -> None:
     version_path = "ipie/_version.py"
     __version__ = version_number(version_path)
@@ -83,6 +82,7 @@ def main() -> None:
         },
         long_description=open("README.rst").read(),
     )
+
 
 if __name__ == "__main__":
     main()

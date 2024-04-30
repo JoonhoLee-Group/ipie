@@ -12,21 +12,23 @@ from ipie.estimators.greens_function_single_det import (
 )
 from ipie.estimators.utils import gab_spin
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
 )
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic
+from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
+from typing import Union
 
 
 # class for UHF trial
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, handler=MPIHandler(), verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
@@ -44,6 +46,10 @@ class SingleDet(TrialWavefunctionBase):
         self.psi0a = self.psi[:, : self.nalpha]
         self.psi0b = self.psi[:, self.nalpha :]
         self.G, self.Ghalf = gab_spin(self.psi, self.psi, self.nalpha, self.nbeta)
+        self.handler = handler
+
+        self.psi0a = numpy.ascontiguousarray(self.psi0a)
+        self.psi0b = numpy.ascontiguousarray(self.psi0b)
 
     def build(self) -> None:
         pass
@@ -107,6 +113,37 @@ class SingleDet(TrialWavefunctionBase):
     @plum.dispatch
     def half_rotate(
         self: "SingleDet",
+        hamiltonian: GenericRealCholChunked,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
+    ):
+        num_dets = 1
+        orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
+        orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+        rot_1body, rot_chol = half_rotate_chunked(
+            self,
+            hamiltonian,
+            comm,
+            orbsa,
+            orbsb,
+            ndets=num_dets,
+            verbose=self.verbose,
+        )
+        # Single determinant functions do not expect determinant index, so just
+        # grab zeroth element.
+        self._rH1a = rot_1body[0][0]
+        self._rH1b = rot_1body[1][0]
+        self._rchola_chunk = rot_chol[0][0]
+        self._rcholb_chunk = rot_chol[1][0]
+        self.half_rotated = True
+
+        # rot_1body_1 = numpy.load('../Test_Disk_nochunk/rot_1body.npy')
+        # rot_chol_1 = numpy.load('../Test_Disk_nochunk/rot_chol.npy')
+
+        # print('compare', [numpy.allclose(rot_1body, rot_1body_1), numpy.allclose(rot_chol, rot_chol_1)])
+
+    @plum.dispatch
+    def half_rotate(
+        self: "SingleDet",
         hamiltonian: GenericComplexChol,
         comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
@@ -148,7 +185,7 @@ class SingleDet(TrialWavefunctionBase):
     @plum.dispatch
     def calc_force_bias(
         self,
-        hamiltonian: GenericRealChol,
+        hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> xp.ndarray:

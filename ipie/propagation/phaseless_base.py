@@ -10,10 +10,20 @@ from ipie.utils.backend import synchronize, cast_to_device
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from typing import Union
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
+from ipie.utils.mpi import make_splits_displacements
 
 
 @plum.dispatch
-def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.ndarray, dt: float):
+def construct_one_body_propagator(
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], mf_shift: xp.ndarray, dt: float
+):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -29,8 +39,21 @@ def construct_one_body_propagator(hamiltonian: GenericRealChol, mf_shift: xp.nda
         Timestep.
     """
     nb = hamiltonian.nbasis
-    if hasattr(mf_shift, "get"):
-        shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift.get()).reshape(nb, nb)
+    if hamiltonian.chunked:
+        start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
+        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
+        if hasattr(mf_shift, "get"):
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
+            ).reshape(nb, nb)
+        else:
+            shift = 1j * numpy.einsum(
+                "mx,x->m", hamiltonian.chol_chunk, mf_shift[start_n:end_n]
+            ).reshape(nb, nb)
+        if MPI is None:
+            raise ImportError("mpi4py is not installed.")
+        else:
+            shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
     else:
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     shift = xp.array(shift)
@@ -58,6 +81,49 @@ def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.
         [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
     )
     return expH1
+
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: TrialWavefunctionBase):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [X, M^2]
+    Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
+    tmp_real = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.imag)
+
+    split_sizes, displacements = make_splits_displacements(hamiltonian.nchol, trial.handler.ssize)
+    split_sizes_np = numpy.array(split_sizes, dtype=int)
+    displacements_np = numpy.array(displacements, dtype=int)
+
+    recvbuf_real = numpy.zeros(hamiltonian.nchol, dtype=tmp_real.dtype)
+    recvbuf_imag = numpy.zeros(hamiltonian.nchol, dtype=tmp_imag.dtype)
+
+    # print(split_sizes_np, displacements_np)
+    if MPI is None:
+        raise ImportError("mpi4py is not installed.")
+    else:
+        trial.handler.scomm.Gatherv(
+            tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+        trial.handler.scomm.Gatherv(
+            tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+
+    trial.handler.scomm.Bcast(recvbuf_real, root=0)
+    trial.handler.scomm.Bcast(recvbuf_imag, root=0)
+
+    mf_shift = 1.0j * recvbuf_real - recvbuf_imag
+    # mf_shift_1 = numpy.load("../Test_Disk_nochunk/mf_shift.npy")
+    # print(f'mf_shift complete,{numpy.allclose(mf_shift, mf_shift_1)}')
+
+    return xp.array(mf_shift)
 
 
 @plum.dispatch
@@ -166,6 +232,7 @@ class PhaselessBase(ContinuousBase):
         xshifted = xshifted.T.copy()
         self.apply_VHS(walkers, hamiltonian, xshifted)
 
+        # xp._default_memory_pool.free_all_blocks()
         return (cmf, cfb)
 
     def propagate_walkers(self, walkers, hamiltonian, trial, eshift):

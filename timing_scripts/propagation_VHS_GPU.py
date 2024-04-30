@@ -6,9 +6,9 @@ import cupy as cp
 import numpy as np
 from mpi4py import MPI
 
-#os.environ["I_MPI_PMI_LIBRARY"] = '/cm/shared/apps/slurm/20.02.6/lib64/libpmi2.so'
-os.environ["OMP_NUM_THREADS"] = '1'
-os.environ["MKL_NUM_THREADS"] = '1'
+# os.environ["I_MPI_PMI_LIBRARY"] = '/cm/shared/apps/slurm/20.02.6/lib64/libpmi2.so'
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 divide = 1
 nao = 439 // divide
@@ -23,21 +23,21 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 """ MPI CPU """
-chol = np.random.rand(naux, nao*nao)
+chol = np.random.rand(naux, nao * nao)
 x = np.random.rand(nwalkers, naux)
-#t0 = time.time()
-#for i in range(nsteps):
+# t0 = time.time()
+# for i in range(nsteps):
 #    VHS = np.dot(x, chol)
-#t1 = time.time()
-#print("MPI Rank {} CPU Time: {}".format(rank, t1 - t0))
+# t1 = time.time()
+# print("MPI Rank {} CPU Time: {}".format(rank, t1 - t0))
 
 """ MPI GPU """
-chol = np.random.rand(naux, nao*nao)
+chol = np.random.rand(naux, nao * nao)
 x = np.random.rand(nwalkers, naux)
 with cp.cuda.Device(rank):
-    warmup = cp.dot(cp.array(np.random.rand(2,2)),cp.array(np.random.rand(2,2)))
-    x = cp.array(x, dtype = cp.float64)
-    chol = cp.array(chol, dtype = cp.float64)
+    warmup = cp.dot(cp.array(np.random.rand(2, 2)), cp.array(np.random.rand(2, 2)))
+    x = cp.array(x, dtype=cp.float64)
+    chol = cp.array(chol, dtype=cp.float64)
     t0 = time.time()
     for i in range(nsteps):
         VHS = cp.dot(x, chol)
