@@ -1,5 +1,6 @@
 import torch
 
+
 def initialize_walkers(trial, nwalkers):
     """
     Initialize the walkers with the trial wave function
@@ -13,8 +14,9 @@ def initialize_walkers(trial, nwalkers):
     assert trial.psi is not None
     trialdetach = trial.psi.detach().clone()
     walker_states = torch.stack([trialdetach] * nwalkers).to(torch.complex128)
-    walker_weights = torch.tensor([1.] * nwalkers, dtype=torch.float64)
+    walker_weights = torch.tensor([1.0] * nwalkers, dtype=torch.float64)
     return Walkers(nwalkers, walker_states, walker_weights)
+
 
 def reorthogonalize(walkers):
     """
@@ -23,13 +25,14 @@ def reorthogonalize(walkers):
     orthowalkers, _ = torch.linalg.qr(walkers.walker_states)
     return Walkers(walkers.nwalkers, orthowalkers, walkers.walker_weights)
 
+
 def sr(walkers):
     """
     stochastic reconfiguration method for population control
     """
     # rescale the weights
     walker_weights = walkers.walker_weights / torch.sum(walkers.walker_weights) * walkers.nwalkers
-    cumulative_weights =torch.cumsum(walker_weights, dim=0)
+    cumulative_weights = torch.cumsum(walker_weights, dim=0)
     total_weight = cumulative_weights[-1]
     average_weight = total_weight / walkers.nwalkers
     walker_weights = torch.ones(walkers.nwalkers, dtype=torch.float64) * average_weight
