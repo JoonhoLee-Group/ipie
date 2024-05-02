@@ -283,7 +283,7 @@ def strtobool(val):
     elif val in ("n", "no", "f", "false"):
         return False
     else:
-        raise ValueError("invalid truth value %r" % (val,))
+        raise ValueError(f"invalid truth value {val!r}")
 
 
 def read_input(path_to_file):
