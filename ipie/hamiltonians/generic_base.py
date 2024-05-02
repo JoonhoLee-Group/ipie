@@ -48,14 +48,14 @@ class GenericBase(metaclass=ABCMeta):
         chol_idxs = [i for i in range(self.nchol)]
         self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
 
-        # if handler.srank == 0:  # creating copies for every rank = 0!!!!
-        self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
+        if handler.srank == 0:  # creating copies for every rank = 0!!!!
+            self.chol_packed = self.chol_packed.T.copy()  # [chol, M^2]
+        else:
+            self.chol_packed = self.chol_packed.T  # [chol, M^2]
         handler.comm.barrier()
 
         self.chol_packed_chunk = handler.scatter_group(self.chol_packed)  # distribute over chol
 
-        # if handler.srank == 0:
-        self.chol_packed = self.chol_packed.T.copy()  # [M^2, chol]
         handler.comm.barrier()
 
         self.chol_packed_chunk = self.chol_packed_chunk.T.copy()  # [M^2, chol_chunk]
@@ -63,19 +63,19 @@ class GenericBase(metaclass=ABCMeta):
         tot_size = handler.allreduce_group(self.chol_packed_chunk.size)
 
         assert self.chol_packed.size == tot_size
+        del self.chol_packed
 
         # distributing chol
-        # if handler.comm.rank == 0:
-        self.chol = self.chol.T.copy()  # [chol, M^2]
+        if handler.srank == 0:
+            self.chol = self.chol.T.copy()  # [M^2, chol]
+        else:
+            self.chol = self.chol.T
         handler.comm.barrier()
-
         self.chol_chunk = handler.scatter_group(self.chol)  # distribute over chol
-
-        # if handler.comm.rank == 0:
-        self.chol = self.chol.T.copy()  # [M^2, chol]
         handler.comm.barrier()
 
-        self.chol_chunk = self.chol_chunk.T.copy()  # [M^2, chol_chunk]
+        self.chol_chunk = self.chol_chunk.T  # [M^2, chol_chunk]
 
         tot_size = handler.allreduce_group(self.chol_chunk.size)
         assert self.chol.size == tot_size
+        del self.chol

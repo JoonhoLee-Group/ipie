@@ -151,6 +151,7 @@ def get_driver_fp(options: dict, comm: MPI.COMM_WORLD) -> FPAFQMC:
             trial,
             walkers,
             propagator,
+            mpi_handler,
             params,
             verbose=(verbosity and comm.rank == 0),
         )

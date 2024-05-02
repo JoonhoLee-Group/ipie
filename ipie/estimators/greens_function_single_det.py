@@ -115,6 +115,8 @@ def greens_function_single_det_batch(walker_batch, trial, build_full=False):
         Overlap with trial.
     """
     ndown = walker_batch.ndown
+    walker_batch.phia = xp.ascontiguousarray(walker_batch.phia)
+    walker_batch.phib = xp.ascontiguousarray(walker_batch.phib)
 
     ovlp_a = xp.einsum("wmi,mj->wij", walker_batch.phia, trial.psi0a.conj(), optimize=True)
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
