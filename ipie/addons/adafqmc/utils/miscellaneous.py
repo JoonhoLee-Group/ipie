@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-# pylint: disable=import-error
+#pylint: disable=import-error
 from pyscf import mcscf, lo
 from ipie.addons.adafqmc.hamiltonians.hamiltonian import HamObs
 from ipie.addons.adafqmc.utils.hf import hartree_fock
@@ -139,6 +139,7 @@ def get_hf_wgradient(initialguess, nelec0, ovlp_mat, hamobs, trial_type, couplin
     else:
         raise NotImplementedError
 
+#pylint: disable=arguments-differ
 class TrialwithTangent(torch.autograd.Function):
     """
     A custom autograd function that stores the trial wavefunction with precomputed trial and tangent

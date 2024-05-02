@@ -1,7 +1,4 @@
 import torch
-import numpy as np
-import h5py
-
 
 def initialize_walkers(trial, nwalkers):
     """

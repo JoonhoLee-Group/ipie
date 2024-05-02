@@ -63,7 +63,7 @@ def hartree_fock(mo_coeff0, nelec0, hcore, S, ltensor, threshold = 1e-10):
     mo_coeff = gauge_fix(mo_coeff)
     
     dmupd = densmat(mo_coeff, nelec0)
-    for i in range(30):
+    while ncyc <= 30:
         ncyc += 1
         dm = dmupd
         fmat = fock(dm, hcore, ltensor)

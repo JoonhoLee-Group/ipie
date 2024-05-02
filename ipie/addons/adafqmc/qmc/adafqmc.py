@@ -1,16 +1,11 @@
-from mpi4py import MPI
 import numpy as np
 import torch
 from torch.utils.checkpoint import checkpoint
-from ipie.addons.adafqmc.estimators.estimator import get_local_e
 from ipie.addons.adafqmc.hamiltonians.hamiltonian import ham_with_obs, rot_ham_with_orbs
 from ipie.addons.adafqmc.trial_wavefunction.sdtrial import SDTrial
 from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, initialize_walkers, reorthogonalize, sr
 from ipie.addons.adafqmc.propagation.propagator import Propagator
-from ipie.addons.adafqmc.utils.miscellaneous import remove_outliers
-import h5py
 import time
-import math
 
 class Dist_Params:
     def __init__(self, num_walkers_per_process, num_steps_per_block, ad_block_size, num_ad_blocks, timestep, stabilize_freq, pop_control_freq, pop_control_freq_eq, seed, grad_checkpointing=False, chkpt_size=50):
@@ -355,7 +350,7 @@ class Dist_ADAFQMC:
                 elif collected_e_grad.ndim == 2:
                     e_grad = np.sum(collected_totwts[:, np.newaxis] * collected_e_grad, axis=0)
                     # wgrad_e = np.sum(collected_etot[:, np.newaxis] * collected_wtsgrad, axis=0)
-                wgradtot = np.sum(collected_wtsgrad, axis=0)
+                # wgradtot = np.sum(collected_wtsgrad, axis=0)
                 total_weight = np.sum(collected_totwts)
                 etot = np.dot(collected_etot, collected_totwts)
                 etot /= total_weight
