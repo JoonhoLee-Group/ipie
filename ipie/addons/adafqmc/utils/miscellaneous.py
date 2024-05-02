@@ -1,10 +1,10 @@
 import torch
 import numpy as np
+# pylint: disable=import-error
 from pyscf import mcscf, lo
 from ipie.addons.adafqmc.hamiltonians.hamiltonian import HamObs
-from ipie.addons.adafqmc.trial_wavefunction.sdtrial import SDTrial
 from ipie.addons.adafqmc.utils.hf import hartree_fock
-from ipie.utils.from_pyscf import generate_integrals, freeze_core
+from ipie.utils.from_pyscf import generate_integrals
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 import h5py
 
@@ -72,18 +72,18 @@ def generate_hamiltonianobs_shared(comm, filename, obs_type='dipole', verbose=Fa
     if shmem:
         if comm.Get_rank() == 0:
             with h5py.File(filename, 'r') as f:
-                hcorenp = f['hcore'][()]
-                cholnp = f['chol'][()]
-                packcholnp = f['packedchol'][()]
-                nucnp = f['nuc'][()]
-                nelec0 = f['nelec0'][()].item()
+                hcorenp = np.asarray(f['hcore'])
+                cholnp = np.asarray(f['chol'])
+                packcholnp = np.asarray(f['packedchol'])
+                nucnp = np.asarray(f['nuc'])
+                nelec0 = np.asarray(f['nelec0']).item()
                 hcoreshape = hcorenp.shape
                 cholshape = cholnp.shape
                 packedcholshape = packcholnp.shape
                 dtype = hcorenp.dtype
                 assert 'observable_mat' in f
-                obsmat = f['observable_mat'][()]
-                obsconst = f['observable_const'][()]
+                obsmat = np.asarray(f['observable_mat'])
+                obsconst = np.asarray(f['observable_const'])
         else:
             nelec0 = None
             hcoreshape = None
@@ -208,7 +208,7 @@ def read_hamiltonian_from_h5(filename, obs_type='dipole'):
         chol = torch.from_numpy(f['chol'][()])
         nuc = torch.from_numpy(f['nuc'][()])
         packedchol = torch.from_numpy(f['packedchol'][()])
-        nelec0 = f['nelec0'][()].item()
+        nelec0 = np.asarray(f['nelec0']).item()
         nao = hcore.shape[0]
         if 'observable_mat' in f:
             obsmat = torch.from_numpy(f['observable_mat'][()])

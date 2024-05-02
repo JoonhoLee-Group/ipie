@@ -351,10 +351,10 @@ class Dist_ADAFQMC:
             if self.rank == 0:
                 if collected_e_grad.ndim == 3:
                     e_grad = np.sum(collected_totwts[:, np.newaxis, np.newaxis] * collected_e_grad, axis=0)
-                    wgrad_e = np.sum(collected_etot[:, np.newaxis, np.newaxis] * collected_wtsgrad, axis=0)
+                    # wgrad_e = np.sum(collected_etot[:, np.newaxis, np.newaxis] * collected_wtsgrad, axis=0)
                 elif collected_e_grad.ndim == 2:
                     e_grad = np.sum(collected_totwts[:, np.newaxis] * collected_e_grad, axis=0)
-                    wgrad_e = np.sum(collected_etot[:, np.newaxis] * collected_wtsgrad, axis=0)
+                    # wgrad_e = np.sum(collected_etot[:, np.newaxis] * collected_wtsgrad, axis=0)
                 wgradtot = np.sum(collected_wtsgrad, axis=0)
                 total_weight = np.sum(collected_totwts)
                 etot = np.dot(collected_etot, collected_totwts)

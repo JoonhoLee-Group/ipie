@@ -1,9 +1,7 @@
 import torch
-import numpy as np
 import math
 from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, reorthogonalize, sr
 from ipie.addons.adafqmc.estimators.estimator import get_local_e
-import h5py
 
 def construct_vhs(isqrtt: float, nao: int, idx1, idx2, packedchol, xshifted):
     """
@@ -105,25 +103,25 @@ def compute_exph1(h1e_mod, chol, mf_shift, dt: float):
     return hcore_exp
 
 def apply_VHS(taylor_order: int, vhs, states):
-        """
-        Apply the VHS operator to the states
-        Parameters
-        -------
-        taylor_order: int
-            order of the taylor expansion in 2-body propagator
-        vhs: torch.tensor
-            VHS operator
-        states: torch.tensor
-            states to be propagated
-        Returns
-        -------
-        states: torch.tensor
-        """
-        Temp = states.clone()
-        for n in range(1, taylor_order+1):
-            Temp = torch.einsum('zpq, zqr->zpr', vhs, Temp) / n
-            states = states + Temp
-        return states
+    """
+    Apply the VHS operator to the states
+    Parameters
+    -------
+    taylor_order: int
+        order of the taylor expansion in 2-body propagator
+    vhs: torch.tensor
+        VHS operator
+    states: torch.tensor
+        states to be propagated
+    Returns
+    -------
+    states: torch.tensor
+    """
+    Temp = states.clone()
+    for n in range(1, taylor_order+1):
+        Temp = torch.einsum('zpq, zqr->zpr', vhs, Temp) / n
+        states = states + Temp
+    return states
 
 class Propagator:
     def __init__(self, comm, dt, hamiltonian, trial, prop_block_size, taylor_order=6):

@@ -35,7 +35,6 @@ def pack_cholesky(idx1, idx2, chol):
     cholpacked : torch.tensor
         Packed Cholesky tensor.
     """
-    nchol, n, _ = chol.shape
     # Use advanced indexing to extract the upper triangular part of each matrix in the batch
     cholpacked = chol[:, idx1, idx2]
     return cholpacked
