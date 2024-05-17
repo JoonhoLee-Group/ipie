@@ -29,13 +29,7 @@ else:
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
-from time_profiler import timer
-
 import cupy
-
-from cupy.cuda.nvtx import RangePush, RangePop
-
-import time
 
 
 def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
