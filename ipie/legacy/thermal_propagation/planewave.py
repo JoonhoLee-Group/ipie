@@ -105,7 +105,6 @@ class PlaneWave(object):
         """
         H1 = hamiltonian.h1e_mod
         I = numpy.identity(H1[0].shape[0], dtype=H1.dtype)
-        print(f"hamiltonian.mu = {hamiltonian.mu}")
         # No spin dependence for the moment.
         self.BH1 = numpy.array(
             [
@@ -228,7 +227,7 @@ class PlaneWave(object):
             walker.G[0] = B[0].dot(walker.G[0]).dot(Binv[0])
             walker.G[1] = B[1].dot(walker.G[1]).dot(Binv[1])
 
-    def two_body_propagator(self, walker, hamiltonian, force_bias=True):
+    def two_body_propagator(self, walker, hamiltonian, force_bias=True, xi=None):
         """It appliese the two-body propagator
         Parameters
         ----------
@@ -249,7 +248,8 @@ class PlaneWave(object):
         """
 
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields)
+        if xi is None:
+            xi = numpy.random.normal(0.0, 1.0, hamiltonian.nfields)
 
         # Optimal force bias.
         xbar = numpy.zeros(hamiltonian.nfields)
@@ -472,7 +472,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless_full_rank(self, hamiltonian, walker, trial, eshift=0):
+    def propagate_walker_phaseless_full_rank(self, hamiltonian, walker, trial, eshift=0, xi=None):
         # """Phaseless propagator
         # Parameters
         # ----------
@@ -486,7 +486,7 @@ class PlaneWave(object):
         # -------
         # """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True, xi=xi)
         BV = self.exponentiate(VHS)  # could use a power-series method to build this
 
         B = numpy.array(
@@ -525,7 +525,10 @@ class PlaneWave(object):
             walker.greens_function(None, slice_ix=tix, inplace=True)
 
         # 3. Compute det(G/G')
-        M0 = walker.M0
+        M0 = [
+                scipy.linalg.det(G[0], check_finite=False),
+                scipy.linalg.det(G[1], check_finite=False)
+        ]
         Mnew = numpy.array(
             [
                 scipy.linalg.det(walker.G[0], check_finite=False),
@@ -554,7 +557,7 @@ class PlaneWave(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless_low_rank(self, hamiltonian, walker, trial, eshift=0):
+    def propagate_walker_phaseless_low_rank(self, hamiltonian, walker, trial, eshift=0, xi=None):
         # """Phaseless propagator
         # Parameters
         # ----------
@@ -567,7 +570,7 @@ class PlaneWave(object):
         # Returns
         # -------
         # """
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, hamiltonian, True, xi=xi)
         BV = self.exponentiate(VHS)  # could use a power-series method to build this
 
         B = numpy.array(

@@ -5,7 +5,6 @@ import numpy
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
 
-
 class PopControllerTimer:
     def __init__(self):
         self.start_time_const = 0.0
@@ -155,6 +154,7 @@ def get_buffer(walkers, iw):
         else:
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
+
     return buff
 
 
@@ -173,15 +173,13 @@ def set_buffer(walkers, iw, buff):
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], xp.ndarray):
             walkers.__dict__[d][iw] = xp.array(
-                buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-            )
+                buff[s : s + data[iw].size].reshape(data[iw].shape).copy())
             s += data[iw].size
         elif isinstance(data[iw], list):
             for ix, l in enumerate(data[iw]):
                 if isinstance(l, (xp.ndarray)):
                     walkers.__dict__[d][iw][ix] = xp.array(
-                        buff[s : s + l.size].reshape(l.shape).copy()
-                    )
+                        buff[s : s + l.size].reshape(l.shape).copy())
                     s += l.size
                 elif isinstance(l, (int, float, complex)):
                     walkers.__dict__[d][iw][ix] = buff[s]
@@ -318,12 +316,10 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         glob_inf_1.fill(1)
         glob_inf_2 = numpy.array(
             [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
-        )
+            dtype=numpy.int64)
         glob_inf_3 = numpy.array(
             [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
-        )
+            dtype=numpy.int64)
 
     timer.add_non_communication()
 
@@ -341,15 +337,9 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         # Rescale weights.
         glob_inf = numpy.zeros((walkers.nwalkers * comm.size, 4), dtype=numpy.float64)
         glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
-        glob_inf[:, 1] = (
-            glob_inf_1.ravel()
-        )  # all initialized to 1 when it becomes 2 then it will be "branched"
-        glob_inf[:, 2] = (
-            glob_inf_2.ravel()
-        )  # contain processor+walker indices (initial) (i.e., where walkers live)
-        glob_inf[:, 3] = (
-            glob_inf_3.ravel()
-        )  # contain processor+walker indices (final) (i.e., where walkers live)
+        glob_inf[:, 1] = glob_inf_1.ravel()  # all initialized to 1 when it becomes 2 then it will be "branched"
+        glob_inf[:, 2] = glob_inf_2.ravel()  # contain processor+walker indices (initial) (i.e., where walkers live)
+        glob_inf[:, 3] = glob_inf_3.ravel()  # contain processor+walker indices (final) (i.e., where walkers live)
         sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")
         isort = numpy.argsort(sort, kind="mergesort")
         glob_inf = glob_inf[sort]
