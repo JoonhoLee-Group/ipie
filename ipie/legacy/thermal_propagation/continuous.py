@@ -84,7 +84,7 @@ class Continuous(object):
         if verbose:
             print("# Finished setting up propagator.")
 
-    def two_body_propagator(self, walker, system, trial):
+    def two_body_propagator(self, walker, system, trial, xi=None):
         r"""Continuous Hubbard-Statonovich transformation.
 
         Parameters
@@ -97,7 +97,9 @@ class Continuous(object):
             Trial wavefunction object.
         """
         # Normally distrubted auxiliary fields.
-        xi = numpy.random.normal(0.0, 1.0, system.nfields)
+        if xi is None: # For debugging.
+            xi = numpy.random.normal(0.0, 1.0, system.nfields)
+
         if self.force_bias:
             P = one_rdm_from_G(walker.G)
             xbar = self.propagator.construct_force_bias(system, P, trial)
@@ -157,7 +159,7 @@ class Continuous(object):
             print(f"DIFF: {(c2 - phi).sum() / c2.size: 10.8e}")
         return phi
 
-    def propagate_walker_free(self, system, walker, trial, eshift=0):
+    def propagate_walker_free(self, system, walker, trial, eshift=0, xi=None):
         r"""Free projection for continuous HS transformation.
 
         .. Warning::
@@ -173,7 +175,7 @@ class Continuous(object):
         state : :class:`state.State`
             Simulation state.
         """
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial, xi=xi)
         BV = self.exponentiate(VHS)
 
         B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
@@ -206,7 +208,7 @@ class Continuous(object):
         except ZeroDivisionError:
             walker.weight = 0.0
 
-    def propagate_walker_phaseless(self, system, walker, trial, eshift=0):
+    def propagate_walker_phaseless(self, system, walker, trial, eshift=0, xi=None):
         r"""Propagate walker using phaseless approximation.
 
         Uses importance sampling and the hybrid method.
@@ -223,7 +225,7 @@ class Continuous(object):
             Trial wavefunction object.
         """
 
-        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial)
+        (cmf, cfb, xmxbar, VHS) = self.two_body_propagator(walker, system, trial, xi=xi)
         BV = self.exponentiate(VHS)
 
         B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
@@ -232,11 +234,15 @@ class Continuous(object):
         # Compute determinant ratio det(1+A')/det(1+A).
         # 1. Current walker's green's function.
         tix = walker.stack.ntime_slices
+        G = walker.greens_function(None, slice_ix=tix, inplace=False)
         # 2. Compute updated green's function.
         walker.stack.update_new(B)
         walker.greens_function(None, slice_ix=tix, inplace=True)
         # 3. Compute det(G/G')
-        M0 = walker.M0
+        M0 = [
+                scipy.linalg.det(G[0], check_finite=False),
+                scipy.linalg.det(G[1], check_finite=False)
+        ]
         Mnew = [
             scipy.linalg.det(walker.G[0], check_finite=False),
             scipy.linalg.det(walker.G[1], check_finite=False),

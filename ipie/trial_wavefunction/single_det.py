@@ -40,7 +40,7 @@ class SingleDet(TrialWavefunctionBase):
         self._max_num_dets = 1
         imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
         if imag_norm <= 1e-8:
-            # print("# making trial wavefunction MO coefficient real")
+            #print("# making trial wavefunction MO coefficient real")
             self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
 
         self.psi0a = self.psi[:, : self.nalpha]

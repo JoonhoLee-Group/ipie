@@ -190,6 +190,37 @@ def _exx_compute_batch(rchol_a, rchol_b, GaT_stacked, GbT_stacked, lwalker):
     return exx_vec_b + exx_vec_a
 
 
+# FDM: deprecated remove?
+def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
+    """Compute local energy using half-rotated eri tensor."""
+
+    na = system.nup
+    nb = system.ndown
+    M = system.nbasis
+    assert eri is not None
+
+    vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
+    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape(
+        (nb, M, nb, M)
+    )
+    vipjq_ab = eri[0, na**2 * M**2 + nb**2 * M**2 :].reshape((na, M, nb, M))
+
+    Ga, Gb = Ghalf[0], Ghalf[1]
+    # Element wise multiplication.
+    e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
+    # Coulomb
+    eJaa = 0.5 * numpy.einsum("irjs,ir,js", vipjq_aa, Ga, Ga)
+    eJbb = 0.5 * numpy.einsum("irjs,ir,js", vipjq_bb, Gb, Gb)
+    eJab = numpy.einsum("irjs,ir,js", vipjq_ab, Ga, Gb)
+
+    eKaa = -0.5 * numpy.einsum("irjs,is,jr", vipjq_aa, Ga, Ga)
+    eKbb = -0.5 * numpy.einsum("irjs,is,jr", vipjq_bb, Gb, Gb)
+
+    e2b = eJaa + eJbb + eJab + eKaa + eKbb
+
+    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
+
+
 def local_energy_generic_cholesky_opt_batched(
     system,
     ham,
