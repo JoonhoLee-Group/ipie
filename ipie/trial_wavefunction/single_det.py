@@ -28,7 +28,7 @@ from typing import Union
 
 # class for UHF trial
 class SingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, num_elec, num_basis, cplx=False, handler=MPIHandler(), verbose=False):
+    def __init__(self, wavefunction, num_elec, num_basis, handler=MPIHandler(), verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 2
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
@@ -39,7 +39,7 @@ class SingleDet(TrialWavefunctionBase):
         self._num_dets = 1
         self._max_num_dets = 1
         imag_norm = numpy.sum(self.psi.imag.ravel() * self.psi.imag.ravel())
-        if (not cplx) and (imag_norm <= 1e-8):
+        if imag_norm <= 1e-8:
             #print("# making trial wavefunction MO coefficient real")
             self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
 
