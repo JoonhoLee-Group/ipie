@@ -24,7 +24,7 @@ from typing import Dict, Optional, Tuple
 from ipie.addons.free_projection.estimators.handler import EstimatorHandlerFP
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
 from ipie.addons.free_projection.qmc.options import QMCParamsFP
-from ipie.addons.free_projection.walkers.uhf_walkers import UHFWalkersFP
+from ipie.addons.free_projection.walkers.walkers_dispatch import UHFWalkersTrialFP
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.qmc.afqmc import AFQMC
@@ -49,10 +49,19 @@ class FPAFQMC(AFQMC):
         mpi_handler,
         params: QMCParamsFP,
         verbose: int = 0,
+        ccsd=None,
     ):
         super().__init__(
-            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose=verbose
+            system,
+            hamiltonian,
+            trial,
+            walkers,
+            propagator,
+            mpi_handler,
+            params,
+            verbose=verbose,
         )
+        self.ccsd = ccsd
 
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type
@@ -72,6 +81,7 @@ class FPAFQMC(AFQMC):
         mpi_handler=None,
         ene_0=0.0,
         num_iterations_fp=1,
+        ccsd=None,
     ) -> "FPAFQMC":
         """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
 
@@ -105,6 +115,8 @@ class FPAFQMC(AFQMC):
             Energy guess for the desired state.
         num_iterations_fp : int
             Number of iterations of free projection.
+        ccsd: CCSD object
+            CCSD object used to generate initial walkers
         """
 
         driver = AFQMC.build(
@@ -132,7 +144,8 @@ class FPAFQMC(AFQMC):
         if walkers is None:
             _, initial_walker = get_initial_walker(driver.trial)
             # TODO this is a factory method not a class
-            walkers = UHFWalkersFP(
+            walkers = UHFWalkersTrialFP(
+                driver.trial,
                 initial_walker,
                 driver.system.nup,
                 driver.system.ndown,
@@ -161,6 +174,7 @@ class FPAFQMC(AFQMC):
             mpi_handler,
             params,
             verbose=(verbose and comm.rank == 0),
+            ccsd=ccsd,
         )
 
     @staticmethod
@@ -319,16 +333,20 @@ class FPAFQMC(AFQMC):
 
         for iter in range(self.params.num_iterations_fp):
             block_number = 0
-            _, initial_walker = get_initial_walker(self.trial)
+            _, initial_walker_det = get_initial_walker(self.trial)
             # TODO this is a factory method not a class
-            initial_walkers = UHFWalkersFP(
-                initial_walker,
+            initial_walkers = UHFWalkersTrialFP(
+                self.trial,
+                initial_walker_det,
                 self.system.nup,
                 self.system.ndown,
                 self.hamiltonian.nbasis,
                 self.params.num_walkers,
                 self.mpi_handler,
             )
+            if self.ccsd is not None:
+                ccsd_walkers = self.ccsd.get_walkers(self.params.num_walkers)
+                initial_walkers.set_walkers(ccsd_walkers, ccsd_walkers)
             initial_walkers.build(self.trial)
             self.walkers = initial_walkers
             for step in range(1, total_steps + 1):

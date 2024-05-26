@@ -19,6 +19,7 @@
 """Helper Routines for setting up a calculation"""
 # todo : handle more gracefully.
 from ipie.addons.free_projection.estimators.energy import local_energy
+from ipie.addons.free_projection.propagation.CCSD import CCSD
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
 from ipie.addons.free_projection.qmc.fp_afqmc import FPAFQMC
 from ipie.addons.free_projection.qmc.options import QMCParamsFP
@@ -39,6 +40,7 @@ def build_fpafqmc_driver(
     estimator_filename: str = "estimates.0.h5",
     seed: int = None,
     qmc_options: dict = None,
+    ccsd: tuple = None,  # (t1, t2, orbital_rotation), orbital_rotation optional
 ):
     options = {
         "system": {"nup": nelec[0], "ndown": nelec[1]},
@@ -46,6 +48,7 @@ def build_fpafqmc_driver(
         "hamiltonian": {"integrals": hamiltonian_file},
         "trial": {"filename": wavefunction_file},
         "estimators": {"overwrite": True, "filename": estimator_filename},
+        "ccsd": {"amplitudes": ccsd},
     }
     if qmc_options is not None:
         options["qmc"].update(qmc_options)
@@ -145,6 +148,14 @@ def get_driver_fp(options: dict, comm: MPI.COMM_WORLD) -> FPAFQMC:
         ene_0 = local_energy(system, hamiltonian, walkers, trial)[0][0]
         propagator = FreePropagation(time_step=params.timestep, exp_nmax=10, ene_0=ene_0)
         propagator.build(hamiltonian, trial, walkers, mpi_handler)
+        ccsd = None
+        if options["ccsd"]["amplitudes"] is not None:
+            if len(options["ccsd"]["amplitudes"]) == 3:
+                t1, t2, orbital_rotation = options["ccsd"]["amplitudes"]
+                ccsd = CCSD(t1, t2, orbital_rotation)
+            else:
+                t1, t2 = options["ccsd"]["amplitudes"]
+                ccsd = CCSD(t1, t2)
         afqmc = FPAFQMC(
             system,
             hamiltonian,
@@ -154,6 +165,7 @@ def get_driver_fp(options: dict, comm: MPI.COMM_WORLD) -> FPAFQMC:
             mpi_handler,
             params,
             verbose=(verbosity and comm.rank == 0),
+            ccsd=ccsd,
         )
 
     return afqmc
