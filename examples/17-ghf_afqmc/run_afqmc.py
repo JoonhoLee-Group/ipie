@@ -71,7 +71,7 @@ trial_uhf.half_rotate(ham)
 
 num_walkers = 10
 num_steps_per_block = 25
-num_blocks = 1000
+num_blocks = 100
 timestep = 0.005
 
 
