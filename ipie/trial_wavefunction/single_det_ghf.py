@@ -128,7 +128,6 @@ class SingleDetGHF(TrialWavefunctionBase):
     def calc_force_bias(
         self, hamiltonian: GenericRealChol, walkers: GHFWalkers, mpi_handler: MPIHandler = None
     ) -> numpy.ndarray:
-        nbasis = hamiltonian.nbasis
         nwalkers = walkers.nwalkers
         Ga = walkers.Ga
         Gb = walkers.Gb
