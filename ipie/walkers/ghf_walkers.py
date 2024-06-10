@@ -51,9 +51,6 @@ class GHFWalkers(BaseWalkers):
         self.phi[:, : self.nbasis, : self.nup] = walkers.phia
         self.phi[:, self.nbasis :, self.nup :] = walkers.phib
 
-        self.phia = walkers.phia
-        self.phib = walkers.phib
-
         self.G = numpy.zeros(
             (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
         )

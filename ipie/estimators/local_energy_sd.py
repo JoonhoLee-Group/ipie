@@ -32,6 +32,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
+from ipie.estimators.generic import cholesky_jk_ghf
 
 import plum
 
@@ -553,10 +554,18 @@ def local_energy_single_det_ghf(
 ):
     nwalkers = walkers.nwalkers
     energy = []
-    for idx in range(nwalkers):
-        G = [walkers.Ga[idx], walkers.Gb[idx]]
-        energy += [list(local_energy_generic_cholesky(system, hamiltonian, G, None))]
-    energy = xp.array(energy, dtype=numpy.complex128)
+    nbasis = hamiltonian.nbasis
+    for iw in range(nwalkers):
+        Gaa = walkers.G[iw][:nbasis, :nbasis].copy()
+        Gbb = walkers.G[iw][nbasis:, nbasis:].copy()
+        e1b = (
+                numpy.sum(Gaa * hamiltonian.H1[0])
+                + numpy.sum(Gbb * hamiltonian.H1[1])
+                + hamiltonian.ecore
+        )
+        ej, ek = cholesky_jk_ghf(hamiltonian.chol, walkers.G[iw])
+        e2b = ej + ek
+        energy += [[e1b + e2b, e1b, e2b]]
     return energy
 
 
