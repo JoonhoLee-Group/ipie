@@ -19,6 +19,7 @@
 import numpy
 import scipy.linalg
 
+
 def greens_function(A):
     r"""Construct Greens function from density matrix.
 
@@ -50,7 +51,7 @@ def greens_function(A):
 
 
 def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
-    """Compute the Green's function for walker with index `iw` at time 
+    """Compute the Green's function for walker with index `iw` at time
     `slice_ix`. Uses the Stratification method (DOI 10.1109/IPDPS.2012.37)
     """
     stack_iw = walkers.stack[iw]
@@ -119,18 +120,22 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
         if inplace:
             if spin == 0:
                 walkers.Ga[iw] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                )
             else:
                 walkers.Gb[iw] = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                )
 
         else:
             if spin == 0:
                 Ga_iw = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                )
 
             else:
                 Gb_iw = numpy.dot(
-                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T))
+                    numpy.dot(T1inv, Cinv), numpy.einsum("ii,ij->ij", Db, Q1.conj().T)
+                )
 
     return Ga_iw, Gb_iw

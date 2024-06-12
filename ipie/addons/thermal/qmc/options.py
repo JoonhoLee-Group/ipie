@@ -60,6 +60,7 @@ class ThermalQMCOpts(QMCOpts):
     beta : float
         Inverse temperature.
     """
+
     # pylint: disable=dangerous-default-value
     # TODO: Remove this class / replace with dataclass
     def __init__(self, inputs={}, verbose=False):
@@ -87,7 +88,7 @@ class ThermalQMCParams(QMCParams):
     ----------
     mu : float
         Chemical potential.
-    beta : float 
+    beta : float
         Inverse temperature.
     num_walkers : int
         Number of walkers **per** core / task / computational unit.
@@ -104,19 +105,19 @@ class ThermalQMCParams(QMCParams):
     pop_control_freq : int
         Frequency at which population control occurs.
     rng_seed : int
-        The random number seed. If run in parallel the seeds on other cores / 
+        The random number seed. If run in parallel the seeds on other cores /
         threads are determined from this.
     """
+
     # Due to structure of FT algorithm, `num_steps_per_block` is fixed at 1.
     # Overide whatever input for backward compatibility.
-    num_steps_per_block: ClassVar[int] = 1 
+    num_steps_per_block: ClassVar[int] = 1
     mu: Optional[float] = None
     beta: Optional[float] = None
-    pop_control_method: str = 'pair_branch'
-    
+    pop_control_method: str = "pair_branch"
+
     def __post_init__(self):
         if self.mu is None:
             raise TypeError("__init__ missing 1 required argument: 'mu'")
         if self.beta is None:
             raise TypeError("__init__ missing 1 required argument: 'beta'")
-

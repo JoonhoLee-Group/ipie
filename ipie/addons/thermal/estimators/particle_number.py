@@ -17,9 +17,10 @@
 #
 
 import numpy
-from ipie.utils.backend import arraylib as xp
-from ipie.estimators.estimator_base import EstimatorBase
+
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
+from ipie.estimators.estimator_base import EstimatorBase
+from ipie.utils.backend import arraylib as xp
 
 
 def particle_number(dmat: numpy.ndarray):
@@ -64,12 +65,13 @@ class ThermalNumberEstimator(EstimatorBase):
         # Must specify that we're dealing with array valued estimator.
         self.scalar_estimator = True
 
-    def compute_estimator(self, walkers, hamiltonian, trial):
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
+        if walkers is None:
+            raise ValueError("Walkers cannot be none in estimator.")
         for iw in range(walkers.nwalkers):
             # Want the full Green's function when calculating observables.
             walkers.calc_greens_function(iw, slice_ix=walkers.stack[iw].nslice)
-            nav_iw = particle_number(one_rdm_from_G(
-                        xp.array([walkers.Ga[iw], walkers.Gb[iw]])))
+            nav_iw = particle_number(one_rdm_from_G(xp.array([walkers.Ga[iw], walkers.Gb[iw]])))
             self._data["NavNumer"] += walkers.weight[iw] * nav_iw.real
 
         self._data["NavDenom"] = sum(walkers.weight)

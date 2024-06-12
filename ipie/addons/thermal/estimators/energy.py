@@ -18,20 +18,19 @@
 
 from typing import Union
 
-from ipie.utils.backend import arraylib as xp
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.estimators.energy import EnergyEstimator
-
-from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
-from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
+from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
+from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
+from ipie.estimators.energy import EnergyEstimator
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.utils.backend import arraylib as xp
 
 
 def local_energy(
-        hamiltonian: Union[GenericRealChol, GenericComplexChol], 
-        walkers: UHFThermalWalkers):
+    hamiltonian: Union[GenericRealChol, GenericComplexChol], walkers: UHFThermalWalkers
+):
     energies = xp.zeros((walkers.nwalkers, 3), dtype=xp.complex128)
-    
+
     for iw in range(walkers.nwalkers):
         # Want the full Green's function when calculating observables.
         walkers.calc_greens_function(iw, slice_ix=walkers.stack[iw].nslice)
@@ -46,9 +45,13 @@ class ThermalEnergyEstimator(EnergyEstimator):
     def __init__(self, system=None, hamiltonian=None, trial=None, filename=None):
         super().__init__(system=system, ham=hamiltonian, trial=trial, filename=filename)
 
-    def compute_estimator(self, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
         # Need to be able to dispatch here.
         # Re-calculated Green's function in `local_energy`.
+        if hamiltonian is None:
+            raise ValueError("Hamiltonian must not be none.")
+        if walkers is None:
+            raise ValueError("walkers must not be none.")
         energy = local_energy(hamiltonian, walkers)
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)

@@ -1,11 +1,12 @@
 import json
-import numpy
 
+import numpy
 from ueg import UEG
-from ipie.config import MPI
+
 from ipie.addons.thermal.qmc.calc import build_thermal_afqmc_driver
-from ipie.analysis.extraction import extract_observable
 from ipie.analysis.autocorr import reblock_by_autocorr
+from ipie.analysis.extraction import extract_observable
+from ipie.config import MPI
 
 comm = MPI.COMM_WORLD
 
@@ -65,7 +66,7 @@ if verbose:
 # 3. Run thermal AFQMC calculation.
 afqmc.run(verbose=verbose)
 afqmc.finalise()
-afqmc.estimators.compute_estimators(afqmc.hamiltonian, afqmc.trial, afqmc.walkers)
+afqmc.estimators.compute_estimators(hamiltonian=afqmc.hamiltonian, trial=afqmc.trial, walker_batch=afqmc.walkers)
 
 if comm.rank == 0:
     energy_data = extract_observable(afqmc.estimators.filename, "energy")

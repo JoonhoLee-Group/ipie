@@ -23,6 +23,7 @@ from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 from ipie.utils.backend import arraylib as xp
 
+
 @plum.dispatch
 def construct_force_bias(hamiltonian: GenericRealChol, walkers):
     r"""Compute optimal force bias.
@@ -69,4 +70,3 @@ def construct_force_bias(hamiltonian: GenericComplexChol, walkers):
         vbias[iw, nchol:] = hamiltonian.B.T.dot(P[0].ravel()) + hamiltonian.B.T.dot(P[1].ravel())
 
     return vbias
-

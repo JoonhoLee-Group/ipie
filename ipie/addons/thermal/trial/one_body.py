@@ -27,8 +27,17 @@ from ipie.utils.misc import update_stack
 
 
 class OneBody:
-    def __init__(self, hamiltonian, nelec, beta, dt, options=None,
-                 alt_convention=False, H1=None, verbose=False):
+    def __init__(
+        self,
+        hamiltonian,
+        nelec,
+        beta,
+        dt,
+        options=None,
+        alt_convention=False,
+        H1=None,
+        verbose=False,
+    ):
         if options is None:
             options = {}
 
@@ -43,7 +52,7 @@ class OneBody:
 
             except AttributeError:
                 self.H1 = hamiltonian.h1e
-                
+
         else:
             self.H1 = H1
 
@@ -59,7 +68,7 @@ class OneBody:
 
         if verbose:
             print(f"# condition number of BT: {cond: 10e}")
-        
+
         self.nelec = nelec
         self.nav = options.get("nav", None)
 
@@ -89,8 +98,9 @@ class OneBody:
             self.stack_size = min(self.nslice, int(3.0 / numpy.log10(self.cond)))
 
             if verbose:
-                print("# Initial stack size, # of slices: {}, {}".format(
-                    self.stack_size, self.nslice))
+                print(
+                    "# Initial stack size, # of slices: {}, {}".format(self.stack_size, self.nslice)
+                )
 
         # Adjust stack size
         self.stack_size = update_stack(self.stack_size, self.nslice, verbose=verbose)
@@ -109,15 +119,30 @@ class OneBody:
         self.dtau = self.stack_size * dt
 
         if self.mu is None:
-            self.rho = numpy.array([scipy.linalg.expm(-self.dtau * (self.H1[0])),
-                                    scipy.linalg.expm(-self.dtau * (self.H1[1]))])
+            self.rho = numpy.array(
+                [
+                    scipy.linalg.expm(-self.dtau * (self.H1[0])),
+                    scipy.linalg.expm(-self.dtau * (self.H1[1])),
+                ]
+            )
             self.mu = find_chemical_potential(
-                        self.alt_convention, self.rho, self.dtau, self.nstack,
-                        self.nav, deps=self.deps, max_it=self.max_it, verbose=verbose)
-            
+                self.alt_convention,
+                self.rho,
+                self.dtau,
+                self.nstack,
+                self.nav,
+                deps=self.deps,
+                max_it=self.max_it,
+                verbose=verbose,
+            )
+
         else:
-            self.rho = numpy.array([scipy.linalg.expm(-self.dtau * (self.H1[0])),
-                                    scipy.linalg.expm(-self.dtau * (self.H1[1]))])
+            self.rho = numpy.array(
+                [
+                    scipy.linalg.expm(-self.dtau * (self.H1[0])),
+                    scipy.linalg.expm(-self.dtau * (self.H1[1])),
+                ]
+            )
 
         if self.verbose:
             print(f"# Chemical potential in trial density matrix: {self.mu: .10e}")
@@ -129,8 +154,12 @@ class OneBody:
             print(f"# Average particle number in trial density matrix: {self.nav}")
 
         self.dmat = compute_rho(self.dmat, self.mu, dt, sign=sign)
-        self.dmat_inv = numpy.array([scipy.linalg.inv(self.dmat[0], check_finite=False),
-                                     scipy.linalg.inv(self.dmat[1], check_finite=False)])
+        self.dmat_inv = numpy.array(
+            [
+                scipy.linalg.inv(self.dmat[0], check_finite=False),
+                scipy.linalg.inv(self.dmat[1], check_finite=False),
+            ]
+        )
 
         self.G = numpy.array([greens_function(self.dmat[0]), greens_function(self.dmat[1])])
         self.error = False

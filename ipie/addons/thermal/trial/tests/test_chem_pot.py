@@ -21,7 +21,9 @@ import scipy.linalg
 import pytest
 
 from ipie.addons.thermal.trial.chem_pot import find_chemical_potential
-from ipie.legacy.trial_density_matrices.chem_pot import find_chemical_potential as legacy_find_chemical_potential
+from ipie.legacy.trial_density_matrices.chem_pot import (
+    find_chemical_potential as legacy_find_chemical_potential,
+)
 
 
 @pytest.mark.unit
@@ -36,8 +38,7 @@ def test_find_chemical_potential():
 
     dtau = dt * stack_size
     h1e = numpy.random.random((nbsf, nbsf))
-    rho = numpy.array([scipy.linalg.expm(-dtau * h1e),
-                       scipy.linalg.expm(-dtau * h1e)])
+    rho = numpy.array([scipy.linalg.expm(-dtau * h1e), scipy.linalg.expm(-dtau * h1e)])
 
     mu = find_chemical_potential(alt_convention, rho, dt, nstack, nav)
     legacy_mu = legacy_find_chemical_potential(alt_convention, rho, dt, nstack, nav)
@@ -45,8 +46,5 @@ def test_find_chemical_potential():
     numpy.testing.assert_allclose(mu, legacy_mu)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_find_chemical_potential()
-    
-   
-
