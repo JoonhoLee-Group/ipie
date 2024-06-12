@@ -310,11 +310,13 @@ def get_numpy_blas_info() -> Dict[str, str]:
             print(f"# - BLAS {k}: {v}")
     except TypeError:
         try:
-            np_lib = numpy.__config__.blas_opt_info["libraries"]
-            lib_dir = numpy.__config__.blas_opt_info["library_dirs"]
+            np_lib = numpy.__config__.blas_opt_info["libraries"]  # pylint:  disable=no-member
+            lib_dir = numpy.__config__.blas_opt_info["library_dirs"]  # pylint: disable=no-member
         except AttributeError:
-            np_lib = numpy.__config__.blas_ilp64_opt_info["libraries"]
-            lib_dir = numpy.__config__.blas_ilp64_opt_info["library_dirs"]
+            np_lib = numpy.__config__.blas_ilp64_opt_info["libraries"]  # pylint:  disable=no-member
+            lib_dir = numpy.__config__.blas_ilp64_opt_info[
+                "library_dirs"
+            ]  # pylint:  disable=no-member
         print(f"# - BLAS lib: {' '.join(np_lib):s}")
         print(f"# - BLAS dir: {' '.join(lib_dir):s}")
         info["BLAS"] = {
