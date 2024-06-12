@@ -25,6 +25,7 @@ import sys
 import time
 import types
 from functools import reduce
+from typing import Dict
 
 import numpy
 import scipy.sparse
@@ -294,6 +295,35 @@ def get_node_mem():
         return 0.0
 
 
+def get_numpy_blas_info() -> Dict[str, str]:
+    """Get useful numpy blas / lapack info."""
+    info = {}
+    try:
+        config = numpy.show_config(mode="dicts")
+        blas_config = config["Build Dependencies"]["blas"]
+        info["BLAS"] = {
+            "lib": blas_config["name"],
+            "version": blas_config["version"],
+            "include directory": blas_config["lib directory"],
+        }
+        for k, v in info["BLAS"].items():
+            print(f"# - BLAS {k}: {v}")
+    except TypeError:
+        try:
+            np_lib = numpy.__config__.blas_opt_info["libraries"]
+            lib_dir = numpy.__config__.blas_opt_info["library_dirs"]
+        except AttributeError:
+            np_lib = numpy.__config__.blas_ilp64_opt_info["libraries"]
+            lib_dir = numpy.__config__.blas_ilp64_opt_info["library_dirs"]
+        print(f"# - BLAS lib: {' '.join(np_lib):s}")
+        print(f"# - BLAS dir: {' '.join(lib_dir):s}")
+        info["BLAS"] = {
+            "lib": " ".join(np_lib),
+            "path": " ".join(lib_dir),
+        }
+    return info
+
+
 def print_env_info(sha1, branch, local_mods, uuid, nranks):
     import ipie
 
@@ -329,20 +359,7 @@ def print_env_info(sha1, branch, local_mods, uuid, nranks):
             print(f"# Using {lib:s} v{vers:s} from: {path:s}.")
             info[f"{lib:s}"] = {"version": vers, "path": path}
             if lib == "numpy":
-                try:
-                    np_lib = l.__config__.blas_opt_info["libraries"]
-                except AttributeError:
-                    np_lib = l.__config__.blas_ilp64_opt_info["libraries"]
-                print(f"# - BLAS lib: {' '.join(np_lib):s}")
-                try:
-                    lib_dir = l.__config__.blas_opt_info["library_dirs"]
-                except AttributeError:
-                    lib_dir = l.__config__.blas_ilp64_opt_info["library_dirs"]
-                print(f"# - BLAS dir: {' '.join(lib_dir):s}")
-                info[f"{lib:s}"]["BLAS"] = {
-                    "lib": " ".join(np_lib),
-                    "path": " ".join(lib_dir),
-                }
+                info[f"{lib:s}"] = get_numpy_blas_info()
             elif lib == "mpi4py":
                 mpicc = l.get_config().get("mpicc", "none")
                 print(f"# - mpicc: {mpicc:s}")
