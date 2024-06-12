@@ -314,9 +314,9 @@ def get_numpy_blas_info() -> Dict[str, str]:
             lib_dir = numpy.__config__.blas_opt_info["library_dirs"]  # pylint: disable=no-member
         except AttributeError:
             np_lib = numpy.__config__.blas_ilp64_opt_info["libraries"]  # pylint:  disable=no-member
-            lib_dir = numpy.__config__.blas_ilp64_opt_info[
+            lib_dir = numpy.__config__.blas_ilp64_opt_info[  # pylint:  disable=no-member
                 "library_dirs"
-            ]  # pylint:  disable=no-member
+            ]
         print(f"# - BLAS lib: {' '.join(np_lib):s}")
         print(f"# - BLAS dir: {' '.join(lib_dir):s}")
         info["BLAS"] = {

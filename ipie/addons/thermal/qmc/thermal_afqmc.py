@@ -29,7 +29,6 @@ from ipie.addons.thermal.walkers.pop_controller import ThermalPopController
 from ipie.addons.thermal.walkers.uhf_walkers import UHFThermalWalkers
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.qmc.afqmc import AFQMCBase
-from ipie.systems.generic import Generic
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.utils.io import to_json
