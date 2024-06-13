@@ -50,7 +50,7 @@ def local_energy_generic_cholesky(hamiltonian: GenericRealChol, P):
     Xb = hamiltonian.chol.T.dot(Pb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Pb.imag.ravel())
     X = Xa + Xb
     ecoul = 0.5 * numpy.dot(X, X)
-    
+
     # Ex.
     PaT = Pa.T.copy()
     PbT = Pb.T.copy()
@@ -94,7 +94,7 @@ def local_energy_generic_cholesky(hamiltonian: GenericComplexChol, P):
     nbasis = hamiltonian.nbasis
     nchol = hamiltonian.nchol
     Pa, Pb = P[0], P[1]
-    
+
     # Ecoul.
     XAa = hamiltonian.A.T.dot(Pa.ravel())
     XAb = hamiltonian.A.T.dot(Pb.ravel())

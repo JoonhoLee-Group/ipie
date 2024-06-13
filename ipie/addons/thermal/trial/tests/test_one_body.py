@@ -32,7 +32,7 @@ def test_one_body():
     nelec = (nup, ndown)
     nbasis = 10
 
-    mu = -1.
+    mu = -1.0
     beta = 0.1
     timestep = 0.01
 
@@ -40,15 +40,17 @@ def test_one_body():
     verbose = True
 
     sym = 8
-    if complex_integrals: sym = 4
-    
+    if complex_integrals:
+        sym = 4
+
     # Test.
     system = Generic(nelec)
-    h1e, chol, _, eri = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
-                                             sym=sym, tol=1e-10)
-    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]),
-                             chol=chol.reshape((-1, nbasis**2)).T.copy(),
-                             ecore=0)
+    h1e, chol, _, eri = generate_hamiltonian(
+        nbasis, nelec, cplx=complex_integrals, sym=sym, tol=1e-10
+    )
+    hamiltonian = HamGeneric(
+        h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nbasis**2)).T.copy(), ecore=0
+    )
     trial = OneBody(hamiltonian, nelec, beta, timestep, verbose=verbose)
 
     assert trial.nelec == nelec
@@ -59,8 +61,5 @@ def test_one_body():
     assert trial.G.shape == (2, nbasis, nbasis)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_one_body()
-    
-   
-

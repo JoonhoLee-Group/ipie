@@ -62,7 +62,7 @@ class FPAFQMC(AFQMC):
         trial_wavefunction,
         walkers=None,
         num_walkers: int = 100,
-        seed: int = None,
+        seed: Optional[int] = None,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
         timestep: float = 0.005,
@@ -282,7 +282,7 @@ class FPAFQMC(AFQMC):
 
     def run(
         self,
-        psi=None,
+        walkers=None,
         estimator_filename="estimate.h5",
         verbose=True,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
@@ -300,8 +300,8 @@ class FPAFQMC(AFQMC):
         """
         self.setup_timers()
         tzero_setup = time.time()
-        if psi is not None:
-            self.walkers = psi
+        if walkers is not None:
+            self.walkers = walkers
         self.setup_timers()
         eshift = 0.0
         self.walkers.orthogonalise()
@@ -360,7 +360,10 @@ class FPAFQMC(AFQMC):
                 start = time.time()
                 if step % self.params.num_steps_per_block == 0:
                     self.estimators[block_number].compute_estimators(
-                        comm, self.system, self.hamiltonian, self.trial, self.walkers
+                        system=self.system,
+                        hamiltonian=self.hamiltonian,
+                        trial=self.trial,
+                        walker_batch=self.walkers,
                     )
                     self.estimators[block_number].print_block(
                         comm,

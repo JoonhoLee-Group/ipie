@@ -15,6 +15,8 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
+from typing import Union
+
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
@@ -42,7 +44,6 @@ from ipie.trial_wavefunction.particle_hole import (
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkers
-from typing import Union
 
 
 @plum.dispatch
@@ -133,7 +134,7 @@ class EnergyEstimator(EstimatorBase):
         self.print_to_stdout = True
         self.ascii_filename = filename
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)

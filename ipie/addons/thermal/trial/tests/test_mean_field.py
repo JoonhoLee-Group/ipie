@@ -21,6 +21,7 @@ import pytest
 
 try:
     from ipie.legacy.trial_density_matrices.mean_field import MeanField as LegacyMeanField
+
     _no_cython = False
 
 except ModuleNotFoundError:
@@ -41,42 +42,45 @@ def test_mean_field():
     nelec = (nup, ndown)
     nbasis = 10
 
-    mu = -10.
+    mu = -10.0
     beta = 0.1
     timestep = 0.01
-    
+
     alt_convention = False
     sparse = False
     complex_integrals = True
     verbose = True
 
     sym = 8
-    if complex_integrals: sym = 4
-    
+    if complex_integrals:
+        sym = 4
+
     # Test.
     system = Generic(nelec)
-    h1e, chol, _, eri = generate_hamiltonian(nbasis, nelec, cplx=complex_integrals, 
-                                             sym=sym, tol=1e-10)
-    hamiltonian = HamGeneric(h1e=numpy.array([h1e, h1e]),
-                             chol=chol.reshape((-1, nbasis**2)).T.copy(),
-                             ecore=0)
+    h1e, chol, _, eri = generate_hamiltonian(
+        nbasis, nelec, cplx=complex_integrals, sym=sym, tol=1e-10
+    )
+    hamiltonian = HamGeneric(
+        h1e=numpy.array([h1e, h1e]), chol=chol.reshape((-1, nbasis**2)).T.copy(), ecore=0
+    )
     trial = MeanField(hamiltonian, nelec, beta, timestep, verbose=verbose)
 
     # Lgeacy.
     legacy_system = Generic(nelec, verbose=verbose)
     legacy_system.mu = mu
     legacy_hamiltonian = LegacyHamGeneric(
-                            h1e=hamiltonian.H1,
-                            chol=hamiltonian.chol,
-                            ecore=hamiltonian.ecore, verbose=verbose)
+        h1e=hamiltonian.H1, chol=hamiltonian.chol, ecore=hamiltonian.ecore, verbose=verbose
+    )
     legacy_hamiltonian.hs_pot = numpy.copy(hamiltonian.chol)
     legacy_hamiltonian.hs_pot = legacy_hamiltonian.hs_pot.T.reshape(
-            (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis))
+        (hamiltonian.nchol, hamiltonian.nbasis, hamiltonian.nbasis)
+    )
     legacy_hamiltonian.mu = mu
     legacy_hamiltonian._alt_convention = alt_convention
     legacy_hamiltonian.sparse = sparse
-    legacy_trial = LegacyMeanField(legacy_system, legacy_hamiltonian, beta, 
-                                   timestep, verbose=verbose)
+    legacy_trial = LegacyMeanField(
+        legacy_system, legacy_hamiltonian, beta, timestep, verbose=verbose
+    )
 
     assert trial.nelec == nelec
     numpy.testing.assert_almost_equal(trial.nav, numpy.sum(nelec), decimal=5)
@@ -93,8 +97,5 @@ def test_mean_field():
     numpy.testing.assert_allclose(trial.dmat_inv, legacy_trial.dmat_inv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_mean_field()
-    
-   
-
