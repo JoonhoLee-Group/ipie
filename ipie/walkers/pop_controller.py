@@ -155,7 +155,6 @@ def get_buffer(walkers, iw):
         else:
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
-
     return buff
 
 

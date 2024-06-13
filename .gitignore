@@ -111,3 +111,4 @@ ipie/qmc/tests/reference_data/**/*.h5
 *out*
 
 *.code-workspace
+
