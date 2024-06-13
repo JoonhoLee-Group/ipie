@@ -20,8 +20,7 @@ from ipie.addons.thermal.trial.mean_field import MeanField
 from ipie.addons.thermal.trial.one_body import OneBody
 
 
-def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options=None, 
-                             comm=None, verbose=False):
+def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options=None, comm=None, verbose=False):
     """Wrapper to select trial wavefunction class.
 
     Parameters
@@ -50,12 +49,26 @@ def get_trial_density_matrix(hamiltonian, nelec, beta, dt, options=None,
             )
 
         elif trial_type == "one_body":
-            trial = OneBody(hamiltonian, nelec, beta, dt, options=options, 
-                            alt_convention=alt_convention, verbose=verbose)
+            trial = OneBody(
+                hamiltonian,
+                nelec,
+                beta,
+                dt,
+                options=options,
+                alt_convention=alt_convention,
+                verbose=verbose,
+            )
 
         elif trial_type == "thermal_hartree_fock":
-            trial = MeanField(hamiltonian, nelec, beta, dt, options=options, 
-                              alt_convention=alt_convention, verbose=verbose)
+            trial = MeanField(
+                hamiltonian,
+                nelec,
+                beta,
+                dt,
+                options=options,
+                alt_convention=alt_convention,
+                verbose=verbose,
+            )
 
         else:
             trial = None

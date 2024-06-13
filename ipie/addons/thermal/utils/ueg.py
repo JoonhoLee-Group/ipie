@@ -20,6 +20,7 @@ import numpy
 import scipy.sparse
 from ipie.utils.io import write_qmcpack_sparse
 
+
 class UEG:
     """UEG system class (integrals read from fcidump)
 
@@ -79,7 +80,7 @@ class UEG:
         self.thermal = options.get("thermal", False)
         self._alt_convention = options.get("alt_convention", False)
         self.write_ints = options.get("write_integrals", False)
-        
+
         self.sparse = True
         self.control_variate = False
         self.diagH1 = True
@@ -116,11 +117,9 @@ class UEG:
             print(f"# Volume: {self.vol:13.8e}")
             print(f"# k-space factor (2pi/L): {self.kfac:13.8e}")
 
-
     def build(self, verbose=False):
         # Get plane wave basis vectors and corresponding eigenvalues.
-        self.sp_eigv, self.basis, self.nmax = self.sp_energies(
-                                                self.ktwist, self.kfac, self.ecut)
+        self.sp_eigv, self.basis, self.nmax = self.sp_energies(self.ktwist, self.kfac, self.ecut)
         self.shifted_nmax = 2 * self.nmax
         self.imax_sq = numpy.dot(self.basis[-1], self.basis[-1])
         self.create_lookup_table()
@@ -134,11 +133,11 @@ class UEG:
         self.ncore = 0
         self.nfv = 0
         self.mo_coeff = None
-        
+
         # ---------------------------------------------------------------------
         T = numpy.diag(self.sp_eigv)
         h1e_mod = self.mod_one_body(T)
-        self.H1 = numpy.array([T, T]) # Making alpha and beta.
+        self.H1 = numpy.array([T, T])  # Making alpha and beta.
         self.h1e_mod = numpy.array([h1e_mod, h1e_mod])
 
         # ---------------------------------------------------------------------
@@ -168,11 +167,12 @@ class UEG:
             self.write_integrals()
 
         if verbose:
-            print("# Approximate memory required for "
-                  "two-body potentials: {:13.8e} GB.".format((3 * self.iA.nnz * 16 / (1024**3))))
+            print(
+                "# Approximate memory required for "
+                "two-body potentials: {:13.8e} GB.".format((3 * self.iA.nnz * 16 / (1024**3)))
+            )
             print("# Finished constructing two-body potentials.")
             print("# Finished building UEG object.")
-
 
     def sp_energies(self, ks, kfac, ecut):
         """Calculate the allowed kvectors and resulting single particle eigenvalues (basically kinetic energy)
@@ -223,7 +223,6 @@ class UEG:
         kval = numpy.array(kval)[ix]
         return spval, kval, nmax
 
-
     def create_lookup_table(self):
         basis_ix = []
         for k in self.basis:
@@ -235,7 +234,6 @@ class UEG:
             self.lookup[b] = i
 
         self.max_ix = max(basis_ix)
-
 
     def lookup_basis(self, vec):
         if numpy.dot(vec, vec) <= self.imax_sq:
@@ -252,12 +250,12 @@ class UEG:
         else:
             ib = None
 
-
     def map_basis_to_index(self, k):
-        return ((k[0] + self.nmax)
-                + self.shifted_nmax * (k[1] + self.nmax)
-                + self.shifted_nmax * self.shifted_nmax * (k[2] + self.nmax))
-
+        return (
+            (k[0] + self.nmax)
+            + self.shifted_nmax * (k[1] + self.nmax)
+            + self.shifted_nmax * self.shifted_nmax * (k[2] + self.nmax)
+        )
 
     def get_momentum_transfers(self):
         """Get arrays of plane wave basis vectors connected by momentum transfers Q."""
@@ -282,7 +280,7 @@ class UEG:
 
             self.ikpq_i += [idxkpq_list_i]
             self.ikpq_kpq += [idxkpq_list_kpq]
-        
+
         # ---------------------------------------------------------------------
         self.ipmq_i = []
         self.ipmq_pmq = []
@@ -308,7 +306,6 @@ class UEG:
             self.ipmq_i[iq] = numpy.array(self.ipmq_i[iq], dtype=numpy.int64)
             self.ipmq_pmq[iq] = numpy.array(self.ipmq_pmq[iq], dtype=numpy.int64)
 
-
     def madelung(self):
         """Use expression in Schoof et al. (PhysRevLett.115.130402) for the
         Madelung contribution to the total energy fitted to L.M. Fraser et al.
@@ -331,7 +328,6 @@ class UEG:
         c2 = (3.0 / (4.0 * numpy.pi)) ** (1.0 / 3.0)
         return c1 * c2 / (self.ne ** (1.0 / 3.0) * self.rs)
 
-    
     def mod_one_body(self, T):
         """Absorb the diagonal term of the two-body Hamiltonian to the one-body term.
         Essentially adding the third term in Eq.(11b) of Phys. Rev. B 75, 245123.
@@ -357,7 +353,6 @@ class UEG:
 
         return h1e_mod
 
-
     def vq(self, q):
         """The typical 3D Coulomb kernel
 
@@ -372,7 +367,6 @@ class UEG:
             3D Coulomb kernel (in Hartrees)
         """
         return 4 * numpy.pi / numpy.dot(q, q)
-
 
     def scaled_density_operator_incore(self, transpose):
         """Density operator as defined in Eq.(6) of PRB(75)245123
@@ -445,9 +439,9 @@ class UEG:
         rho_q = scipy.sparse.csc_matrix(
             (values, (row_index, col_index)),
             shape=(self.nbasis * self.nbasis, nq),
-            dtype=numpy.complex128)
+            dtype=numpy.complex128,
+        )
         return rho_q
-
 
     def two_body_potentials_incore(self):
         """Calculate A and B of Eq.(13) of PRB(75)245123 for a given plane-wave vector q
@@ -465,7 +459,6 @@ class UEG:
         iA = 1j * (rho_q + rho_qH)
         iB = -(rho_q - rho_qH)
         return (rho_q, iA, iB)
-
 
     def hijkl(self, i, j, k, l):
         """Compute <ij|kl> = (ik|jl) = 1/Omega * 4pi/(kk-ki)**2
@@ -491,7 +484,6 @@ class UEG:
 
         else:
             return 0.0
-
 
     def compute_real_transformation(self):
         U22 = numpy.zeros((2, 2), dtype=numpy.complex128)
@@ -525,17 +517,16 @@ class UEG:
         U = U.T.copy()
         return U
 
-
     def eri_4(self):
         eri_chol = 4 * self.chol_vecs.dot(self.chol_vecs.T)
         eri_chol = (
-            eri_chol.toarray().reshape((self.nbasis, self.nbasis, self.nbasis, self.nbasis)).real)
+            eri_chol.toarray().reshape((self.nbasis, self.nbasis, self.nbasis, self.nbasis)).real
+        )
         eri_chol = eri_chol.transpose(0, 1, 3, 2)
         return eri_chol
 
-
     def eri_8(self):
-        """Compute 8-fold symmetric integrals. Useful for running standard 
+        """Compute 8-fold symmetric integrals. Useful for running standard
         quantum chemistry methods,"""
         eri = self.eri_4()
         U = self.compute_real_transformation()
@@ -544,7 +535,6 @@ class UEG:
         eri2 = numpy.einsum("lr,pqls->pqrs", U.conj(), eri1, optimize=True)
         eri3 = numpy.einsum("st,pqrs->pqrt", U, eri2, optimize=True).real
         return eri3
-    
 
     def write_integrals(self, filename="ueg_integrals.h5"):
         write_qmcpack_sparse(
@@ -553,5 +543,5 @@ class UEG:
             self.nelec,
             self.nbasis,
             enuc=0.0,
-            filename=filename)
-
+            filename=filename,
+        )

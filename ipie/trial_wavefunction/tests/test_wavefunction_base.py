@@ -18,5 +18,5 @@ def test_wavefunction_base():
     assert trial.nbasis == num_basis
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_wavefunction_base()

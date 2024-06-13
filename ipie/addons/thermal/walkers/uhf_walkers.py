@@ -27,20 +27,20 @@ from ipie.utils.misc import update_stack
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.addons.thermal.trial.one_body import OneBody
 
+
 class UHFThermalWalkers(BaseWalkers):
     def __init__(
         self,
         trial: OneBody,
         nbasis: int,
         nwalkers: int,
-        stack_size = None,
+        stack_size=None,
         lowrank: bool = False,
         lowrank_thresh: float = 1e-6,
-        mpi_handler = None,
+        mpi_handler=None,
         verbose: bool = False,
     ):
-        """UHF style walker.
-        """
+        """UHF style walker."""
         assert isinstance(trial, OneBody)
         super().__init__(nwalkers, verbose=verbose)
 
@@ -67,16 +67,14 @@ class UHFThermalWalkers(BaseWalkers):
         self.lowrank_thresh = lowrank_thresh
 
         self.Ga = numpy.zeros(
-                    shape=(self.nwalkers, self.nbasis, self.nbasis),
-                    dtype=numpy.complex128)
+            shape=(self.nwalkers, self.nbasis, self.nbasis), dtype=numpy.complex128
+        )
         self.Gb = numpy.zeros(
-                    shape=(self.nwalkers, self.nbasis, self.nbasis),
-                    dtype=numpy.complex128)
+            shape=(self.nwalkers, self.nbasis, self.nbasis), dtype=numpy.complex128
+        )
         self.Ghalf = None
 
-        max_diff_diag = numpy.linalg.norm(
-                            (numpy.diag(
-                                trial.dmat[0].diagonal()) - trial.dmat[0]))
+        max_diff_diag = numpy.linalg.norm((numpy.diag(trial.dmat[0].diagonal()) - trial.dmat[0]))
 
         if max_diff_diag < 1e-10:
             self.diagonal_trial = True
@@ -91,17 +89,20 @@ class UHFThermalWalkers(BaseWalkers):
             print(f"# Walker stack size: {self.stack_size}")
             print(f"# Using low rank trick: {self.lowrank}")
 
-        self.stack = [PropagatorStack(
-            self.stack_size,
-            self.nslice,
-            self.nbasis,
-            numpy.complex128,
-            trial.dmat,
-            trial.dmat_inv,
-            diagonal=self.diagonal_trial,
-            lowrank=self.lowrank,
-            thresh=self.lowrank_thresh,
-        ) for iw in range(self.nwalkers)]
+        self.stack = [
+            PropagatorStack(
+                self.stack_size,
+                self.nslice,
+                self.nbasis,
+                numpy.complex128,
+                trial.dmat,
+                trial.dmat_inv,
+                diagonal=self.diagonal_trial,
+                lowrank=self.lowrank,
+                thresh=self.lowrank_thresh,
+            )
+            for iw in range(self.nwalkers)
+        ]
 
         # Initialise all propagators to the trial density matrix.
         for iw in range(self.nwalkers):
@@ -109,12 +110,14 @@ class UHFThermalWalkers(BaseWalkers):
             greens_function_qr_strat(self, iw)
             self.stack[iw].G[0] = self.Ga[iw]
             self.stack[iw].G[1] = self.Gb[iw]
-        
+
         # Shape (nwalkers,).
-        self.M0a = numpy.array([
-                    scipy.linalg.det(self.Ga[iw], check_finite=False) for iw in range(self.nwalkers)])
-        self.M0b = numpy.array([
-                    scipy.linalg.det(self.Gb[iw], check_finite=False) for iw in range(self.nwalkers)])
+        self.M0a = numpy.array(
+            [scipy.linalg.det(self.Ga[iw], check_finite=False) for iw in range(self.nwalkers)]
+        )
+        self.M0b = numpy.array(
+            [scipy.linalg.det(self.Gb[iw], check_finite=False) for iw in range(self.nwalkers)]
+        )
 
         for iw in range(self.nwalkers):
             self.stack[iw].ovlp = numpy.array([1.0 / self.M0a[iw], 1.0 / self.M0b[iw]])
@@ -132,14 +135,12 @@ class UHFThermalWalkers(BaseWalkers):
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
     def calc_greens_function(self, iw, slice_ix=None, inplace=True):
-        """Return the Green's function for walker `iw`.
-        """
+        """Return the Green's function for walker `iw`."""
         if self.lowrank:
-            return self.stack[iw].G # G[0] = Ga, G[1] = Gb
+            return self.stack[iw].G  # G[0] = Ga, G[1] = Gb
 
         else:
             return greens_function_qr_strat(self, iw, slice_ix=slice_ix, inplace=inplace)
-    
 
     def reset(self, trial):
         self.weight = numpy.ones(self.nwalkers)
@@ -149,7 +150,7 @@ class UHFThermalWalkers(BaseWalkers):
             self.stack[iw].reset()
             self.stack[iw].set_all(trial.dmat)
             self.calc_greens_function(iw)
-    
+
     # For compatibiltiy with BaseWalkers class.
     def reortho(self):
         pass

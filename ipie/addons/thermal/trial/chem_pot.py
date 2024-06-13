@@ -23,10 +23,10 @@ from ipie.addons.thermal.estimators.thermal import one_rdm_stable
 from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 
 
-def find_chemical_potential(alt_convention, rho, beta, num_bins, target, 
-                            deps=1e-6, max_it=1000, verbose=False):
-    """Find the chemical potential to match <N>.
-    """
+def find_chemical_potential(
+    alt_convention, rho, beta, num_bins, target, deps=1e-6, max_it=1000, verbose=False
+):
+    """Find the chemical potential to match <N>."""
     # TODO: some sort of generic starting point independent of
     # system/temperature
     dmu1 = dmu2 = 1
@@ -83,5 +83,4 @@ def delta_nav(dm, nav):
 
 
 def compute_rho(rho, mu, beta, sign=1):
-    return numpy.einsum(
-            "ijk,k->ijk", rho, numpy.exp(sign * beta * mu * numpy.ones(rho.shape[-1])))
+    return numpy.einsum("ijk,k->ijk", rho, numpy.exp(sign * beta * mu * numpy.ones(rho.shape[-1])))

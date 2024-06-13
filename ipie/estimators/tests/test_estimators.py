@@ -72,5 +72,5 @@ def test_estimator_handler():
         handler["energy1"] = estim
         handler.json_string = ""
         handler.initialize(comm)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
+        handler.compute_estimators(system, ham, trial, walker_batch)
+        handler.compute_estimators(system, ham, trial, walker_batch)

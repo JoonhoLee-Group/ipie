@@ -13,5 +13,4 @@
 # limitations under the License.
 #
 # Authors: Fionn Malone <fmalone@google.com>
-
-__version__ = "0.7.1.dev0"
+__version__ = "0.7.1"

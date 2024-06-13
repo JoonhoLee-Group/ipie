@@ -23,8 +23,8 @@ output-format=colorized
 disable=all
 enable=
       no-member,
-    # renable once classes are tidied
-;     attribute-defined-outside-init,
+      # renable once classes are tidied
+      # attribute-defined-outside-init,
       consider-using-f-string,
       useless-object-inheritance,
       unused-variable,
