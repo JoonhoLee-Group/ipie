@@ -5,8 +5,8 @@ from ipie.addons.adafqmc.estimators.estimator import get_local_e
 
 
 def construct_vhs(isqrtt: float, nao: int, idx1, idx2, packedchol, xshifted):
-    """
-    Construct the VHS operator
+    """Construct the VHS operator
+
     Parameters
     -------
     packedchol: torch.tensor
@@ -27,8 +27,8 @@ def construct_vhs(isqrtt: float, nao: int, idx1, idx2, packedchol, xshifted):
 
 
 def unpack_vhs(packedvhs, nwalkers: int, nao: int, idx1, idx2):
-    """
-    Unpack the packed VHS operator
+    """Unpack the packed VHS operator
+
     Parameters
     -------
     packedvhs: torch.tensor
@@ -70,8 +70,8 @@ def unpack_vhs_loop(packedvhs, nwalkers: int, nao: int, idx1, idx2):
 
 
 def compute_mf_shift(chol, G):
-    """
-    Compute the mean field shift
+    """Compute the mean field shift
+
     Parameters
     -------
     hamiltonian: Hamobs
@@ -86,8 +86,8 @@ def compute_mf_shift(chol, G):
 
 
 def compute_exph1(h1e_mod, chol, mf_shift, dt: float):
-    """
-    Compute the exponential of the 1-body Hamiltonian
+    """Compute the exponential of the 1-body Hamiltonian
+
     Parameters
     -------
     h1e_mod: torch.tensor
@@ -110,8 +110,8 @@ def compute_exph1(h1e_mod, chol, mf_shift, dt: float):
 
 
 def apply_VHS(taylor_order: int, vhs, states):
-    """
-    Apply the VHS operator to the states
+    """Apply the VHS operator to the states
+
     Parameters
     -------
     taylor_order: int
@@ -133,8 +133,8 @@ def apply_VHS(taylor_order: int, vhs, states):
 
 class Propagator:
     def __init__(self, comm, dt, hamiltonian, trial, prop_block_size, taylor_order=6):
-        """
-        Propagator class
+        """Propagator class
+
         Parameters
         -------
         comm: MPI.COMM_WORLD
@@ -162,8 +162,8 @@ class Propagator:
         self.h0shift = hamiltonian.enuc - 0.5 * torch.dot(self.mf_shift.imag, self.mf_shift.imag)
 
     def apply_bound_force_bias(self, xbar, max_bound=1.0):
-        """
-        apply bound to the force bias
+        """apply bound to the force bias
+
         Parameters
         -------
         xbar: torch.tensor
@@ -184,8 +184,8 @@ class Propagator:
         return xbar
 
     def propagate_walkers(self, walkers, hamiltonian, trial):
-        """
-        Propagate the walkers for one step
+        """Propagate the walkers for one step
+
         Parameters
         -------
         walkers: Walker
@@ -247,8 +247,8 @@ class Propagator:
     def propagate_block(
         self, iblock, walkers, hamiltonian, trial, stabilize_freq, pop_control_freq
     ):
-        """
-        Propagate the walkers for a block of steps
+        """Propagate the walkers for a block of steps
+
         Parameters
         -------
         walkers: Walker
@@ -278,8 +278,8 @@ class Propagator:
     def propagate_block_chkpt(
         self, ichkpt, walkers, hamiltonian, trial, stabilize_freq, pop_control_freq
     ):
-        """
-        Propagate the walkers for a block of steps
+        """Propagate the walkers for a block of steps
+        
         Parameters
         -------
         walkers: Walker

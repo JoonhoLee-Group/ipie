@@ -13,8 +13,8 @@ def gf(A, B):
 
 class SDTrial:
     def __init__(self, wavefunction, nelec0):
-        """
-        Single Slater determinant trial wave function
+        """Single Slater determinant trial wave function
+        
         Parameters
         -------
         wavefunction: torch.tensor

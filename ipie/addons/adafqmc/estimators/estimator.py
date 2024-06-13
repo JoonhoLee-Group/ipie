@@ -1,8 +1,9 @@
 import torch
 
 
-def get_local_e(rh1, Ghalf, rchol, nuc):
+def get_local_energy(rh1, Ghalf, rchol, nuc):
     """Get the local energy using the rotated cholesky vectors and the green's function
+
     Parameters
     ----------
     hcore : 2d array with size (nao, nao), the unmodified hcore
@@ -21,8 +22,9 @@ def get_local_e(rh1, Ghalf, rchol, nuc):
     return local_e
 
 
-def get_trial_e(rh1, G, rchol, nuc):
+def get_trial_energy(rh1, G, rchol, nuc):
     """Get the local energy of trial wavefunction
+
     Parameters
     ----------
     hcore : 2d array with size (nao, nao), the unmodified hcore
@@ -40,8 +42,11 @@ def get_trial_e(rh1, G, rchol, nuc):
 
 def get_Coulomb(rchol, Ghalf):
     """
-    E_C = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{ip} L^\gamma_{jq} G^{n}_{jq}
-    input:
+    .. math::
+        E_C = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{ip} L^\gamma_{jq} G^{n}_{jq}
+
+    Parameters
+    ----------
         rchol, 3d tensor with size (nwalkers, nocc, nao), the cholesky decomposition of the 2-body hamiltonian
         ghalf, 3d tensor with size (nwalkers, nocc, nao), the green's function of the trial wavefunction
     """
@@ -55,8 +60,11 @@ def get_Coulomb(rchol, Ghalf):
 
 def get_Exchange(rchol, Ghalf):
     """
-    E_X = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{jq} L^\gamma_{jq} G^{n}_{ip}
-    input:
+    .. math::
+        E_X = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{jq} L^\gamma_{jq} G^{n}_{ip}
+
+    Parameters
+    ----------
         rchol, 3d tensor with size (nwalkers, nocc, nao), the cholesky decomposition of the 2-body hamiltonian
         ghalf, 3d tensor with size (nwalkers, nocc, nao), the green's function of the trial wavefunction
     """
@@ -78,8 +86,11 @@ def get_Exchange(rchol, Ghalf):
 
 def get_Coulomb_trial(rchol, G):
     """
-    E_C = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{ip} L^\gamma_{jq} G_{jq}
-    input:
+    .. math::
+        E_C = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{ip} L^\gamma_{jq} G_{jq}
+
+    Parameters
+    ----------
         rchol, 3d tensor with size (nwalkers, nocc, nao), the cholesky decomposition of the 2-body hamiltonian
         ghalf, 3d tensor with size (nwalkers, nocc, nao), the green's function of the trial wavefunction
     """
@@ -90,8 +101,11 @@ def get_Coulomb_trial(rchol, G):
 
 def get_Exchange_trial(rchol, G):
     """
-    E_X = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{jq} L^\gamma_{jq} G_{ip}
-    input:
+    .. math::
+        E_X = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{jq} L^\gamma_{jq} G_{ip}
+
+    Parameters
+    ----------
         rchol, 3d tensor with size (nwalkers, nocc, nao), the cholesky decomposition of the 2-body hamiltonian
         ghalf, 3d tensor with size (nwalkers, nocc, nao), the green's function of the trial wavefunction
     """

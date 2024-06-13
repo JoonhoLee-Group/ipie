@@ -13,8 +13,8 @@ import h5py
 def generate_hamiltonian_from_pyscf(
     mf, ortho_ao=True, num_frozen=0, observable=None, obs_type="dipole"
 ):
-    """
-    Generate Hamiltonian from PySCF mol object
+    """Generate Hamiltonian from PySCF mol object
+
     Parameters
     ----------
     mol : pyscf.gto.Mole
@@ -67,8 +67,8 @@ def generate_hamiltonian_from_pyscf(
 
 
 def generate_hamiltonianobs_shared(comm, filename, obs_type="dipole", verbose=False):
-    """
-    Generate HamObs from stored integrals in shared memory
+    """Generate HamObs from stored integrals in shared memory
+
     Parameters
     ----------
     comm : MPI.COMM_WORLD
@@ -142,8 +142,8 @@ def generate_hamiltonianobs_shared(comm, filename, obs_type="dipole", verbose=Fa
 
 
 def get_hf_wgradient(initialguess, nelec0, ovlp_mat, hamobs, trial_type, coupling):
-    """
-    mo_coeff: molecular orbital coefficients from hartree fock
+    """mo_coeff: molecular orbital coefficients from hartree fock
+
     Returns
     -------
     trial_wf: trial wavefunction in ao basis
@@ -199,8 +199,8 @@ def trial_tangent_matcoupling(coupling, trial, tangent):
 
 
 def dump_hamiltonian(ham, filename):
-    """
-    Dump Hamiltonian to a HDF5 file
+    """Dump Hamiltonian to a HDF5 file
+
     Parameters
     ----------
     ham : HamObs object
@@ -221,8 +221,8 @@ def dump_hamiltonian(ham, filename):
 
 
 def read_hamiltonian_from_h5(filename, obs_type="dipole"):
-    """
-    Read Hamiltonian from a HDF5 file
+    """ Read Hamiltonian from a HDF5 file
+
     Parameters
     ----------
     filename : str
@@ -250,8 +250,8 @@ def read_hamiltonian_from_h5(filename, obs_type="dipole"):
 
 
 def remove_outliers(data):
-    """
-    Remove outliers for a given list of data using MAD (Median Absolute Deviation)
+    """Remove outliers for a given list of data using MAD (Median Absolute Deviation)
+    
     Parameters
     ----------
     data : numpy.ndarray

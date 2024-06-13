@@ -23,7 +23,8 @@ class Dist_Params:
         grad_checkpointing=False,
         chkpt_size=50,
     ):
-        """
+        """Initialize
+
         Parameters
         -------
         num_walkers_per_process : int
@@ -32,7 +33,6 @@ class Dist_Params:
             Number of steps per AD block
         num_ad_blocks : int
             Number of AD blocks
-
         """
         self.num_walkers_per_process = num_walkers_per_process
         self.num_steps_per_block = num_steps_per_block
@@ -67,6 +67,7 @@ def prep_dist_adafqmc(
     chkpt_size=50,
 ):
     """Prepares the distributed AFQMC object with the given parameters
+
     Parameters
     -------
     comm : MPI communicator
@@ -106,7 +107,8 @@ def prep_dist_adafqmc(
 
 class Dist_ADAFQMC:
     def __init__(self, comm, trial_tangent, params: Dist_Params):
-        """
+        """Initialize
+
         Parameters
         -------
         comm : MPI communicator
@@ -124,8 +126,8 @@ class Dist_ADAFQMC:
         self.params = params
 
     def equilibrate_walkers(self, hamobs, trial_detached):
-        """
-        Equilibrates the walkers
+        """Equilibrates the walkers
+        
         Parameters
         -------
         hamobs : Hamiltonian
@@ -291,8 +293,8 @@ class Dist_ADAFQMC:
         return etot_adblock, totwts_adblock, new_walkers
 
     def ad_block_gradient(self, hamobs, initial_walkers, trial_detached, tangent):
-        """
-        Performs the block automatic differentiation
+        """Performs the block automatic differentiation
+        
         Parameters
         -------
         hamobs : Hamiltonian
@@ -337,8 +339,8 @@ class Dist_ADAFQMC:
         return initial_walkers, e_estimate, observable, blkwts, wtsgrad
 
     def kernel(self, hamobs, trial_detached, tangent):
-        """
-        kernel function of the distributed AFQMC
+        """kernel function of the distributed AFQMC
+
         Parameters
         -------
         hamobs : Hamiltonian

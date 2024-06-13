@@ -2,8 +2,8 @@ import torch
 
 
 def initialize_walkers(trial, nwalkers):
-    """
-    Initialize the walkers with the trial wave function
+    """Initialize the walkers with the trial wave function
+
     Parameters
     -------
     trial : SDTrial
@@ -48,8 +48,8 @@ def sr(walkers):
 
 class Walkers:
     def __init__(self, nwalkers, walker_states, walker_weights):
-        """
-        Walkers class
+        """Walkers class
+        
         Parameters
         -------
         nwalkers : int

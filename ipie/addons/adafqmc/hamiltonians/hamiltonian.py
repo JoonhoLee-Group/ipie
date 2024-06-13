@@ -3,6 +3,7 @@ import torch
 
 def construct_h1e_mod(chol, h1e):
     """Construct modified one-body Hamiltonian.
+
     Parameters
     -------
     chol : torch.tensor
@@ -24,6 +25,7 @@ def construct_h1e_mod(chol, h1e):
 
 def pack_cholesky(idx1, idx2, chol):
     """Pack Cholesky to a upper triangular matrix.
+
     Parameters
     -------
     idx1 : torch.tensor
@@ -44,6 +46,7 @@ def pack_cholesky(idx1, idx2, chol):
 
 class HamObs:
     """Class storing information of hamiltonian with observables coupled.
+
     Parameters
     -------
     nelec0 : int
@@ -88,6 +91,7 @@ class HamObs:
 
 def rot_ham_with_orbs(hamobs, rot_mat):
     """Rotate the Hamiltonian with the given unitary matrix.
+
     Parameters
     -------
     hamobs : HamObs
@@ -111,6 +115,7 @@ def rot_ham_with_orbs(hamobs, rot_mat):
 
 def ham_with_obs(hamobs, coupling):
     """Add observable coupling to the one-body Hamiltonian.
+    
     Parameters
     -------
     hamobs : HamObs
