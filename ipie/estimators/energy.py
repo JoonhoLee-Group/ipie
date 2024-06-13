@@ -22,7 +22,7 @@ import plum
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.local_energy_batch import (
     local_energy_batch,
-    local_energy_multi_det_trial_batch
+    local_energy_multi_det_trial_batch,
 )
 from ipie.estimators.local_energy_noci import local_energy_noci
 from ipie.estimators.local_energy_sd import local_energy_single_det_uhf, local_energy_single_det_ghf
@@ -112,8 +112,11 @@ def local_energy(
 def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: NOCI):
     return local_energy_noci(system, hamiltonian, walkers, trial)
 
+
 @plum.dispatch
-def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF):
+def local_energy(
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+):
     return local_energy_single_det_ghf(system, hamiltonian, walkers, trial)
 
 

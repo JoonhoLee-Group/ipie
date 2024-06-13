@@ -132,8 +132,12 @@ class SingleDetGHF(TrialWavefunctionBase):
         Ga = walkers.Ga
         Gb = walkers.Gb
         vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-        vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1))
-        vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1))
+        vbias_real = xp.einsum(
+            "pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1)
+        )
+        vbias_imag = xp.einsum(
+            "pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1)
+        )
         vbias_batch.real = vbias_real
         vbias_batch.imag = vbias_imag
         synchronize()

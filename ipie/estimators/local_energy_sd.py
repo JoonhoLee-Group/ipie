@@ -550,7 +550,7 @@ def two_body_energy_uhf(trial, walkers):
 
 @plum.dispatch
 def local_energy_single_det_ghf(
-        system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
 ):
     nwalkers = walkers.nwalkers
     energy = []
@@ -559,9 +559,9 @@ def local_energy_single_det_ghf(
         Gaa = walkers.G[iw][:nbasis, :nbasis].copy()
         Gbb = walkers.G[iw][nbasis:, nbasis:].copy()
         e1b = (
-                numpy.sum(Gaa * hamiltonian.H1[0])
-                + numpy.sum(Gbb * hamiltonian.H1[1])
-                + hamiltonian.ecore
+            numpy.sum(Gaa * hamiltonian.H1[0])
+            + numpy.sum(Gbb * hamiltonian.H1[1])
+            + hamiltonian.ecore
         )
         ej, ek = cholesky_jk_ghf(hamiltonian.chol, walkers.G[iw])
         e2b = ej + ek

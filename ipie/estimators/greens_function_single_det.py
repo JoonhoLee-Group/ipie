@@ -54,8 +54,8 @@ def greens_function_single_det_ghf(walkers, trial):
     det = xp.array(det, dtype=xp.complex128)
     synchronize()
 
-    walkers.Ga = walkers.G[:, :trial.nbasis, :trial.nbasis]
-    walkers.Gb = walkers.G[:, trial.nbasis:, trial.nbasis:]
+    walkers.Ga = walkers.G[:, : trial.nbasis, : trial.nbasis]
+    walkers.Gb = walkers.G[:, trial.nbasis :, trial.nbasis :]
     return det
 
 

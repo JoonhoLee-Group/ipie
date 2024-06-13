@@ -33,7 +33,9 @@ class PhaselessGeneric(PhaselessBase):
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
-    def apply_VHS(self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericBase, xshifted: xp.ndarray):
+    def apply_VHS(
+        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericBase, xshifted: xp.ndarray
+    ):
         start_time = time.time()
         assert walkers.nwalkers == xshifted.shape[-1]
         VHS = self.construct_VHS(hamiltonian, xshifted)

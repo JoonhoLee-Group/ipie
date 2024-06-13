@@ -64,22 +64,21 @@ class GHFWalkers(BaseWalkers):
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
-
     @property
     def phia(self):
-        return self.phi[:, :self.nbasis, :self.nup]
+        return self.phi[:, : self.nbasis, : self.nup]
 
     @phia.setter
     def phia(self, value):
-        self.phi[:, :self.nbasis, :self.nup] = value
+        self.phi[:, : self.nbasis, : self.nup] = value
 
     @property
     def phib(self):
-        return self.phi[:, self.nbasis:, self.nup:]
+        return self.phi[:, self.nbasis :, self.nup :]
 
     @phib.setter
     def phib(self, value):
-        self.phi[:, self.nbasis:, self.nup:] = value
+        self.phi[:, self.nbasis :, self.nup :] = value
 
     @plum.dispatch
     def __init__(
