@@ -21,6 +21,8 @@ from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
+from typing import Union
 
 
 class PhaselessGeneric(PhaselessBase):
@@ -31,7 +33,7 @@ class PhaselessGeneric(PhaselessBase):
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
-    def apply_VHS(self, walkers: UHFWalkers, hamiltonian: GenericBase, xshifted: xp.ndarray):
+    def apply_VHS(self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericBase, xshifted: xp.ndarray):
         start_time = time.time()
         assert walkers.nwalkers == xshifted.shape[-1]
         VHS = self.construct_VHS(hamiltonian, xshifted)

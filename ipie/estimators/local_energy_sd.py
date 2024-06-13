@@ -21,7 +21,7 @@ from math import ceil
 import numpy
 from numba import jit
 
-from ipie.estimators.local_energy import local_energy_G
+from ipie.estimators.local_energy import local_energy_G, local_energy_generic_cholesky
 from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
@@ -29,7 +29,9 @@ from ipie.utils.backend import synchronize
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 
 import plum
 
@@ -543,6 +545,19 @@ def two_body_energy_uhf(trial, walkers):
             walkers.Ghalfb,
         )
     return ecoul - exx
+
+
+@plum.dispatch
+def local_energy_single_det_ghf(
+        system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+):
+    nwalkers = walkers.nwalkers
+    energy = []
+    for idx in range(nwalkers):
+        G = [walkers.Ga[idx], walkers.Gb[idx]]
+        energy += [list(local_energy_generic_cholesky(system, hamiltonian, G, None))]
+    energy = xp.array(energy, dtype=numpy.complex128)
+    return energy
 
 
 @plum.dispatch
