@@ -1,6 +1,10 @@
 import torch
 import math
-from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, reorthogonalize, stochastic_reconfiguration
+from ipie.addons.adafqmc.walkers.rhf_walkers import (
+    Walkers,
+    reorthogonalize,
+    stochastic_reconfiguration,
+)
 from ipie.addons.adafqmc.estimators.estimator import get_local_energy
 
 
@@ -279,7 +283,7 @@ class Propagator:
         self, ichkpt, walkers, hamiltonian, trial, stabilize_freq, pop_control_freq
     ):
         """Propagate the walkers for a block of steps
-        
+
         Parameters
         -------
         walkers: Walker

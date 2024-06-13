@@ -3,7 +3,12 @@ import torch
 from torch.utils.checkpoint import checkpoint
 from ipie.addons.adafqmc.hamiltonians.hamiltonian import ham_with_obs, rot_ham_with_orbs
 from ipie.addons.adafqmc.trial_wavefunction.sdtrial import SDTrial
-from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, initialize_walkers, reorthogonalize, stochastic_reconfiguration
+from ipie.addons.adafqmc.walkers.rhf_walkers import (
+    Walkers,
+    initialize_walkers,
+    reorthogonalize,
+    stochastic_reconfiguration,
+)
 from ipie.addons.adafqmc.propagation.propagator import Propagator
 import time
 
@@ -50,6 +55,7 @@ class QMCParams:
                 "The number of steps per block should be divisible by the checkpoint size"
             )
 
+
 class ADAFQMC:
     def __init__(self, comm, trial_tangent: callable, params: QMCParams):
         """Initialize
@@ -72,19 +78,20 @@ class ADAFQMC:
 
     @staticmethod
     def build(
-    comm,
-    trial_tangent: callable,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
-    num_walkers_per_process: int = 50,
-    num_steps_per_block: int = 50,
-    ad_block_size: int = 800,
-    num_ad_blocks: int = 100,
-    timestep: float = 0.005,
-    stabilize_freq=5,
-    pop_control_freq=5,
-    pop_control_freq_eq=5,
-    seed=114,
-    grad_checkpointing=False,
-    chkpt_size=50):
+        comm,
+        trial_tangent: callable,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
+        num_walkers_per_process: int = 50,
+        num_steps_per_block: int = 50,
+        ad_block_size: int = 800,
+        num_ad_blocks: int = 100,
+        timestep: float = 0.005,
+        stabilize_freq=5,
+        pop_control_freq=5,
+        pop_control_freq_eq=5,
+        seed=114,
+        grad_checkpointing=False,
+        chkpt_size=50,
+    ):
         """Build the AFQMC object with the given parameters
 
         Parameters
@@ -125,7 +132,7 @@ class ADAFQMC:
 
     def equilibrate_walkers(self, hamobs, trial_detached):
         """Equilibrates the walkers
-        
+
         Parameters
         -------
         hamobs : Hamiltonian

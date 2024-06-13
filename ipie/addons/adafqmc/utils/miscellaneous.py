@@ -196,7 +196,7 @@ def trial_tangent(coupling, trial, tangent):
 
 
 def trial_tangent_matcoupling(coupling, trial, tangent):
-    return TrialwithTangent_matcoupling.apply(coupling, trial, tangent)
+    return TrialwithTangentMatCoupling.apply(coupling, trial, tangent)
 
 
 def dump_hamiltonian(ham, filename):
@@ -222,7 +222,7 @@ def dump_hamiltonian(ham, filename):
 
 
 def read_hamiltonian_from_h5(filename, obs_type="dipole"):
-    """ Read Hamiltonian from a HDF5 file
+    """Read Hamiltonian from a HDF5 file
 
     Parameters
     ----------

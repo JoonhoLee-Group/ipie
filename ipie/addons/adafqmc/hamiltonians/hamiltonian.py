@@ -114,8 +114,8 @@ def rot_ham_with_orbs(hamobs, rot_mat):
 
 
 def ham_with_obs(hamobs, coupling):
-    """Add observable coupling to the one-body Hamiltonian.
-    
+    r"""Add observable coupling to the one-body Hamiltonian.
+
     Parameters
     -------
     hamobs : HamObs

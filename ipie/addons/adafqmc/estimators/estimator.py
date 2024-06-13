@@ -41,7 +41,7 @@ def get_trial_energy(rh1, G, rchol, nuc):
 
 
 def get_coulomb(rchol, Ghalf):
-    """
+    r"""
     .. math::
         E_C = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{ip} L^\gamma_{jq} G^{n}_{jq}
 
@@ -59,7 +59,7 @@ def get_coulomb(rchol, Ghalf):
 
 
 def get_exchange(rchol, Ghalf):
-    """
+    r"""
     .. math::
         E_X = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{jq} L^\gamma_{jq} G^{n}_{ip}
 
@@ -85,7 +85,7 @@ def get_exchange(rchol, Ghalf):
 
 
 def get_coulomb_trial(rchol, G):
-    """
+    r"""
     .. math::
         E_C = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{ip} L^\gamma_{jq} G_{jq}
 
@@ -100,7 +100,7 @@ def get_coulomb_trial(rchol, G):
 
 
 def get_exchange_trial(rchol, G):
-    """
+    r"""
     .. math::
         E_X = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{jq} L^\gamma_{jq} G_{ip}
 

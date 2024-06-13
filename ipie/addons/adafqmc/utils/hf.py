@@ -14,7 +14,7 @@ def densmat(mo_coeff: tensor, nelec0):
 
 
 def fock(dm, hcore, ltensor):
-    """
+    r"""
     Fock matrix in AO basis
     F = H^{core} + \sum_{kl} P_{lk} (2J_{kl} - K_{kl})
     """
@@ -27,7 +27,7 @@ def fock(dm, hcore, ltensor):
 
 
 def calc_energy(C, nelec0, hcore, ltensor):
-    """
+    r"""
     Energy function of Hartree Fock, given the molecular orbital coefficients.
     E(C) = .5 * \sum_{ij} P_{ji}(H^{core}_{ij} + F_{ij})
     """
