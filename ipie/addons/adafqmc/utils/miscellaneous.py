@@ -8,6 +8,7 @@ from ipie.addons.adafqmc.utils.hf import hartree_fock
 from ipie.utils.from_pyscf import generate_integrals
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 import h5py
+import json
 
 
 def generate_hamiltonian_from_pyscf(
@@ -287,8 +288,12 @@ def str_to_bool(val):
 
 
 def read_input(path_to_file):
-    """
-    Read the input file for ad-afqmc
+    """Read the input file for ad-afqmc
+
+    Parameters
+    ----------
+    path_to_file : str
+        Path to the input file, input file should be in json format
     """
     default_options = {
         "num_walkers_per_process": 50,
@@ -304,22 +309,8 @@ def read_input(path_to_file):
     }
     try:
         with open(path_to_file, "r") as file:
-            for line in file:
-                # Split each line into key and value parts
-                key, value = line.strip().split(" ")
-                # Convert the value to an integer or float if possible
-                if value.isdigit():
-                    value = int(value)
-                else:
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        try:
-                            value = str_to_bool(value)
-                        except ValueError:
-                            pass  # Keep the value as a string if it's not a number or boolean
-                # Update the default settings with the value from the file
-                default_options[key] = value
+            input_options = json.load(file)
+            default_options |= input_options
     except FileNotFoundError:
         print(f"No input file found at {path_to_file}. Using default settings.")
     return default_options
