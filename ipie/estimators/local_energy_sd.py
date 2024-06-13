@@ -21,7 +21,7 @@ from math import ceil
 import numpy
 from numba import jit
 
-from ipie.estimators.local_energy import local_energy_G, local_energy_generic_cholesky
+from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
