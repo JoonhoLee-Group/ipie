@@ -14,6 +14,7 @@ import plum
 
 from ipie.config import config
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.propagation.operations import apply_exponential, apply_exponential_batch
 from ipie.propagation.phaseless_base import PhaselessBase
@@ -62,13 +63,14 @@ class PhaselessGeneric(PhaselessBase):
     def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
         nwalkers = xshifted.shape[-1]
 
-        VHS_packed = hamiltonian.chol_packed.dot(
-            xshifted.real
-        ) + 1.0j * hamiltonian.chol_packed.dot(xshifted.imag)
+        VHS_packed = hamiltonian.chol_packed.dot(xshifted.real).astype(xshifted.dtype)
+        VHS_packed += 1.0j * hamiltonian.chol_packed.dot(
+            xshifted.imag
+        )  # in-place operation reduce gpu mem
 
         # (nb, nb, nw) -> (nw, nb, nb)
-        VHS_packed = (
-            self.isqrt_dt * VHS_packed.T.reshape(nwalkers, hamiltonian.chol_packed.shape[0]).copy()
+        VHS_packed = self.isqrt_dt * VHS_packed.T.reshape(
+            nwalkers, hamiltonian.chol_packed.shape[0]
         )
 
         VHS = xp.zeros(
@@ -83,6 +85,9 @@ class PhaselessGeneric(PhaselessBase):
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_packed, VHS
             )
+            del VHS_packed
+            xp.cuda.runtime.deviceSynchronize()
+            xp._default_memory_pool.free_all_blocks()
         else:
             unpack_VHS_batch(hamiltonian.sym_idx[0], hamiltonian.sym_idx[1], VHS_packed, VHS)
         return VHS
@@ -112,30 +117,21 @@ class PhaselessGenericChunked(PhaselessGeneric):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
         self.mpi_handler = mpi_handler
 
-    @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
-        "abstract function for construct VHS"
-
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
+    def construct_VHS(
+        self, hamiltonian: GenericRealCholChunked, xshifted: xp.ndarray
+    ) -> xp.ndarray:
         assert hamiltonian.chunked
-        assert xp.isrealobj(hamiltonian.chol)
-
         nwalkers = xshifted.shape[-1]
 
-        # if hamiltonian.mixed_precision:  # cast it to float
-        #     xshifted = xshifted.astype(numpy.complex64)
-
-        #       xshifted is unique for each processor!
         xshifted_send = xshifted.copy()
         xshifted_recv = xp.zeros_like(xshifted)
 
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
 
-        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real) + 1.0j * chol_packed_chunk.dot(
-            xshifted[idxs, :].imag
-        )
+        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real).astype(xshifted.dtype)
+        VHS_send += 1.0j * chol_packed_chunk.dot(xshifted[idxs, :].imag)
         VHS_recv = xp.zeros_like(VHS_send)
 
         srank = self.mpi_handler.scomm.rank
@@ -155,12 +151,10 @@ class PhaselessGenericChunked(PhaselessGeneric):
 
             self.mpi_handler.scomm.barrier()
 
-            # prepare sending
-            VHS_send = (
-                VHS_recv
-                + chol_packed_chunk.dot(xshifted_recv[idxs, :].real)
-                + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
-            )
+            VHS_send = chol_packed_chunk.dot(xshifted_recv[idxs, :].real).astype(xshifted.dtype)
+            VHS_send += 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
+            VHS_send += VHS_recv
+
             xshifted_send = xshifted_recv.copy()
 
         synchronize()
@@ -169,7 +163,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
         req.wait()
         self.mpi_handler.scomm.barrier()
 
-        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0]).copy()
+        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0])
         VHS = xp.zeros(
             (nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
             dtype=VHS_recv.dtype,
@@ -177,7 +171,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
         # This should be abstracted by kernel import
         if config.get_option("use_gpu"):
             threadsperblock = 512
-            nut = len(hamiltonian.sym_idx_i)
+            nbsf = hamiltonian.nbasis
+            nut = round(nbsf * (nbsf + 1) / 2)
             blockspergrid = math.ceil(nwalkers * nut / threadsperblock)
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS

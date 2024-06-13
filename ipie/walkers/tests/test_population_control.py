@@ -68,6 +68,10 @@ def test_pair_branch_batch():
             batched_data.walkers.weight[iw],
             legacy_data.walker_handler.walkers[iw].weight,
         )
+        assert numpy.allclose(
+            batched_data.walkers.unscaled_weight[iw],
+            legacy_data.walker_handler.walkers[iw].unscaled_weight,
+        )
 
     assert pytest.approx(batched_data.walkers.weight[0]) == 0.2571750688329709
     assert pytest.approx(batched_data.walkers.weight[1]) == 1.0843219322894988

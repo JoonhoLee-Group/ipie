@@ -45,60 +45,32 @@ class QMCOpts(object):
     Initialised from a dict containing the following options, not all of which
     are required.
 
-    Parameters
+    Attributes
     ----------
-    method : string
-        Which auxiliary field method are we using? Currently only CPMC is
-        implemented.
+    batched : bool
+        Whether to do batched calculations.
     nwalkers : int
         Number of walkers to propagate in a simulation.
     dt : float
         Timestep.
     nsteps : int
         Number of steps per block.
-    nmeasure : int
-        Frequency of energy measurements.
+    nblocks : int
+        Number of blocks. Total number of iterations = nblocks * nsteps.
     nstblz : int
         Frequency of Gram-Schmidt orthogonalisation steps.
     npop_control : int
         Frequency of population control.
-    temp : float
-        Temperature. Currently not used.
-    nequilibrate : int
-        Number of steps used for equilibration phase. Only used to fix local
+    pop_control_method : str
+        Population control method.
+    eqlb_time : float
+        Time scale of equilibration phase. Only used to fix local
         energy bound when using phaseless approximation.
-    importance_sampling : boolean
-        Are we using importance sampling. Default True.
-    hubbard_statonovich : string
-        Which hubbard stratonovich transformation are we using. Currently the
-        options are:
-
-        - discrete : Use the discrete Hirsch spin transformation.
-        - opt_continuous : Use the continuous transformation for the Hubbard
-          model.
-        - generic : Use the generic transformation. To be used with Generic
-          system class.
-
-    ffts : boolean
-        Use FFTS to diagonalise the kinetic energy propagator? Default False.
-        This may speed things up for larger lattices.
-
-    Attributes
-    ----------
-    cplx : boolean
-        Do we require complex wavefunctions?
-    mf_shift : float
-        Mean field shift for continuous Hubbard-Stratonovich transformation.
-    iut_fac : complex float
-        Stores i*(U*dt)**0.5 for continuous Hubbard-Stratonovich transformation.
-    ut_fac : float
-        Stores (U*dt) for continuous Hubbard-Stratonovich transformation.
-    mf_nsq : float
-        Stores M * mf_shift for continuous Hubbard-Stratonovich transformation.
-    local_energy_bound : float
-        Energy pound for continuous Hubbard-Stratonovich transformation.
-    mean_local_energy : float
-        Estimate for mean energy for continuous Hubbard-Stratonovich transformation.
+    neqlb : int
+        Number of time steps for the equilibration phase. Only used to fix the
+        local energy bound when using phaseless approximation.
+    rng_seed : int
+        The random number seed.
     """
 
     # pylint: disable=dangerous-default-value
@@ -133,6 +105,13 @@ class QMCOpts(object):
             alias=["npop_control", "pop_control"],
             verbose=verbose,
         )
+        self.pop_control_method = get_input_value(
+            inputs,
+            "pop_control_method",
+            default="pair_branch",
+            alias=["pop_control", "population_control"],
+            verbose=verbose,
+        )
         self.eqlb_time = get_input_value(
             inputs,
             "equilibration_time",
@@ -160,19 +139,27 @@ class QMCOpts(object):
 class QMCParams:
     r"""Input options and certain constants / parameters derived from them.
 
-    Args:
-        num_walkers: number of walkers **per** core / task / computational unit.
-        total_num_walkers: The total number of walkers in the simulation.
-        timestep: The timestep delta_t
-        num_steps_per_block: Number of steps of propagation before estimators
-            are evaluated.
-        num_blocks: The number of blocks. Total number of iterations =
-            num_blocks * num_steps_per_block.
-        num_stblz: number of steps before QR stabilization of walkers is performed.
-        pop_control_freq: Frequency at which population control occurs.
-        rng_seed: The random number seed. If run in parallel the seeds on other
-            cores / threads are determined from this.
+    Attributes
+    ----------
+    num_walkers : int
+        Number of walkers **per** core / task / computational unit.
+    total_num_walkers : int
+        The total number of walkers in the simulation.
+    timestep : float
+        The timestep delta_t
+    num_steps_per_block : int
+        Number of steps of propagation before estimators are evaluated.
+    num_blocks : int
+        Number of blocks. Total number of iterations = num_blocks * num_steps_per_block.
+    num_stblz : int
+        Number of steps before QR stabilization of walkers is performed.
+    pop_control_freq : int
+        Frequency at which population control occurs.
+    rng_seed : int
+        The random number seed. If run in parallel the seeds on other cores /
+        threads are determined from this.
     """
+
     num_walkers: int
     total_num_walkers: int
     timestep: float

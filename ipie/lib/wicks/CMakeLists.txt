@@ -7,6 +7,7 @@ add_library(wicks_helper SHARED
     ${PROJECT_SOURCE_DIR}/density_matrix.c
     )
 
+set(CMAKE_C_FLAGS "-O3")
 set_target_properties(wicks_helper PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}
     )

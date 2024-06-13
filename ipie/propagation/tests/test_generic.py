@@ -19,17 +19,11 @@
 import numpy
 import pytest
 
-from ipie.estimators.greens_function import (
-    greens_function_single_det_batch,
-)
+from ipie.estimators.greens_function import greens_function_single_det_batch
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
+from ipie.utils.legacy_testing import build_legacy_test_case_handlers
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import (
-    build_test_case_handlers,
-)
-from ipie.utils.legacy_testing import (
-    build_legacy_test_case_handlers,
-)
+from ipie.utils.testing import build_test_case_handlers
 
 
 @pytest.mark.unit
@@ -316,8 +310,10 @@ def test_vhs():
         }
     )
     legacy_data = build_legacy_test_case_handlers(nelec, nmo, num_dets=1, options=qmc, seed=7)
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields).reshape(
-        nwalkers, legacy_data.hamiltonian.nfields
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * legacy_data.hamiltonian.nfields)
+        .reshape(nwalkers, legacy_data.hamiltonian.nfields)
+        .astype(numpy.complex128)
     )
     vhs_serial = []
     for iw in range(nwalkers):

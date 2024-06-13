@@ -54,13 +54,13 @@ class UHFWalkers(BaseWalkers):
         # should completely deprecate these
         self.field_configs = None
 
-        self.phia = numpy.array(
+        self.phia = xp.array(
             [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
-            dtype=numpy.complex128,
+            dtype=xp.complex128,
         )
-        self.phib = numpy.array(
+        self.phib = xp.array(
             [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
-            dtype=numpy.complex128,
+            dtype=xp.complex128,
         )
 
         # will be built only on request
@@ -151,7 +151,6 @@ class UHFWalkers(BaseWalkers):
             (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
             Rdn_diag = xp.einsum("wii->wi", Rdn)
             log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
-
         self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR
 

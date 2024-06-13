@@ -23,7 +23,7 @@ class GenericContinuous(object):
     qmc : :class:`pie.qmc.options.QMCOpts`
         QMC options.
     system : :class:`pie.system.System`
-        System object.
+        System object is actually HAMILTONIAN!!!
     trial : :class:`pie.trial_wavefunctioin.Trial`
         Trial wavefunction object.
     verbose : bool
@@ -91,7 +91,10 @@ class GenericContinuous(object):
             mf_shift = 1j * P[0].ravel() * system.chol_vecs
             mf_shift += 1j * P[1].ravel() * system.chol_vecs
         else:
+            # Need to reshape `chol_vecs` just to run the einsum lol.
+            system.chol_vecs = system.chol_vecs.T.reshape(system.nchol, system.nbasis, system.nbasis)
             mf_shift = 1j * numpy.einsum("lpq,spq->l", system.chol_vecs, P)
+            system.chol_vecs = system.chol_vecs.reshape(system.nchol, system.nbasis**2).T
         return mf_shift
 
     def construct_one_body_propagator(self, system, dt):

@@ -103,8 +103,9 @@ def apply_exponential_batch(phi, VHS, exp_nmax):
     xp.copyto(Temp, phi)
     if config.get_option("use_gpu"):
         for n in range(1, exp_nmax + 1):
-            Temp = xp.einsum("wik,wkj->wij", VHS, Temp, optimize=True) / n
+            Temp = xp.matmul(VHS, Temp) / n  # matmul use much less GPU memory than einsum
             phi += Temp
+        del Temp
     else:
         for iw in range(phi.shape[0]):
             for n in range(1, exp_nmax + 1):

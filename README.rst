@@ -22,6 +22,7 @@ ipie inherits a lot of QMC features from pauxy.
     :target: https://arxiv.org/abs/2209.04015
 
 Copyright by Joonho Lee (joonholee@g.harvard.edu)
+Our first release paper can be found at https://pubs.acs.org/doi/10.1021/acs.jctc.2c00934
 
 Features
 --------

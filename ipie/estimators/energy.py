@@ -15,6 +15,8 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
+from typing import Union
+
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
@@ -30,6 +32,7 @@ from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch_opt_chunked,
 )
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (
@@ -45,7 +48,10 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 
 @plum.dispatch
 def local_energy(
-    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    system: Generic,
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
+    walkers: UHFWalkers,
+    trial: SingleDet,
 ):
     return local_energy_batch(system, hamiltonian, walkers, trial)
 
@@ -113,9 +119,6 @@ class EnergyEstimator(EstimatorBase):
         trial=None,
         filename=None,
     ):
-        assert system is not None
-        assert ham is not None
-        assert trial is not None
         super().__init__()
         self._eshift = 0.0
         self.scalar_estimator = True
@@ -131,7 +134,7 @@ class EnergyEstimator(EstimatorBase):
         self.print_to_stdout = True
         self.ascii_filename = filename
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)

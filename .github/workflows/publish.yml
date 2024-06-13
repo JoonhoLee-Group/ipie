@@ -1,4 +1,4 @@
-name: Publish ipie 
+name: Publish ipie
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
         name: python-package-distributions
         path: dist/
     - name: Test the wheel
-      run: | 
+      run: |
         ls dist
         wheel=$(find dist/*whl)
         echo $wheel
@@ -48,9 +48,9 @@ jobs:
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
       with:
-        mpi: openmpi 
+        mpi: openmpi
     - name: Test the wheel
-      run: | 
+      run: |
         pip install mpi4py
         python -c "import mpi4py"
         python -c "from ipie.config import MPI; assert \"mpi4py\" in str(MPI.COMM_WORLD)"

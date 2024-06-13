@@ -16,3 +16,7 @@ def test_wavefunction_base():
     )
     assert trial.nelec == (nalpha, nbeta)
     assert trial.nbasis == num_basis
+
+
+if __name__ == "__main__":
+    test_wavefunction_base()

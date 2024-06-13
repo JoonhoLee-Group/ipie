@@ -98,7 +98,11 @@ def test_vhs_complex():
     )
 
     ham = test_handler.hamiltonian
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(ham.nfields, nwalkers)
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
 
@@ -145,7 +149,11 @@ def test_vhs_complex_vs_real():
     ham = test_handler.hamiltonian
     chol = ham.chol
 
-    xshifted = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(ham.nfields, nwalkers)
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
 

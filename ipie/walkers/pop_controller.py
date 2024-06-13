@@ -89,6 +89,8 @@ class PopController:
         else:
             sum_weights = numpy.sum(weights)
             total_weight = numpy.empty(1, dtype=numpy.float64)
+            if hasattr(sum_weights, "get"):
+                sum_weights = sum_weights.get()
             comm.Reduce(sum_weights, total_weight, op=MPI.SUM, root=0)
             comm.Bcast(total_weight, root=0)
             total_weight = total_weight[0]
@@ -133,7 +135,7 @@ def get_buffer(walkers, iw):
         Relevant walker information for population control.
     """
     s = 0
-    buff = numpy.zeros(walkers.buff_size, dtype=numpy.complex128)
+    buff = xp.zeros(walkers.buff_size, dtype=numpy.complex128)
     for d in walkers.buff_names:
         data = walkers.__dict__[d]
         if data is None:
@@ -315,17 +317,17 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         glob_inf_1 = numpy.empty([comm.size, walkers.nwalkers], dtype=numpy.int64)
         glob_inf_1.fill(1)
         glob_inf_2 = numpy.array(
-            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)], dtype=numpy.int64
         )
         glob_inf_3 = numpy.array(
-            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)], dtype=numpy.int64
         )
 
     timer.add_non_communication()
 
     timer.start_time()
+    if hasattr(walker_info_0, "get"):
+        walker_info_0 = walker_info_0.get()
     comm.Gather(
         walker_info_0, glob_inf_0, root=0
     )  # gather |w_i| from all processors (comm.size x nwalkers)
@@ -337,17 +339,13 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         # Rescale weights.
         glob_inf = numpy.zeros((walkers.nwalkers * comm.size, 4), dtype=numpy.float64)
         glob_inf[:, 0] = glob_inf_0.ravel()  # contains walker |w_i|
-        glob_inf[
-            :, 1
-        ] = glob_inf_1.ravel()  # all initialized to 1 when it becomes 2 then it will be "branched"
-        glob_inf[
-            :, 2
-        ] = (
+        glob_inf[:, 1] = (
+            glob_inf_1.ravel()
+        )  # all initialized to 1 when it becomes 2 then it will be "branched"
+        glob_inf[:, 2] = (
             glob_inf_2.ravel()
         )  # contain processor+walker indices (initial) (i.e., where walkers live)
-        glob_inf[
-            :, 3
-        ] = (
+        glob_inf[:, 3] = (
             glob_inf_3.ravel()
         )  # contain processor+walker indices (final) (i.e., where walkers live)
         sort = numpy.argsort(glob_inf[:, 0], kind="mergesort")

@@ -8,13 +8,13 @@ import numpy
 divide = 5
 
 nao = 1000 // divide
-naux = 4000  // divide
+naux = 4000 // divide
 nwalkers = 20
 
 chol = numpy.random.rand(naux, nao, nao)
-chol = chol + chol.transpose(0,2,1)
-chol3 = chol.reshape(naux,nao*nao).copy()
-chol2 = chol.T.reshape(nao,nao,naux).copy() #numpy.random.rand(nao, nao, naux)
+chol = chol + chol.transpose(0, 2, 1)
+chol3 = chol.reshape(naux, nao * nao).copy()
+chol2 = chol.T.reshape(nao, nao, naux).copy()  # numpy.random.rand(nao, nao, naux)
 x = numpy.random.rand(nwalkers, naux)
 
 """1"""

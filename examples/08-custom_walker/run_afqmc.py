@@ -94,7 +94,7 @@ class NoisyEnergyEstimator(EnergyEstimator):
             trial=trial,
         )
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system, walkers, hamiltonian, trial):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy_batch(system, hamiltonian, walkers, trial)
@@ -199,6 +199,7 @@ afqmc = AFQMC(
     trial,
     walkers,
     propagator,
+    mpi_handler,
     params,
 )
 estimator = NoisyEnergyEstimator(system=system, ham=ham, trial=trial)

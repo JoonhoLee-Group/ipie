@@ -13,11 +13,11 @@ jobs:
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
-          mpi: openmpi 
+          mpi: openmpi
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt 
+          pip install -r requirements.txt
           pip install -r dev/dev.txt
       - name: pylint
         run: |
@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.8', '3.9', '3.10' ]
+        python-version: [ '3.10', '3.11', '3.12' ]
         mpi:
           - openmpi
     runs-on:  ubuntu-latest
@@ -53,7 +53,7 @@ jobs:
         pip install -r dev/dev.txt
         pip install pyblock
         # https://github.com/JoonhoLee-Group/ipie/issues/278
-        pip install "pyscf<=2.3.0"
+        pip install pyscf
     - name: Install package
       run: |
         # HACK FOR LEGACY CODE!
@@ -81,10 +81,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest-xdist
+      - name: Install package
+        run: |
+          python -m pip install -e .
       - name: No mpi4py
         run: |
           python -c "from ipie.config import MPI; assert \"FakeComm\" in str(MPI.COMM_WORLD)"
           python -m pytest -n=auto
+      - name: wicks helper
+        run: |
+          sudo apt-get -y update && sudo apt-get -y install cmake
+          cc --version
+          root=$(pwd)
+          cd ipie/lib/wicks && mkdir build && cd build && cmake .. && make VERBOSE=1 && cd $root
+          # pytest ipie/trial_wavefunction/ -m wicks
+          # pytest ipie/lib/wicks -m wicks
   integration:
     strategy:
       fail-fast: false
@@ -97,11 +108,11 @@ jobs:
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
-          mpi: openmpi 
+          mpi: openmpi
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt 
+          pip install -r requirements.txt
           pip install -r dev/dev.txt
       - name: Install package
         run: |
@@ -120,10 +131,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt 
+          pip install -r requirements.txt
           pip install pyblock
           # https://github.com/JoonhoLee-Group/ipie/issues/278
-          pip install "pyscf<=2.3.0"
+          pip install pyscf fqe
       - name: Install package
         run: |
           python -m pip install -e .
