@@ -25,10 +25,12 @@ from ipie.addons.thermal.trial.mean_field import MeanField
 from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 from ipie.addons.thermal.estimators.thermal import one_rdm_from_G
 
+
 def local_energy_from_density_matrix(
-        hamiltonian: Union[GenericRealChol, GenericComplexChol], 
-        trial: Union[OneBody, MeanField], 
-        P: numpy.ndarray):
+    hamiltonian: Union[GenericRealChol, GenericComplexChol],
+    trial: Union[OneBody, MeanField],
+    P: numpy.ndarray,
+):
     """Compute local energy from a given density matrix P.
 
     Parameters
@@ -47,6 +49,7 @@ def local_energy_from_density_matrix(
     """
     assert len(P) == 2
     return local_energy_generic_cholesky(hamiltonian, P)
+
 
 def local_energy(hamiltonian, walker, trial):
     return local_energy_from_density_matrix(hamiltonian, trial, one_rdm_from_G(walker.G))

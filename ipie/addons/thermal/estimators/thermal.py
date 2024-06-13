@@ -19,6 +19,7 @@
 import numpy
 import scipy.linalg
 
+
 def one_rdm_from_G(G):
     r"""Compute one-particle reduced density matrix from Green's function.
 
@@ -37,6 +38,7 @@ def one_rdm_from_G(G):
     """
     I = numpy.identity(G.shape[-1])
     return numpy.array([I - G[0].T, I - G[1].T], dtype=numpy.complex128)
+
 
 def one_rdm_stable(BT, num_slices):
     nbasis = BT.shape[-1]

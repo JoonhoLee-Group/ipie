@@ -16,19 +16,19 @@
 #          Joonho Lee
 #
 
-import pytest
 import tempfile
-import numpy
 from typing import Tuple, Union
 
-from ipie.config import MPI
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+import numpy
+import pytest
 
 from ipie.addons.thermal.estimators.energy import ThermalEnergyEstimator
-from ipie.addons.thermal.estimators.particle_number import ThermalNumberEstimator
 from ipie.addons.thermal.estimators.handler import ThermalEstimatorHandler
+from ipie.addons.thermal.estimators.particle_number import ThermalNumberEstimator
 from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
+from ipie.config import MPI
+from ipie.hamiltonians.generic import Generic as HamGeneric
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 
 # System params.
 nup = 5
@@ -38,7 +38,7 @@ ne = nup + ndown
 nbasis = 10
 
 # Thermal AFQMC params.
-mu = -10.
+mu = -10.0
 beta = 0.1
 timestep = 0.01
 nwalkers = 10
@@ -51,23 +51,34 @@ verbose = True
 seed = 7
 numpy.random.seed(seed)
 
+
 @pytest.mark.unit
 def test_energy_estimator():
     # Test.
     objs = build_generic_test_case_handlers(
-            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
-            mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
-            seed=seed, verbose=verbose)
-    trial = objs['trial']
-    hamiltonian = objs['hamiltonian']
-    walkers = objs['walkers']
+        nelec,
+        nbasis,
+        mu,
+        beta,
+        timestep,
+        nwalkers=nwalkers,
+        lowrank=lowrank,
+        mf_trial=mf_trial,
+        complex_integrals=complex_integrals,
+        debug=debug,
+        seed=seed,
+        verbose=verbose,
+    )
+    trial = objs["trial"]
+    hamiltonian = objs["hamiltonian"]
+    walkers = objs["walkers"]
 
     assert isinstance(hamiltonian, GenericRealChol)
     chol = hamiltonian.chol
 
     # GenericRealChol.
     re_estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial)
-    re_estim.compute_estimator(walkers, hamiltonian, trial)
+    re_estim.compute_estimator(walkers=walkers, hamiltonian=hamiltonian, trial=trial)
     assert len(re_estim.names) == 5
     assert re_estim["ENumer"].real == pytest.approx(24.66552451455761)
     assert re_estim["ETotal"] == pytest.approx(0.0)
@@ -80,17 +91,20 @@ def test_energy_estimator():
     header = re_estim.header_to_text
     data_to_text = re_estim.data_to_text(tmp)
     assert len(data_to_text.split()) == 5
-    
+
     # GenericComplexChol.
     cx_chol = numpy.array(chol, dtype=numpy.complex128)
     cx_hamiltonian = HamGeneric(
-        numpy.array(hamiltonian.H1, dtype=numpy.complex128), cx_chol, 
-                    hamiltonian.ecore, verbose=False)
+        numpy.array(hamiltonian.H1, dtype=numpy.complex128),
+        cx_chol,
+        hamiltonian.ecore,
+        verbose=False,
+    )
 
     assert isinstance(cx_hamiltonian, GenericComplexChol)
 
     cx_estim = ThermalEnergyEstimator(hamiltonian=cx_hamiltonian, trial=trial)
-    cx_estim.compute_estimator(walkers, cx_hamiltonian, trial)
+    cx_estim.compute_estimator(walkers=walkers, hamiltonian=cx_hamiltonian, trial=trial)
     assert len(cx_estim.names) == 5
     assert cx_estim["ENumer"].real == pytest.approx(24.66552451455761)
     assert cx_estim["ETotal"] == pytest.approx(0.0)
@@ -103,23 +117,33 @@ def test_energy_estimator():
     header = cx_estim.header_to_text
     data_to_text = cx_estim.data_to_text(tmp)
     assert len(data_to_text.split()) == 5
-    
+
     numpy.testing.assert_allclose(re_estim.data, cx_estim.data)
 
 
 @pytest.mark.unit
 def test_number_estimator():
     # Test.
-    objs =  build_generic_test_case_handlers(
-            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
-            mf_trial=mf_trial, complex_integrals=True, debug=debug, 
-            seed=seed, verbose=verbose)
-    trial = objs['trial']
-    hamiltonian = objs['hamiltonian']
-    walkers = objs['walkers']
+    objs = build_generic_test_case_handlers(
+        nelec,
+        nbasis,
+        mu,
+        beta,
+        timestep,
+        nwalkers=nwalkers,
+        lowrank=lowrank,
+        mf_trial=mf_trial,
+        complex_integrals=True,
+        debug=debug,
+        seed=seed,
+        verbose=verbose,
+    )
+    trial = objs["trial"]
+    hamiltonian = objs["hamiltonian"]
+    walkers = objs["walkers"]
 
     estim = ThermalNumberEstimator(hamiltonian=hamiltonian, trial=trial)
-    estim.compute_estimator(walkers, hamiltonian, trial)
+    estim.compute_estimator(walkers=walkers, hamiltonian=hamiltonian, trial=trial)
     assert len(estim.names) == 3
     assert estim["NavNumer"].real == pytest.approx(ne * nwalkers)
     assert estim["Nav"] == pytest.approx(0.0)
@@ -132,41 +156,44 @@ def test_number_estimator():
     header = estim.header_to_text
     data_to_text = estim.data_to_text(tmp)
     assert len(data_to_text.split()) == 3
-    
+
 
 @pytest.mark.unit
 def test_estimator_handler():
     with tempfile.NamedTemporaryFile() as tmp1, tempfile.NamedTemporaryFile() as tmp2:
         # Test.
-        objs =  build_generic_test_case_handlers(
-                nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
-                mf_trial=mf_trial, complex_integrals=True, debug=debug, 
-                seed=seed, verbose=verbose)
-        trial = objs['trial']
-        hamiltonian = objs['hamiltonian']
-        walkers = objs['walkers']
+        objs = build_generic_test_case_handlers(
+            nelec,
+            nbasis,
+            mu,
+            beta,
+            timestep,
+            nwalkers=nwalkers,
+            lowrank=lowrank,
+            mf_trial=mf_trial,
+            complex_integrals=True,
+            debug=debug,
+            seed=seed,
+            verbose=verbose,
+        )
+        trial = objs["trial"]
+        hamiltonian = objs["hamiltonian"]
+        walkers = objs["walkers"]
 
-        estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial, 
-                                       filename=tmp1.name)
+        estim = ThermalEnergyEstimator(hamiltonian=hamiltonian, trial=trial, filename=tmp1.name)
         estim.print_to_stdout = False
 
         comm = MPI.COMM_WORLD
         handler = ThermalEstimatorHandler(
-                    comm,
-                    hamiltonian,
-                    trial,
-                    observables=("energy",),
-                    filename=tmp2.name)
+            comm, hamiltonian, trial, observables=("energy",), filename=tmp2.name
+        )
         handler["energy1"] = estim
         handler.json_string = ""
         handler.initialize(comm)
-        handler.compute_estimators(hamiltonian, trial, walkers)
+        handler.compute_estimators(hamiltonian=hamiltonian, trial=trial, walker_batch=walkers)
 
 
 if __name__ == "__main__":
     test_energy_estimator()
     test_number_estimator()
     test_estimator_handler()
-
-
-

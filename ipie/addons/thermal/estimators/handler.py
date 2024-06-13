@@ -21,11 +21,10 @@
 import os
 from typing import Tuple, Union
 
-from ipie.config import config, MPI
-from ipie.estimators.handler import EstimatorHandler
-
 from ipie.addons.thermal.estimators.energy import ThermalEnergyEstimator
 from ipie.addons.thermal.estimators.particle_number import ThermalNumberEstimator
+from ipie.config import config, MPI
+from ipie.estimators.handler import EstimatorHandler
 
 # Some supported (non-custom) estimators
 _predefined_estimators = {
@@ -106,16 +105,14 @@ class ThermalEstimatorHandler(EstimatorHandler):
         # TODO: Replace this, should be built outside
         for obs in observables:
             try:
-                est = _predefined_estimators[obs](
-                    hamiltonian=hamiltonian,
-                    trial=trial)
+                est = _predefined_estimators[obs](hamiltonian=hamiltonian, trial=trial)
                 self[obs] = est
             except KeyError:
                 raise RuntimeError(f"unknown observable: {obs}")
         if verbose:
             print("# Finished settting up estimator object.")
 
-    def compute_estimators(self, hamiltonian, trial, walker_batch):
+    def compute_estimators(self, system=None, hamiltonian=None, trial=None, walker_batch=None):
         """Update estimators with bached walkers.
 
         Parameters
@@ -132,7 +129,7 @@ class ThermalEstimatorHandler(EstimatorHandler):
         # TODO: generalize for different block groups (loop over groups)
         offset = self.num_walker_props
         for k, e in self.items():
-            e.compute_estimator(walker_batch, hamiltonian, trial)
+            e.compute_estimator(walkers=walker_batch, hamiltonian=hamiltonian, trial=trial)
             start = offset + self.get_offset(k)
             end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data
@@ -154,7 +151,7 @@ class ThermalEstimatorHandler(EstimatorHandler):
         offset = walker_state.size
 
         if comm.rank == 0:
-            k = 'energy'
+            k = "energy"
             e = self[k]
             start = offset + self.get_offset(k)
             end = start + int(self[k].size)
@@ -162,15 +159,14 @@ class ThermalEstimatorHandler(EstimatorHandler):
             e.post_reduce_hook(estim_data)
             etotal = estim_data[e.get_index("ETotal")]
 
-            k = 'nav'
+            k = "nav"
             e = self[k]
             start = offset + self.get_offset(k)
             end = start + int(self[k].size)
             estim_data = self.global_estimates[start:end]
             e.post_reduce_hook(estim_data)
             nav = estim_data[e.get_index("Nav")]
-            
+
             print(f"cut : {time_slice} {nav.real} {etotal.real}")
 
         self.zero()
-

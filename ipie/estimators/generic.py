@@ -33,9 +33,7 @@ def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
     assert eri is not None
 
     vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
-    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape(
-        (nb, M, nb, M)
-    )
+    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape((nb, M, nb, M))
     vipjq_ab = eri[0, na**2 * M**2 + nb**2 * M**2 :].reshape((na, M, nb, M))
 
     Ga, Gb = Ghalf[0], Ghalf[1]

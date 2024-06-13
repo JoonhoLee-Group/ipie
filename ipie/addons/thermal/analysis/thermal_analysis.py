@@ -18,21 +18,16 @@
 
 #!/usr/bin/env python
 
-import sys
 import argparse
-
 import glob
-import numpy
-import scipy.optimize
-import pandas as pd
+import sys
 
-from ipie.analysis.extraction import (
-        extract_observable,
-        get_metadata, 
-        get_sys_param
-        )
+import numpy
+import pandas as pd
+import scipy.optimize
 
 from ipie.addons.thermal.analysis.extraction import set_info
+from ipie.analysis.extraction import extract_observable, get_metadata
 
 
 def parse_args(args):
@@ -49,18 +44,10 @@ def parse_args(args):
         Command line arguments.
     """
 
-    parser = argparse.ArgumentParser(description = __doc__)
-    parser.add_argument('-c', '--chem-pot', dest='fit_chem_pot',
-                        action='store_true', default=False,
-                        help='Estimate optimal chemical potential')
-    parser.add_argument('-n', '--nav', dest='nav', type=float,
-                        help='Target electron density.')
-    parser.add_argument('-o', '--order', dest='order', type=int,
-                        default=3, help='Order polynomial to fit.')
-    parser.add_argument('-p', '--plot', dest='plot', action='store_true',
-                        help='Plot density vs. mu.')
-    parser.add_argument('-f', nargs='+', dest='filenames',
-                        help='Space-separated list of files to analyse.')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "-f", nargs="+", dest="filenames", help="Space-separated list of files to analyse."
+    )
 
     options = parser.parse_args(args)
 
@@ -76,9 +63,9 @@ def analyse(files, block_idx=1):
     files = sorted(files)
 
     for f in files:
-        data_energy = extract_observable(f, name='energy', block_idx=block_idx)
-        data_nav = extract_observable(f, name='nav', block_idx=block_idx)
-        data = pd.concat([data_energy, data_nav['Nav']], axis=1)
+        data_energy = extract_observable(f, name="energy", block_idx=block_idx)
+        data_nav = extract_observable(f, name="nav", block_idx=block_idx)
+        data = pd.concat([data_energy, data_nav["Nav"]], axis=1)
         md = get_metadata(f)
         keys = set_info(data, md)
         sims.append(data[1:])
@@ -108,20 +95,6 @@ def nav_mu(mu, coeffs):
     return numpy.polyval(coeffs, mu)
 
 
-def find_chem_pot(data, target, vol, order=3, plot=False):
-    print(f"# System volume: {vol}.")
-    print(f"# Target number of electrons: {vol * target}.")
-    nav = data.Nav.values / vol
-    nav_error = data.Nav_error.values / vol
-    # Half filling special case where error bar is zero.
-    zeros = numpy.where(nav_error == 0)[0]
-    nav_error[zeros] = 1e-8
-    mus = data.mu.values
-    delta = nav - target
-    s = 0
-    e = len(delta)
-    rmin = None
-
 def main(args):
     """Run reblocking and data analysis on PAUXY output.
 
@@ -136,7 +109,7 @@ def main(args):
     """
 
     options = parse_args(args)
-    if '*' in options.filenames[0]:
+    if "*" in options.filenames[0]:
         files = glob.glob(options.filenames[0])
 
     else:
@@ -144,20 +117,8 @@ def main(args):
 
     data = analyse(files)
 
-    if options.fit_chem_pot:
-        name = get_sys_param(files[0], 'name')
-        vol = 1.
-        mu = find_chem_pot(data, options.nav, vol,
-                           order=options.order, plot=options.plot)
-
-        if mu is not None:
-            print("# Optimal chemical potential found to be: {}.".format(mu))
-
-        else:
-            print("# Failed to find chemical potential.")
-
     print(data.to_string(index=False))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

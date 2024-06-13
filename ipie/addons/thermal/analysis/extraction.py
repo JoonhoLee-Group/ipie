@@ -19,6 +19,7 @@
 
 from ipie.utils.misc import get_from_dict
 
+
 def set_info(frame, md):
     ncols = len(frame.columns)
     system = md.get("system")
@@ -61,4 +62,3 @@ def set_info(frame, md):
         frame["cholesky_treshold"] = chol
 
     return list(frame.columns[ncols:])
-

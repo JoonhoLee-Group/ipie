@@ -18,6 +18,7 @@
 
 from ipie.utils.backend import arraylib as xp
 
+
 def apply_exponential(VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation
 
@@ -42,4 +43,4 @@ def apply_exponential(VHS, exp_nmax):
         Temp = VHS.dot(Temp) / n
         phi += Temp
 
-    return phi # Shape (nbasis, nbasis).
+    return phi  # Shape (nbasis, nbasis).
