@@ -50,61 +50,6 @@ class QMCParams:
                 "The number of steps per block should be divisible by the checkpoint size"
             )
 
-
-def prep_dist_adafqmc(
-    comm,
-    trial_tangent: callable,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
-    num_walkers_per_process: int = 50,
-    num_steps_per_block: int = 50,
-    ad_block_size: int = 800,
-    num_ad_blocks: int = 100,
-    timestep: float = 0.005,
-    stabilize_freq=5,
-    pop_control_freq=5,
-    pop_control_freq_eq=5,
-    seed=114,
-    grad_checkpointing=False,
-    chkpt_size=50,
-):
-    """Prepares the distributed AFQMC object with the given parameters
-
-    Parameters
-    -------
-    comm : MPI communicator
-    trial_tangent : function
-        function that stores the trial and the tangent of the trial wavefunction
-    num_walkers_per_process : int
-        Number of walkers per process
-    num_steps_per_block : int
-        Number of steps per AD block
-    num_ad_blocks : int
-        Number of AD blocks
-    timestep : float
-        Timestep for the propagator
-    stabilize_freq : int
-        Frequency of reorthogonalization
-    pop_control_freq : int
-        Frequency of population control
-    Returns
-    -------
-    ADAFQMC object
-    """
-    params = QMCParams(
-        num_walkers_per_process,
-        num_steps_per_block,
-        ad_block_size,
-        num_ad_blocks,
-        timestep,
-        stabilize_freq,
-        pop_control_freq,
-        pop_control_freq_eq,
-        seed,
-        grad_checkpointing,
-        chkpt_size,
-    )
-    return ADAFQMC(comm, trial_tangent, params)
-
-
 class ADAFQMC:
     def __init__(self, comm, trial_tangent: callable, params: QMCParams):
         """Initialize
@@ -124,6 +69,59 @@ class ADAFQMC:
         self.size = comm.Get_size()
         self.set_trial = trial_tangent
         self.params = params
+
+    @staticmethod
+    def build(
+    comm,
+    trial_tangent: callable,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
+    num_walkers_per_process: int = 50,
+    num_steps_per_block: int = 50,
+    ad_block_size: int = 800,
+    num_ad_blocks: int = 100,
+    timestep: float = 0.005,
+    stabilize_freq=5,
+    pop_control_freq=5,
+    pop_control_freq_eq=5,
+    seed=114,
+    grad_checkpointing=False,
+    chkpt_size=50):
+        """Build the AFQMC object with the given parameters
+
+        Parameters
+        -------
+        comm : MPI communicator
+        trial_tangent : function
+            function that stores the trial and the tangent of the trial wavefunction
+        num_walkers_per_process : int
+            Number of walkers per process
+        num_steps_per_block : int
+            Number of steps per AD block
+        num_ad_blocks : int
+            Number of AD blocks
+        timestep : float
+            Timestep for the propagator
+        stabilize_freq : int
+            Frequency of reorthogonalization
+        pop_control_freq : int
+            Frequency of population control
+        Returns
+        -------
+        ADAFQMC object
+        """
+        params = QMCParams(
+            num_walkers_per_process,
+            num_steps_per_block,
+            ad_block_size,
+            num_ad_blocks,
+            timestep,
+            stabilize_freq,
+            pop_control_freq,
+            pop_control_freq_eq,
+            seed,
+            grad_checkpointing,
+            chkpt_size,
+        )
+        return ADAFQMC(comm, trial_tangent, params)
 
     def equilibrate_walkers(self, hamobs, trial_detached):
         """Equilibrates the walkers
