@@ -6,4 +6,3 @@ pytest
 pandas
 numba
 plum-dispatch
-torch == 2.3.0
