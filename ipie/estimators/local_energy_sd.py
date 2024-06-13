@@ -566,7 +566,7 @@ def local_energy_single_det_ghf(
         ej, ek = cholesky_jk_ghf(hamiltonian.chol, walkers.G[iw])
         e2b = ej + ek
         energy += [[e1b + e2b, e1b, e2b]]
-    return energy
+    return xp.array(energy)
 
 
 @plum.dispatch
