@@ -16,7 +16,7 @@ def get_local_energy(rh1, Ghalf, rchol, nuc):
         torch.einsum("ij, aji->a", rh1, Ghalf.real)
         + 1j * torch.einsum("ij, aji->a", rh1, Ghalf.imag)
     )
-    local_e2 = 0.5 * (get_Coulomb(rchol, Ghalf) - get_Exchange(rchol, Ghalf))
+    local_e2 = 0.5 * (get_coulomb(rchol, Ghalf) - get_exchange(rchol, Ghalf))
     local_nuc = nuc
     local_e = local_nuc + local_e1 + local_e2
     return local_e
@@ -34,13 +34,13 @@ def get_trial_energy(rh1, G, rchol, nuc):
     local_e : 1d array with size (nwalkers)
     """
     local_e1 = 2 * torch.einsum("ij, ji->", rh1, G)
-    local_e2 = 0.5 * (get_Coulomb_trial(rchol, G) - get_Exchange_trial(rchol, G))
+    local_e2 = 0.5 * (get_coulomb_trial(rchol, G) - get_exchange_trial(rchol, G))
     local_nuc = nuc
     local_e = local_nuc + local_e1 + local_e2
     return local_e
 
 
-def get_Coulomb(rchol, Ghalf):
+def get_coulomb(rchol, Ghalf):
     """
     .. math::
         E_C = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{ip} L^\gamma_{jq} G^{n}_{jq}
@@ -58,7 +58,7 @@ def get_Coulomb(rchol, Ghalf):
     return EJ
 
 
-def get_Exchange(rchol, Ghalf):
+def get_exchange(rchol, Ghalf):
     """
     .. math::
         E_X = \sum_{i,p,j,q, g, n} L^\gamma_{ip} G^{n}_{jq} L^\gamma_{jq} G^{n}_{ip}
@@ -84,7 +84,7 @@ def get_Exchange(rchol, Ghalf):
     return EX
 
 
-def get_Coulomb_trial(rchol, G):
+def get_coulomb_trial(rchol, G):
     """
     .. math::
         E_C = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{ip} L^\gamma_{jq} G_{jq}
@@ -99,7 +99,7 @@ def get_Coulomb_trial(rchol, G):
     return EJ
 
 
-def get_Exchange_trial(rchol, G):
+def get_exchange_trial(rchol, G):
     """
     .. math::
         E_X = \sum_{i,p,j,q, g} L^\gamma_{ip} G_{jq} L^\gamma_{jq} G_{ip}

@@ -26,7 +26,7 @@ def reorthogonalize(walkers):
     return Walkers(walkers.nwalkers, orthowalkers, walkers.walker_weights)
 
 
-def sr(walkers):
+def stochastic_reconfiguration(walkers):
     """
     stochastic reconfiguration method for population control
     """
@@ -49,7 +49,7 @@ def sr(walkers):
 class Walkers:
     def __init__(self, nwalkers, walker_states, walker_weights):
         """Walkers class
-        
+
         Parameters
         -------
         nwalkers : int

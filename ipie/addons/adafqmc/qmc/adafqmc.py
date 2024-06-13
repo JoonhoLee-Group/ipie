@@ -3,12 +3,12 @@ import torch
 from torch.utils.checkpoint import checkpoint
 from ipie.addons.adafqmc.hamiltonians.hamiltonian import ham_with_obs, rot_ham_with_orbs
 from ipie.addons.adafqmc.trial_wavefunction.sdtrial import SDTrial
-from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, initialize_walkers, reorthogonalize, sr
+from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, initialize_walkers, reorthogonalize, stochastic_reconfiguration
 from ipie.addons.adafqmc.propagation.propagator import Propagator
 import time
 
 
-class Dist_Params:
+class QMCParams:
     def __init__(
         self,
         num_walkers_per_process,
@@ -53,7 +53,7 @@ class Dist_Params:
 
 def prep_dist_adafqmc(
     comm,
-    trial_tangent,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
+    trial_tangent: callable,  # specify the function that obtains the trial wavefunction with precomputed trial and tangent
     num_walkers_per_process: int = 50,
     num_steps_per_block: int = 50,
     ad_block_size: int = 800,
@@ -87,9 +87,9 @@ def prep_dist_adafqmc(
         Frequency of population control
     Returns
     -------
-    Dist_ADAFQMC object
+    ADAFQMC object
     """
-    params = Dist_Params(
+    params = QMCParams(
         num_walkers_per_process,
         num_steps_per_block,
         ad_block_size,
@@ -102,11 +102,11 @@ def prep_dist_adafqmc(
         grad_checkpointing,
         chkpt_size,
     )
-    return Dist_ADAFQMC(comm, trial_tangent, params)
+    return ADAFQMC(comm, trial_tangent, params)
 
 
-class Dist_ADAFQMC:
-    def __init__(self, comm, trial_tangent, params: Dist_Params):
+class ADAFQMC:
+    def __init__(self, comm, trial_tangent: callable, params: QMCParams):
         """Initialize
 
         Parameters
@@ -192,7 +192,7 @@ class Dist_ADAFQMC:
                         all_walker_states,
                         all_walker_weights,
                     )
-                    all_walkers = sr(all_walkers)
+                    all_walkers = stochastic_reconfiguration(all_walkers)
                     splitted_walker_states = np.stack(
                         np.array_split(all_walkers.walker_states.detach().numpy().copy(), self.size)
                     )
@@ -294,7 +294,7 @@ class Dist_ADAFQMC:
 
     def ad_block_gradient(self, hamobs, initial_walkers, trial_detached, tangent):
         """Performs the block automatic differentiation
-        
+
         Parameters
         -------
         hamobs : Hamiltonian
@@ -338,7 +338,7 @@ class Dist_ADAFQMC:
         e_estimate = etot.detach().clone()
         return initial_walkers, e_estimate, observable, blkwts, wtsgrad
 
-    def kernel(self, hamobs, trial_detached, tangent):
+    def run(self, hamobs, trial_detached, tangent):
         """kernel function of the distributed AFQMC
 
         Parameters
@@ -385,7 +385,7 @@ class Dist_ADAFQMC:
                 (self.params.num_ad_blocks, *hamobs.coupling_shape), dtype=np.float64
             )
         for iblock in range(self.params.num_ad_blocks):
-            # global sr after each block
+            # global stochastic_reconfiguration after each block
             if iblock > 0:
                 # Collect the walkers from all the processes in rank 0
                 walker_states_np = walkers_i.walker_states.detach().numpy().copy()
@@ -416,7 +416,7 @@ class Dist_ADAFQMC:
                         all_walker_states,
                         all_walker_weights,
                     )
-                    all_walkers = sr(all_walkers)
+                    all_walkers = stochastic_reconfiguration(all_walkers)
                     splitted_walker_states = np.stack(
                         np.array_split(all_walkers.walker_states.detach().numpy().copy(), self.size)
                     )

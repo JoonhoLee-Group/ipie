@@ -26,7 +26,7 @@ def fock(dm, hcore, ltensor):
     return hcore + VHF
 
 
-def calcEnergy(C, nelec0, hcore, ltensor):
+def calc_energy(C, nelec0, hcore, ltensor):
     """
     Energy function of Hartree Fock, given the molecular orbital coefficients.
     E(C) = .5 * \sum_{ij} P_{ji}(H^{core}_{ij} + F_{ij})

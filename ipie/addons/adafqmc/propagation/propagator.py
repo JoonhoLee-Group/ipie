@@ -1,7 +1,7 @@
 import torch
 import math
-from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, reorthogonalize, sr
-from ipie.addons.adafqmc.estimators.estimator import get_local_e
+from ipie.addons.adafqmc.walkers.rhf_walkers import Walkers, reorthogonalize, stochastic_reconfiguration
+from ipie.addons.adafqmc.estimators.estimator import get_local_energy
 
 
 def construct_vhs(isqrtt: float, nao: int, idx1, idx2, packedchol, xshifted):
@@ -267,12 +267,12 @@ class Propagator:
             if i == self.prop_block_size - 1:
                 # evaluate local energy and store it in propagator
                 Ghalf = trial.get_ghalf(walkers)
-                local_e = get_local_e(trial.rh1, Ghalf, trial.rchol, hamiltonian.enuc)
+                local_e = get_local_energy(trial.rh1, Ghalf, trial.rchol, hamiltonian.enuc)
                 totwts = torch.sum(walkers.walker_weights)
                 etot = torch.real(torch.sum(walkers.walker_weights * local_e) / totwts)
                 self.energy_estimate = etot.detach().clone()
             if (iblock * self.prop_block_size + i) % pop_control_freq == pop_control_freq - 1:
-                walkers = sr(walkers)
+                walkers = stochastic_reconfiguration(walkers)
         return walkers, etot, totwts
 
     def propagate_block_chkpt(
@@ -297,10 +297,10 @@ class Propagator:
             if i == self.prop_block_size - 1:
                 # evaluate local energy and store it in propagator
                 Ghalf = trial.get_ghalf(walkers)
-                local_e = get_local_e(trial.rh1, Ghalf, trial.rchol, hamiltonian.enuc)
+                local_e = get_local_energy(trial.rh1, Ghalf, trial.rchol, hamiltonian.enuc)
                 totwts = torch.sum(walkers.walker_weights)
                 etot = torch.real(torch.sum(walkers.walker_weights * local_e) / totwts)
                 self.energy_estimate = etot.detach().clone()
             if (ichkpt * self.prop_block_size + i) % pop_control_freq == pop_control_freq - 1:
-                walkers = sr(walkers)
+                walkers = stochastic_reconfiguration(walkers)
         return walkers, etot, totwts

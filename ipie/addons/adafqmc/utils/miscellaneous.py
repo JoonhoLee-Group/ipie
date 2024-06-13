@@ -174,7 +174,7 @@ class TrialwithTangent(torch.autograd.Function):
         return tangent * grad_output, None, None
 
 
-class TrialwithTangent_matcoupling(torch.autograd.Function):
+class TrialwithTangentMatCoupling(torch.autograd.Function):
     @staticmethod
     def forward(ctx, coupling, trial, tangent):
         ctx.save_for_backward(tangent)  # Save precomputed gradient for backward pass
@@ -251,7 +251,7 @@ def read_hamiltonian_from_h5(filename, obs_type="dipole"):
 
 def remove_outliers(data):
     """Remove outliers for a given list of data using MAD (Median Absolute Deviation)
-    
+
     Parameters
     ----------
     data : numpy.ndarray
@@ -271,7 +271,7 @@ def remove_outliers(data):
     return indices
 
 
-def strtobool(val):
+def str_to_bool(val):
     """Convert a string representation of truth to true (1) or false (0).
     True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
     are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
@@ -315,7 +315,7 @@ def read_input(path_to_file):
                         value = float(value)
                     except ValueError:
                         try:
-                            value = strtobool(value)
+                            value = str_to_bool(value)
                         except ValueError:
                             pass  # Keep the value as a string if it's not a number or boolean
                 # Update the default settings with the value from the file

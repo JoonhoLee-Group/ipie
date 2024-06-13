@@ -1,5 +1,5 @@
 import torch
-from ipie.addons.adafqmc.estimators.estimator import get_trial_e
+from ipie.addons.adafqmc.estimators.estimator import get_trial_energy
 
 
 def gf(A, B):
@@ -14,7 +14,7 @@ def gf(A, B):
 class SDTrial:
     def __init__(self, wavefunction, nelec0):
         """Single Slater determinant trial wave function
-        
+
         Parameters
         -------
         wavefunction: torch.tensor
@@ -69,4 +69,4 @@ class SDTrial:
 
     def eval_energy(self, hamiltonian):
         ghalf = self.get_trial_ghalf()
-        return get_trial_e(self.rh1, ghalf, self.rchol, hamiltonian.enuc)
+        return get_trial_energy(self.rh1, ghalf, self.rchol, hamiltonian.enuc)
