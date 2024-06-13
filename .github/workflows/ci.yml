@@ -53,7 +53,7 @@ jobs:
         pip install -r dev/dev.txt
         pip install pyblock
         # https://github.com/JoonhoLee-Group/ipie/issues/278
-        pip install "pyscf<=2.3.0"
+        pip install pyscf
     - name: Install package
       run: |
         # HACK FOR LEGACY CODE!
@@ -134,7 +134,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyblock
           # https://github.com/JoonhoLee-Group/ipie/issues/278
-          pip install "pyscf<=2.3.0" fqe
+          pip install pyscf fqe
       - name: Install package
         run: |
           python -m pip install -e .
