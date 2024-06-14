@@ -38,13 +38,3 @@ adafqmc = ADAFQMC.build(comm, trial_tangent, **options)
 if rank == 0:
     print("afqmc prepared")
 energy, obs = adafqmc.run(hamobs, trial, tg)
-
-if rank == 0:
-    adblocksize = int(options['num_steps_per_block'] * options['timestep'])
-    num_blocks = options['num_blocks']
-    pop_control_freq = options['pop_control_freq']
-    ortho_freq = options['stabilize_freq']
-    f = h5py.File(f'co_augccpvtz_{adblocksize}au_dt1e-2_50wpp_{num_blocks}b_sr{pop_control_freq}ortho{ortho_freq}.hdf5', 'w')
-    f.create_dataset('block_energy', data=energy)
-    f.create_dataset('block_obs', data=obs)
-    f.close()
