@@ -145,7 +145,7 @@ class ADAFQMC:
             The equilibrated walkers
         """
         if self.rank == 0:
-            print(f"equilibrating the walkers")
+            print(f"# equilibrating the walkers")
         # generate the trial wavefunction with the given coupling
         trial = SDTrial(trial_detached, hamobs.nelec0)
         trial.half_rot(hamobs)
@@ -329,13 +329,13 @@ class ADAFQMC:
         )
         if self.rank == 0:
             endtime0 = time.time()
-            print(f"start to do backward pass, forward time = {endtime0 - stttime0}")
+            print(f"# start to do backward pass, forward time = {endtime0 - stttime0}")
             stttime1 = time.time()
         grad_e = torch.autograd.grad(etot, coupling, retain_graph=True)[0]
         grad_w = torch.autograd.grad(totwts, coupling)[0]
         if self.rank == 0:
             endtime1 = time.time()
-            print(f"finished doing backward pass, backward time = {endtime1 - stttime1}")
+            print(f"# finished doing backward pass, backward time = {endtime1 - stttime1}")
         obs_nondetached = torch.real(grad_e) + torch.real(hamobs.obs[1])
         observable = obs_nondetached.detach().clone()
         blkwts = totwts.detach().clone()
@@ -378,7 +378,7 @@ class ADAFQMC:
         )
 
         if self.rank == 0:
-            print("finished equilibrating walkers")
+            print("# finished equilibrating walkers")
         if self.rank == 0:
             energycollector = np.zeros(self.params.num_ad_blocks, dtype=np.float64)
             gradcollector = np.zeros(
@@ -463,11 +463,11 @@ class ADAFQMC:
             self.comm.Gather(e_grad_i_npy, collected_e_grad, root=0)
             self.comm.Gather(wtsgrad_i_npy, collected_wtsgrad, root=0)
             self.comm.Gather(total_weight_rk_i, collected_totwts, root=0)
-            if self.rank == 0:
-                print(f"iblock = {iblock}, collected_e_grad = {collected_e_grad.ravel()}")
-                print(f"iblock = {iblock}, collected_totwts = {collected_totwts}")
-                print(f"iblock = {iblock}, collected_wtsgrad = {collected_wtsgrad.ravel()}")
-                print(f"iblock = {iblock}, collected_etot = {collected_etot.ravel()}")
+            # if self.rank == 0:
+            #     print(f"iblock = {iblock}, collected_e_grad = {collected_e_grad.ravel()}")
+            #     print(f"iblock = {iblock}, collected_totwts = {collected_totwts}")
+            #     print(f"iblock = {iblock}, collected_wtsgrad = {collected_wtsgrad.ravel()}")
+            #     print(f"iblock = {iblock}, collected_etot = {collected_etot.ravel()}")
             if self.rank == 0:
                 if collected_e_grad.ndim == 3:
                     e_grad = np.sum(
@@ -481,11 +481,10 @@ class ADAFQMC:
                 total_weight = np.sum(collected_totwts)
                 etot = np.dot(collected_etot, collected_totwts)
                 etot /= total_weight
-                # obs = (e_grad + wgrad_e)/total_weight - etot * wgradtot/total_weight
                 obs = e_grad / total_weight
                 energycollector[iblock] = etot
                 gradcollector[iblock] = obs
-                print(f"iblock = {iblock}, etot = {etot}, obs = {obs}")
+                print(f"# iblock = {iblock}, etot = {etot}, obs = {obs}")
 
         # broadcast the energy and gradient to all the processes
         self.comm.Bcast(energycollector, root=0)
