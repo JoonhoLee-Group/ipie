@@ -113,9 +113,6 @@ def run_examples() -> List[str]:
         if os.path.isdir(example):
             if example.split("/")[-1].split("-")[0] in legacy_dirs:
                 continue
-            elif example.split("/")[-1] == "18-ad_afqmc":
-                print("Need to use mpi4py to run, skipping for now.")
-                continue
             else:
                 print(f" - Running: {example}")
                 err = _run_subprocess(f"python -u {example}/run_afqmc.py")
