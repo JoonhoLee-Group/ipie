@@ -133,6 +133,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyblock
+          pip install torch
           # https://github.com/JoonhoLee-Group/ipie/issues/278
           pip install pyscf fqe
       - name: Install package
