@@ -1,12 +1,17 @@
 import torch
 import h5py
 import numpy as np
-from pyscf import gto, scf, lo
-from ipie.addons.adafqmc.utils.miscellaneous import generate_hamiltonian_from_pyscf, get_hf_wgradient, dump_hamiltonian
+from pyscf import gto, scf
 from functools import partial
 from torch.func import jvp
 
+from ipie.qmc.comm import FakeComm
+from ipie.addons.adafqmc.utils.miscellaneous import generate_hamiltonian_from_pyscf, get_hf_wgradient, trial_tangent
+from ipie.addons.adafqmc.qmc.adafqmc import ADAFQMC
+
 torch.set_printoptions(10)
+
+comm = FakeComm()
 
 atomstring = f'C 0 -1.24942055 0; O 0 0.89266692 0'
 mol = gto.M(atom=atomstring, basis='cc-pvdz', verbose=3, symmetry=0, unit='bohr')
@@ -14,7 +19,6 @@ mf = scf.RHF(mol)
 mf.kernel()
 
 print("# nao = %d, nelec = %d" % (mol.nao_nr(), mol.nelec[0]))
-print("# calculating dipole moment")
 #dipole moment calculation
 num_frozen = 2
 
@@ -42,13 +46,8 @@ for i in range(ao_dip.shape[0]):
 
 dip = (mo_dip_act[1], torch.tensor([nuc_dip[1]]))
 
-print("# finished calculating dipole")
-
-print("# start to generate hamiltonian")
 hamobs = generate_hamiltonian_from_pyscf(mf, num_frozen=num_frozen, ortho_ao=False, observable=dip, obs_type='dipole')
 print(f"# shape of cholesky vector: {hamobs.chol.shape}")
-dump_hamiltonian(hamobs, 'hamiltonian.h5')
-print("# finished generating hamiltonian")
 
 # compute trial and the tangent of trial
 ovlp = mol.intor_symmetric('int1e_ovlp')
@@ -58,15 +57,23 @@ orthtrial, _ = torch.linalg.qr(basis_change_matrix[:, num_frozen:].t() @ overlap
 coupling = torch.tensor([0.], dtype=torch.float64, requires_grad=True)
 
 partial_trial = partial(get_hf_wgradient, orthtrial, mol.nelec[0] - num_frozen, torch.eye(mol.nao_nr() - num_frozen, dtype=torch.float64), hamobs, 'RHF')
-print("# start to compute the gradient of trial")
 trial_nondetached, grad = jvp(partial_trial, (coupling, ), (torch.tensor([1.], dtype=torch.float64),))
 trial_detached = trial_nondetached.detach().clone()
-print("# finished computing the gradient of trial")
 tg = grad.detach().clone()
-print(f"# trial_detached: {trial_detached}")
-print(f"# gradient maximum element: {torch.max(torch.abs(tg))}, gradient minimum element: {torch.min(torch.abs(tg))}")
 
-with h5py.File('trial_with_tangent.h5', 'w') as fL:
-    fL.create_dataset('trial', data=trial_detached)
-    fL.create_dataset('tangent', data=tg)
-    fL.create_dataset('mocoeff', data=mf.mo_coeff)
+# These parameters are used for testing purpose. It is not a production-level calculation.
+options = {
+    "num_steps_per_block": 10,
+    "timestep": 0.01,
+    "ad_block_size": 10,
+    "num_walkers_per_process": 10,
+    "num_ad_blocks": 10,
+    "pop_control_freq": 5,
+    "stabilize_freq": 5,
+    "grad_checkpointing": False,
+    "chkpt_size" : 50
+}
+
+
+adafqmc = ADAFQMC.build(comm, trial_tangent, **options)
+energy, obs = adafqmc.run(hamobs, trial_detached, tg)
