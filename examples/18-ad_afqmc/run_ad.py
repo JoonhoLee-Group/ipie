@@ -24,7 +24,7 @@ else:
     tg = None
 
 scomm = get_shared_comm(comm, verbose=True)
-hamobs = generate_hamiltonianobs_shared(scomm, 'my_hamiltonian.h5', 'dipole')
+hamobs = generate_hamiltonianobs_shared(scomm, 'hamiltonian.h5', 'dipole')
 trial = comm.bcast(trial, root=0)
 tg = comm.bcast(tg, root=0)
 

@@ -47,7 +47,7 @@ print("# finished calculating dipole")
 print("# start to generate hamiltonian")
 hamobs = generate_hamiltonian_from_pyscf(mf, num_frozen=num_frozen, ortho_ao=False, observable=dip, obs_type='dipole')
 print(f"# shape of cholesky vector: {hamobs.chol.shape}")
-dump_hamiltonian(hamobs, 'my_hamiltonian.h5')
+dump_hamiltonian(hamobs, 'hamiltonian.h5')
 print("# finished generating hamiltonian")
 
 # compute trial and the tangent of trial
