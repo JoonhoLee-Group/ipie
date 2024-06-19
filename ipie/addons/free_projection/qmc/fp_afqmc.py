@@ -39,30 +39,6 @@ from ipie.walkers.walkers_dispatch import get_initial_walker
 class FPAFQMC(AFQMC):
     """Free projection AFQMC driver."""
 
-    def __init__(
-        self,
-        system,
-        hamiltonian,
-        trial,
-        walkers,
-        propagator,
-        mpi_handler,
-        params: QMCParamsFP,
-        verbose: int = 0,
-        ccsd=None,
-    ):
-        super().__init__(
-            system,
-            hamiltonian,
-            trial,
-            walkers,
-            propagator,
-            mpi_handler,
-            params,
-            verbose=verbose,
-        )
-        self.ccsd = ccsd
-
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type
     def build(
@@ -81,7 +57,6 @@ class FPAFQMC(AFQMC):
         mpi_handler=None,
         ene_0=0.0,
         num_iterations_fp=1,
-        ccsd=None,
     ) -> "FPAFQMC":
         """Factory method to build AFQMC driver from hamiltonian and trial wavefunction.
 
@@ -174,7 +149,6 @@ class FPAFQMC(AFQMC):
             mpi_handler,
             params,
             verbose=(verbose and comm.rank == 0),
-            ccsd=ccsd,
         )
 
     @staticmethod
@@ -344,9 +318,7 @@ class FPAFQMC(AFQMC):
                 self.params.num_walkers,
                 self.mpi_handler,
             )
-            if self.ccsd is not None:
-                ccsd_walkers = self.ccsd.get_walkers(self.params.num_walkers)
-                initial_walkers.set_walkers(ccsd_walkers, ccsd_walkers)
+            initial_walkers.initialize_walkers(self.propagator.ccsd)
             initial_walkers.build(self.trial)
             self.walkers = initial_walkers
             for step in range(1, total_steps + 1):

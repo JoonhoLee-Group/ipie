@@ -16,25 +16,14 @@
 #          Joonho Lee
 #
 
-from dataclasses import dataclass
-
 from ipie.utils.backend import arraylib as xp
 
 
-@dataclass
 class CCSD:
     """CCSD initial state"""
 
-    one_body_op: None
-    hs_ops: None
-    orbital_rotation: None
-    n_orbs: int = None
-    n_occ: int = None
-    n_open: int = None
-    n_exc: int = None
-
     def __init__(self, t1, t2, orbital_rotation=None) -> None:
-        """Initialise the CCSD state.
+        """Initialize the CCSD state.
 
         Parameters
         ----------
