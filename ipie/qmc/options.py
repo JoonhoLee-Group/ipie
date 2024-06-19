@@ -156,7 +156,7 @@ class QMCParams:
     pop_control_freq : int
         Frequency at which population control occurs.
     rng_seed : int
-        The random number seed. If run in parallel the seeds on other cores / 
+        The random number seed. If run in parallel the seeds on other cores /
         threads are determined from this.
     """
 

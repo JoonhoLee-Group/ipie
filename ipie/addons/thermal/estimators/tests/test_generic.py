@@ -22,6 +22,7 @@ from typing import Tuple, Union
 
 try:
     from ipie.addons.thermal.utils.legacy_testing import build_legacy_generic_test_case_handlers
+
     _no_cython = False
 
 except ModuleNotFoundError:
@@ -33,9 +34,12 @@ from ipie.addons.thermal.estimators.generic import local_energy_generic_cholesky
 from ipie.addons.thermal.utils.testing import build_generic_test_case_handlers
 
 from ipie.legacy.estimators.thermal import one_rdm_from_G as legacy_one_rdm_from_G
-from ipie.legacy.estimators.generic import local_energy_generic_cholesky as legacy_local_energy_generic_cholesky
+from ipie.legacy.estimators.generic import (
+    local_energy_generic_cholesky as legacy_local_energy_generic_cholesky,
+)
 
 comm = MPI.COMM_WORLD
+
 
 @pytest.mark.skipif(_no_cython, reason="Need to build cython modules.")
 @pytest.mark.unit
@@ -47,7 +51,7 @@ def test_local_energy_cholesky(mf_trial=False):
     nbasis = 10
 
     # Thermal AFQMC params.
-    mu = -10.
+    mu = -10.0
     beta = 0.1
     timestep = 0.01
     nwalkers = 12
@@ -62,30 +66,49 @@ def test_local_energy_cholesky(mf_trial=False):
 
     # Test.
     objs = build_generic_test_case_handlers(
-            nelec, nbasis, mu, beta, timestep, nwalkers=nwalkers, lowrank=lowrank, 
-            mf_trial=mf_trial, complex_integrals=complex_integrals, debug=debug, 
-            seed=seed, verbose=verbose)
-    trial = objs['trial']
-    hamiltonian = objs['hamiltonian']
-    P = one_rdm_from_G(trial.G) 
+        nelec,
+        nbasis,
+        mu,
+        beta,
+        timestep,
+        nwalkers=nwalkers,
+        lowrank=lowrank,
+        mf_trial=mf_trial,
+        complex_integrals=complex_integrals,
+        debug=debug,
+        seed=seed,
+        verbose=verbose,
+    )
+    trial = objs["trial"]
+    hamiltonian = objs["hamiltonian"]
+    P = one_rdm_from_G(trial.G)
     eloc = local_energy_generic_cholesky(hamiltonian, P)
 
     # Legacy.
     legacy_objs = build_legacy_generic_test_case_handlers(
-                    hamiltonian, comm, nelec, mu, beta, timestep, nwalkers=nwalkers, 
-                    lowrank=lowrank, mf_trial=mf_trial, seed=seed, verbose=verbose)
-    legacy_system = legacy_objs['system']
-    legacy_trial = legacy_objs['trial']
-    legacy_hamiltonian = legacy_objs['hamiltonian']
+        hamiltonian,
+        comm,
+        nelec,
+        mu,
+        beta,
+        timestep,
+        nwalkers=nwalkers,
+        lowrank=lowrank,
+        mf_trial=mf_trial,
+        seed=seed,
+        verbose=verbose,
+    )
+    legacy_system = legacy_objs["system"]
+    legacy_trial = legacy_objs["trial"]
+    legacy_hamiltonian = legacy_objs["hamiltonian"]
 
     legacy_P = legacy_one_rdm_from_G(legacy_trial.G)
-    legacy_eloc = legacy_local_energy_generic_cholesky(
-                    legacy_system, legacy_hamiltonian, legacy_P)
-    
+    legacy_eloc = legacy_local_energy_generic_cholesky(legacy_system, legacy_hamiltonian, legacy_P)
+
     numpy.testing.assert_allclose(trial.G, legacy_trial.G, atol=1e-10)
     numpy.testing.assert_allclose(P, legacy_P, atol=1e-10)
     numpy.testing.assert_allclose(eloc, legacy_eloc, atol=1e-10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_local_energy_cholesky(mf_trial=True)

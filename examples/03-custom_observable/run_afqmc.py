@@ -15,6 +15,8 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
+from typing import Dict
+
 import numpy as np
 from pyscf import gto, scf
 
@@ -86,11 +88,11 @@ class Diagonal1RDM(EstimatorBase):
         # Must specify that we're dealing with array valued estimator
         self.scalar_estimator = False
 
-    def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
-        numer = np.einsum("w,wii->i", walker_batch.weight, walker_batch.Ga + walker_batch.Gb)
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
+        trial.calc_greens_function(walkers, build_full=True)
+        numer = np.einsum("w,wii->i", walkers.weight, walkers.Ga + walkers.Gb)
         self["DiagGNumer"] = numer
-        self["DiagGDenom"] = sum(walker_batch.weight)
+        self["DiagGDenom"] = sum(walkers.weight)
 
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
@@ -127,25 +129,28 @@ class Mixed1RDM(EstimatorBase):
         # Must specify that we're dealing with array valued estimator
         self.scalar_estimator = False
 
-    def compute_estimator(self, system, walker_batch, hamiltonian, trial_wavefunction):
-        trial_wavefunction.calc_greens_function(walker_batch, build_full=True)
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
+        trial.calc_greens_function(walkers, build_full=True)
         numer = np.array(
             [
-                np.einsum("w,wij->ij", walker_batch.weight, walker_batch.Ga),
-                np.einsum("w,wij->ij", walker_batch.weight, walker_batch.Gb),
+                np.einsum("w,wij->ij", walkers.weight, walkers.Ga),
+                np.einsum("w,wij->ij", walkers.weight, walkers.Gb),
             ]
         )
 
         # For multidimensional arrays we must flatten the data
         self["GNumer"] = numer.ravel()
-        self["GDenom"] = sum(walker_batch.weight)
+        self["GDenom"] = sum(walkers.weight)
 
 
 afqmc = build_afqmc_driver(comm, nelec=mol.nelec)
 # Let us override the number of blocks to keep it short
 afqmc.params.num_blocks = 20
 # We can now add this to the estimator handler object in the afqmc driver
-add_est = {"diagG": Diagonal1RDM(ham=afqmc.hamiltonian), "1RDM": Mixed1RDM(ham=afqmc.hamiltonian)}
+add_est: Dict[str, EstimatorBase] = {
+    "diagG": Diagonal1RDM(ham=afqmc.hamiltonian),
+    "1RDM": Mixed1RDM(ham=afqmc.hamiltonian),
+}
 afqmc.run(additional_estimators=add_est)
 # We can extract the qmc data as as a pandas data frame like so
 from ipie.analysis.extraction import extract_observable

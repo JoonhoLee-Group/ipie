@@ -78,7 +78,7 @@ def test_generic_single_det_batch():
         afqmc.run(verbose=False, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)
         afqmc.estimators.compute_estimators(
-            comm, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.walkers
+            afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.walkers
         )
         numer_batch = afqmc.estimators["energy"]["ENumer"]
         denom_batch = afqmc.estimators["energy"]["EDenom"]
@@ -165,7 +165,7 @@ def test_generic_single_det_batch_density_diff():
         afqmc.run(verbose=False, estimator_filename=tmpf.name)
         afqmc.finalise(verbose=0)
         afqmc.estimators.compute_estimators(
-            comm, afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.walkers
+            afqmc.system, afqmc.hamiltonian, afqmc.trial, afqmc.walkers
         )
 
         numer_batch = afqmc.estimators["energy"]["ENumer"]

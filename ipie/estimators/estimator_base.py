@@ -15,13 +15,13 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 
 import numpy as np
 
-from ipie.utils.io import format_fixed_width_strings, format_fixed_width_floats
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import to_host
+from ipie.utils.io import format_fixed_width_floats, format_fixed_width_strings
 
 
 class EstimatorBase(metaclass=ABCMeta):
@@ -78,7 +78,7 @@ class EstimatorBase(metaclass=ABCMeta):
         size = 0
         for _, v in self._data.items():
             if isinstance(v, np.ndarray):
-                size += np.prod(v.shape)
+                size += int(np.prod(v.shape))
             else:
                 size += 1
         return size
@@ -89,8 +89,9 @@ class EstimatorBase(metaclass=ABCMeta):
         self._shape = shape
 
     @abstractmethod
-    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray:
-        ...
+    def compute_estimator(
+        self, system=None, walkers=None, hamiltonian=None, trial=None
+    ) -> np.ndarray: ...
 
     @property
     def names(self):
@@ -142,5 +143,4 @@ class EstimatorBase(metaclass=ABCMeta):
             else:
                 self._data[k] = 0.0j
 
-    def post_reduce_hook(self, data) -> None:
-        ...
+    def post_reduce_hook(self, data) -> None: ...

@@ -35,6 +35,7 @@ from ipie.addons.thermal.propagation.force_bias import construct_force_bias
 # TODO: Add lowrank implementation. See: https://github.com/JoonhoLee-Group/ipie/issues/302
 # Ref: 10.1103/PhysRevB.80.214116 for bounds.
 
+
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: GenericRealChol, trial):
     r"""Compute mean field shift.
@@ -50,7 +51,7 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial):
     tmp_real = numpy.dot(hamiltonian.chol.T, P.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, P.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
-    return mf_shift # Shape (nchol,).
+    return mf_shift  # Shape (nchol,).
 
 
 @plum.dispatch
@@ -69,11 +70,11 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial):
     mf_shift = numpy.zeros(hamiltonian.nfields, dtype=hamiltonian.chol.dtype)
     mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, P.ravel())
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, P.ravel())
-    return mf_shift # Shape (nchol,).
+    return mf_shift  # Shape (nchol,).
 
 
 class PhaselessBase(ContinuousBase):
-    """A base class for generic continuous HS transform FT-AFQMC propagators."""  
+    """A base class for generic continuous HS transform FT-AFQMC propagators."""
 
     def __init__(self, timestep, mu, lowrank=False, exp_nmax=6, verbose=False):
         super().__init__(timestep, verbose=verbose)
@@ -87,7 +88,6 @@ class PhaselessBase(ContinuousBase):
         self.mpi_handler = None
         self.lowrank = lowrank
         self.exp_nmax = exp_nmax
-
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         # dt/2 one-body propagator
@@ -111,7 +111,6 @@ class PhaselessBase(ContinuousBase):
         self.mf_core = hamiltonian.ecore + 0.5 * numpy.dot(self.mf_shift, self.mf_shift)
         self.mf_const_fac = cmath.exp(-self.dt * self.mf_core)
 
-
     @plum.dispatch
     def construct_one_body_propagator(self, hamiltonian: GenericRealChol):
         r"""Construct mean-field shifted one-body propagator.
@@ -132,12 +131,11 @@ class PhaselessBase(ContinuousBase):
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, self.mf_shift).reshape(nb, nb)
         muN = self.mu * numpy.identity(nb, dtype=hamiltonian.H1.dtype)
         H1 = hamiltonian.h1e_mod - numpy.array([shift + muN, shift + muN])
-        expH1 = numpy.array([
-                    scipy.linalg.expm(-0.5 * self.dt * H1[0]), 
-                    scipy.linalg.expm(-0.5 * self.dt * H1[1])])
-        return expH1 # Shape (nbasis, nbasis).
+        expH1 = numpy.array(
+            [scipy.linalg.expm(-0.5 * self.dt * H1[0]), scipy.linalg.expm(-0.5 * self.dt * H1[1])]
+        )
+        return expH1  # Shape (nbasis, nbasis).
 
-    
     @plum.dispatch
     def construct_one_body_propagator(self, hamiltonian: GenericComplexChol):
         r"""Construct mean-field shifted one-body propagator.
@@ -161,11 +159,10 @@ class PhaselessBase(ContinuousBase):
         shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, self.mf_shift[nchol:]).reshape(nb, nb)
         muN = self.mu * numpy.identity(nb, dtype=hamiltonian.H1.dtype)
         H1 = hamiltonian.h1e_mod - numpy.array([shift + muN, shift + muN])
-        expH1 = numpy.array([
-                    scipy.linalg.expm(-0.5 * self.dt * H1[0]), 
-                    scipy.linalg.expm(-0.5 * self.dt * H1[1])])
-        return expH1 # Shape (nbasis, nbasis).
-
+        expH1 = numpy.array(
+            [scipy.linalg.expm(-0.5 * self.dt * H1[0]), scipy.linalg.expm(-0.5 * self.dt * H1[1])]
+        )
+        return expH1  # Shape (nbasis, nbasis).
 
     def construct_two_body_propagator(self, walkers, hamiltonian, trial, debug=False):
         r"""Construct two-body propagator.
@@ -187,7 +184,7 @@ class PhaselessBase(ContinuousBase):
             Trial dnsity matrix.
         """
         # Optimal force bias
-        xbar = xp.zeros((walkers.nwalkers, hamiltonian.nfields)) 
+        xbar = xp.zeros((walkers.nwalkers, hamiltonian.nfields))
         start_time = time.time()
         self.vbias = construct_force_bias(hamiltonian, walkers)
         xbar = -self.sqrt_dt * (1j * self.vbias - self.mf_shift)
@@ -198,18 +195,22 @@ class PhaselessBase(ContinuousBase):
 
         # Normally distrubted auxiliary fields.
         xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walkers.nwalkers).reshape(
-                walkers.nwalkers, hamiltonian.nfields)
+            walkers.nwalkers, hamiltonian.nfields
+        )
 
-        if debug: self.xi = xi # For debugging.
-        xshifted = xi - xbar # Shape (nwalkers, nfields).
-        
+        if debug:
+            self.xi = xi  # For debugging.
+        xshifted = xi - xbar  # Shape (nwalkers, nfields).
+
         # Constant factor arising from force bias and mean field shift
-        cmf = -self.sqrt_dt * xp.einsum("wx,x->w", xshifted, self.mf_shift) # Shape (nwalkers,).
+        cmf = -self.sqrt_dt * xp.einsum("wx,x->w", xshifted, self.mf_shift)  # Shape (nwalkers,).
         # Constant factor arising from shifting the propability distribution.
-        cfb = xp.einsum("wx,wx->w", xi, xbar) - 0.5 * xp.einsum("wx,wx->w", xbar, xbar) # Shape (nwalkers,).
+        cfb = xp.einsum("wx,wx->w", xi, xbar) - 0.5 * xp.einsum(
+            "wx,wx->w", xbar, xbar
+        )  # Shape (nwalkers,).
 
-        xshifted = xshifted.T.copy() # Shape (nfields, nwalkers).
-        VHS = self.construct_VHS(hamiltonian, xshifted) # Shape (nwalkers, nbasis, nbasis).
+        xshifted = xshifted.T.copy()  # Shape (nfields, nwalkers).
+        VHS = self.construct_VHS(hamiltonian, xshifted)  # Shape (nwalkers, nbasis, nbasis).
         return cmf, cfb, xshifted, VHS
 
     def propagate_walkers_one_body(self, walkers):
@@ -217,11 +218,12 @@ class PhaselessBase(ContinuousBase):
 
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         pass
-    
-    def propagate_walkers(self, walkers, hamiltonian, trial, eshift=0., debug=False):
+
+    def propagate_walkers(self, walkers, hamiltonian, trial, eshift=0.0, debug=False):
         start_time = time.time()
         cmf, cfb, xshifted, VHS = self.construct_two_body_propagator(
-                                    walkers, hamiltonian, trial, debug=debug)
+            walkers, hamiltonian, trial, debug=debug
+        )
         assert walkers.nwalkers == xshifted.shape[-1]
         self.timer.tvhs += time.time() - start_time
         assert len(VHS.shape) == 3
@@ -230,7 +232,7 @@ class PhaselessBase(ContinuousBase):
         for iw in range(walkers.nwalkers):
             stack = walkers.stack[iw]
             phi = xp.identity(VHS[iw].shape[-1], dtype=xp.complex128)
-            BV = apply_exponential(phi, VHS[iw], self.exp_nmax) # Shape (nbasis, nbasis).
+            BV = apply_exponential(phi, VHS[iw], self.exp_nmax)  # Shape (nbasis, nbasis).
             B = numpy.array([BV.dot(self.BH1[0]), BV.dot(self.BH1[1])])
             B = numpy.array([self.BH1[0].dot(B[0]), self.BH1[1].dot(B[1])])
 
@@ -250,42 +252,39 @@ class PhaselessBase(ContinuousBase):
             # Now apply phaseless approximation.
             # Use legacy thermal weight update for now.
             self.update_weight_legacy(walkers, iw, G, cfb, cmf, eshift)
-            #self.update_weight(walkers, iw, G, cfb, cmf, eshift)
+            # self.update_weight(walkers, iw, G, cfb, cmf, eshift)
 
             self.timer.tupdate += time.time() - start_time
 
-
     def update_weight(self, walkers, iw, G, cfb, cmf, eshift):
-        """Update weight for walker `iw`.
-        """
+        """Update weight for walker `iw`."""
         M0a = scipy.linalg.det(G[0], check_finite=False)
         M0b = scipy.linalg.det(G[1], check_finite=False)
         Mnewa = scipy.linalg.det(walkers.Ga[iw], check_finite=False)
         Mnewb = scipy.linalg.det(walkers.Gb[iw], check_finite=False)
-        
+
         # ovlp = det( G^{-1} )
-        ovlp_ratio = (M0a * M0b) / (Mnewa * Mnewb) # ovlp_new / ovlp_old
-        hybrid_energy = -(xp.log(ovlp_ratio) + cfb[iw] + cmf[iw]) / self.dt # Scalar.
+        ovlp_ratio = (M0a * M0b) / (Mnewa * Mnewb)  # ovlp_new / ovlp_old
+        hybrid_energy = -(xp.log(ovlp_ratio) + cfb[iw] + cmf[iw]) / self.dt  # Scalar.
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
         importance_function = xp.exp(
-            -self.dt * (0.5 * (hybrid_energy + walkers.hybrid_energy) - eshift))
+            -self.dt * (0.5 * (hybrid_energy + walkers.hybrid_energy) - eshift)
+        )
 
-        # Splitting w_k = |I(x, \bar{x}, |phi_k>)| e^{i theta_k}, where `k` 
+        # Splitting w_k = |I(x, \bar{x}, |phi_k>)| e^{i theta_k}, where `k`
         # labels the time slice.
         magn = xp.abs(importance_function)
         walkers.hybrid_energy = hybrid_energy
-        dtheta = (-self.dt * hybrid_energy - cfb[iw]).imag # Scalar.
-        cosine_fac = xp.amax([0., xp.cos(dtheta)])
+        dtheta = (-self.dt * hybrid_energy - cfb[iw]).imag  # Scalar.
+        cosine_fac = xp.amax([0.0, xp.cos(dtheta)])
         walkers.weight[iw] *= magn * cosine_fac
         walkers.M0a[iw] = Mnewa
         walkers.M0b[iw] = Mnewb
 
-
     def update_weight_legacy(self, walkers, iw, G, cfb, cmf, eshift):
-        """Update weight for walker `iw` using legacy code.
-        """
-        #M0a = walkers.M0a[iw]
-        #M0b = walkers.M0b[iw]
+        """Update weight for walker `iw` using legacy code."""
+        # M0a = walkers.M0a[iw]
+        # M0b = walkers.M0b[iw]
         M0a = scipy.linalg.det(G[0], check_finite=False)
         M0b = scipy.linalg.det(G[1], check_finite=False)
         Mnewa = scipy.linalg.det(walkers.Ga[iw], check_finite=False)
@@ -313,10 +312,10 @@ class PhaselessBase(ContinuousBase):
                 walkers.M0b[iw] = Mnewb
 
             else:
-                walkers.weight[iw] = 0.
+                walkers.weight[iw] = 0.0
 
         except ZeroDivisionError:
-            walkers.weight[iw] = 0.
+            walkers.weight[iw] = 0.0
 
     def apply_bound_force_bias(self, xbar, max_bound=1.0):
         absxbar = xp.abs(xbar)
@@ -327,7 +326,6 @@ class PhaselessBase(ContinuousBase):
         xbar = xp.where(idx_to_rescale, xbar_rescaled, xbar)
         self.nfb_trig += xp.sum(idx_to_rescale)
         return xbar
-
 
     def apply_bound_hybrid(self, ehyb, eshift):  # Shift is a number but ehyb is not
         # For initial steps until first estimator communication, `eshift` will be
@@ -340,9 +338,7 @@ class PhaselessBase(ContinuousBase):
         emin = eshift.real - self.ebound
         return xp.minimum(emax, xp.maximum(ehyb, emin))
 
-
     # Form VHS.
     @abstractmethod
     def construct_VHS(self, hamiltonian, xshifted):
         pass
-

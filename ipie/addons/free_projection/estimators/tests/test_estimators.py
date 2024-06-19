@@ -68,8 +68,12 @@ def test_estimator_handler_fp():
         handler["energy1"] = estim
         handler.json_string = ""
         handler.initialize(comm)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
-        handler.compute_estimators(comm, system, ham, trial, walker_batch)
+        handler.compute_estimators(
+            system=system, hamiltonian=ham, trial=trial, walker_batch=walker_batch
+        )
+        handler.compute_estimators(
+            system=system, hamiltonian=ham, trial=trial, walker_batch=walker_batch
+        )
 
 
 if __name__ == "__main__":

@@ -35,5 +35,5 @@ def test_noci():
     trial.calculate_energy(sys, ham)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_noci()

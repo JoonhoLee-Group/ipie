@@ -190,7 +190,7 @@ class EstimatorHandler(object):
         self.index = self.index + 1
         self.filename = self.basename + f".{self.index}.h5"
 
-    def compute_estimators(self, comm, system, hamiltonian, trial, walker_batch):
+    def compute_estimators(self, system=None, hamiltonian=None, trial=None, walker_batch=None):
         """Update estimators with bached psi
 
         Parameters
@@ -201,7 +201,9 @@ class EstimatorHandler(object):
         # TODO: generalize for different block groups (loop over groups)
         offset = self.num_walker_props
         for k, e in self.items():
-            e.compute_estimator(system, walker_batch, hamiltonian, trial)
+            e.compute_estimator(
+                system=system, walkers=walker_batch, hamiltonian=hamiltonian, trial=trial
+            )
             start = offset + self.get_offset(k)
             end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data

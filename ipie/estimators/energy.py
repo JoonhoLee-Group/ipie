@@ -15,6 +15,8 @@
 # Author: Fionn Malone <fmalone@google.com>
 #
 
+from typing import Union
+
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
@@ -23,7 +25,7 @@ from ipie.estimators.local_energy_batch import (
     local_energy_multi_det_trial_batch,
 )
 from ipie.estimators.local_energy_noci import local_energy_noci
-from ipie.estimators.local_energy_sd import local_energy_single_det_uhf
+from ipie.estimators.local_energy_sd import local_energy_single_det_uhf, local_energy_single_det_ghf
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
     local_energy_multi_det_trial_wicks_batch_opt,
@@ -40,9 +42,10 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.uhf_walkers import UHFWalkers
-from typing import Union
+from ipie.walkers.ghf_walkers import GHFWalkers
 
 
 @plum.dispatch
@@ -110,6 +113,13 @@ def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalk
     return local_energy_noci(system, hamiltonian, walkers, trial)
 
 
+@plum.dispatch
+def local_energy(
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+):
+    return local_energy_single_det_ghf(system, hamiltonian, walkers, trial)
+
+
 class EnergyEstimator(EstimatorBase):
     def __init__(
         self,
@@ -133,7 +143,7 @@ class EnergyEstimator(EstimatorBase):
         self.print_to_stdout = True
         self.ascii_filename = filename
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)
