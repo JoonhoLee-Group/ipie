@@ -3,3 +3,4 @@ black
 pytest-xdist
 flynt
 -r mpi.txt
+-r torch.txt
