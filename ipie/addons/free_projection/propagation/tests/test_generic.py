@@ -19,6 +19,7 @@
 import numpy
 import pytest
 
+from ipie.addons.free_projection.propagation.CCSD import CCSD
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
 from ipie.utils.misc import dotdict
 from ipie.utils.testing import build_test_case_handlers
@@ -66,5 +67,29 @@ def test_free_projection():
     )
 
 
+@pytest.mark.unit
+def test_ccsd():
+    numpy.random.seed(7)
+    n_orbs = 10
+    n_occ = 5
+    n_open = 5
+    n_exc = n_occ * n_open
+    t1 = numpy.random.randn(n_occ, n_open)
+    t2 = numpy.random.randn(n_occ, n_occ, n_open, n_open)
+    orbital_rotation = numpy.eye(n_orbs)
+    ccsd = CCSD(t1, t2, orbital_rotation)
+    assert ccsd.n_orbs == n_orbs
+    assert ccsd.n_occ == n_occ
+    assert ccsd.n_open == n_open
+    assert ccsd.n_exc == n_exc
+    assert ccsd.one_body_op.shape == (n_open, n_occ)
+    assert ccsd.hs_ops.shape == (n_exc, n_open, n_occ)
+
+    n_walkers = 8
+    walkers = ccsd.get_walkers(n_walkers)
+    assert walkers.shape == (n_walkers, n_orbs, n_occ)
+
+
 if __name__ == "__main__":
     test_free_projection()
+    test_ccsd()

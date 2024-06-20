@@ -16,14 +16,30 @@
 #          Joonho Lee
 #
 
+from typing import Optional
+
+from ipie.addons.free_projection.propagation.CCSD import CCSD
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import qr, qr_mode, synchronize
-from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers, UHFWalkersParticleHole
 
 
 class UHFWalkersFP(UHFWalkers):
     """UHF style walker specialized for its use with free projection."""
+
+    def initialize_walkers(self, ccsd: Optional[CCSD] = None):
+        """Initialize walkers using CCSD."""
+        if ccsd is not None:
+            ccsd_walkers = ccsd.get_walkers(self.nwalkers)
+            self.phia = ccsd_walkers.copy()
+            self.phib = ccsd_walkers.copy()
+
+    def set_walkers(self, walkers_a, walkers_b):
+        assert walkers_a.shape == (self.nwalkers, self.nbasis, self.nup)
+        assert walkers_b.shape == (self.nwalkers, self.nbasis, self.ndown)
+        self.phia = walkers_a.copy()
+        self.phib = walkers_b.copy()
 
     def orthogonalise(self, free_projection=False):
         """Orthogonalise all walkers.
@@ -80,3 +96,7 @@ class UHFWalkersFP(UHFWalkers):
 
         synchronize()
         return self.detR
+
+
+class UHFWalkersParticleHoleFP(UHFWalkersFP, UHFWalkersParticleHole):
+    """MSD walker for free projection."""
