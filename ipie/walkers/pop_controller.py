@@ -317,12 +317,10 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         glob_inf_1 = numpy.empty([comm.size, walkers.nwalkers], dtype=numpy.int64)
         glob_inf_1.fill(1)
         glob_inf_2 = numpy.array(
-            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)], dtype=numpy.int64
         )
         glob_inf_3 = numpy.array(
-            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)],
-            dtype=numpy.int64,
+            [[r for i in range(walkers.nwalkers)] for r in range(comm.size)], dtype=numpy.int64
         )
 
     timer.add_non_communication()

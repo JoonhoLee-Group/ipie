@@ -48,9 +48,11 @@ def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
     h1e = numpy.random.random((nmo, nmo))
     if cplx:
         h1e = h1e + 1j * numpy.random.random((nmo, nmo))
+
     eri = numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
     if cplx:
         eri = eri + 1j * numpy.random.normal(scale=0.01, size=(nmo, nmo, nmo, nmo))
+
     # Restore symmetry to the integrals.
     if sym >= 4:
         # (ik|jl) = (jl|ik)

@@ -33,3 +33,7 @@ def test_noci():
     assert trial._rH1a.shape == (trial.num_dets, nalpha, nbasis)
     assert trial._rH1b.shape == (trial.num_dets, nbeta, nbasis)
     trial.calculate_energy(sys, ham)
+
+
+if __name__ == "__main__":
+    test_noci()

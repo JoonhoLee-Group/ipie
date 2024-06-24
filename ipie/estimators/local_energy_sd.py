@@ -29,7 +29,10 @@ from ipie.utils.backend import synchronize
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
+from ipie.estimators.generic import cholesky_jk_ghf
 
 import plum
 
@@ -543,6 +546,27 @@ def two_body_energy_uhf(trial, walkers):
             walkers.Ghalfb,
         )
     return ecoul - exx
+
+
+@plum.dispatch
+def local_energy_single_det_ghf(
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+):
+    nwalkers = walkers.nwalkers
+    energy = []
+    nbasis = hamiltonian.nbasis
+    for iw in range(nwalkers):
+        Gaa = walkers.G[iw][:nbasis, :nbasis].copy()
+        Gbb = walkers.G[iw][nbasis:, nbasis:].copy()
+        e1b = (
+            numpy.sum(Gaa * hamiltonian.H1[0])
+            + numpy.sum(Gbb * hamiltonian.H1[1])
+            + hamiltonian.ecore
+        )
+        ej, ek = cholesky_jk_ghf(hamiltonian.chol, walkers.G[iw])
+        e2b = ej + ek
+        energy += [[e1b + e2b, e1b, e2b]]
+    return xp.array(energy)
 
 
 @plum.dispatch

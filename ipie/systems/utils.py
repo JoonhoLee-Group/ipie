@@ -44,11 +44,12 @@ def get_system(sys_opts=None, verbose=0, comm=None):
             if comm.rank == 0:
                 print("# Error: Number of electrons not specified.")
                 sys.exit()
+
         nelec = (nup, ndown)
         system = Generic(nelec, verbose)
     else:
         if comm.rank == 0:
             print(f"# Error: unrecognized system name {sys_type}.")
-        raise ValueError
 
+        raise ValueError
     return system

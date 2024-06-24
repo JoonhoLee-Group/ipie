@@ -109,3 +109,6 @@ ipie/qmc/tests/reference_data/**/*.h5
 *wheels*
 *FCIDUMP*
 *out*
+
+*.code-workspace
+
