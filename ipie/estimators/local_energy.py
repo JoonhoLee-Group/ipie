@@ -48,13 +48,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     # unfortunate interfacial problem for the HH model
     # if type(hamiltonian) == Generic[hamiltonian.chol.dtype]:
     if Ghalf is not None:
-        return local_energy_cholesky_opt(
-            system,
-            hamiltonian.ecore,
-            Ghalfa=Ghalf[0],
-            Ghalfb=Ghalf[1],
-            trial=trial,
-        )
+        return local_energy_cholesky_opt(trial, hamiltonian, Ghalf)
     else:
         return local_energy_generic_cholesky(system, hamiltonian, G)
 

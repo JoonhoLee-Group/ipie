@@ -7,7 +7,7 @@ import plum
 from ipie.estimators.generic import cholesky_jk_ghf
 from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
 from ipie.estimators.utils import gab_mod
-from ipie.hamiltonians.generic import GenericRealChol
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.propagation.overlap import calc_overlap_single_det_ghf
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHole
@@ -20,7 +20,7 @@ from ipie.walkers.ghf_walkers import GHFWalkers
 
 
 class SingleDetGHF(TrialWavefunctionBase):
-    # num_basis is # of spin-less AOs
+    # `num_basis`is # of spin-less AOs.
     @plum.dispatch
     def __init__(self, uhf_trial: Union[SingleDet, ParticleHole], verbose: bool = False):
         psi = numpy.hstack([uhf_trial.psi0a, uhf_trial.psi0b])
@@ -35,15 +35,15 @@ class SingleDetGHF(TrialWavefunctionBase):
         self.nocc = nalpha + nbeta
         self.psi0 = numpy.zeros((self.nbasis * 2, self.nocc), dtype=uhf_trial.psi0a.dtype)
 
-        self.psi0[: self.nbasis, : self.nalpha] = uhf_trial.psi0a
-        self.psi0[self.nbasis :, self.nalpha :] = uhf_trial.psi0b
+        self.psi0[: self.nbasis, : self.nalpha] = uhf_trial.psi0a.copy()
+        self.psi0[self.nbasis :, self.nalpha :] = uhf_trial.psi0b.copy()
 
         self.psi0a = self.psi0[: self.nbasis, : self.nocc]
         self.psi0b = self.psi0[self.nbasis :, : self.nocc]
 
-        self.G = numpy.zeros((self.nbasis * 2, self.nbasis * 2), dtype=uhf_trial.G[0].dtype)
-        self.G[: self.nbasis, : self.nbasis] = uhf_trial.G[0]
-        self.G[self.nbasis :, self.nbasis :] = uhf_trial.G[1]
+        self.G = numpy.zeros((2*self.nbasis, 2*self.nbasis), dtype=uhf_trial.G[0].dtype)
+        self.G[:self.nbasis, :self.nbasis] = uhf_trial.G[0].copy()
+        self.G[self.nbasis:, self.nbasis:] = uhf_trial.G[1].copy()
 
     @plum.dispatch
     def __init__(
@@ -54,9 +54,10 @@ class SingleDetGHF(TrialWavefunctionBase):
         verbose: bool = False,
     ):
         assert len(wavefunction.shape) == 2
+        assert wavefunction.shape[0] // 2 == num_basis
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         if verbose:
-            print("# Parsing input options for trial_wavefunction.MultiSlater.")
+            print("# Parsing input options for trial_wavefunction.SingleDetGHF.")
         self.psi = wavefunction
         self.num_elec = num_elec
         self._num_dets = 1
@@ -69,9 +70,9 @@ class SingleDetGHF(TrialWavefunctionBase):
         self.nocc = self.nalpha + self.nbeta
         self.psi0 = self.psi[:, : self.nocc]
 
-        # can split alpha/beta part of the GHF wfn
-        self.psi0a = self.psi[: self.nbasis, : self.nocc]
-        self.psi0b = self.psi[self.nbasis :, : self.nocc]
+        # Can split alpha/beta part of the GHF wfn.
+        self.psi0a = self.psi[:self.nbasis, :self.nocc]
+        self.psi0b = self.psi[self.nbasis:, :self.nocc]
 
         self.G, self.Ghalf = gab_mod(self.psi, self.psi)
 
@@ -87,7 +88,8 @@ class SingleDetGHF(TrialWavefunctionBase):
         raise RuntimeError("Cannot modify number of determinants in SingleDet trial.")
 
     @plum.dispatch
-    def calculate_energy(self, system: Generic, hamiltonian: GenericRealChol) -> None:
+    def calculate_energy(
+            self, system: Generic, hamiltonian: Union[GenericRealChol, GenericComplexChol]) -> None:
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
@@ -100,8 +102,8 @@ class SingleDetGHF(TrialWavefunctionBase):
             + numpy.sum(Gbb * hamiltonian.H1[1])
             + hamiltonian.ecore
         )
-        self.ej, self.ek = cholesky_jk_ghf(hamiltonian.chol, self.G)
-        self.e2b = self.ej + self.ek
+        self.ej, self.ek = cholesky_jk_ghf(hamiltonian, self.G)
+        self.e2b = self.ej - self.ek
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
@@ -109,14 +111,14 @@ class SingleDetGHF(TrialWavefunctionBase):
                 f"# (E, E1B, E2B): ({self.energy.real:13.8e}, {self.e1b.real:13.8e},"
                 f"{self.e2b.real:13.8e})"
             )
-            print(f"# Time to evaluate local energy: {time.time() - start}")
+            print(f"# Time to evaluate trial energy: {time.time() - start}")
 
     @plum.dispatch
     def half_rotate(self, hamiltonian: GenericRealChol, comm):
         print("# Half rotation not implemented for GHF with GenericRealChol")
         print("# Will use full greens function")
         # Half rotation does not quite make sense for spin-split integrals.
-        # one can do completely spin-orbital based implementation in the future
+        # one can do completely spin-orbital based implementation in the future.
 
     def calc_overlap(self, walkers) -> numpy.ndarray:
         return calc_overlap_single_det_ghf(walkers, self)
@@ -126,46 +128,37 @@ class SingleDetGHF(TrialWavefunctionBase):
 
     @plum.dispatch
     def calc_force_bias(
-        self, hamiltonian: GenericRealChol, walkers: GHFWalkers, mpi_handler: MPIHandler = None
+        self, 
+        hamiltonian: GenericRealChol, 
+        walkers: GHFWalkers, 
+        mpi_handler = None,
     ) -> numpy.ndarray:
         nwalkers = walkers.nwalkers
         Ga = walkers.Ga
         Gb = walkers.Gb
         vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-        vbias_real = xp.einsum(
-            "pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1)
-        )
-        vbias_imag = xp.einsum(
-            "pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1)
-        )
+        vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1))
+        vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1))
         vbias_batch.real = vbias_real
         vbias_batch.imag = vbias_imag
         synchronize()
         return vbias_batch
-
-    # @plum.dispatch
-    # def calc_force_bias(self, hamiltonian:GenericComplexChol, walkers:UHFWalkers, mpi_handler: MPIHandler=None) -> numpy.ndarray:
-    #     # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
-    #     Ghalfa = walkers.Ghalfa.reshape(
-    #         walkers.nwalkers, walkers.nup * hamiltonian.nbasis
-    #     )
-    #     Ghalfb = walkers.Ghalfb.reshape(
-    #         walkers.nwalkers, walkers.ndown * hamiltonian.nbasis
-    #     )
-    #     vbias = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
-    #     vbias[:hamiltonian.nchol,:] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
-    #     vbias[hamiltonian.nchol:,:] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
-    #     vbias = vbias.T.copy()
-    #     return vbias
-
-    # @plum.dispatch
-    # def calc_force_bias(self, hamiltonian:GenericComplexChol, walkers:GHFWalkers, mpi_handler: MPIHandler=None) -> numpy.ndarray:
-    #     # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
-    #     Ghalf = walkers.Ghalf.reshape(
-    #         walkers.nwalkers, (walkers.nup+walkers.ndown) * hamiltonian.nbasis
-    #     )
-    #     vbias = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalf.dtype)
-    #     vbias[:hamiltonian.nchol,:] = self._rA.dot(Ghalf.T)
-    #     vbias[hamiltonian.nchol:,:] = self._rB.dot(Ghalf.T)
-    #     vbias = vbias.T.copy()
-    #     return vbias
+    
+    # TODO: check.
+    @plum.dispatch
+    def calc_force_bias(
+        self,
+        hamiltonian: GenericComplexChol,
+        walkers: GHFWalkers,
+        mpi_handler = None,
+    ) -> numpy.ndarray:
+        nwalkers = walkers.nwalkers
+        Ga = walkers.Ga
+        Gb = walkers.Gb
+        vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+        vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, (Ga + Gb).reshape(nwalkers, -1))
+        vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, (Ga + Gb).reshape(nwalkers, -1))
+        vbias_batch[:, :hamiltonian.nchol] = vbias_A
+        vbias_batch[:, hamiltonian.nchol:] = vbias_B
+        synchronize()
+        return vbias_batch

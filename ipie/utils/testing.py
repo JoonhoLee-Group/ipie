@@ -35,13 +35,14 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.io import get_input_value
 from ipie.utils.linalg import modified_cholesky
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import UHFWalkersTrial, GHFWalkersTrial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -108,6 +109,26 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
     else:
         return (coeffs, wfn)
 
+
+def get_random_nomsd_ghf(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
+    a = numpy.random.rand(ndet * (2*nbasis) * (nup + ndown))
+    b = numpy.random.rand(ndet * (2*nbasis) * (nup + ndown))
+    if cplx:
+        wfn = (a + 1j * b).reshape((ndet, 2*nbasis, nup + ndown))
+        coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
+    else:
+        wfn = a.reshape((ndet, 2*nbasis, nup + ndown))
+        coeffs = numpy.random.rand(ndet)
+    if init:
+        a = numpy.random.rand(2*nbasis * (nup + ndown))
+        b = numpy.random.rand(2*nbasis * (nup + ndown))
+        if cplx:
+            init_wfn = (a + 1j * b).reshape((2*nbasis, nup + ndown))
+        else:
+            init_wfn = a.reshape((2*nbasis, nup + ndown))
+        return (coeffs, wfn, init_wfn)
+    else:
+        return (coeffs, wfn)
 
 def truncated_combinations(iterable, r, count):
     # Modified from:
@@ -378,6 +399,20 @@ def build_random_single_det_trial(
     trial = SingleDet(wfn[0], num_elec, num_basis)
     return trial, init
 
+def build_random_single_det_ghf_trial(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    complex_trial: bool = False,
+    rhf_trial: bool = False,
+):
+    _, wfn, init = get_random_nomsd_ghf(
+        num_elec[0], num_elec[1], num_basis, ndet=1, cplx=complex_trial, init=True
+    )
+    if rhf_trial:
+        wfn[0, num_basis :, num_elec[0] :] = wfn[0, : num_basis, : num_elec[0]]
+        init[num_basis :, num_elec[0] :] = init[: num_basis, : num_elec[0]]
+    trial = SingleDetGHF(wfn[0], num_elec, num_basis)
+    return trial, init
 
 def build_random_trial(
     num_elec: Tuple[int, int],
@@ -390,6 +425,13 @@ def build_random_trial(
 ):
     if trial_type == "single_det":
         return build_random_single_det_trial(
+            num_elec,
+            num_basis,
+            complex_trial=complex_trial,
+            rhf_trial=rhf_trial,
+        )
+    elif trial_type == "single_det_ghf":
+        return build_random_single_det_ghf_trial(
             num_elec,
             num_basis,
             complex_trial=complex_trial,
@@ -532,6 +574,72 @@ def build_test_case_handlers(
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
     walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
+    walkers.build(trial)  # any intermediates that require information from trial
+
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
+
+    trial.calc_greens_function(walkers)
+    for _ in range(options.num_steps):
+        if two_body_only:
+            prop.propagate_walkers_two_body(walkers, ham, trial)
+        else:
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        if reortho:
+            walkers.reortho()
+        trial.calc_greens_function(walkers)
+
+    return TestData(trial, walkers, ham, prop)
+
+
+def build_test_case_handlers_ghf(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    num_dets=1,
+    trial_type="single_det_ghf",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    choltol: float = 1e-3,
+    reortho: bool = True,
+    options: Union[dict, None] = None,
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    sym = 8
+    if complex_integrals:
+        sym = 4
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+    )
+    ham.eri = eri.copy()
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    walkers = GHFWalkersTrial(
         trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers.build(trial)  # any intermediates that require information from trial

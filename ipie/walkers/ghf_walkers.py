@@ -34,7 +34,6 @@ class GHFWalkers(BaseWalkers):
     nwalkers : int
         The number of walkers in this batch
     """
-
     @plum.dispatch
     def __init__(self, walkers: UHFWalkers, verbose: bool = False):
         self.nup = walkers.nup
@@ -48,11 +47,11 @@ class GHFWalkers(BaseWalkers):
         )
 
         # for iw in range(self.nwalkers):
-        self.phi[:, : self.nbasis, : self.nup] = walkers.phia
-        self.phi[:, self.nbasis :, self.nup :] = walkers.phib
+        self.phi[:, : self.nbasis, : self.nup] = walkers.phia.copy()
+        self.phi[:, self.nbasis :, self.nup :] = walkers.phib.copy()
 
         self.G = numpy.zeros(
-            (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
+            (self.nwalkers, 2*self.nbasis, 2*self.nbasis), dtype=walkers.Ga.dtype
         )
         self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga.copy()
         self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb.copy()
@@ -88,7 +87,7 @@ class GHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler,
+        mpi_handler = None,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -109,12 +108,13 @@ class GHFWalkers(BaseWalkers):
 
         # will be built only on request
         self.G = numpy.zeros(
-            shape=(self.nwalkers, self.nbasis, self.nbasis),
+            shape=(self.nwalkers, 2*self.nbasis, 2*self.nbasis),
             dtype=numpy.complex128,
         )
 
-        self.buff_names += ["phi", "phia", "phib"]
+        self.rhf = None
 
+        self.buff_names += ["phi", "phia", "phib"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 

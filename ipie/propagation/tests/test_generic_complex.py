@@ -21,7 +21,7 @@ import pytest
 
 from ipie.hamiltonians.generic import GenericComplexChol
 from ipie.utils.misc import dotdict
-from ipie.utils.testing import build_test_case_handlers
+from ipie.utils.testing import build_test_case_handlers, build_test_case_handlers_ghf
 
 
 @pytest.mark.unit
@@ -119,6 +119,55 @@ def test_vhs_complex():
 
 
 @pytest.mark.unit
+def test_vhs_complex_ghf():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 8
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+
+    test_handler = build_test_case_handlers_ghf(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det_ghf",
+    )
+
+    ham = test_handler.hamiltonian
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
+
+    vhs = test_handler.propagator.construct_VHS(ham, xshifted)
+
+    isqrt_dt = 1.0j * numpy.sqrt(qmc.dt)
+
+    nbasis = ham.nbasis
+    nchol = ham.nchol
+
+    vhs_ref = isqrt_dt * (ham.A.dot(xshifted[:nchol, :]) + ham.B.dot(xshifted[nchol:, :]))
+    vhs_ref = vhs_ref.T.copy()
+    vhs_ref = vhs_ref.reshape((nwalkers, nbasis, nbasis))
+
+    numpy.testing.assert_allclose(vhs, vhs_ref, atol=1e-10)
+
+
+@pytest.mark.unit
 def test_vhs_complex_vs_real():
     numpy.random.seed(7)
     nmo = 10
@@ -162,13 +211,169 @@ def test_vhs_complex_vs_real():
         numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
     )
     nchol = cx_chol.shape[-1]
-    cx_xshifted = numpy.zeros((cx_ham.nfields, nwalkers))
+    cx_xshifted = numpy.zeros((cx_ham.nfields, nwalkers), dtype=numpy.complex128)
     cx_xshifted[:nchol, :] = xshifted.copy()
     cx_xshifted[nchol:, :] = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(
         nchol, nwalkers
     )
     cx_vhs = test_handler.propagator.construct_VHS(cx_ham, cx_xshifted)
     numpy.testing.assert_allclose(vhs, cx_vhs, atol=1e-10)
+
+
+@pytest.mark.unit
+def test_vhs_complex_ghf_vs_real():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 8
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+
+    test_handler = build_test_case_handlers_ghf(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=False,
+        complex_trial=False,
+        trial_type="single_det_ghf",
+    )
+
+    ham = test_handler.hamiltonian
+    chol = ham.chol
+
+    xshifted = (
+        numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields)
+        .reshape(ham.nfields, nwalkers)
+        .astype(numpy.complex128)
+    )
+
+    vhs = test_handler.propagator.construct_VHS(ham, xshifted)
+
+    cx_chol = numpy.array(chol, dtype=numpy.complex128)
+    cx_ham = GenericComplexChol(
+        numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
+    )
+    nchol = cx_chol.shape[-1]
+    cx_xshifted = numpy.zeros((cx_ham.nfields, nwalkers), dtype=numpy.complex128)
+    cx_xshifted[:nchol, :] = xshifted.copy()
+    cx_xshifted[nchol:, :] = numpy.random.normal(0.0, 1.0, nwalkers * ham.nfields).reshape(
+        nchol, nwalkers
+    )
+    cx_vhs = test_handler.propagator.construct_VHS(cx_ham, cx_xshifted)
+    numpy.testing.assert_allclose(vhs, cx_vhs, atol=1e-10)
+
+
+
+@pytest.mark.unit
+def test_vfb_complex():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 8
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+
+    # using half rotaiton
+    test_handler = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det",
+    )
+
+    ham = test_handler.hamiltonian
+    walkers = test_handler.walkers
+    trial = test_handler.trial
+
+    trial.calc_greens_function(walkers, build_full=True)
+
+    nbasis = ham.nbasis
+    G = walkers.Ga + walkers.Gb
+    G = G.reshape((nwalkers, nbasis**2))
+
+    vfb = trial.calc_force_bias(ham, walkers, walkers.mpi_handler)
+
+    nchol = ham.nchol
+    nfields = ham.nfields
+
+    vfb_ref = numpy.zeros((nwalkers, nfields), dtype=numpy.complex128)
+    vfb_ref[:, :nchol] = numpy.einsum("wi,ix->wx", G, ham.A)
+    vfb_ref[:, nchol:] = numpy.einsum("wi,ix->wx", G, ham.B)
+
+    numpy.testing.assert_allclose(vfb, vfb_ref, atol=1e-10)
+
+
+@pytest.mark.unit
+def test_vfb_complex_ghf():
+    numpy.random.seed(7)
+    nmo = 10
+    nelec = (6, 5)
+    nwalkers = 8
+    nsteps = 25
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "hybrid": True,
+            "num_steps": nsteps,
+        }
+    )
+
+    # using half rotaiton
+    test_handler = build_test_case_handlers_ghf(
+        nelec,
+        nmo,
+        num_dets=1,
+        options=qmc,
+        seed=7,
+        complex_integrals=True,
+        complex_trial=True,
+        trial_type="single_det_ghf",
+    )
+
+    ham = test_handler.hamiltonian
+    walkers = test_handler.walkers
+    trial = test_handler.trial
+
+    trial.calc_greens_function(walkers, build_full=True)
+
+    nbasis = ham.nbasis
+    G = walkers.Ga + walkers.Gb
+    G = G.reshape((nwalkers, nbasis**2))
+
+    vfb = trial.calc_force_bias(ham, walkers, walkers.mpi_handler)
+
+    nchol = ham.nchol
+    nfields = ham.nfields
+
+    vfb_ref = numpy.zeros((nwalkers, nfields), dtype=numpy.complex128)
+    vfb_ref[:, :nchol] = numpy.einsum("wi,ix->wx", G, ham.A)
+    vfb_ref[:, nchol:] = numpy.einsum("wi,ix->wx", G, ham.B)
+
+    numpy.testing.assert_allclose(vfb, vfb_ref, atol=1e-10)
 
 
 @pytest.mark.unit
@@ -234,7 +439,7 @@ def test_vfb_complex_vs_real():
 
 
 @pytest.mark.unit
-def test_vfb_complex():
+def test_vfb_complex_ghf_vs_real():
     numpy.random.seed(7)
     nmo = 10
     nelec = (6, 5)
@@ -250,38 +455,47 @@ def test_vfb_complex():
         }
     )
 
-    # using half rotaiton
-    test_handler = build_test_case_handlers(
+    test_handler = build_test_case_handlers_ghf(
         nelec,
         nmo,
         num_dets=1,
         options=qmc,
         seed=7,
-        complex_integrals=True,
-        complex_trial=True,
-        trial_type="single_det",
+        complex_integrals=False,
+        complex_trial=False,
+        trial_type="single_det_ghf",
     )
 
     ham = test_handler.hamiltonian
     walkers = test_handler.walkers
     trial = test_handler.trial
-
     trial.calc_greens_function(walkers, build_full=True)
-
-    nbasis = ham.nbasis
-    G = walkers.Ga + walkers.Gb
-    G = G.reshape((nwalkers, nbasis**2))
 
     vfb = trial.calc_force_bias(ham, walkers, walkers.mpi_handler)
 
+    nbasis = ham.nbasis
     nchol = ham.nchol
-    nfields = ham.nfields
 
-    vfb_ref = numpy.zeros((nwalkers, nfields), dtype=numpy.complex128)
-    vfb_ref[:, :nchol] = numpy.einsum("wi,ix->wx", G, ham.A)
-    vfb_ref[:, nchol:] = numpy.einsum("wi,ix->wx", G, ham.B)
-
+    chol = ham.chol
+    G = walkers.Ga + walkers.Gb
+    G = G.reshape((nwalkers, nbasis**2))
+    vfb_ref = numpy.einsum("wi,ix->wx", G, chol)
     numpy.testing.assert_allclose(vfb, vfb_ref, atol=1e-10)
+
+    cx_chol = numpy.array(chol, dtype=numpy.complex128)
+    cx_ham = GenericComplexChol(
+        numpy.array(ham.H1, dtype=numpy.complex128), cx_chol, ham.ecore, verbose=False
+    )
+    cx_vfb = trial.calc_force_bias(cx_ham, walkers, walkers.mpi_handler)
+
+    nfields = cx_ham.nfields
+    cx_vfb_ref = numpy.zeros((nwalkers, nfields), dtype=numpy.complex128)
+    cx_vfb_ref[:, :nchol] = numpy.einsum("wi,ix->wx", G, cx_ham.A)
+    cx_vfb_ref[:, nchol:] = numpy.einsum("wi,ix->wx", G, cx_ham.B)
+
+    numpy.testing.assert_allclose(cx_vfb_ref[:, :nchol], vfb_ref, atol=1e-10)
+    numpy.testing.assert_allclose(cx_vfb[:, :nchol], vfb_ref, atol=1e-10)
+    numpy.testing.assert_allclose(cx_vfb, cx_vfb_ref, atol=1e-10)
 
 
 if __name__ == "__main__":
@@ -290,3 +504,8 @@ if __name__ == "__main__":
     test_vhs_complex_vs_real()
     test_vfb_complex()
     test_vfb_complex_vs_real()
+    
+    test_vhs_complex_ghf()
+    test_vhs_complex_ghf_vs_real()
+    test_vfb_complex_ghf()
+    test_vfb_complex_ghf_vs_real()

@@ -5,7 +5,7 @@ import numpy
 import plum
 
 from ipie.config import CommType, config, MPI
-from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.estimators.generic import half_rotated_cholesky_jk_uhf
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
     greens_function_single_det_batch,
@@ -63,6 +63,9 @@ class SingleDet(TrialWavefunctionBase):
         raise RuntimeError("Cannot modify number of determinants in SingleDet trial.")
 
     def calculate_energy(self, system, hamiltonian) -> numpy.ndarray:
+        """
+        `system` is just for backwards compatibillity.
+        """
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
@@ -71,10 +74,10 @@ class SingleDet(TrialWavefunctionBase):
             + numpy.sum(self.Ghalf[1] * self._rH1b)
             + hamiltonian.ecore
         )
-        self.ej, self.ek = half_rotated_cholesky_jk(
-            system, self.Ghalf[0], self.Ghalf[1], trial=self
+        self.ej, self.ek = half_rotated_cholesky_jk_uhf(
+            self, hamiltonian, self.Ghalf
         )
-        self.e2b = self.ej + self.ek
+        self.e2b = self.ej - self.ek
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
@@ -82,7 +85,7 @@ class SingleDet(TrialWavefunctionBase):
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print(f"# Time to evaluate local energy: {time.time() - start} s")
+            print(f"# Time to evaluate trial energy: {time.time() - start} s")
 
     @plum.dispatch
     def half_rotate(

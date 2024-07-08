@@ -27,6 +27,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.ghf_walkers import GHFWalkers
@@ -59,7 +60,7 @@ def get_initial_walker(trial: TrialWavefunctionBase) -> numpy.ndarray:
 # walker dispatcher based on trial type
 @plum.dispatch
 def GHFWalkersTrial(
-    trial: SingleDet,
+    trial: SingleDetGHF,
     initial_walker: numpy.ndarray,
     nup: int,
     ndown: int,
