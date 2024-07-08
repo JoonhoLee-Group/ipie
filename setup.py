@@ -79,6 +79,7 @@ def main() -> None:
         extras_require={
             "mpi": load_requirements("dev/mpi.txt"),
             "dev": load_requirements("dev/dev.txt"),
+            "torch": load_requirements("dev/torch.txt"),
         },
         long_description=open("README.rst").read(),
     )
