@@ -52,3 +52,8 @@ if comm.rank == 0:
         qmc_data = extract_observable(afqmc.estimators[i].filename, "energy")
         energy_mean, energy_err = jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
         print(f"Energy: {energy_mean:.8e} +/- {energy_err:.8e}")
+
+        qmc_data = extract_observable(afqmc.estimators[i].filename, "phase")
+        phase_real_mean, phase_err = jackknife_ratios(qmc_data["PhaseRealNumer"], qmc_data["PhaseDenom"])
+        phase_imag_mean, phase_err = jackknife_ratios(qmc_data["PhaseImagNumer"], qmc_data["PhaseDenom"])
+        print(f"Phase: {phase_real_mean + 1j * phase_imag_mean:.8e} +/- {phase_err:.8e}")
