@@ -17,7 +17,6 @@ class PhaseEstimatorFP(EstimatorBase):
         self.print_to_stdout = True
         self._ascii_filename = None
 
-
     def compute_estimator(self, system, walkers, hamiltonian, trial):
         weighted_phase = np.sum(walkers.weight * walkers.phase)
         self._data["PhaseRealNumer"] = weighted_phase.real
@@ -26,7 +25,6 @@ class PhaseEstimatorFP(EstimatorBase):
 
         return self.data
 
-    
     def get_index(self, name):
         index = self._data_index.get(name, None)
         if index is None:
