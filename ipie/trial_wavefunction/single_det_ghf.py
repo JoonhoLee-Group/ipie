@@ -128,18 +128,19 @@ class SingleDetGHF(TrialWavefunctionBase):
     def calc_force_bias(
         self, hamiltonian: GenericRealChol, walkers: GHFWalkers, mpi_handler: MPIHandler = None
     ) -> numpy.ndarray:
-        nbasis = hamiltonian.nbasis
-
-        Ghalfa = walkers.Ghalf[:, :, :nbasis]
-        Ghalfb = walkers.Ghalf[:, :, nbasis:]
-
-        vbias_batch_real = self._rchola.dot(Ghalfa.T.real) + self._rcholb.dot(Ghalfb.T.real)
-        vbias_batch_imag = self._rchola.dot(Ghalfa.T.imag) + self._rcholb.dot(Ghalfb.T.imag)
-        vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
-        vbias_batch.real = vbias_batch_real.T.copy()
-        vbias_batch.imag = vbias_batch_imag.T.copy()
+        nwalkers = walkers.nwalkers
+        Ga = walkers.Ga
+        Gb = walkers.Gb
+        vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+        vbias_real = xp.einsum(
+            "pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1)
+        )
+        vbias_imag = xp.einsum(
+            "pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1)
+        )
+        vbias_batch.real = vbias_real
+        vbias_batch.imag = vbias_imag
         synchronize()
-
         return vbias_batch
 
     # @plum.dispatch

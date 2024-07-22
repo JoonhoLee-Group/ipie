@@ -140,7 +140,7 @@ class Generic(object):
             if self.verbose:
                 print("# mixed_precision is used for the propagation")
 
-        if isrealobj(self.chol_vecs.dtype):
+        if isrealobj(self.chol_vecs):
             if verbose:
                 print("# Found real Choleksy integrals.")
             self.cplx_chol = False
@@ -314,7 +314,7 @@ def construct_h1e_mod(chol, h1e, h1e_mod):
     chol_view = chol.reshape((nbasis, nbasis * nchol))
     # assert chol_view.__array_interface__['data'][0] == chol.__array_interface__['data'][0]
     v0 = 0.5 * numpy.dot(
-        chol_view, chol_view.T
+        chol_view, chol_view.T.conj() # Conjugate added to account for complex integrals
     )  # einsum('ikn,jkn->ij', chol_3, chol_3, optimize=True)
     h1e_mod[0, :, :] = h1e[0] - v0
     h1e_mod[1, :, :] = h1e[1] - v0
