@@ -181,18 +181,14 @@ def construct_force_bias_batch_single_det(
     #vbias_batch.imag = vbias_imag
     #synchronize()
     #return vbias_batch
-
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol 
-    chol = hamiltonian.chol.reshape(nbasis, nbasis, nchol)
-
+    
     Ga = walkers.Ga
     Gb = walkers.Gb
-    Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    vbias_real = xp.einsum("wppl->wl", Gcharge.real.dot(chol))
-    vbias_imag = xp.einsum("wppl->wl", Gcharge.imag.dot(chol))
+    vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.real)
+    vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.imag)
     vbias_batch.real = vbias_real
     vbias_batch.imag = vbias_imag
     synchronize()
@@ -230,18 +226,13 @@ def construct_force_bias_batch_single_det(
     #synchronize()
     #return vbias_batch
 
-    nbasis = hamiltonian.nbasis
-    nchol = hamiltonian.nchol 
-    A = hamiltonian.A.reshape(nbasis, nbasis, nchol)
-    B = hamiltonian.B.reshape(nbasis, nbasis, nchol)
-
     Ga = walkers.Ga
     Gb = walkers.Gb
-    Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    vbias_A = xp.einsum("wppl->wl", Gcharge.dot(A))
-    vbias_B = xp.einsum("wppl->wl", Gcharge.dot(B))
+    vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, Gcharge)
+    vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, Gcharge)
     vbias_batch[:, :hamiltonian.nchol] = vbias_A
     vbias_batch[:, hamiltonian.nchol:] = vbias_B
     synchronize()
