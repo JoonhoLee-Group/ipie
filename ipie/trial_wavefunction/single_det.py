@@ -197,7 +197,8 @@ class SingleDet(TrialWavefunctionBase):
                 hamiltonian, walkers, self, mpi_handler
             )
         else:
-            return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+            return construct_force_bias_batch_single_det(
+                    hamiltonian, walkers, self._rchola, self._rcholb)
 
     @plum.dispatch
     def calc_force_bias(
@@ -206,4 +207,5 @@ class SingleDet(TrialWavefunctionBase):
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
-        return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+        return construct_force_bias_batch_single_det(
+                hamiltonian, walkers, self._rAa, self._rAb, self._rBa, self._rBb)

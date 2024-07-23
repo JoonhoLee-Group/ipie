@@ -1,6 +1,7 @@
 from pyscf import gto, scf, lo
 import numpy, scipy
 
+from ipie.config import MPI
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.from_pyscf import generate_integrals
 from ipie.trial_wavefunction.single_det import SingleDet
@@ -14,7 +15,8 @@ from ipie.estimators.local_energy_sd import (
 from ipie.hamiltonians.generic import GenericRealChol
 from ipie.qmc.afqmc import AFQMC
 
-verbose = True
+comm = MPI.COMM_WORLD
+verbose = 0 if (comm.rank != 0) else 3
 seed = 7
 numpy.random.seed(seed)
 
@@ -24,6 +26,7 @@ mol = gto.M(
         basis="sto-6g",
         unit="Bohr"
         )
+mol.verbose = verbose
 mf_rhf = scf.RHF(mol).run()
 psi0a_rhf = mf_rhf.mo_coeff
 xinv = numpy.linalg.inv(psi0a_rhf) # work in the RHF basis
@@ -112,6 +115,7 @@ numpy.testing.assert_allclose(trial_uhf.energy, trial.energy)
 afqmc.run()
 print()
 
+# -----------------------------------------------------------------------------
 # One can also build GHF trial and walker objects from UHF objects.
 # Build SingleDetGHF from SingleDet.
 trial = SingleDetGHF(trial_uhf, verbose=verbose)
@@ -129,6 +133,7 @@ walkers_uhf = UHFWalkers(
                 num_walkers,
                 MPIHandler()
                 )
+walkers_uhf.build(trial_uhf)
 
 walkers = GHFWalkers(walkers_uhf)
 walkers.build(trial)

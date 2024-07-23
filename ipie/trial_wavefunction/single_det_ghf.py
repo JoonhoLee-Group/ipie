@@ -134,7 +134,7 @@ class SingleDetGHF(TrialWavefunctionBase):
         walkers: GHFWalkers, 
         mpi_handler = None,
     ) -> numpy.ndarray:
-        return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+        return construct_force_bias_batch_single_det(hamiltonian, walkers)
     
     # TODO: check.
     @plum.dispatch
@@ -144,4 +144,4 @@ class SingleDetGHF(TrialWavefunctionBase):
         walkers: GHFWalkers,
         mpi_handler = None,
     ) -> numpy.ndarray:
-        return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+        return construct_force_bias_batch_single_det(hamiltonian, walkers)

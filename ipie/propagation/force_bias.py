@@ -24,8 +24,6 @@ from ipie.utils.backend import synchronize
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
-from ipie.trial_wavefunction.single_det import SingleDet
-from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 
 
 def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
@@ -80,7 +78,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
 
 @plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    hamiltonian: GenericRealChol, walkers: UHFWalkers, rchola, rcholb
     ):
     """Compute optimal force bias.
 
@@ -94,9 +92,6 @@ def construct_force_bias_batch_single_det(
     walkers : class
         walkers object.
 
-    trial : class
-        Trial wavefunction object.
-
     Returns
     -------
     xbar : :class:`numpy.ndarray`
@@ -104,8 +99,8 @@ def construct_force_bias_batch_single_det(
     """
     if walkers.rhf:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
-        vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
-        vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
+        vbias_batch_real = 2.0 * rchola.dot(Ghalfa.T.real)
+        vbias_batch_imag = 2.0 * rchola.dot(Ghalfa.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
@@ -116,8 +111,8 @@ def construct_force_bias_batch_single_det(
     else:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
         Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
-        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
-        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+        vbias_batch_real = rchola.dot(Ghalfa.T.real) + rcholb.dot(Ghalfb.T.real)
+        vbias_batch_imag = rchola.dot(Ghalfa.T.imag) + rcholb.dot(Ghalfb.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
@@ -127,7 +122,7 @@ def construct_force_bias_batch_single_det(
 
 @plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: GenericComplexChol, walkers: UHFWalkers, trial: SingleDet
+    hamiltonian: GenericComplexChol, walkers: UHFWalkers, rAa, rAb, rBa, rBb
     ):
     """Compute optimal force bias.
 
@@ -140,9 +135,6 @@ def construct_force_bias_batch_single_det(
 
     walkers : class
         walkers object.
-
-    trial : class
-        Trial wavefunction object.
 
     Returns
     -------
@@ -152,8 +144,8 @@ def construct_force_bias_batch_single_det(
     Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
     Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
     vbias_batch = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
-    vbias_batch[: hamiltonian.nchol, :] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
-    vbias_batch[hamiltonian.nchol :, :] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
+    vbias_batch[: hamiltonian.nchol, :] = rAa.dot(Ghalfa.T) + rAb.dot(Ghalfb.T)
+    vbias_batch[hamiltonian.nchol :, :] = rBa.dot(Ghalfa.T) + rBb.dot(Ghalfb.T)
     vbias_batch = vbias_batch.T.copy()
     synchronize()
     return vbias_batch
@@ -161,7 +153,7 @@ def construct_force_bias_batch_single_det(
 
 @plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+    hamiltonian: GenericRealChol, walkers: GHFWalkers
     ):
     """Compute optimal force bias.
 
@@ -174,9 +166,6 @@ def construct_force_bias_batch_single_det(
 
     walkers : class
         walkers object.
-
-    trial : class
-        Trial wavefunction object.
 
     Returns
     -------
@@ -202,8 +191,8 @@ def construct_force_bias_batch_single_det(
     Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    vbias_real = Gcharge.real.dot(chol)
-    vbias_imag = Gcharge.imag.dot(chol)
+    vbias_real = xp.einsum("wppl->wl", Gcharge.real.dot(chol))
+    vbias_imag = xp.einsum("wppl->wl", Gcharge.imag.dot(chol))
     vbias_batch.real = vbias_real
     vbias_batch.imag = vbias_imag
     synchronize()
@@ -212,7 +201,7 @@ def construct_force_bias_batch_single_det(
 
 @plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: GenericComplexChol, walkers: GHFWalkers, trial: SingleDetGHF
+    hamiltonian: GenericComplexChol, walkers: GHFWalkers, 
     ):
     """Compute optimal force bias.
 
@@ -225,9 +214,6 @@ def construct_force_bias_batch_single_det(
 
     walkers : class
         walkers object.
-
-    trial : class
-        Trial wavefunction object.
 
     Returns
     -------
@@ -254,8 +240,8 @@ def construct_force_bias_batch_single_det(
     Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    vbias_A = Gcharge.dot(A)
-    vbias_B = Gcharge.dot(B)
+    vbias_A = xp.einsum("wppl->wl", Gcharge.dot(A))
+    vbias_B = xp.einsum("wppl->wl", Gcharge.dot(B))
     vbias_batch[:, :hamiltonian.nchol] = vbias_A
     vbias_batch[:, hamiltonian.nchol:] = vbias_B
     synchronize()

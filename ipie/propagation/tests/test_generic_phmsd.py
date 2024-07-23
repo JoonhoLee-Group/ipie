@@ -94,7 +94,9 @@ def test_phmsd_force_bias_batch():
     )  # construct_force_bias_batch(batched_data.hamiltonian, walker_batch, trial)
     fb = -prop.sqrt_dt * (1j * prop.vbias - prop.mf_shift)
 
-    # prop.propagator.vbias = construct_force_bias_batch_single_det(batched_data.hamiltonian, walker_batch, trial) #construct_force_bias_batch(batched_data.hamiltonian, walker_batch, trial)
+    # prop.propagator.vbias = construct_force_bias_batch_single_det(
+    #    batched_data.hamiltonian, walker_batch, trial._rchola, trial._rcholb) 
+    # construct_force_bias_batch(batched_data.hamiltonian, walker_batch, trial)
     # fb_half = - prop.propagator.sqrt_dt * (1j*prop.propagator.vbias-prop.propagator.mf_shift)
 
     for iw in range(nwalkers):

@@ -114,7 +114,8 @@ class GHFWalkers(BaseWalkers):
 
         self.rhf = None
 
-        self.buff_names += ["phi", "phia", "phib"]
+        #self.buff_names += ["phi", "phia", "phib"]
+        self.buff_names += ["phi"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
