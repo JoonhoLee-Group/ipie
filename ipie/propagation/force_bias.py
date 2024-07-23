@@ -17,9 +17,15 @@
 #
 
 import numpy
+import plum
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 
 
 def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
@@ -72,10 +78,10 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
         return vbias_batch_tmp
 
 
-# only implement real Hamiltonian
+@plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: "GenericRealChol", walkers: "UHFWalkers", trial: "SingleDetTrial"
-):
+    hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
+    ):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -118,6 +124,142 @@ def construct_force_bias_batch_single_det(
         synchronize()
         return vbias_batch
 
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericComplexChol, walkers: UHFWalkers, trial: SingleDet
+    ):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+
+    walkers : class
+        walkers object.
+
+    trial : class
+        Trial wavefunction object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+    Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
+    vbias_batch = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
+    vbias_batch[: hamiltonian.nchol, :] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
+    vbias_batch[hamiltonian.nchol :, :] = self._rBa.dot(Ghalfa.T) + self._rBb.dot(Ghalfb.T)
+    vbias_batch = vbias_batch.T.copy()
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
+    ):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+
+    walkers : class
+        walkers object.
+
+    trial : class
+        Trial wavefunction object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    #Ga = walkers.Ga
+    #Gb = walkers.Gb
+    #vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    #vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1))
+    #vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1))
+    #vbias_batch.real = vbias_real
+    #vbias_batch.imag = vbias_imag
+    #synchronize()
+    #return vbias_batch
+
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol 
+    chol = hamiltonian.chol.reshape(nbasis, nbasis, nchol)
+
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_real = Gcharge.real.dot(chol)
+    vbias_imag = Gcharge.imag.dot(chol)
+    vbias_batch.real = vbias_real
+    vbias_batch.imag = vbias_imag
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericComplexChol, walkers: GHFWalkers, trial: SingleDetGHF
+    ):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+
+    walkers : class
+        walkers object.
+
+    trial : class
+        Trial wavefunction object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    #Ga = walkers.Ga
+    #Gb = walkers.Gb
+    #vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    #vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, (Ga + Gb).reshape(nwalkers, -1))
+    #vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, (Ga + Gb).reshape(nwalkers, -1))
+    #vbias_batch[:, :hamiltonian.nchol] = vbias_A
+    #vbias_batch[:, hamiltonian.nchol:] = vbias_B
+    #synchronize()
+    #return vbias_batch
+
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol 
+    A = hamiltonian.A.reshape(nbasis, nbasis, nchol)
+    B = hamiltonian.B.reshape(nbasis, nbasis, nchol)
+
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = Ga + Gb # (nwalkers, nbasis, nbasis)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_A = Gcharge.dot(A)
+    vbias_B = Gcharge.dot(B)
+    vbias_batch[:, :hamiltonian.nchol] = vbias_A
+    vbias_batch[:, hamiltonian.nchol:] = vbias_B
+    synchronize()
+    return vbias_batch
 
 def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
     """Compute optimal force bias.

@@ -4,19 +4,20 @@ from typing import Tuple, Union
 import numpy
 import plum
 
-from ipie.estimators.generic import cholesky_jk_ghf
-from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
-from ipie.estimators.utils import gab_mod
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from ipie.propagation.overlap import calc_overlap_single_det_ghf
+from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
+from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
-from ipie.utils.mpi import MPIHandler
 from ipie.walkers.ghf_walkers import GHFWalkers
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.estimators.generic import cholesky_jk_ghf
+from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
+from ipie.estimators.utils import gab_mod
+from ipie.propagation.overlap import calc_overlap_single_det_ghf
+from ipie.propagation.force_bias import construct_force_bias_batch_single_det
 
 
 class SingleDetGHF(TrialWavefunctionBase):
@@ -133,16 +134,7 @@ class SingleDetGHF(TrialWavefunctionBase):
         walkers: GHFWalkers, 
         mpi_handler = None,
     ) -> numpy.ndarray:
-        nwalkers = walkers.nwalkers
-        Ga = walkers.Ga
-        Gb = walkers.Gb
-        vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-        vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1))
-        vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1))
-        vbias_batch.real = vbias_real
-        vbias_batch.imag = vbias_imag
-        synchronize()
-        return vbias_batch
+        return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
     
     # TODO: check.
     @plum.dispatch
@@ -152,13 +144,4 @@ class SingleDetGHF(TrialWavefunctionBase):
         walkers: GHFWalkers,
         mpi_handler = None,
     ) -> numpy.ndarray:
-        nwalkers = walkers.nwalkers
-        Ga = walkers.Ga
-        Gb = walkers.Gb
-        vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-        vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, (Ga + Gb).reshape(nwalkers, -1))
-        vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, (Ga + Gb).reshape(nwalkers, -1))
-        vbias_batch[:, :hamiltonian.nchol] = vbias_A
-        vbias_batch[:, hamiltonian.nchol:] = vbias_B
-        synchronize()
-        return vbias_batch
+        return construct_force_bias_batch_single_det(hamiltonian, walkers, self)

@@ -105,9 +105,7 @@ def test_vhs_complex():
     )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
-
     isqrt_dt = 1.0j * numpy.sqrt(qmc.dt)
-
     nbasis = ham.nbasis
     nchol = ham.nchol
 
@@ -154,9 +152,7 @@ def test_vhs_complex_ghf():
     )
 
     vhs = test_handler.propagator.construct_VHS(ham, xshifted)
-
     isqrt_dt = 1.0j * numpy.sqrt(qmc.dt)
-
     nbasis = ham.nbasis
     nchol = ham.nchol
 
@@ -271,7 +267,6 @@ def test_vhs_complex_ghf_vs_real():
     )
     cx_vhs = test_handler.propagator.construct_VHS(cx_ham, cx_xshifted)
     numpy.testing.assert_allclose(vhs, cx_vhs, atol=1e-10)
-
 
 
 @pytest.mark.unit
