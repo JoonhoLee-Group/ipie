@@ -24,7 +24,7 @@ from typing import Dict, Optional, Tuple
 from ipie.addons.free_projection.estimators.handler import EstimatorHandlerFP
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation
 from ipie.addons.free_projection.qmc.options import QMCParamsFP
-from ipie.addons.free_projection.walkers.uhf_walkers import UHFWalkersFP
+from ipie.addons.free_projection.walkers.walkers_dispatch import UHFWalkersTrialFP
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.qmc.afqmc import AFQMC
@@ -39,18 +39,6 @@ from ipie.walkers.walkers_dispatch import get_initial_walker
 class FPAFQMC(AFQMC):
     """Free projection AFQMC driver."""
 
-    def __init__(
-        self,
-        system,
-        hamiltonian,
-        trial,
-        walkers,
-        propagator,
-        params: QMCParamsFP,
-        verbose: int = 0,
-    ):
-        super().__init__(system, hamiltonian, trial, walkers, propagator, params, verbose=verbose)
-
     @staticmethod
     # TODO: wavefunction type, trial type, hamiltonian type
     def build(
@@ -59,7 +47,7 @@ class FPAFQMC(AFQMC):
         trial_wavefunction,
         walkers=None,
         num_walkers: int = 100,
-        seed: int = None,
+        seed: Optional[int] = None,
         num_steps_per_block: int = 25,
         num_blocks: int = 100,
         timestep: float = 0.005,
@@ -102,6 +90,8 @@ class FPAFQMC(AFQMC):
             Energy guess for the desired state.
         num_iterations_fp : int
             Number of iterations of free projection.
+        ccsd: CCSD object
+            CCSD object used to generate initial walkers
         """
 
         driver = AFQMC.build(
@@ -129,7 +119,8 @@ class FPAFQMC(AFQMC):
         if walkers is None:
             _, initial_walker = get_initial_walker(driver.trial)
             # TODO this is a factory method not a class
-            walkers = UHFWalkersFP(
+            walkers = UHFWalkersTrialFP(
+                driver.trial,
                 initial_walker,
                 driver.system.nup,
                 driver.system.ndown,
@@ -155,6 +146,7 @@ class FPAFQMC(AFQMC):
             driver.trial,
             driver.walkers,
             fp_prop,
+            mpi_handler,
             params,
             verbose=(verbose and comm.rank == 0),
         )
@@ -278,7 +270,7 @@ class FPAFQMC(AFQMC):
 
     def run(
         self,
-        psi=None,
+        walkers=None,
         estimator_filename="estimate.h5",
         verbose=True,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
@@ -296,8 +288,8 @@ class FPAFQMC(AFQMC):
         """
         self.setup_timers()
         tzero_setup = time.time()
-        if psi is not None:
-            self.walkers = psi
+        if walkers is not None:
+            self.walkers = walkers
         self.setup_timers()
         eshift = 0.0
         self.walkers.orthogonalise()
@@ -315,16 +307,18 @@ class FPAFQMC(AFQMC):
 
         for iter in range(self.params.num_iterations_fp):
             block_number = 0
-            _, initial_walker = get_initial_walker(self.trial)
+            _, initial_walker_det = get_initial_walker(self.trial)
             # TODO this is a factory method not a class
-            initial_walkers = UHFWalkersFP(
-                initial_walker,
+            initial_walkers = UHFWalkersTrialFP(
+                self.trial,
+                initial_walker_det,
                 self.system.nup,
                 self.system.ndown,
                 self.hamiltonian.nbasis,
                 self.params.num_walkers,
                 self.mpi_handler,
             )
+            initial_walkers.initialize_walkers(self.propagator.ccsd)
             initial_walkers.build(self.trial)
             self.walkers = initial_walkers
             for step in range(1, total_steps + 1):
@@ -356,7 +350,10 @@ class FPAFQMC(AFQMC):
                 start = time.time()
                 if step % self.params.num_steps_per_block == 0:
                     self.estimators[block_number].compute_estimators(
-                        comm, self.system, self.hamiltonian, self.trial, self.walkers
+                        system=self.system,
+                        hamiltonian=self.hamiltonian,
+                        trial=self.trial,
+                        walker_batch=self.walkers,
                     )
                     self.estimators[block_number].print_block(
                         comm,

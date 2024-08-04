@@ -1,7 +1,9 @@
 import time
+from typing import Optional
 
 import numpy
 
+from ipie.addons.free_projection.propagation.CCSD import CCSD
 from ipie.propagation.phaseless_base import (
     construct_mean_field_shift,
     construct_one_body_propagator,
@@ -15,10 +17,16 @@ class FreePropagation(PhaselessGeneric):
     """fp-afqmc propagator"""
 
     def __init__(
-        self, time_step: float, exp_nmax: int = 6, verbose: bool = False, ene_0: float = 0.0
+        self,
+        time_step: float,
+        exp_nmax: int = 6,
+        verbose: bool = False,
+        ene_0: float = 0.0,
+        ccsd: Optional[CCSD] = None,
     ) -> None:
         super().__init__(time_step, exp_nmax=exp_nmax, verbose=verbose)
         self.e_shift = ene_0  # unlike the dynamic shift in phaseless, this is a constant shift
+        self.ccsd = ccsd
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         # dt/2 one-body propagator

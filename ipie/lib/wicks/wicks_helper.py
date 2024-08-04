@@ -29,6 +29,7 @@ except OSError:
 DET_LEN = 4
 
 
+
 def encode_dets(occsa, occsb):
     """Encode occupation as bit strings.
 

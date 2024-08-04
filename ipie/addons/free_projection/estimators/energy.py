@@ -30,7 +30,7 @@ class EnergyEstimatorFP(EnergyEstimator):
     ):
         super().__init__(system, ham, trial, filename)
 
-    def compute_estimator(self, system, walkers, hamiltonian, trial, istep=1):
+    def compute_estimator(self, system, walkers, hamiltonian, trial):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)

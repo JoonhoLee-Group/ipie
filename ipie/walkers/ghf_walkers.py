@@ -54,9 +54,31 @@ class GHFWalkers(BaseWalkers):
         self.G = numpy.zeros(
             (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
         )
-        self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga
-        self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb
+        self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga.copy()
+        self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb.copy()
         self.Ghalf = None
+
+        self.rhf = None
+
+        self.buff_names += ["phi"]
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+
+    @property
+    def phia(self):
+        return self.phi[:, : self.nbasis, : self.nup]
+
+    @phia.setter
+    def phia(self, value):
+        self.phi[:, : self.nbasis, : self.nup] = value
+
+    @property
+    def phib(self):
+        return self.phi[:, self.nbasis :, self.nup :]
+
+    @phib.setter
+    def phib(self, value):
+        self.phi[:, self.nbasis :, self.nup :] = value
 
     @plum.dispatch
     def __init__(
@@ -91,7 +113,7 @@ class GHFWalkers(BaseWalkers):
             dtype=numpy.complex128,
         )
 
-        self.buff_names += ["phi"]
+        self.buff_names += ["phi", "phia", "phib"]
 
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)

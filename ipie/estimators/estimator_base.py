@@ -78,7 +78,7 @@ class EstimatorBase(metaclass=ABCMeta):
         size = 0
         for _, v in self._data.items():
             if isinstance(v, np.ndarray):
-                size += np.prod(v.shape)
+                size += int(np.prod(v.shape))
             else:
                 size += 1
         return size
@@ -89,7 +89,9 @@ class EstimatorBase(metaclass=ABCMeta):
         self._shape = shape
 
     @abstractmethod
-    def compute_estimator(self, system, walkers, hamiltonian, trial) -> np.ndarray: ...
+    def compute_estimator(
+        self, system=None, walkers=None, hamiltonian=None, trial=None
+    ) -> np.ndarray: ...
 
     @property
     def names(self):

@@ -53,7 +53,6 @@ def version_number(path: str) -> str:
     return version
 
 
-
 def main() -> None:
     version_path = "ipie/_version.py"
     __version__ = version_number(version_path)
@@ -67,7 +66,7 @@ def main() -> None:
         packages=find_packages(exclude=["examples", "docs", "tests", "tools", "setup.py"]),
         license="Apache 2.0",
         description="Python implementations of Imaginary-time Evolution algorithms",
-        python_requires=">=3.7.0,<3.12.0",
+        python_requires=">=3.8.0",
         scripts=[
             "bin/ipie",
             "tools/extract_dice.py",
@@ -80,9 +79,11 @@ def main() -> None:
         extras_require={
             "mpi": load_requirements("dev/mpi.txt"),
             "dev": load_requirements("dev/dev.txt"),
+            "torch": load_requirements("dev/torch.txt"),
         },
         long_description=open("README.rst").read(),
     )
+
 
 if __name__ == "__main__":
     main()

@@ -14,12 +14,15 @@ import plum
 
 from ipie.config import config
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.propagation.operations import apply_exponential, apply_exponential_batch
 from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
+from typing import Union
 
 
 class PhaselessGeneric(PhaselessBase):
@@ -30,7 +33,9 @@ class PhaselessGeneric(PhaselessBase):
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
-    def apply_VHS(self, walkers: UHFWalkers, hamiltonian: GenericBase, xshifted: xp.ndarray):
+    def apply_VHS(
+        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericBase, xshifted: xp.ndarray
+    ):
         start_time = time.time()
         assert walkers.nwalkers == xshifted.shape[-1]
         VHS = self.construct_VHS(hamiltonian, xshifted)
@@ -116,30 +121,21 @@ class PhaselessGenericChunked(PhaselessGeneric):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
         self.mpi_handler = mpi_handler
 
-    @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
-        "abstract function for construct VHS"
-
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: GenericRealChol, xshifted: xp.ndarray) -> xp.ndarray:
+    def construct_VHS(
+        self, hamiltonian: GenericRealCholChunked, xshifted: xp.ndarray
+    ) -> xp.ndarray:
         assert hamiltonian.chunked
-        assert xp.isrealobj(hamiltonian.chol)
-
         nwalkers = xshifted.shape[-1]
 
-        # if hamiltonian.mixed_precision:  # cast it to float
-        #     xshifted = xshifted.astype(numpy.complex64)
-
-        #       xshifted is unique for each processor!
         xshifted_send = xshifted.copy()
         xshifted_recv = xp.zeros_like(xshifted)
 
         idxs = hamiltonian.chol_idxs_chunk
         chol_packed_chunk = hamiltonian.chol_packed_chunk
 
-        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real) + 1.0j * chol_packed_chunk.dot(
-            xshifted[idxs, :].imag
-        )
+        VHS_send = chol_packed_chunk.dot(xshifted[idxs, :].real).astype(xshifted.dtype)
+        VHS_send += 1.0j * chol_packed_chunk.dot(xshifted[idxs, :].imag)
         VHS_recv = xp.zeros_like(VHS_send)
 
         srank = self.mpi_handler.scomm.rank
@@ -159,12 +155,10 @@ class PhaselessGenericChunked(PhaselessGeneric):
 
             self.mpi_handler.scomm.barrier()
 
-            # prepare sending
-            VHS_send = (
-                VHS_recv
-                + chol_packed_chunk.dot(xshifted_recv[idxs, :].real)
-                + 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
-            )
+            VHS_send = chol_packed_chunk.dot(xshifted_recv[idxs, :].real).astype(xshifted.dtype)
+            VHS_send += 1.0j * chol_packed_chunk.dot(xshifted_recv[idxs, :].imag)
+            VHS_send += VHS_recv
+
             xshifted_send = xshifted_recv.copy()
 
         synchronize()
@@ -173,7 +167,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
         req.wait()
         self.mpi_handler.scomm.barrier()
 
-        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0]).copy()
+        VHS_recv = self.isqrt_dt * VHS_recv.T.reshape(nwalkers, chol_packed_chunk.shape[0])
         VHS = xp.zeros(
             (nwalkers, hamiltonian.nbasis, hamiltonian.nbasis),
             dtype=VHS_recv.dtype,
@@ -181,7 +175,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
         # This should be abstracted by kernel import
         if config.get_option("use_gpu"):
             threadsperblock = 512
-            nut = len(hamiltonian.sym_idx_i)
+            nbsf = hamiltonian.nbasis
+            nut = round(nbsf * (nbsf + 1) / 2)
             blockspergrid = math.ceil(nwalkers * nut / threadsperblock)
             unpack_VHS_batch_gpu[blockspergrid, threadsperblock](
                 hamiltonian.sym_idx_i, hamiltonian.sym_idx_j, VHS_recv, VHS
