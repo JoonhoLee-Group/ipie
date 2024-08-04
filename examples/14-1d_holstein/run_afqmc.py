@@ -26,6 +26,9 @@ from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 # )
 from ipie.addons.eph.walkers.eph_walkers import EPhWalkers
 from ipie.addons.eph.estimators.energy import EnergyEstimator
+from ipie.propagation.propagator import Propagator
+from ipie.addons.eph.propagation.holstein import HolsteinPropagator
+Propagator.update({HolsteinModel: HolsteinPropagator})
 
 # System Parameters
 nup = 2
