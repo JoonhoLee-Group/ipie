@@ -80,6 +80,7 @@ def main() -> None:
             "mpi": load_requirements("dev/mpi.txt"),
             "dev": load_requirements("dev/dev.txt"),
             "torch": load_requirements("dev/torch.txt"),
+            "jax": load_requirements("dev/jax.txt"),
         },
         long_description=open("README.rst").read(),
     )
