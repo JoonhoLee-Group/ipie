@@ -19,14 +19,13 @@
 import plum
 import numpy
 from numba import jit
-from typing import Union
 
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
+def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -35,12 +34,12 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     ----------
     system : :class:`Generic`
         generic system information
-    ham : :class:`Generic`
-        ab-initio hamiltonian information
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
     G : :class:`numpy.ndarray`
-        Walker's "green's function"
+        Walker's Green's function.
     Ghalf : :class:`numpy.ndarray`
-        Walker's "half-rotated" "green's function"
+        Walker's "half-rotated" Green's function.
 
     Returns
     -------
@@ -48,17 +47,17 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
         Total , one and two-body energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nbasis = ham.nbasis
-    nchol = ham.nchol
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(ham.chol):
-        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
-        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
+    if numpy.isrealobj(hamiltonian.chol):
+        Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Ga.imag.ravel())
+        Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(Gb.imag.ravel())
     else:
-        Xa = ham.chol.T.dot(Ga.ravel())
-        Xb = ham.chol.T.dot(Gb.ravel())
+        Xa = hamiltonian.chol.T.dot(Ga.ravel())
+        Xb = hamiltonian.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -70,9 +69,9 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol):
+    if numpy.isrealobj(hamiltonian.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -81,7 +80,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
@@ -89,26 +88,23 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
     e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
-def local_energy_cholesky_opt_dG(trial, hamiltonian, Ghalf):
+def local_energy_cholesky_opt_dG(trial, hamiltonian, Ghalfa, Ghalfb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the density difference trick.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        generic system information
-    ecore : float
-        Core energy
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's "half-rotated" alpha "green's function"
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's "half-rotated" beta "green's function"
     trial : ipie trial object
         Trial wavefunction object.
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalfa, Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated Green's function for each spin sigma. 
+        Shape is (nsigma, nbasis).
 
     Returns
     -------
@@ -118,7 +114,7 @@ def local_energy_cholesky_opt_dG(trial, hamiltonian, Ghalf):
     dGhalfa = Ghalfa - trial.psia.T
     dGhalfb = Ghalfb - trial.psib.T
 
-    de1 = xp.sum(trial._rH1a * dGhalfa) + xp.sum(trial._rH1b * dGhalfb) + ecore
+    de1 = xp.sum(trial._rH1a * dGhalfa) + xp.sum(trial._rH1b * dGhalfb) + hamiltonian.ecore
     dde2 = xp.sum(trial._rFa_corr * Ghalfa) + xp.sum(trial._rFb_corr * Ghalfb)
 
     if trial.mixed_precision:
@@ -147,14 +143,13 @@ def local_energy_cholesky_opt(trial, hamiltonian, Ghalf):
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nbeta x nbasis
     trial : ipie trial object
         Trial wavefunction
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
 
     Returns
     -------
@@ -176,14 +171,11 @@ def half_rotated_cholesky_hcore_uhf(trial, Ghalf):
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nbeta x nbasis
     trial : ipie trial object
         Trial wavefunction
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
 
     Returns
     -------
@@ -294,7 +286,7 @@ def exx_kernel_real_rchol(rchol, Ghalf):
     rchol : :class:`numpy.ndarray`
         Half-rotated cholesky for one spin.
     Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" for spin sigma. 
+        Walker's half-rotated Green's function for spin sigma. 
         Shape is (nsigma, nbasis).
 
     Returns
@@ -338,7 +330,7 @@ def exx_kernel_complex_rchol(rchol, rcholbar, Ghalf):
     rcholbar : :class:`numpy.ndarray`
         Complex conjugate of half-rotated cholesky for one spin.
     Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" for spin sigma. 
+        Walker's half-rotated Green's function for spin sigma. 
         Shape is (nsigma, nbasis).
 
     Returns
@@ -415,10 +407,10 @@ def half_rotated_cholesky_jk_uhf(trial, hamiltonian: GenericComplexChol, Ghalf):
 
     Parameters
     ----------
-    hamiltonian : ipie hamiltonian object.
-        Hamiltonian.
     trial : ipie trial object
         Trial wavefunction
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
     Ghalf : list of :class:`numpy.ndarray`
         Walker's half-rotated Green's function, stored as a list of arrays with
         shape (nsigma, nbasis) for each spin sigma.

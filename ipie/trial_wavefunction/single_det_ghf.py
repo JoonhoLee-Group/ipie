@@ -4,9 +4,6 @@ from typing import Tuple, Union
 import numpy
 import plum
 
-from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
-from ipie.utils.mpi import MPIHandler
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet

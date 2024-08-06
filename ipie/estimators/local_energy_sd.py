@@ -19,7 +19,6 @@
 import numpy
 from numba import jit
 from math import ceil
-from typing import Union
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction
@@ -32,7 +31,6 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
-from ipie.estimators.generic import cholesky_jk_ghf
 
 import plum
 
@@ -49,10 +47,11 @@ def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
 
     Parameters
     ----------
-    rchol : :class:`numpy.ndarray`
-        Half-rotated cholesky.
-    Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+    rchola : :class:`numpy.ndarray`
+        Half-rotated cholesky for spin alpha.
+    Ghalfa_batch : :class:`numpy.ndarray`
+        Walker's half-rotated Green's function for spin alpha. 
+        Shape is (nwalkers, nalpha * nbasis).
 
     Returns
     -------
@@ -84,7 +83,7 @@ def ecoul_kernel_batch_complex_rchol_rhf(rchola, Ghalfa_batch):
         Half-rotated cholesky for each spin.
     Ghalfa_batch, Ghalfb_batch : :class:`numpy.ndarray`
         Walker's half-rotated Green's function for each spin sigma.
-        Shape is (nwalkers, nsigma, nbasis).
+        Shape is (nwalkers, nsigma * nbasis).
 
     Returns
     -------
@@ -174,7 +173,6 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
         Coulomb contribution for all walkers.
     """
     nwalkers = Ghalfa_batch.shape[0]
-    nchol = rchola.shape[0]
 
     # `copy` is needed to return contiguous arrays for numba.
     rchola_realT = rchola.T.real.copy() 
@@ -216,7 +214,7 @@ def ecoul_kernel_batch_complex_rchol_uhf(
         Complex conjugate of half-rotated cholesky for each spin.
     Ghalfa_batch, Ghalfb_batch : :class:`numpy.ndarray`
         Walker's half-rotated Green's function for each spin sigma.
-        Shape is (nwalkers, nsigma * nbasis).
+        Shape is (nwalkers, nsigma, nbasis).
 
     Returns
     -------
@@ -384,7 +382,6 @@ def local_energy_single_det_uhf_batch(
         Total, one-body and two-body energies.
     """
     nwalkers = walkers.Ghalfa.shape[0]
-    nbasis = hamiltonian.nbasis
 
     Ghalfa_batch = walkers.Ghalfa.reshape((nwalkers, -1))
     Ghalfb_batch = walkers.Ghalfb.reshape((nwalkers, -1))
@@ -434,7 +431,6 @@ def local_energy_single_det_uhf_batch(
         Total, one-body and two-body energies.
     """
     nwalkers = walkers.Ghalfa.shape[0]
-    nbasis = hamiltonian.nbasis
 
     Ghalfa_batch = walkers.Ghalfa.reshape((nwalkers, -1))
     Ghalfb_batch = walkers.Ghalfb.reshape((nwalkers, -1))

@@ -29,8 +29,18 @@ class UHFWalkers(BaseWalkers):
 
     Parameters
     ----------
+    initial_walker : :class:`numpy.ndarray`
+        Initial UHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+       MPIHandler instance. 
+    verbose : bool
+        Verbosity.
     """
 
     def __init__(
@@ -97,9 +107,6 @@ class UHFWalkers(BaseWalkers):
 
     def reortho(self):
         """reorthogonalise walkers.
-
-        parameters
-        ----------
         """
         if config.get_option("use_gpu"):
             return self.reortho_batched()
@@ -138,9 +145,6 @@ class UHFWalkers(BaseWalkers):
 
     def reortho_batched(self):
         """reorthogonalise walkers.
-
-        parameters
-        ----------
         """
         assert config.get_option("use_gpu")
         (self.phia, Rup) = qr(self.phia, mode=qr_mode)
@@ -164,10 +168,18 @@ class UHFWalkersParticleHole(UHFWalkers):
 
     Parameters
     ----------
-    system : object
-        System object.
+    initial_walker : :class:`numpy.ndarray`
+        Initial UHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+       MPIHandler instance. 
+    verbose : bool
+        Verbosity.
     """
 
     def __init__(
@@ -230,10 +242,18 @@ class UHFWalkersNOCI(UHFWalkers):
 
     Parameters
     ----------
-    system : object
-        System object.
+    initial_walker : :class:`numpy.ndarray`
+        Initial UHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+       MPIHandler instance. 
+    verbose : bool
+        Verbosity.
     """
 
     def build(self, trial):
@@ -265,10 +285,18 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
 
     Parameters
     ----------
-    system : object
-        System object.
+    initial_walker : :class:`numpy.ndarray`
+        Initial UHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+       MPIHandler instance. 
+    verbose : bool
+        Verbosity.
     """
 
     def __init__(

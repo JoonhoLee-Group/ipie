@@ -35,12 +35,12 @@ def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
     trial : class
         Trial wavefunction object.
+    mpi_handler : class
+        MPIHandler instance.
 
     Returns
     -------
@@ -88,9 +88,10 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
 
     Returns
     -------
@@ -132,7 +133,6 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
 
@@ -163,7 +163,6 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
 
@@ -172,16 +171,6 @@ def construct_force_bias_batch_single_det(
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
-    #Ga = walkers.Ga
-    #Gb = walkers.Gb
-    #vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    #vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.real + Gb.real).reshape(nwalkers, -1))
-    #vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, (Ga.imag + Gb.imag).reshape(nwalkers, -1))
-    #vbias_batch.real = vbias_real
-    #vbias_batch.imag = vbias_imag
-    #synchronize()
-    #return vbias_batch
-    
     Ga = walkers.Ga
     Gb = walkers.Gb
     Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
@@ -207,7 +196,6 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
 
@@ -216,16 +204,6 @@ def construct_force_bias_batch_single_det(
     xbar : :class:`numpy.ndarray`
         Force bias.
     """
-    #Ga = walkers.Ga
-    #Gb = walkers.Gb
-    #vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
-    #vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, (Ga + Gb).reshape(nwalkers, -1))
-    #vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, (Ga + Gb).reshape(nwalkers, -1))
-    #vbias_batch[:, :hamiltonian.nchol] = vbias_A
-    #vbias_batch[:, hamiltonian.nchol:] = vbias_B
-    #synchronize()
-    #return vbias_batch
-
     Ga = walkers.Ga
     Gb = walkers.Gb
     Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
@@ -247,12 +225,12 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
     trial : class
         Trial wavefunction object.
+    handler : class
+        MPIHandler instance.
 
     Returns
     -------

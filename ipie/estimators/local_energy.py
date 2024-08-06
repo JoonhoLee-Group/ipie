@@ -29,7 +29,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     ----------
     system : system object
         System being studied.
-    system : hamiltonian object
+    hamiltonian : hamiltonian object
         Hamiltonian being studied.
     trial : trial wavefunction object
         Trial wavefunction.
@@ -69,6 +69,8 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
     ----------
     system : :class:`ipie.system` object
         System object.
+    ham : hamiltonian object
+        Hamiltonian being studied.
     occs : list of lists
         list of determinants.
     coeffs : :class:`numpy.ndarray`

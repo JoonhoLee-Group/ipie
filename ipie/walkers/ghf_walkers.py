@@ -31,8 +31,20 @@ class GHFWalkers(BaseWalkers):
 
     Parameters
     ----------
+    walkers : UHFWalkers
+        UHFWalkers instance.
+    initial_walker : :class:`numpy.ndarray`
+        Initial GHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+       MPIHandler instance. 
+    verbose : bool
+        Verbosity.
     """
     @plum.dispatch
     def __init__(self, walkers: UHFWalkers, verbose: bool = False):
@@ -114,7 +126,6 @@ class GHFWalkers(BaseWalkers):
 
         self.rhf = None
 
-        #self.buff_names += ["phi", "phia", "phib"]
         self.buff_names += ["phi"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
@@ -128,9 +139,6 @@ class GHFWalkers(BaseWalkers):
 
     def reortho(self):
         """reorthogonalise walkers.
-
-        parameters
-        ----------
         """
         if config.get_option("use_gpu"):
             return self.reortho_batched()
@@ -161,9 +169,6 @@ class GHFWalkers(BaseWalkers):
 
     def reortho_batched(self):
         """reorthogonalise walkers.
-
-        parameters
-        ----------
         """
         assert config.get_option("use_gpu")
         (self.phi, Rup) = qr(self.phi, mode=qr_mode)
