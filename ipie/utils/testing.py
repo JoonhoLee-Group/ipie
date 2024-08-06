@@ -111,24 +111,25 @@ def get_random_nomsd(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
 
 
 def get_random_nomsd_ghf(nup, ndown, nbasis, ndet=10, cplx=True, init=False):
-    a = numpy.random.rand(ndet * (2*nbasis) * (nup + ndown))
-    b = numpy.random.rand(ndet * (2*nbasis) * (nup + ndown))
+    a = numpy.random.rand(ndet * (2 * nbasis) * (nup + ndown))
+    b = numpy.random.rand(ndet * (2 * nbasis) * (nup + ndown))
     if cplx:
-        wfn = (a + 1j * b).reshape((ndet, 2*nbasis, nup + ndown))
+        wfn = (a + 1j * b).reshape((ndet, 2 * nbasis, nup + ndown))
         coeffs = numpy.random.rand(ndet) + 1j * numpy.random.rand(ndet)
     else:
-        wfn = a.reshape((ndet, 2*nbasis, nup + ndown))
+        wfn = a.reshape((ndet, 2 * nbasis, nup + ndown))
         coeffs = numpy.random.rand(ndet)
     if init:
-        a = numpy.random.rand(2*nbasis * (nup + ndown))
-        b = numpy.random.rand(2*nbasis * (nup + ndown))
+        a = numpy.random.rand(2 * nbasis * (nup + ndown))
+        b = numpy.random.rand(2 * nbasis * (nup + ndown))
         if cplx:
-            init_wfn = (a + 1j * b).reshape((2*nbasis, nup + ndown))
+            init_wfn = (a + 1j * b).reshape((2 * nbasis, nup + ndown))
         else:
-            init_wfn = a.reshape((2*nbasis, nup + ndown))
+            init_wfn = a.reshape((2 * nbasis, nup + ndown))
         return (coeffs, wfn, init_wfn)
     else:
         return (coeffs, wfn)
+
 
 def truncated_combinations(iterable, r, count):
     # Modified from:
@@ -399,6 +400,7 @@ def build_random_single_det_trial(
     trial = SingleDet(wfn[0], num_elec, num_basis)
     return trial, init
 
+
 def build_random_single_det_ghf_trial(
     num_elec: Tuple[int, int],
     num_basis: int,
@@ -409,10 +411,11 @@ def build_random_single_det_ghf_trial(
         num_elec[0], num_elec[1], num_basis, ndet=1, cplx=complex_trial, init=True
     )
     if rhf_trial:
-        wfn[0, num_basis :, num_elec[0] :] = wfn[0, : num_basis, : num_elec[0]]
-        init[num_basis :, num_elec[0] :] = init[: num_basis, : num_elec[0]]
+        wfn[0, num_basis:, num_elec[0] :] = wfn[0, :num_basis, : num_elec[0]]
+        init[num_basis:, num_elec[0] :] = init[:num_basis, : num_elec[0]]
     trial = SingleDetGHF(wfn[0], num_elec, num_basis)
     return trial, init
+
 
 def build_random_trial(
     num_elec: Tuple[int, int],

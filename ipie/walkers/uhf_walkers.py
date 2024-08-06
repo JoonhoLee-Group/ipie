@@ -38,7 +38,7 @@ class UHFWalkers(BaseWalkers):
     nwalkers : int
         Number of walkers.
     mpi_handler : MPIHandler
-       MPIHandler instance. 
+        MPIHandler instance.
     verbose : bool
         Verbosity.
     """
@@ -106,8 +106,7 @@ class UHFWalkers(BaseWalkers):
         cast_to_device(self, verbose)
 
     def reortho(self):
-        """reorthogonalise walkers.
-        """
+        """reorthogonalise walkers."""
         if config.get_option("use_gpu"):
             return self.reortho_batched()
         ndown = self.ndown
@@ -144,8 +143,7 @@ class UHFWalkers(BaseWalkers):
         return detR
 
     def reortho_batched(self):
-        """reorthogonalise walkers.
-        """
+        """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
         (self.phia, Rup) = qr(self.phia, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
@@ -177,7 +175,7 @@ class UHFWalkersParticleHole(UHFWalkers):
     nwalkers : int
         Number of walkers.
     mpi_handler : MPIHandler
-       MPIHandler instance. 
+        MPIHandler instance.
     verbose : bool
         Verbosity.
     """
@@ -251,7 +249,7 @@ class UHFWalkersNOCI(UHFWalkers):
     nwalkers : int
         Number of walkers.
     mpi_handler : MPIHandler
-       MPIHandler instance. 
+        MPIHandler instance.
     verbose : bool
         Verbosity.
     """
@@ -294,7 +292,7 @@ class UHFWalkersParticleHoleNaive(UHFWalkersParticleHole):
     nwalkers : int
         Number of walkers.
     mpi_handler : MPIHandler
-       MPIHandler instance. 
+        MPIHandler instance.
     verbose : bool
         Verbosity.
     """

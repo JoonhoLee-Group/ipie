@@ -93,6 +93,7 @@ class BaseWalkers(metaclass=ABCMeta):
     nwalkers : int
         Number of walkers to initialise.
     """
+
     def __init__(
         self,
         nwalkers,

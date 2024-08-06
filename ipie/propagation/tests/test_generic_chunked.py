@@ -108,7 +108,8 @@ def test_generic_propagation_chunked():
         walker_batch.reortho()
 
     vfb = construct_force_bias_batch_single_det(
-            ham_nochunk, walker_batch, trial_nochunk._rchola, trial_nochunk._rcholb)
+        ham_nochunk, walker_batch, trial_nochunk._rchola, trial_nochunk._rcholb
+    )
     vfb_chunked = construct_force_bias_batch_single_det_chunked(
         ham, walker_batch, trial, mpi_handler
     )

@@ -39,9 +39,9 @@ class SingleDetGHF(TrialWavefunctionBase):
         self.psi0a = self.psi0[: self.nbasis, : self.nocc]
         self.psi0b = self.psi0[self.nbasis :, : self.nocc]
 
-        self.G = numpy.zeros((2*self.nbasis, 2*self.nbasis), dtype=uhf_trial.G[0].dtype)
-        self.G[:self.nbasis, :self.nbasis] = uhf_trial.G[0].copy()
-        self.G[self.nbasis:, self.nbasis:] = uhf_trial.G[1].copy()
+        self.G = numpy.zeros((2 * self.nbasis, 2 * self.nbasis), dtype=uhf_trial.G[0].dtype)
+        self.G[: self.nbasis, : self.nbasis] = uhf_trial.G[0].copy()
+        self.G[self.nbasis :, self.nbasis :] = uhf_trial.G[1].copy()
 
     @plum.dispatch
     def __init__(
@@ -69,8 +69,8 @@ class SingleDetGHF(TrialWavefunctionBase):
         self.psi0 = self.psi[:, : self.nocc]
 
         # Can split alpha/beta part of the GHF wfn.
-        self.psi0a = self.psi[:self.nbasis, :self.nocc]
-        self.psi0b = self.psi[self.nbasis:, :self.nocc]
+        self.psi0a = self.psi[: self.nbasis, : self.nocc]
+        self.psi0b = self.psi[self.nbasis :, : self.nocc]
 
         self.G, self.Ghalf = gab_mod(self.psi, self.psi)
 
@@ -87,7 +87,8 @@ class SingleDetGHF(TrialWavefunctionBase):
 
     @plum.dispatch
     def calculate_energy(
-            self, system: Generic, hamiltonian: Union[GenericRealChol, GenericComplexChol]) -> None:
+        self, system: Generic, hamiltonian: Union[GenericRealChol, GenericComplexChol]
+    ) -> None:
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
@@ -126,19 +127,19 @@ class SingleDetGHF(TrialWavefunctionBase):
 
     @plum.dispatch
     def calc_force_bias(
-        self, 
-        hamiltonian: GenericRealChol, 
-        walkers: GHFWalkers, 
-        mpi_handler = None,
+        self,
+        hamiltonian: GenericRealChol,
+        walkers: GHFWalkers,
+        mpi_handler=None,
     ) -> numpy.ndarray:
         return construct_force_bias_batch_single_det(hamiltonian, walkers)
-    
+
     # TODO: check.
     @plum.dispatch
     def calc_force_bias(
         self,
         hamiltonian: GenericComplexChol,
         walkers: GHFWalkers,
-        mpi_handler = None,
+        mpi_handler=None,
     ) -> numpy.ndarray:
         return construct_force_bias_batch_single_det(hamiltonian, walkers)

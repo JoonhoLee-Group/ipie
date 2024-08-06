@@ -26,10 +26,8 @@ from ipie.utils.mpi import make_splits_displacements
 
 @plum.dispatch
 def construct_one_body_propagator(
-    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], 
-    mf_shift: xp.ndarray, 
-    dt: float
-    ):
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], mf_shift: xp.ndarray, dt: float
+):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -77,11 +75,7 @@ def construct_one_body_propagator(
 
 
 @plum.dispatch
-def construct_one_body_propagator(
-        hamiltonian: GenericComplexChol, 
-        mf_shift: xp.ndarray, 
-        dt: float
-    ):
+def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -123,7 +117,7 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
     # hamiltonian.chol [M^2, nchol]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
 
-    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be 
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
     # a problem of large chol cases.
     tmp_real = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.imag)
@@ -157,8 +151,9 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
 
 
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealChol,
-                               trial: Union[SingleDet, ParticleHole, NOCI]):
+def construct_mean_field_shift(
+    hamiltonian: GenericRealChol, trial: Union[SingleDet, ParticleHole, NOCI]
+):
     r"""Compute mean field shift.
 
     .. math::
@@ -168,13 +163,14 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol,
     """
     # hamiltonian.chol [M^2, nchol]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    
-    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be 
+
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
     # a problem of large chol cases.
     tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
     return xp.array(mf_shift)
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: SingleDetGHF):
@@ -191,16 +187,18 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: SingleDetGHF
     Gbb = trial.G[nbasis:, nbasis:]
     Gcharge = (Gaa + Gbb).ravel()
 
-    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be 
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
     # a problem of large chol cases.
     tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
     return xp.array(mf_shift)
 
+
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericComplexChol, 
-                               trial: Union[SingleDet, ParticleHole, NOCI]):
+def construct_mean_field_shift(
+    hamiltonian: GenericComplexChol, trial: Union[SingleDet, ParticleHole, NOCI]
+):
     r"""Compute mean field shift.
 
     .. math::
@@ -216,6 +214,7 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol,
     mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, Gcharge.ravel())
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
     return mf_shift
+
 
 # TODO: check.
 @plum.dispatch
@@ -294,9 +293,9 @@ class PhaselessBase(ContinuousBase):
         xbar = self.apply_bound_force_bias(xbar, self.fbbound)
 
         # Normally distrubted auxiliary fields.
-        xi = xp.random.normal(
-                0.0, 1.0, hamiltonian.nfields * walkers.nwalkers).reshape(
-                walkers.nwalkers, hamiltonian.nfields)
+        xi = xp.random.normal(0.0, 1.0, hamiltonian.nfields * walkers.nwalkers).reshape(
+            walkers.nwalkers, hamiltonian.nfields
+        )
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift

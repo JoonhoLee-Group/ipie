@@ -21,10 +21,7 @@ import pytest
 
 from ipie.estimators.energy import local_energy
 
-from ipie.utils.testing import (
-        build_test_case_handlers, 
-        build_test_case_handlers_ghf
-        )
+from ipie.utils.testing import build_test_case_handlers, build_test_case_handlers_ghf
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.utils.misc import dotdict

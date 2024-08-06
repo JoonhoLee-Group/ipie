@@ -37,11 +37,7 @@ from ipie.utils.legacy_testing import build_legacy_test_case, get_legacy_walker_
 from ipie.utils.misc import dotdict
 from ipie.utils.mpi import MPIHandler
 from ipie.utils.pack_numba import pack_cholesky
-from ipie.utils.testing import (
-        generate_hamiltonian, 
-        get_random_phmsd, 
-        get_random_nomsd
-)
+from ipie.utils.testing import generate_hamiltonian, get_random_phmsd, get_random_nomsd
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial, GHFWalkersTrial
 
 
@@ -402,10 +398,10 @@ def test_local_energy_single_det_ghf_batch():
         chol=chol.reshape((-1, nmo * nmo)).T.copy(),
         ecore=0,
     )
-    
+
     wfn = get_random_nomsd(system.nup, system.ndown, nmo, ndet=1)
-    psi0a = wfn[1][0][:, :system.nup]
-    psi0b = wfn[1][0][:, system.nup:]
+    psi0a = wfn[1][0][:, : system.nup]
+    psi0b = wfn[1][0][:, system.nup :]
     psi0a, _ = numpy.linalg.qr(psi0a)
     psi0b, _ = numpy.linalg.qr(psi0b)
     init = numpy.concatenate([psi0a, psi0b], axis=1)
@@ -420,10 +416,10 @@ def test_local_energy_single_det_ghf_batch():
         trial_uhf, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers_uhf.build(trial_uhf)
-    
+
     energies_ref = local_energy_single_det_uhf_batch(system, ham, walkers_uhf, trial_uhf)
     energies_ref2 = local_energy_single_det_batch(system, ham, walkers_uhf, trial_uhf)
-    
+
     # Check that the UHF trial and walkers Green's functions are equal.
     numpy.testing.assert_allclose(trial_uhf.Ghalf[0], walkers_uhf.Ghalfa[0])
     numpy.testing.assert_allclose(trial_uhf.Ghalf[1], walkers_uhf.Ghalfb[0])
@@ -433,12 +429,12 @@ def test_local_energy_single_det_ghf_batch():
 
     # No rotation is applied.
     psi0 = numpy.zeros((2 * nmo, system.ne), dtype=trial_uhf.psi0a.dtype)
-    psi0[:nmo, :system.nup] = trial_uhf.psi0a.copy()
-    psi0[nmo:, system.nup:] = trial_uhf.psi0b.copy()
+    psi0[:nmo, : system.nup] = trial_uhf.psi0a.copy()
+    psi0[nmo:, system.nup :] = trial_uhf.psi0b.copy()
     trial = SingleDetGHF(psi0, nelec, nmo)
     trial.calculate_energy(system, ham)
     trial_energy = numpy.array([trial.energy, trial.e1b, trial.e2b])
-    
+
     walkers = GHFWalkersTrial(
         trial, trial.psi0, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
@@ -449,15 +445,18 @@ def test_local_energy_single_det_ghf_batch():
     # Check that UHF and GHF energies agree.
     numpy.testing.assert_allclose(trial_energy_ref, trial_energy)
     numpy.testing.assert_allclose(energies_ref, energies)
-    
+
     # Applying spin-axis rotation and checking if the energy changes.
     theta = numpy.pi / 2.0
     phi = numpy.pi / 4.0
 
     Uspin = numpy.array(
-        [[numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
-         [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)]],
-        dtype=numpy.complex128)
+        [
+            [numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
+            [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)],
+        ],
+        dtype=numpy.complex128,
+    )
     U = numpy.kron(Uspin, numpy.eye(trial.nbasis))
     psi0 = U.dot(psi0)
     trial = SingleDetGHF(psi0, nelec, nmo)
@@ -470,7 +469,7 @@ def test_local_energy_single_det_ghf_batch():
     walkers.build(trial)
 
     energies = local_energy_single_det_ghf_batch(system, ham, walkers, trial)
-    
+
     # Check that UHF and GHF energies agree.
     numpy.testing.assert_allclose(trial_energy_ref, trial_energy)
     numpy.testing.assert_allclose(energies_ref, energies)

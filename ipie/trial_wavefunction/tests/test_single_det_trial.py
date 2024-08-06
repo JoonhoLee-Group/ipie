@@ -83,14 +83,17 @@ def test_single_det_ghf():
     phi = numpy.pi / 4.0
 
     Uspin = numpy.array(
-            [[numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
-             [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)]],
-            dtype=numpy.complex128)
+        [
+            [numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
+            [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)],
+        ],
+        dtype=numpy.complex128,
+    )
     U = numpy.kron(Uspin, numpy.eye(trial.nbasis))
     psi0 = U.dot(psi0)
     trial = SingleDetGHF(psi0, (nalpha, nbeta), nbasis)
     trial.calculate_energy(sys, ham)
-    
+
     numpy.testing.assert_almost_equal(energy_ref, trial.energy, decimal=10)
 
 
@@ -134,9 +137,12 @@ def test_single_det_complex_ghf():
     phi = numpy.pi / 4.0
 
     Uspin = numpy.array(
-            [[numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
-             [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)]],
-            dtype=numpy.complex128)
+        [
+            [numpy.cos(theta / 2.0), -numpy.exp(1.0j * phi) * numpy.sin(theta / 2.0)],
+            [numpy.exp(-1.0j * phi) * numpy.sin(theta / 2.0), numpy.cos(theta / 2.0)],
+        ],
+        dtype=numpy.complex128,
+    )
     U = numpy.kron(Uspin, numpy.eye(trial.nbasis))
 
     psi0 = U.dot(psi0)
@@ -172,7 +178,7 @@ def test_single_det_ghf_from_uhf():
     numpy.testing.assert_allclose(trial_uhf.psi0a, trial.psi0[:nbasis, :nalpha], atol=1e-10)
     numpy.testing.assert_allclose(trial_uhf.psi0b, trial.psi0[nbasis:, nalpha:], atol=1e-10)
     numpy.testing.assert_almost_equal(energy_ref, trial.energy, decimal=10)
-    
+
 
 @pytest.mark.unit
 def test_single_det_all_up():
@@ -212,13 +218,13 @@ def test_calculate_energy_complex_ueg():
 
     # Generate UEG integrals.
     ueg_opts = {
-            "nup": 7,
-            "ndown": 7,
-            "rs": 1.,
-            "ecut": 2.5,
-            "thermal": False,
-            "write_integrals": False,
-            }
+        "nup": 7,
+        "ndown": 7,
+        "rs": 1.0,
+        "ecut": 2.5,
+        "thermal": False,
+        "write_integrals": False,
+    }
 
     ueg = UEG(ueg_opts)
     ueg.build()
@@ -228,22 +234,22 @@ def test_calculate_energy_complex_ueg():
     nup, ndown = nelec
 
     h1 = ueg.H1[0]
-    chol = 2. * ueg.chol_vecs.toarray()
-    #ecore = ueg.ecore
-    ecore = 0.
+    chol = 2.0 * ueg.chol_vecs.toarray()
+    # ecore = ueg.ecore
+    ecore = 0.0
 
     # -------------------------------------------------------------------------
     # Build trial wavefunction.
     # For pyscf.
     U = ueg.compute_real_transformation()
     h1_8 = U.T.conj() @ h1 @ U
-    eri_8 = ueg.eri_8() # 8-fold eri
+    eri_8 = ueg.eri_8()  # 8-fold eri
     eri_8 = ao2mo.restore(8, eri_8, nbasis)
 
     mol = gto.M()
     mol.nelectron = numpy.sum(nelec)
     mol.spin = nup - ndown
-    mol.max_memory = 60000 # MB
+    mol.max_memory = 60000  # MB
     mol.incore_anyway = True
 
     # PW guess.
@@ -254,7 +260,7 @@ def test_calculate_energy_complex_ueg():
     dm0 = numpy.array([numpy.diag(dm0a), numpy.diag(dm0b)])
 
     mf = scf.UHF(mol)
-    #mf.level_shift = 0.5
+    # mf.level_shift = 0.5
     mf.max_cycle = 5000
     mf.get_hcore = lambda *args: h1_8
     mf.get_ovlp = lambda *args: numpy.eye(nbasis)
@@ -274,10 +280,10 @@ def test_calculate_energy_complex_ueg():
 
     # 2. Build Hamiltonian.
     hamiltonian = HamGeneric(
-            numpy.array([h1, h1], dtype=numpy.complex128), 
-            numpy.array(chol, dtype=numpy.complex128), 
-            ecore
-            )
+        numpy.array([h1, h1], dtype=numpy.complex128),
+        numpy.array(chol, dtype=numpy.complex128),
+        ecore,
+    )
 
     # 3. Build trial.
     trial = SingleDet(psi0, nelec, nbasis)
@@ -291,8 +297,9 @@ def test_calculate_energy_complex_ueg():
     trial.calculate_energy(system, hamiltonian)
 
     # Check against RHF solutions of 10.1063/1.5109572
-    numpy.testing.assert_allclose(numpy.around(trial.energy, 6), 13.603557) # rs = 1, nbasis = 57
+    numpy.testing.assert_allclose(numpy.around(trial.energy, 6), 13.603557)  # rs = 1, nbasis = 57
     numpy.testing.assert_allclose(trial.energy, emf)
+
 
 if __name__ == "__main__":
     test_single_det()

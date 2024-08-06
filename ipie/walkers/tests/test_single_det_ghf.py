@@ -27,6 +27,7 @@ from ipie.utils.mpi import MPIHandler
 from ipie.utils.testing import build_test_case_handlers
 from ipie.walkers.ghf_walkers import GHFWalkers
 
+
 @pytest.mark.unit
 def test_overlap_greens_function():
     nelec = (7, 5)
@@ -54,20 +55,20 @@ def test_overlap_greens_function():
     )
     uhf_trial = batched_data.trial
     uhf_walkers = batched_data.walkers
-    
+
     # Define GHF wavefunctions from UHF.
-    ghf_psi0 = numpy.zeros((2*nmo, numpy.sum(nelec)), dtype=uhf_trial.psi0a.dtype)
-    ghf_psi0[:nmo, :nelec[0]] = uhf_trial.psi0a.copy()
-    ghf_psi0[nmo:, nelec[0]:] = uhf_trial.psi0b.copy()
-    
-    ghf_phi = numpy.zeros((2*nmo, numpy.sum(nelec)), dtype=uhf_walkers.phia.dtype)
-    ghf_phi[:nmo, :nelec[0]] = uhf_walkers.phia[0].copy()
-    ghf_phi[nmo:, nelec[0]:] = uhf_walkers.phib[0].copy()
+    ghf_psi0 = numpy.zeros((2 * nmo, numpy.sum(nelec)), dtype=uhf_trial.psi0a.dtype)
+    ghf_psi0[:nmo, : nelec[0]] = uhf_trial.psi0a.copy()
+    ghf_psi0[nmo:, nelec[0] :] = uhf_trial.psi0b.copy()
+
+    ghf_phi = numpy.zeros((2 * nmo, numpy.sum(nelec)), dtype=uhf_walkers.phia.dtype)
+    ghf_phi[:nmo, : nelec[0]] = uhf_walkers.phia[0].copy()
+    ghf_phi[nmo:, nelec[0] :] = uhf_walkers.phib[0].copy()
 
     ghf_trial = SingleDetGHF(ghf_psi0, nelec, nmo)
     ghf_walkers = GHFWalkers(ghf_phi, nelec[0], nelec[1], nmo, nwalkers)
     ghf_walkers.build(ghf_trial)
-    
+
     ovlp = greens_function_single_det(uhf_walkers, uhf_trial, build_full=True)
     ovlp_ghf = greens_function_single_det_ghf(ghf_walkers, ghf_trial)
     numpy.testing.assert_allclose(ovlp, ovlp_ghf, atol=1e-10)
@@ -76,10 +77,14 @@ def test_overlap_greens_function():
     ghf_walkers.ovlp = ghf_trial.calc_overlap(ghf_walkers)
     numpy.testing.assert_allclose(uhf_walkers.ovlp, ghf_walkers.ovlp, atol=1e-10)
 
-    numpy.testing.assert_allclose(uhf_trial.psi0a, ghf_trial.psi0[:nmo, :nelec[0]], atol=1e-10)
-    numpy.testing.assert_allclose(uhf_trial.psi0b, ghf_trial.psi0[nmo:, nelec[0]:], atol=1e-10)
-    numpy.testing.assert_allclose(uhf_walkers.phia, ghf_walkers.phi[:, :nmo, :nelec[0]], atol=1e-10)
-    numpy.testing.assert_allclose(uhf_walkers.phib, ghf_walkers.phi[:, nmo:, nelec[0]:], atol=1e-10)
+    numpy.testing.assert_allclose(uhf_trial.psi0a, ghf_trial.psi0[:nmo, : nelec[0]], atol=1e-10)
+    numpy.testing.assert_allclose(uhf_trial.psi0b, ghf_trial.psi0[nmo:, nelec[0] :], atol=1e-10)
+    numpy.testing.assert_allclose(
+        uhf_walkers.phia, ghf_walkers.phi[:, :nmo, : nelec[0]], atol=1e-10
+    )
+    numpy.testing.assert_allclose(
+        uhf_walkers.phib, ghf_walkers.phi[:, nmo:, nelec[0] :], atol=1e-10
+    )
     numpy.testing.assert_allclose(uhf_walkers.Ga, ghf_walkers.G[:, :nmo, :nmo], atol=1e-10)
     numpy.testing.assert_allclose(uhf_walkers.Gb, ghf_walkers.G[:, nmo:, nmo:], atol=1e-10)
     numpy.testing.assert_allclose(uhf_walkers.Ga, ghf_walkers.Ga, atol=1e-10)
@@ -125,8 +130,12 @@ def test_ghf_walkers_from_uhf_walkers():
     ghf_walkers.ovlp = ghf_trial.calc_overlap(ghf_walkers)
     numpy.testing.assert_allclose(uhf_walkers.ovlp, ghf_walkers.ovlp, atol=1e-10)
 
-    numpy.testing.assert_allclose(uhf_walkers.phia, ghf_walkers.phi[:, :nmo, :nelec[0]], atol=1e-10)
-    numpy.testing.assert_allclose(uhf_walkers.phib, ghf_walkers.phi[:, nmo:, nelec[0]:], atol=1e-10)
+    numpy.testing.assert_allclose(
+        uhf_walkers.phia, ghf_walkers.phi[:, :nmo, : nelec[0]], atol=1e-10
+    )
+    numpy.testing.assert_allclose(
+        uhf_walkers.phib, ghf_walkers.phi[:, nmo:, nelec[0] :], atol=1e-10
+    )
     numpy.testing.assert_allclose(uhf_walkers.Ga, ghf_walkers.G[:, :nmo, :nmo], atol=1e-10)
     numpy.testing.assert_allclose(uhf_walkers.Gb, ghf_walkers.G[:, nmo:, nmo:], atol=1e-10)
     numpy.testing.assert_allclose(uhf_walkers.Ga, ghf_walkers.Ga, atol=1e-10)

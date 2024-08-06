@@ -50,7 +50,7 @@ def ecoul_kernel_batch_real_rchol_rhf(rchola, Ghalfa_batch):
     rchola : :class:`numpy.ndarray`
         Half-rotated cholesky for spin alpha.
     Ghalfa_batch : :class:`numpy.ndarray`
-        Walker's half-rotated Green's function for spin alpha. 
+        Walker's half-rotated Green's function for spin alpha.
         Shape is (nwalkers, nalpha * nbasis).
 
     Returns
@@ -164,7 +164,7 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
     rchola, rcholb : :class:`numpy.ndarray`
         Half-rotated cholesky for each spin.
     Ghalfa_batch, Ghalfb_batch : :class:`numpy.ndarray`
-        Walker's half-rotated Green's function for each spin sigma. 
+        Walker's half-rotated Green's function for each spin sigma.
         Shape is (nwalkers, nsigma, nbasis).
 
     Returns
@@ -175,23 +175,23 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
     nwalkers = Ghalfa_batch.shape[0]
 
     # `copy` is needed to return contiguous arrays for numba.
-    rchola_realT = rchola.T.real.copy() 
+    rchola_realT = rchola.T.real.copy()
     rchola_imagT = rchola.T.imag.copy()
     rcholb_realT = rcholb.T.real.copy()
     rcholb_imagT = rcholb.T.imag.copy()
-    
-    Ghalfa_batch_real = Ghalfa_batch.real.copy().reshape((nwalkers, -1)) 
+
+    Ghalfa_batch_real = Ghalfa_batch.real.copy().reshape((nwalkers, -1))
     Ghalfa_batch_imag = Ghalfa_batch.imag.copy().reshape((nwalkers, -1))
     Ghalfb_batch_real = Ghalfb_batch.real.copy().reshape((nwalkers, -1))
     Ghalfb_batch_imag = Ghalfb_batch.imag.copy().reshape((nwalkers, -1))
-    
+
     # (nwalkers, nchol)
-    Xa = Ghalfa_batch_real.dot(rchola_realT) + 1.j * Ghalfa_batch_real.dot(rchola_imagT)
-    Xa += 1.j * Ghalfa_batch_imag.dot(rchola_realT) - Ghalfa_batch_imag.dot(rchola_imagT)
-    Xb = Ghalfb_batch_real.dot(rcholb_realT) + 1.j * Ghalfb_batch_real.dot(rcholb_imagT)
-    Xb += 1.j * Ghalfb_batch_imag.dot(rcholb_realT) - Ghalfb_batch_imag.dot(rcholb_imagT)
+    Xa = Ghalfa_batch_real.dot(rchola_realT) + 1.0j * Ghalfa_batch_real.dot(rchola_imagT)
+    Xa += 1.0j * Ghalfa_batch_imag.dot(rchola_realT) - Ghalfa_batch_imag.dot(rchola_imagT)
+    Xb = Ghalfb_batch_real.dot(rcholb_realT) + 1.0j * Ghalfb_batch_real.dot(rcholb_imagT)
+    Xb += 1.0j * Ghalfb_batch_imag.dot(rcholb_realT) - Ghalfb_batch_imag.dot(rcholb_imagT)
     X = Xa + Xb
-    
+
     ecoul = numpy.zeros(nwalkers, dtype=numpy.complex128)
 
     for iw in range(nwalkers):
@@ -203,7 +203,8 @@ def ecoul_kernel_batch_real_rchol_uhf(rchola, rcholb, Ghalfa_batch, Ghalfb_batch
 
 @jit(nopython=True, fastmath=True)
 def ecoul_kernel_batch_complex_rchol_uhf(
-    rchola, rcholb, rcholbara, rcholbarb, Ghalfa_batch, Ghalfb_batch):
+    rchola, rcholb, rcholbara, rcholbarb, Ghalfa_batch, Ghalfb_batch
+):
     """Compute coulomb contribution for real rchol with UHF trial.
 
     Parameters
@@ -224,31 +225,31 @@ def ecoul_kernel_batch_complex_rchol_uhf(
     nwalkers = Ghalfa_batch.shape[0]
 
     # `copy` is needed to return contiguous arrays for numba.
-    rchola_realT = rchola.T.real.copy() 
+    rchola_realT = rchola.T.real.copy()
     rchola_imagT = rchola.T.imag.copy()
     rcholb_realT = rcholb.T.real.copy()
     rcholb_imagT = rcholb.T.imag.copy()
-    
-    rcholbara_realT = rcholbara.T.real.copy() 
+
+    rcholbara_realT = rcholbara.T.real.copy()
     rcholbara_imagT = rcholbara.T.imag.copy()
     rcholbarb_realT = rcholbarb.T.real.copy()
     rcholbarb_imagT = rcholbarb.T.imag.copy()
 
-    Ghalfa_batch_real = Ghalfa_batch.real.copy().reshape((nwalkers, -1)) 
+    Ghalfa_batch_real = Ghalfa_batch.real.copy().reshape((nwalkers, -1))
     Ghalfa_batch_imag = Ghalfa_batch.imag.copy().reshape((nwalkers, -1))
     Ghalfb_batch_real = Ghalfb_batch.real.copy().reshape((nwalkers, -1))
     Ghalfb_batch_imag = Ghalfb_batch.imag.copy().reshape((nwalkers, -1))
 
     # (nwalkers, nchol)
-    X1 = Ghalfa_batch_real.dot(rchola_realT) + 1.j * Ghalfa_batch_real.dot(rchola_imagT)
-    X1 += 1.j * Ghalfa_batch_imag.dot(rchola_realT) - Ghalfa_batch_imag.dot(rchola_imagT)
-    X1 += Ghalfb_batch_real.dot(rcholb_realT) + 1.j * Ghalfb_batch_real.dot(rcholb_imagT)
-    X1 += 1.j * Ghalfb_batch_imag.dot(rcholb_realT) - Ghalfb_batch_imag.dot(rcholb_imagT)
+    X1 = Ghalfa_batch_real.dot(rchola_realT) + 1.0j * Ghalfa_batch_real.dot(rchola_imagT)
+    X1 += 1.0j * Ghalfa_batch_imag.dot(rchola_realT) - Ghalfa_batch_imag.dot(rchola_imagT)
+    X1 += Ghalfb_batch_real.dot(rcholb_realT) + 1.0j * Ghalfb_batch_real.dot(rcholb_imagT)
+    X1 += 1.0j * Ghalfb_batch_imag.dot(rcholb_realT) - Ghalfb_batch_imag.dot(rcholb_imagT)
 
-    X2 = Ghalfa_batch_real.dot(rcholbara_realT) + 1.j * Ghalfa_batch_real.dot(rcholbara_imagT)
-    X2 += 1.j * Ghalfa_batch_imag.dot(rcholbara_realT) - Ghalfa_batch_imag.dot(rcholbara_imagT)
-    X2 += Ghalfb_batch_real.dot(rcholbarb_realT) + 1.j * Ghalfb_batch_real.dot(rcholbarb_imagT)
-    X2 += 1.j * Ghalfb_batch_imag.dot(rcholbarb_realT) - Ghalfb_batch_imag.dot(rcholbarb_imagT)
+    X2 = Ghalfa_batch_real.dot(rcholbara_realT) + 1.0j * Ghalfa_batch_real.dot(rcholbara_imagT)
+    X2 += 1.0j * Ghalfa_batch_imag.dot(rcholbara_realT) - Ghalfa_batch_imag.dot(rcholbara_imagT)
+    X2 += Ghalfb_batch_real.dot(rcholbarb_realT) + 1.0j * Ghalfb_batch_real.dot(rcholbarb_imagT)
+    X2 += 1.0j * Ghalfb_batch_imag.dot(rcholbarb_realT) - Ghalfb_batch_imag.dot(rcholbarb_imagT)
 
     ecoul = numpy.zeros(nwalkers, dtype=numpy.complex128)
 
@@ -280,7 +281,7 @@ def exx_kernel_batch_real_rchol(rchol, Ghalf_batch):
     nchol = rchol.shape[0]
     nocc = Ghalf_batch.shape[1]
     nbasis = Ghalf_batch.shape[-1]
-    
+
     rchol_real = rchol.real.copy()
     rchol_imag = rchol.imag.copy()
 
@@ -294,8 +295,8 @@ def exx_kernel_batch_real_rchol(rchol, Ghalf_batch):
             rcholx_real = rchol_real[x].reshape((nocc, nbasis))
             rcholx_imag = rchol_imag[x].reshape((nocc, nbasis))
 
-            T = rcholx_real.dot(Ghalf_realT) + 1.j * rcholx_imag.dot(Ghalf_realT)
-            T += 1.j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT) 
+            T = rcholx_real.dot(Ghalf_realT) + 1.0j * rcholx_imag.dot(Ghalf_realT)
+            T += 1.0j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT)
             exx[iw] += numpy.dot(T.ravel(), T.T.ravel())
 
     exx *= 0.5
@@ -325,13 +326,13 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
     nchol = rchol.shape[0]
     nocc = Ghalf_batch.shape[1]
     nbasis = Ghalf_batch.shape[-1]
-    
+
     rchol_real = rchol.real.copy()
     rchol_imag = rchol.imag.copy()
 
     rcholbar_real = rcholbar.real.copy()
     rcholbar_imag = rcholbar.imag.copy()
-    
+
     exx = numpy.zeros((nwalkers), dtype=numpy.complex128)
 
     for iw in range(nwalkers):
@@ -344,10 +345,10 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
             rcholbarx_real = rcholbar_real[x].reshape((nocc, nbasis))
             rcholbarx_imag = rcholbar_imag[x].reshape((nocc, nbasis))
 
-            T1 = rcholx_real.dot(Ghalf_realT) + 1.j * rcholx_imag.dot(Ghalf_realT)
-            T1 += 1.j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT)
-            T2 = rcholbarx_real.dot(Ghalf_realT) + 1.j * rcholbarx_imag.dot(Ghalf_realT)
-            T2 += 1.j * rcholbarx_real.dot(Ghalf_imagT) - rcholbarx_imag.dot(Ghalf_imagT)
+            T1 = rcholx_real.dot(Ghalf_realT) + 1.0j * rcholx_imag.dot(Ghalf_realT)
+            T1 += 1.0j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT)
+            T2 = rcholbarx_real.dot(Ghalf_realT) + 1.0j * rcholbarx_imag.dot(Ghalf_realT)
+            T2 += 1.0j * rcholbarx_real.dot(Ghalf_imagT) - rcholbarx_imag.dot(Ghalf_imagT)
             exx[iw] += numpy.dot(T1.ravel(), T2.T.ravel())
 
     exx *= 0.5
@@ -356,10 +357,7 @@ def exx_kernel_batch_complex_rchol(rchol, rcholbar, Ghalf_batch):
 
 @plum.dispatch
 def local_energy_single_det_uhf_batch(
-    system: Generic, 
-    hamiltonian: GenericRealChol, 
-    walkers: UHFWalkers, 
-    trial: SingleDet
+    system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: SingleDet
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -391,9 +389,11 @@ def local_energy_single_det_uhf_batch(
     e1b += hamiltonian.ecore
 
     ecoul = ecoul_kernel_batch_real_rchol_uhf(
-            trial._rchola, trial._rcholb, walkers.Ghalfa, walkers.Ghalfb)
-    exx = exx_kernel_batch_real_rchol(trial._rchola, walkers.Ghalfa) + \
-            exx_kernel_batch_real_rchol(trial._rcholb, walkers.Ghalfb)
+        trial._rchola, trial._rcholb, walkers.Ghalfa, walkers.Ghalfb
+    )
+    exx = exx_kernel_batch_real_rchol(trial._rchola, walkers.Ghalfa) + exx_kernel_batch_real_rchol(
+        trial._rcholb, walkers.Ghalfb
+    )
     e2b = ecoul - exx
 
     energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
@@ -440,10 +440,16 @@ def local_energy_single_det_uhf_batch(
     e1b += hamiltonian.ecore
 
     ecoul = ecoul_kernel_batch_complex_rchol_uhf(
-                trial._rchola, trial._rcholb, trial._rcholbara, trial._rcholbarb, 
-                walkers.Ghalfa, walkers.Ghalfb)
-    exx = exx_kernel_batch_complex_rchol(trial._rchola, trial._rcholbara, walkers.Ghalfa) + \
-            exx_kernel_batch_complex_rchol(trial._rcholb, trial._rcholbarb, walkers.Ghalfb)
+        trial._rchola,
+        trial._rcholb,
+        trial._rcholbara,
+        trial._rcholbarb,
+        walkers.Ghalfa,
+        walkers.Ghalfb,
+    )
+    exx = exx_kernel_batch_complex_rchol(
+        trial._rchola, trial._rcholbara, walkers.Ghalfa
+    ) + exx_kernel_batch_complex_rchol(trial._rcholb, trial._rcholbarb, walkers.Ghalfb)
     e2b = ecoul - exx
 
     energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
@@ -528,7 +534,7 @@ def ecoul_kernel_batch_real_rchol_ghf(chol, Gaa_batch, Gbb_batch):
 
     # Assuming `chol` is real.
     # (nwalkers, nchol)
-    X = Gcharge_batch_real.dot(chol) + 1.j * Gcharge_batch_imag.dot(chol)
+    X = Gcharge_batch_real.dot(chol) + 1.0j * Gcharge_batch_imag.dot(chol)
     ecoul = numpy.zeros(nwalkers, dtype=numpy.complex128)
 
     for iw in range(nwalkers):
@@ -589,10 +595,10 @@ def exx_kernel_batch_real_rchol_ghf(chol, Gaa_batch, Gbb_batch, Gab_batch, Gba_b
     nwalkers = Gaa_batch.shape[0]
     nbasis = Gaa_batch.shape[-1]
     nchol = chol.shape[1]
-    
-    Lmn = chol.T.copy() # (nchol, nbasis^2)
+
+    Lmn = chol.T.copy()  # (nchol, nbasis^2)
     exx = numpy.zeros(nwalkers, dtype=numpy.complex128)
-    
+
     # Assume `Lmn` is real.
     for iw in range(nwalkers):
         # P = G.T
@@ -607,16 +613,16 @@ def exx_kernel_batch_real_rchol_ghf(chol, Gaa_batch, Gbb_batch, Gab_batch, Gba_b
 
         for x in range(nchol):
             Lmnx = Lmn[x].reshape((nbasis, nbasis))
-            T = Gaa_realT.dot(Lmnx) + 1.j * Gaa_imagT.dot(Lmnx)
+            T = Gaa_realT.dot(Lmnx) + 1.0j * Gaa_imagT.dot(Lmnx)
             exx[iw] += numpy.trace(T.dot(T))
 
-            T = Gbb_realT.dot(Lmnx) + 1.j * Gbb_imagT.dot(Lmnx)
+            T = Gbb_realT.dot(Lmnx) + 1.0j * Gbb_imagT.dot(Lmnx)
             exx[iw] += numpy.trace(T.dot(T))
 
-            Tab = Gab_realT.dot(Lmnx) + 1.j * Gab_imagT.dot(Lmnx)
-            Tba = Gba_realT.dot(Lmnx) + 1.j * Gba_imagT.dot(Lmnx)
-            exx[iw] += 2. * numpy.trace(Tab.dot(Tba))
-    
+            Tab = Gab_realT.dot(Lmnx) + 1.0j * Gab_imagT.dot(Lmnx)
+            Tba = Gba_realT.dot(Lmnx) + 1.0j * Gba_imagT.dot(Lmnx)
+            exx[iw] += 2.0 * numpy.trace(Tab.dot(Tba))
+
     exx *= 0.5
     return exx
 
@@ -642,44 +648,41 @@ def exx_kernel_batch_complex_rchol_ghf(A, B, Gaa_batch, Gbb_batch, Gab_batch, Gb
     nbasis = Gaa_batch.shape[-1]
     nchol = A.shape[1]
 
-    Amn = A.T.copy() # (nchol, nbasis^2)
+    Amn = A.T.copy()  # (nchol, nbasis^2)
     Bmn = B.T.copy()
     exx = numpy.zeros(nwalkers, dtype=numpy.complex128)
 
     for iw in range(nwalkers):
         # P = G.T
-        GaaT = Gaa_batch[iw].T.copy() 
+        GaaT = Gaa_batch[iw].T.copy()
         GbbT = Gbb_batch[iw].T.copy()
         GabT = Gab_batch[iw].T.copy()
         GbaT = Gba_batch[iw].T.copy()
-    
+
         for x in range(nchol):
             Amnx = Amn[x].reshape((nbasis, nbasis))
             Bmnx = Bmn[x].reshape((nbasis, nbasis))
             TA = GaaT.dot(Amnx)
             TB = GaaT.dot(Bmnx)
             exx[iw] += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
-            
+
             TA = GbbT.dot(Amnx)
             TB = GbbT.dot(Bmnx)
             exx[iw] += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
-            
+
             TAab = GabT.dot(Amnx)
             TBab = GabT.dot(Bmnx)
             TAba = GbaT.dot(Amnx)
             TBba = GbaT.dot(Bmnx)
             exx[iw] += 2.0 * (numpy.trace(TAab.dot(TAba)) + numpy.trace(TBab.dot(TBba)))
-            
+
     exx *= 0.5
     return exx
 
 
 @plum.dispatch
 def local_energy_single_det_ghf_batch(
-    system: Generic, 
-    hamiltonian: GenericRealChol, 
-    walkers: GHFWalkers, 
-    trial: SingleDetGHF
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -703,20 +706,20 @@ def local_energy_single_det_ghf_batch(
     """
     nwalkers = walkers.nwalkers
     nbasis = hamiltonian.nbasis
-    
-    Gaa_batch = walkers.G[:, :nbasis, :nbasis].copy() 
+
+    Gaa_batch = walkers.G[:, :nbasis, :nbasis].copy()
     Gbb_batch = walkers.G[:, nbasis:, nbasis:].copy()
     Gab_batch = walkers.G[:, :nbasis, nbasis:].copy()
     Gba_batch = walkers.G[:, nbasis:, :nbasis].copy()
 
-    e1b = Gaa_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[0].ravel()) # (nwalkers,)
-    e1b += Gbb_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[1].ravel()) 
+    e1b = Gaa_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[0].ravel())  # (nwalkers,)
+    e1b += Gbb_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[1].ravel())
     e1b += hamiltonian.ecore
 
-    ecoul = ecoul_kernel_batch_real_rchol_ghf(
-                hamiltonian.chol, Gaa_batch, Gbb_batch)
+    ecoul = ecoul_kernel_batch_real_rchol_ghf(hamiltonian.chol, Gaa_batch, Gbb_batch)
     exx = exx_kernel_batch_real_rchol_ghf(
-                hamiltonian.chol, Gaa_batch, Gbb_batch, Gab_batch, Gba_batch)
+        hamiltonian.chol, Gaa_batch, Gbb_batch, Gab_batch, Gba_batch
+    )
     e2b = ecoul - exx
 
     energy = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)
@@ -728,10 +731,7 @@ def local_energy_single_det_ghf_batch(
 
 @plum.dispatch
 def local_energy_single_det_ghf_batch(
-    system: Generic, 
-    hamiltonian: GenericComplexChol, 
-    walkers: GHFWalkers, 
-    trial: SingleDetGHF
+    system: Generic, hamiltonian: GenericComplexChol, walkers: GHFWalkers, trial: SingleDetGHF
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -761,14 +761,14 @@ def local_energy_single_det_ghf_batch(
     Gab_batch = walkers.G[:, :nbasis, nbasis:]
     Gba_batch = walkers.G[:, nbasis:, :nbasis]
 
-    e1b = Gaa_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[0].ravel()) # (nwalkers,)
-    e1b += Gbb_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[1].ravel()) 
+    e1b = Gaa_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[0].ravel())  # (nwalkers,)
+    e1b += Gbb_batch.reshape((nwalkers, -1)).dot(hamiltonian.H1[1].ravel())
     e1b += hamiltonian.ecore
 
-    ecoul = ecoul_kernel_batch_complex_rchol_ghf(
-                hamiltonian.A, hamiltonian.B, Gaa_batch, Gbb_batch)
+    ecoul = ecoul_kernel_batch_complex_rchol_ghf(hamiltonian.A, hamiltonian.B, Gaa_batch, Gbb_batch)
     exx = exx_kernel_batch_complex_rchol_ghf(
-                hamiltonian.A, hamiltonian.B, Gaa_batch, Gbb_batch, Gab_batch, Gba_batch)
+        hamiltonian.A, hamiltonian.B, Gaa_batch, Gbb_batch, Gab_batch, Gba_batch
+    )
     e2b = ecoul - exx
 
     energy = numpy.zeros((nwalkers, 3), dtype=numpy.complex128)

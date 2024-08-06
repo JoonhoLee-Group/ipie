@@ -74,9 +74,7 @@ class SingleDet(TrialWavefunctionBase):
             + numpy.sum(self.Ghalf[1] * self._rH1b)
             + hamiltonian.ecore
         )
-        self.ej, self.ek = half_rotated_cholesky_jk_uhf(
-            self, hamiltonian, self.Ghalf
-        )
+        self.ej, self.ek = half_rotated_cholesky_jk_uhf(self, hamiltonian, self.Ghalf)
         self.e2b = self.ej - self.ek
         self.energy = self.e1b + self.e2b
 
@@ -198,7 +196,8 @@ class SingleDet(TrialWavefunctionBase):
             )
         else:
             return construct_force_bias_batch_single_det(
-                    hamiltonian, walkers, self._rchola, self._rcholb)
+                hamiltonian, walkers, self._rchola, self._rcholb
+            )
 
     @plum.dispatch
     def calc_force_bias(
@@ -208,4 +207,5 @@ class SingleDet(TrialWavefunctionBase):
         mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
         return construct_force_bias_batch_single_det(
-                hamiltonian, walkers, self._rAa, self._rAb, self._rBa, self._rBb)
+            hamiltonian, walkers, self._rAa, self._rAb, self._rBa, self._rBb
+        )

@@ -42,10 +42,11 @@ class GHFWalkers(BaseWalkers):
     nwalkers : int
         Number of walkers.
     mpi_handler : MPIHandler
-       MPIHandler instance. 
+        MPIHandler instance.
     verbose : bool
         Verbosity.
     """
+
     @plum.dispatch
     def __init__(self, walkers: UHFWalkers, verbose: bool = False):
         self.nup = walkers.nup
@@ -63,7 +64,7 @@ class GHFWalkers(BaseWalkers):
         self.phi[:, self.nbasis :, self.nup :] = walkers.phib.copy()
 
         self.G = numpy.zeros(
-            (self.nwalkers, 2*self.nbasis, 2*self.nbasis), dtype=walkers.Ga.dtype
+            (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
         )
         self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga.copy()
         self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb.copy()
@@ -99,7 +100,7 @@ class GHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler = None,
+        mpi_handler=None,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -120,7 +121,7 @@ class GHFWalkers(BaseWalkers):
 
         # will be built only on request
         self.G = numpy.zeros(
-            shape=(self.nwalkers, 2*self.nbasis, 2*self.nbasis),
+            shape=(self.nwalkers, 2 * self.nbasis, 2 * self.nbasis),
             dtype=numpy.complex128,
         )
 
@@ -138,8 +139,7 @@ class GHFWalkers(BaseWalkers):
         cast_to_device(self, verbose)
 
     def reortho(self):
-        """reorthogonalise walkers.
-        """
+        """reorthogonalise walkers."""
         if config.get_option("use_gpu"):
             return self.reortho_batched()
         detR = []
@@ -168,8 +168,7 @@ class GHFWalkers(BaseWalkers):
         return detR
 
     def reortho_batched(self):
-        """reorthogonalise walkers.
-        """
+        """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
         (self.phi, Rup) = qr(self.phi, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)

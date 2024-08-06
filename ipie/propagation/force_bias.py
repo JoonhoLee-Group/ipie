@@ -79,7 +79,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
 @plum.dispatch
 def construct_force_bias_batch_single_det(
     hamiltonian: GenericRealChol, walkers: UHFWalkers, rchola, rcholb
-    ):
+):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -124,7 +124,7 @@ def construct_force_bias_batch_single_det(
 @plum.dispatch
 def construct_force_bias_batch_single_det(
     hamiltonian: GenericComplexChol, walkers: UHFWalkers, rAa, rAb, rBa, rBb
-    ):
+):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -152,9 +152,7 @@ def construct_force_bias_batch_single_det(
 
 
 @plum.dispatch
-def construct_force_bias_batch_single_det(
-    hamiltonian: GenericRealChol, walkers: GHFWalkers
-    ):
+def construct_force_bias_batch_single_det(hamiltonian: GenericRealChol, walkers: GHFWalkers):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -173,7 +171,7 @@ def construct_force_bias_batch_single_det(
     """
     Ga = walkers.Ga
     Gb = walkers.Gb
-    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
     vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.real)
@@ -185,9 +183,7 @@ def construct_force_bias_batch_single_det(
 
 
 @plum.dispatch
-def construct_force_bias_batch_single_det(
-    hamiltonian: GenericComplexChol, walkers: GHFWalkers, 
-    ):
+def construct_force_bias_batch_single_det(hamiltonian: GenericComplexChol, walkers: GHFWalkers):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -206,15 +202,16 @@ def construct_force_bias_batch_single_det(
     """
     Ga = walkers.Ga
     Gb = walkers.Gb
-    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1) # (nwalkers, nbasis**2)
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
 
     vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
     vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, Gcharge)
     vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, Gcharge)
-    vbias_batch[:, :hamiltonian.nchol] = vbias_A
-    vbias_batch[:, hamiltonian.nchol:] = vbias_B
+    vbias_batch[:, : hamiltonian.nchol] = vbias_A
+    vbias_batch[:, hamiltonian.nchol :] = vbias_B
     synchronize()
     return vbias_batch
+
 
 def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
     """Compute optimal force bias.

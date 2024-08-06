@@ -26,8 +26,8 @@ from ipie.estimators.local_energy_batch import (
 )
 from ipie.estimators.local_energy_noci import local_energy_noci
 from ipie.estimators.local_energy_sd import (
-        local_energy_single_det_uhf_batch, 
-        local_energy_single_det_ghf_batch
+    local_energy_single_det_uhf_batch,
+    local_energy_single_det_ghf_batch,
 )
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
@@ -112,31 +112,20 @@ def local_energy(
 
 
 @plum.dispatch
-def local_energy(
-    system: Generic, 
-    hamiltonian: GenericRealChol, 
-    walkers: UHFWalkers, 
-    trial: NOCI
-):
+def local_energy(system: Generic, hamiltonian: GenericRealChol, walkers: UHFWalkers, trial: NOCI):
     return local_energy_noci(system, hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic, 
-    hamiltonian: GenericRealChol, 
-    walkers: GHFWalkers, 
-    trial: SingleDetGHF
+    system: Generic, hamiltonian: GenericRealChol, walkers: GHFWalkers, trial: SingleDetGHF
 ):
     return local_energy_single_det_ghf_batch(system, hamiltonian, walkers, trial)
 
 
 @plum.dispatch
 def local_energy(
-    system: Generic, 
-    hamiltonian: GenericComplexChol, 
-    walkers: GHFWalkers, 
-    trial: SingleDetGHF
+    system: Generic, hamiltonian: GenericComplexChol, walkers: GHFWalkers, trial: SingleDetGHF
 ):
     return local_energy_single_det_ghf_batch(system, hamiltonian, walkers, trial)
 
