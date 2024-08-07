@@ -16,43 +16,16 @@
 #          Fionn Malone <fionn.malone@gmail.com>
 #
 
+import plum
 import numpy
 from numba import jit
 
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-# FDM: deprecated remove?
-def local_energy_generic_opt(system, G, Ghalf=None, eri=None):
-    """Compute local energy using half-rotated eri tensor."""
-
-    na = system.nup
-    nb = system.ndown
-    M = system.nbasis
-    assert eri is not None
-
-    vipjq_aa = eri[0, : na**2 * M**2].reshape((na, M, na, M))
-    vipjq_bb = eri[0, na**2 * M**2 : na**2 * M**2 + nb**2 * M**2].reshape((nb, M, nb, M))
-    vipjq_ab = eri[0, na**2 * M**2 + nb**2 * M**2 :].reshape((na, M, nb, M))
-
-    Ga, Gb = Ghalf[0], Ghalf[1]
-    # Element wise multiplication.
-    e1b = numpy.sum(system.H1[0] * G[0]) + numpy.sum(system.H1[1] * G[1])
-    # Coulomb
-    eJaa = 0.5 * numpy.einsum("irjs,ir,js", vipjq_aa, Ga, Ga)
-    eJbb = 0.5 * numpy.einsum("irjs,ir,js", vipjq_bb, Gb, Gb)
-    eJab = numpy.einsum("irjs,ir,js", vipjq_ab, Ga, Gb)
-
-    eKaa = -0.5 * numpy.einsum("irjs,is,jr", vipjq_aa, Ga, Ga)
-    eKbb = -0.5 * numpy.einsum("irjs,is,jr", vipjq_bb, Gb, Gb)
-
-    e2b = eJaa + eJbb + eJab + eKaa + eKbb
-
-    return (e1b + e2b + system.ecore, e1b + system.ecore, e2b)
-
-
-def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
+def local_energy_generic_cholesky(system, hamiltonian, G, Ghalf=None):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the cholesky decomposed two-electron integrals.
@@ -61,12 +34,12 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     ----------
     system : :class:`Generic`
         generic system information
-    ham : :class:`Generic`
-        ab-initio hamiltonian information
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
     G : :class:`numpy.ndarray`
-        Walker's "green's function"
+        Walker's Green's function.
     Ghalf : :class:`numpy.ndarray`
-        Walker's "half-rotated" "green's function"
+        Walker's "half-rotated" Green's function.
 
     Returns
     -------
@@ -74,17 +47,21 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
         Total , one and two-body energies.
     """
     # Element wise multiplication.
-    e1b = numpy.sum(ham.H1[0] * G[0]) + numpy.sum(ham.H1[1] * G[1])
-    nbasis = ham.nbasis
-    nchol = ham.nchol
+    e1b = numpy.sum(hamiltonian.H1[0] * G[0]) + numpy.sum(hamiltonian.H1[1] * G[1])
+    nbasis = hamiltonian.nbasis
+    nchol = hamiltonian.nchol
     Ga, Gb = G[0], G[1]
 
-    if numpy.isrealobj(ham.chol):
-        Xa = ham.chol.T.dot(Ga.real.ravel()) + 1.0j * ham.chol.T.dot(Ga.imag.ravel())
-        Xb = ham.chol.T.dot(Gb.real.ravel()) + 1.0j * ham.chol.T.dot(Gb.imag.ravel())
+    if numpy.isrealobj(hamiltonian.chol):
+        Xa = hamiltonian.chol.T.dot(Ga.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(
+            Ga.imag.ravel()
+        )
+        Xb = hamiltonian.chol.T.dot(Gb.real.ravel()) + 1.0j * hamiltonian.chol.T.dot(
+            Gb.imag.ravel()
+        )
     else:
-        Xa = ham.chol.T.dot(Ga.ravel())
-        Xb = ham.chol.T.dot(Gb.ravel())
+        Xa = hamiltonian.chol.T.dot(Ga.ravel())
+        Xb = hamiltonian.chol.T.dot(Gb.ravel())
 
     ecoul = numpy.dot(Xa, Xa)
     ecoul += numpy.dot(Xb, Xb)
@@ -96,9 +73,9 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
     GbT = Gb.T.copy()
 
     exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if numpy.isrealobj(ham.chol):
+    if numpy.isrealobj(hamiltonian.chol):
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :].real = GaT.real.dot(Lmn)
             T[:, :].imag = GaT.imag.dot(Lmn)
             exx += numpy.trace(T.dot(T))
@@ -107,7 +84,7 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
             exx += numpy.trace(T.dot(T))
     else:
         for x in range(nchol):  # write a cython function that calls blas for this.
-            Lmn = ham.chol[:, x].reshape((nbasis, nbasis))
+            Lmn = hamiltonian.chol[:, x].reshape((nbasis, nbasis))
             T[:, :] = GaT.dot(Lmn)
             exx += numpy.trace(T.dot(T))
             T[:, :] = GbT.dot(Lmn)
@@ -115,26 +92,23 @@ def local_energy_generic_cholesky(system, ham, G, Ghalf=None):
 
     e2b = 0.5 * (ecoul - exx)
 
-    return (e1b + e2b + ham.ecore, e1b + ham.ecore, e2b)
+    return (e1b + e2b + hamiltonian.ecore, e1b + hamiltonian.ecore, e2b)
 
 
-def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt_dG(trial, hamiltonian, Ghalfa, Ghalfb):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the density difference trick.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        generic system information
-    ecore : float
-        Core energy
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's "half-rotated" alpha "green's function"
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's "half-rotated" beta "green's function"
     trial : ipie trial object
         Trial wavefunction object.
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalfa, Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated Green's function for each spin sigma.
+        Shape is (nsigma, nbasis).
 
     Returns
     -------
@@ -144,21 +118,21 @@ def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     dGhalfa = Ghalfa - trial.psia.T
     dGhalfb = Ghalfb - trial.psib.T
 
-    de1 = xp.sum(trial._rH1a * dGhalfa) + xp.sum(trial._rH1b * dGhalfb) + ecore
+    de1 = xp.sum(trial._rH1a * dGhalfa) + xp.sum(trial._rH1b * dGhalfb) + hamiltonian.ecore
     dde2 = xp.sum(trial._rFa_corr * Ghalfa) + xp.sum(trial._rFb_corr * Ghalfb)
 
     if trial.mixed_precision:
         dGhalfa = dGhalfa.astype(numpy.complex64)
         dGhalfb = dGhalfb.astype(numpy.complex64)
 
-    deJ, deK = half_rotated_cholesky_jk(system, dGhalfa, dGhalfb, trial)
+    deJ, deK = half_rotated_cholesky_jk_uhf(trial, hamiltonian, [dGhalfa, dGhalfb])
     de2 = deJ + deK
 
     if trial.mixed_precision:
         dGhalfa = dGhalfa.astype(numpy.complex128)
         dGhalfb = dGhalfb.astype(numpy.complex128)
 
-    e1 = de1 - ecore + trial.e1b
+    e1 = de1 - hamiltonian.ecore + trial.e1b
     e2 = de2 + dde2 - trial.e2b
 
     etot = e1 + e2
@@ -166,55 +140,53 @@ def local_energy_cholesky_opt_dG(system, ecore, Ghalfa, Ghalfb, trial):
     return (etot, e1, e2)
 
 
-def local_energy_cholesky_opt(system, ecore, Ghalfa, Ghalfb, trial):
+def local_energy_cholesky_opt(trial, hamiltonian, Ghalf):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the half-rotated cholesky decomposed two-electron integrals.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nbeta x nbasis
     trial : ipie trial object
         Trial wavefunction
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
 
     Returns
     -------
     (E, T, V): tuple
         Total, one and two-body energies.
     """
-    e1b = half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial)
-    eJ, eK = half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial)
-    e2b = eJ + eK
+    e1b = half_rotated_cholesky_hcore_uhf(trial, Ghalf)
+    eJ, eK = half_rotated_cholesky_jk_uhf(trial, hamiltonian, Ghalf)
+    e2b = eJ - eK
+    ecore = hamiltonian.ecore
 
     return (e1b + e2b + ecore, e1b + ecore, e2b)
 
 
-def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
+def half_rotated_cholesky_hcore_uhf(trial, Ghalf):
     r"""Calculate local for generic two-body hamiltonian.
 
     This uses the half-rotated core hamiltonian.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nbeta x nbasis
     trial : ipie trial object
         Trial wavefunction
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
 
     Returns
     -------
     e1b : :class:`numpy.ndarray`
         One-body energy.
     """
+    Ghalfa, Ghalfb = Ghalf
     rH1a = trial._rH1a
     rH1b = trial._rH1b
 
@@ -224,115 +196,196 @@ def half_rotated_cholesky_hcore(system, Ghalfa, Ghalfb, trial):
 
 
 @jit(nopython=True, fastmath=True)
-def exx_kernel_rchol_real(rchol, Ghalf):
-    """Compute exchange contribution for real rchol.
+def ecoul_kernel_real_rchol_uhf(rchola, rcholb, Ghalfa, Ghalfb):
+    """Compute Coulomb contribution for real Choleskies with UHF trial.
+
+    Parameters
+    ----------
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
+    Ghalfa, Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated Green's function for each spin sigma.
+        Shape is (nsigma, nbasis).
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb contribution for given green's function.
+    """
+    # `copy` is needed to return contiguous arrays for numba.
+    rchola_real = rchola.real.copy()
+    rchola_imag = rchola.imag.copy()
+    rcholb_real = rcholb.real.copy()
+    rcholb_imag = rcholb.imag.copy()
+
+    Ghalfa_real = Ghalfa.real.ravel()
+    Ghalfa_imag = Ghalfa.imag.ravel()
+    Ghalfb_real = Ghalfb.real.ravel()
+    Ghalfb_imag = Ghalfb.imag.ravel()
+
+    Xa = rchola_real.dot(Ghalfa_real) + 1.0j * rchola_imag.dot(Ghalfa_real)
+    Xa += 1.0j * rchola_real.dot(Ghalfa_imag) - rchola_imag.dot(Ghalfa_imag)
+    Xb = rcholb_real.dot(Ghalfb_real) + 1.0j * rcholb_imag.dot(Ghalfb_real)
+    Xb += 1.0j * rcholb_real.dot(Ghalfb_imag) - rcholb_imag.dot(Ghalfb_imag)
+    X = Xa + Xb
+
+    ecoul = 0.5 * numpy.dot(X, X)
+    return ecoul
+
+
+@jit(nopython=True, fastmath=True)
+def ecoul_kernel_complex_rchol_uhf(rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb):
+    """Compute Coulomb contribution for complex Choleskies with UHF trial.
+
+    Parameters
+    ----------
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
+    rcholbara, rcholbarb : :class:`numpy.ndarray`
+        Complex conjugate of half-rotated cholesky for each spin.
+    Ghalfa, Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated Green's function for each spin sigma.
+        Shape is (nsigma, nbasis).
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb contribution for given green's function.
+    """
+    rchola_real = rchola.real.copy()
+    rchola_imag = rchola.imag.copy()
+    rcholb_real = rcholb.real.copy()
+    rcholb_imag = rcholb.imag.copy()
+
+    rcholbara_real = rcholbara.real.copy()
+    rcholbara_imag = rcholbara.imag.copy()
+    rcholbarb_real = rcholbarb.real.copy()
+    rcholbarb_imag = rcholbarb.imag.copy()
+
+    Ghalfa_real = Ghalfa.real.ravel()
+    Ghalfa_imag = Ghalfa.imag.ravel()
+    Ghalfb_real = Ghalfb.real.ravel()
+    Ghalfb_imag = Ghalfb.imag.ravel()
+
+    X1 = rchola_real.dot(Ghalfa_real) + 1.0j * rchola_imag.dot(Ghalfa_real)
+    X1 += 1.0j * rchola_real.dot(Ghalfa_imag) - rchola_imag.dot(Ghalfa_imag)
+    X1 += rcholb_real.dot(Ghalfb_real) + 1.0j * rcholb_imag.dot(Ghalfb_real)
+    X1 += 1.0j * rcholb_real.dot(Ghalfb_imag) - rcholb_imag.dot(Ghalfb_imag)
+
+    X2 = rcholbara_real.dot(Ghalfa_real) + 1.0j * rcholbara_imag.dot(Ghalfa_real)
+    X2 += 1.0j * rcholbara_real.dot(Ghalfa_imag) - rcholbara_imag.dot(Ghalfa_imag)
+    X2 += rcholbarb_real.dot(Ghalfb_real) + 1.0j * rcholbarb_imag.dot(Ghalfb_real)
+    X2 += 1.0j * rcholbarb_real.dot(Ghalfb_imag) - rcholbarb_imag.dot(Ghalfb_imag)
+
+    ecoul = 0.5 * numpy.dot(X1, X2)
+    return ecoul
+
+
+@jit(nopython=True, fastmath=True)
+def exx_kernel_real_rchol(rchol, Ghalf):
+    """Compute exchange contribution for real Choleskies with RHF/UHF trial.
 
     Parameters
     ----------
     rchol : :class:`numpy.ndarray`
-        Half-rotated cholesky.
+        Half-rotated cholesky for one spin.
     Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+        Walker's half-rotated Green's function for spin sigma.
+        Shape is (nsigma, nbasis).
 
     Returns
     -------
     exx : :class:`numpy.ndarray`
         exchange contribution for given green's function.
     """
-    naux = rchol.shape[0]
+    nchol = rchol.shape[0]
     nocc = Ghalf.shape[0]
     nbasis = Ghalf.shape[1]
 
-    exx = 0 + 0j
-    Greal = Ghalf.real.copy()
-    Gimag = Ghalf.imag.copy()
+    rchol_real = rchol.real.copy()
+    rchol_imag = rchol.imag.copy()
+
+    Ghalf_realT = Ghalf.T.real.copy()
+    Ghalf_imagT = Ghalf.T.imag.copy()
+
+    exx = 0.0j
+
     # Fix this with gpu env
-    for jx in range(naux):
-        rmi = rchol[jx].reshape((nocc, nbasis))
-        T = rmi.dot(Greal.T) + 1.0j * rmi.dot(Gimag.T)
+    for x in range(nchol):
+        rcholx_real = rchol_real[x].reshape((nocc, nbasis))
+        rcholx_imag = rchol_imag[x].reshape((nocc, nbasis))
+
+        T = rcholx_real.dot(Ghalf_realT) + 1.0j * rcholx_imag.dot(Ghalf_realT)
+        T += 1.0j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT)
         exx += numpy.dot(T.ravel(), T.T.ravel())
+
+    exx *= 0.5
     return exx
 
 
 @jit(nopython=True, fastmath=True)
-def exx_kernel_rchol_complex(rchol, Ghalf):
-    """Compute exchange contribution for complex rchol.
+def exx_kernel_complex_rchol(rchol, rcholbar, Ghalf):
+    """Compute exchange contribution for complex Choleskies with RHF/UHF trial.
 
     Parameters
     ----------
     rchol : :class:`numpy.ndarray`
-        Half-rotated cholesky.
+        Half-rotated cholesky for one spin.
+    rcholbar : :class:`numpy.ndarray`
+        Complex conjugate of half-rotated cholesky for one spin.
     Ghalf : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
+        Walker's half-rotated Green's function for spin sigma.
+        Shape is (nsigma, nbasis).
 
     Returns
     -------
     exx : :class:`numpy.ndarray`
         exchange contribution for given green's function.
     """
-    naux = rchol.shape[0]
+    nchol = rchol.shape[0]
     nocc = Ghalf.shape[0]
     nbasis = Ghalf.shape[1]
 
-    exx = 0 + 0j
-    GhalfT = Ghalf.T.copy()
-    # Fix this with gpu env
-    for jx in range(naux):
-        rmi = rchol[jx].reshape((nocc, nbasis))
-        T = rmi.dot(GhalfT)
-        exx += numpy.dot(T.ravel(), T.T.ravel())
+    rchol_real = rchol.real.copy()
+    rchol_imag = rchol.imag.copy()
+
+    rcholbar_real = rcholbar.real.copy()
+    rcholbar_imag = rcholbar.imag.copy()
+
+    Ghalf_realT = Ghalf.T.real.copy()
+    Ghalf_imagT = Ghalf.T.imag.copy()
+
+    exx = 0.0j
+
+    for x in range(nchol):
+        rcholx_real = rchol_real[x].reshape((nocc, nbasis))
+        rcholx_imag = rchol_imag[x].reshape((nocc, nbasis))
+        rcholbarx_real = rcholbar_real[x].reshape((nocc, nbasis))
+        rcholbarx_imag = rcholbar_imag[x].reshape((nocc, nbasis))
+
+        T1 = rcholx_real.dot(Ghalf_realT) + 1.0j * rcholx_imag.dot(Ghalf_realT)
+        T1 += 1.0j * rcholx_real.dot(Ghalf_imagT) - rcholx_imag.dot(Ghalf_imagT)
+        T2 = rcholbarx_real.dot(Ghalf_realT) + 1.0j * rcholbarx_imag.dot(Ghalf_realT)
+        T2 += 1.0j * rcholbarx_real.dot(Ghalf_imagT) - rcholbarx_imag.dot(Ghalf_imagT)
+        exx += numpy.dot(T1.ravel(), T2.T.ravel())
+
+    exx *= 0.5
     return exx
 
 
-def cholesky_jk_ghf(chol, G):
-    nbasis = G.shape[0] // 2
-
-    Gaa = G[:nbasis, :nbasis].copy()
-    Gbb = G[nbasis:, nbasis:].copy()
-    Gab = G[:nbasis, nbasis:].copy()
-    Gba = G[nbasis:, :nbasis].copy()
-
-    Gcharge = Gaa + Gbb
-    X = Gcharge.ravel().dot(chol)
-    ecoul = xp.dot(X, X)
-
-    T = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
-    Tab = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
-    Tba = numpy.zeros((nbasis, nbasis), dtype=numpy.complex128)
-
-    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-
-    nchol = chol.shape[-1]
-    for x in range(nchol):  # write a cython function that calls blas for this.
-        Lmn = chol[:, x].reshape((nbasis, nbasis))
-        T[:, :].real = Gaa.T.real.dot(Lmn)
-        T[:, :].imag = Gaa.T.imag.dot(Lmn)
-        exx += numpy.trace(T.dot(T))
-        T[:, :].real = Gbb.T.real.dot(Lmn)
-        T[:, :].imag = Gbb.T.imag.dot(Lmn)
-        exx += numpy.trace(T.dot(T))
-
-        Tab[:, :].real = Gab.T.real.dot(Lmn)
-        Tab[:, :].imag = Gab.T.imag.dot(Lmn)
-        Tba[:, :].real = Gba.T.real.dot(Lmn)
-        Tba[:, :].imag = Gba.T.imag.dot(Lmn)
-        exx += 2.0 * numpy.trace(Tab.dot(Tba))
-    return 0.5 * ecoul, -0.5 * exx  # JK energy
-
-
-def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
+@plum.dispatch
+def half_rotated_cholesky_jk_uhf(trial, hamiltonian: GenericRealChol, Ghalf):
     """Compute exchange and coulomb contributions via jitted kernels.
 
     Parameters
     ----------
-    system : :class:`Generic`
-        System information for Generic.
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nalpha  x nbasis
-    Ghalfa : :class:`numpy.ndarray`
-        Walker's half-rotated "green's function" shape is nbeta x nbasis
     trial : ipie trial object
         Trial wavefunction
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
 
     Returns
     -------
@@ -341,40 +394,228 @@ def half_rotated_cholesky_jk(system, Ghalfa, Ghalfb, trial):
     exx : :class:`numpy.ndarray`
         Exchange energy.
     """
-
+    Ghalfa, Ghalfb = Ghalf
     rchola = trial._rchola
     rcholb = trial._rcholb
 
     # Element wise multiplication.
-    if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
-        Xa = rchola.dot(Ghalfa.real.ravel()) + 1.0j * rchola.dot(Ghalfa.imag.ravel())
-        Xb = rcholb.dot(Ghalfb.real.ravel()) + 1.0j * rcholb.dot(Ghalfb.imag.ravel())
-    else:
-        Xa = rchola.dot(Ghalfa.ravel())
-        Xb = rcholb.dot(Ghalfb.ravel())
-
-    ecoul = xp.dot(Xa, Xa)
-    ecoul += xp.dot(Xb, Xb)
-    ecoul += 2 * xp.dot(Xa, Xb)
-    exx = 0.0j  # we will iterate over cholesky index to update Ex energy for alpha and beta
-    if xp.isrealobj(rchola) and xp.isrealobj(rcholb):
-        exx = exx_kernel_rchol_real(rchola, Ghalfa) + exx_kernel_rchol_real(rcholb, Ghalfb)
-    else:
-        exx = exx_kernel_rchol_complex(rchola, Ghalfa) + exx_kernel_rchol_complex(rcholb, Ghalfb)
-
+    ecoul = ecoul_kernel_real_rchol_uhf(rchola, rcholb, Ghalfa, Ghalfb)
+    exx = exx_kernel_real_rchol(rchola, Ghalfa) + exx_kernel_real_rchol(rcholb, Ghalfb)
     synchronize()
-    return 0.5 * ecoul, -0.5 * exx  # JK energy
+    return ecoul, exx  # JK energy
 
 
-# FDM: Mark for deletion
-def core_contribution(system, Gcore):
-    hc_a = numpy.einsum("pqrs,pq->rs", system.h2e, Gcore[0]) - 0.5 * numpy.einsum(
-        "prsq,pq->rs", system.h2e, Gcore[0]
+@plum.dispatch
+def half_rotated_cholesky_jk_uhf(trial, hamiltonian: GenericComplexChol, Ghalf):
+    """Compute exchange and coulomb contributions via jitted kernels.
+
+    Parameters
+    ----------
+    trial : ipie trial object
+        Trial wavefunction
+    hamiltonian : ipie hamiltonian object.
+        Hamiltonian.
+    Ghalf : list of :class:`numpy.ndarray`
+        Walker's half-rotated Green's function, stored as a list of arrays with
+        shape (nsigma, nbasis) for each spin sigma.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb energy.
+    exx : :class:`numpy.ndarray`
+        Exchange energy.
+    """
+    Ghalfa, Ghalfb = Ghalf
+    rchola = trial._rchola
+    rcholb = trial._rcholb
+    rcholbara = trial._rcholbara
+    rcholbarb = trial._rcholbarb
+
+    # Element wise multiplication.
+    ecoul = ecoul_kernel_complex_rchol_uhf(rchola, rcholb, rcholbara, rcholbarb, Ghalfa, Ghalfb)
+    exx = exx_kernel_complex_rchol(rchola, rcholbara, Ghalfa) + exx_kernel_complex_rchol(
+        rcholb, rcholbarb, Ghalfb
     )
-    hc_b = numpy.einsum("pqrs,pq->rs", system.h2e, Gcore[1]) - 0.5 * numpy.einsum(
-        "prsq,pq->rs", system.h2e, Gcore[1]
-    )
-    return (hc_a, hc_b)
+    synchronize()
+    return ecoul, exx  # JK energy
+
+
+@jit(nopython=True, fastmath=True)
+def ecoul_kernel_real_rchol_ghf(chol, Gaa, Gbb):
+    """Compute Coulomb contribution for real Choleskies.
+
+    Parameters
+    ----------
+    chol : :class:`numpy.ndarray`
+        Choleskies.
+    Gaa, Gbb : :class:`numpy.ndarray`
+        Walker's Green's function in the diagonal spin blocks.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb contribution for given Green's function.
+    """
+    Gcharge = Gaa + Gbb
+    Gcharge_real = Gcharge.real.ravel()
+    Gcharge_imag = Gcharge.imag.ravel()
+
+    # Assuming `chol` is real.
+    X = Gcharge_real.dot(chol) + 1.0j * Gcharge_imag.dot(chol)
+    ecoul = 0.5 * numpy.dot(X, X)
+    return ecoul
+
+
+@jit(nopython=True, fastmath=True)
+def ecoul_kernel_complex_rchol_ghf(A, B, Gaa, Gbb):
+    """Compute Coulomb contribution for complex Choleskies.
+
+    Parameters
+    ----------
+    A, B : :class:`numpy.ndarray`
+        Linear combination of complex Choleskies.
+    Gaa, Gbb : :class:`numpy.ndarray`
+        Walker's Green's function in the diagonal spin blocks.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        Coulomb contribution for given Green's function.
+    """
+    Gcharge = Gaa + Gbb
+    XA = Gcharge.ravel().dot(A)
+    XB = Gcharge.ravel().dot(B)
+    ecoul = 0.5 * (numpy.dot(XA, XA) + numpy.dot(XB, XB))
+    return ecoul
+
+
+@jit(nopython=True, fastmath=True)
+def exx_kernel_real_rchol_ghf(chol, Gaa, Gbb, Gab, Gba):
+    """Compute exchange contribution for real Choleskies.
+
+    Parameters
+    ----------
+    chol : :class:`numpy.ndarray`
+        Choleskies.
+    Gaa, Gbb, Gab, Gba : :class:`numpy.ndarray`
+        Walker's Green's function in each of the 4 spin blocks.
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for given green's function.
+    """
+    nbasis = Gaa.shape[0]
+    nchol = chol.shape[1]
+
+    Lmn = chol.T.copy()  # (nchol, nbasis^2)
+
+    Gaa_realT = Gaa.T.real.copy()
+    Gaa_imagT = Gaa.T.imag.copy()
+    Gbb_realT = Gbb.T.real.copy()
+    Gbb_realT = Gbb.T.real.copy()
+    Gbb_imagT = Gbb.T.imag.copy()
+    Gab_realT = Gab.T.real.copy()
+    Gab_imagT = Gab.T.imag.copy()
+    Gba_realT = Gba.T.real.copy()
+    Gba_imagT = Gba.T.imag.copy()
+
+    exx = 0.0j
+
+    # We will iterate over cholesky index to update Ex energy for alpha and beta.
+    # Assume `Lmn` is real.
+    for x in range(nchol):
+        Lmnx = Lmn[x].reshape((nbasis, nbasis))
+        T = Gaa_realT.dot(Lmnx) + 1.0j * Gaa_imagT.dot(Lmnx)
+        exx += numpy.trace(T.dot(T))
+
+        T = Gbb_realT.dot(Lmnx) + 1.0j * Gbb_imagT.dot(Lmnx)
+        exx += numpy.trace(T.dot(T))
+
+        Tab = Gab_realT.dot(Lmnx) + 1.0j * Gab_imagT.dot(Lmnx)
+        Tba = Gba_realT.dot(Lmnx) + 1.0j * Gba_imagT.dot(Lmnx)
+        exx += 2.0 * numpy.trace(Tab.dot(Tba))
+
+    exx *= 0.5
+    return exx
+
+
+@jit(nopython=True, fastmath=True)
+def exx_kernel_complex_rchol_ghf(A, B, Gaa, Gbb, Gab, Gba):
+    """Compute exchange contribution for complex Choleskies.
+
+    Parameters
+    ----------
+    A, B : :class:`numpy.ndarray`
+        Linear combination of complex Choleskies.
+    Gaa, Gbb, Gab, Gba : :class:`numpy.ndarray`
+        Walker's Green's function in each of the 4 spin blocks.
+
+    Returns
+    -------
+    exx : :class:`numpy.ndarray`
+        exchange contribution for given green's function.
+    """
+    nbasis = Gaa.shape[0]
+    nchol = A.shape[1]
+
+    Amn = A.T.copy()
+    Bmn = B.T.copy()
+
+    GaaT = Gaa.T.copy()
+    GbbT = Gbb.T.copy()
+    GabT = Gab.T.copy()
+    GbaT = Gba.T.copy()
+
+    exx = 0.0j
+
+    # We will iterate over cholesky index to update Ex energy for alpha and beta.
+    for x in range(nchol):
+        Amnx = Amn[x].reshape((nbasis, nbasis))
+        Bmnx = Bmn[x].reshape((nbasis, nbasis))
+        TA = GaaT.dot(Amnx)
+        TB = GaaT.dot(Bmnx)
+        exx += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
+
+        TA = GbbT.dot(Amnx)
+        TB = GbbT.dot(Bmnx)
+        exx += numpy.trace(TA.dot(TA)) + numpy.trace(TB.dot(TB))
+
+        TAab = GabT.dot(Amnx)
+        TBab = GabT.dot(Bmnx)
+        TAba = GbaT.dot(Amnx)
+        TBba = GbaT.dot(Bmnx)
+        exx += 2.0 * (numpy.trace(TAab.dot(TAba)) + numpy.trace(TBab.dot(TBba)))
+
+    exx *= 0.5
+    return exx
+
+
+@plum.dispatch
+def cholesky_jk_ghf(hamiltonian: GenericRealChol, G):
+    nbasis = G.shape[0] // 2
+    Gaa = G[:nbasis, :nbasis].copy()
+    Gbb = G[nbasis:, nbasis:].copy()
+    Gab = G[:nbasis, nbasis:].copy()
+    Gba = G[nbasis:, :nbasis].copy()
+
+    ecoul = ecoul_kernel_real_rchol_ghf(hamiltonian.chol, Gaa, Gbb)
+    exx = exx_kernel_real_rchol_ghf(hamiltonian.chol, Gaa, Gbb, Gab, Gba)
+    return ecoul, exx  # JK energy
+
+
+@plum.dispatch
+def cholesky_jk_ghf(hamiltonian: GenericComplexChol, G):
+    nbasis = G.shape[0] // 2
+    Gaa = G[:nbasis, :nbasis].copy()
+    Gbb = G[nbasis:, nbasis:].copy()
+    Gab = G[:nbasis, nbasis:].copy()
+    Gba = G[nbasis:, :nbasis].copy()
+
+    ecoul = ecoul_kernel_complex_rchol_ghf(hamiltonian.A, hamiltonian.B, Gaa, Gbb)
+    exx = exx_kernel_complex_rchol_ghf(hamiltonian.A, hamiltonian.B, Gaa, Gbb, Gab, Gba)
+    return ecoul, exx  # JK energy
 
 
 def core_contribution_cholesky(chol, G):
