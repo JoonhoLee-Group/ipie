@@ -22,7 +22,7 @@ from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.local_energy_sd import (
     local_energy_single_det_batch_gpu,
     local_energy_single_det_rhf_batch,
-    local_energy_single_det_uhf,
+    local_energy_single_det_uhf_batch,
 )
 from ipie.estimators.local_energy_sd_chunked import (
     local_energy_single_det_uhf_batch_chunked,
@@ -69,9 +69,7 @@ def local_energy_batch(system, hamiltonian, walkers, trial):
                     system, hamiltonian, walkers, trial
                 )
             else:
-                return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
-                # \TODO switch to this
-                # return local_energy_single_det_uhf(system, hamiltonian, walkers, trial)
+                return local_energy_single_det_uhf_batch(system, hamiltonian, walkers, trial)
     else:
         print("# Warning: local_energy_batch is not production level for multi-det trials.")
         return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)

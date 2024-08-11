@@ -26,6 +26,7 @@ class TrialWavefunctionBase(metaclass=ABCMeta):
         num_basis: int,
         verbose: bool = False,
     ):
+        self.psi = wavefunction
         self.nelec = num_elec
         self.nbasis = num_basis
         self.nalpha, self.nbeta = self.nelec
