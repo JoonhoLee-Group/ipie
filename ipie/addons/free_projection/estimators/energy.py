@@ -22,7 +22,11 @@ from ipie.utils.backend import arraylib as xp
 
 class EnergyEstimatorFP(EnergyEstimator):
     def __init__(
-        self, system=None, ham=None, trial=None, filename=None,
+        self,
+        system=None,
+        ham=None,
+        trial=None,
+        filename=None,
     ):
         super().__init__(system, ham, trial, filename)
 

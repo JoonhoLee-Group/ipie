@@ -18,10 +18,14 @@ class PhaseEstimatorFP(EstimatorBase):
         self._ascii_filename = None
 
     def compute_estimator(self, system, walkers, hamiltonian, trial):
-        weighted_phase = np.sum(walkers.weight * walkers.phase)
+        # Compute the phase estimator for the free projection method.
+        # https://arxiv.org/abs/cond-mat/0408370 Eq. (6)
+        magn_phase = np.abs(walkers.phase)
+        magn_ovlp = np.abs(walkers.ovlp)
+        weighted_phase = np.sum(walkers.weight * walkers.phase * walkers.ovlp)
         self._data["PhaseRealNumer"] = weighted_phase.real
         self._data["PhaseImagNumer"] = weighted_phase.imag
-        self._data["PhaseDenom"] = np.sum(walkers.weight)
+        self._data["PhaseDenom"] = np.sum(walkers.weight * magn_phase * magn_ovlp)
 
         return self.data
 

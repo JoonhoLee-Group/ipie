@@ -62,7 +62,11 @@ class EstimatorHandlerFP(EstimatorHandler):
             observables,
             index,
         )
-        self["energy"] = EnergyEstimatorFP(system=system, ham=hamiltonian, trial=trial,)
+        self["energy"] = EnergyEstimatorFP(
+            system=system,
+            ham=hamiltonian,
+            trial=trial,
+        )
         self["phase"] = PhaseEstimatorFP()
 
     def initialize(self, comm, print_header=True):
