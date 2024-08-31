@@ -1,7 +1,6 @@
 """Hubbard model specific classes and methods"""
 
 import cmath
-import math
 from math import cos, pi, sqrt
 
 import numpy
@@ -238,7 +237,7 @@ def kinetic(t, nbasis, nx, ny, ks, xpbc=True, ypbc=True):
         Hopping Hamiltonian matrix.
     """
 
-    if ks.all() is None:
+    if numpy.logical_and.reduce(ks) is None:
         T = numpy.zeros((nbasis, nbasis), dtype=float)
     else:
         T = numpy.zeros((nbasis, nbasis), dtype=complex)
@@ -253,19 +252,19 @@ def kinetic(t, nbasis, nx, ny, ks, xpbc=True, ypbc=True):
             # Take care of periodic boundary conditions
             # there should be a less stupid way of doing this.
             if ny == 1 and dij == [nx - 1] and xpbc:
-                if ks.all() is not None:
+                if numpy.logical_and.reduce(ks) is not None:
                     phase = cmath.exp(1j * numpy.dot(cmath.pi * ks, [1]))
                 else:
                     phase = 1.0
                 T[i, j] += -t * phase
             elif (dij == [nx - 1, 0]).all() and xpbc:
-                if ks.all() is not None:
+                if numpy.logical_and.reduce(ks) is not None:
                     phase = cmath.exp(1j * numpy.dot(cmath.pi * ks, [1, 0]))
                 else:
                     phase = 1.0
                 T[i, j] += -t * phase
             elif (dij == [0, ny - 1]).all() and ypbc:
-                if ks.all() is not None:
+                if numpy.logical_and.reduce(ks) is not None:
                     phase = cmath.exp(1j * numpy.dot(cmath.pi * ks, [0, 1]))
                 else:
                     phase = 1.0

@@ -17,9 +17,13 @@
 #
 
 import numpy
+import plum
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
 
 
 def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
@@ -31,12 +35,12 @@ def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
     trial : class
         Trial wavefunction object.
+    mpi_handler : class
+        MPIHandler instance.
 
     Returns
     -------
@@ -72,9 +76,9 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
         return vbias_batch_tmp
 
 
-# only implement real Hamiltonian
+@plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: "GenericRealChol", walkers: "UHFWalkers", trial: "SingleDetTrial"
+    hamiltonian: GenericRealChol, walkers: UHFWalkers, rchola, rcholb
 ):
     """Compute optimal force bias.
 
@@ -84,12 +88,10 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
-    trial : class
-        Trial wavefunction object.
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
 
     Returns
     -------
@@ -98,8 +100,8 @@ def construct_force_bias_batch_single_det(
     """
     if walkers.rhf:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
-        vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
-        vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
+        vbias_batch_real = 2.0 * rchola.dot(Ghalfa.T.real)
+        vbias_batch_imag = 2.0 * rchola.dot(Ghalfa.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
@@ -110,13 +112,105 @@ def construct_force_bias_batch_single_det(
     else:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
         Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
-        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
-        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+        vbias_batch_real = rchola.dot(Ghalfa.T.real) + rcholb.dot(Ghalfb.T.real)
+        vbias_batch_imag = rchola.dot(Ghalfa.T.imag) + rcholb.dot(Ghalfb.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
         synchronize()
         return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericComplexChol, walkers: UHFWalkers, rAa, rAb, rBa, rBb
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+    Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
+    vbias_batch = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
+    vbias_batch[: hamiltonian.nchol, :] = rAa.dot(Ghalfa.T) + rAb.dot(Ghalfb.T)
+    vbias_batch[hamiltonian.nchol :, :] = rBa.dot(Ghalfa.T) + rBb.dot(Ghalfb.T)
+    vbias_batch = vbias_batch.T.copy()
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericRealChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.real)
+    vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.imag)
+    vbias_batch.real = vbias_real
+    vbias_batch.imag = vbias_imag
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericComplexChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, Gcharge)
+    vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, Gcharge)
+    vbias_batch[:, : hamiltonian.nchol] = vbias_A
+    vbias_batch[:, hamiltonian.nchol :] = vbias_B
+    synchronize()
+    return vbias_batch
 
 
 def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
@@ -128,12 +222,12 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
     trial : class
         Trial wavefunction object.
+    handler : class
+        MPIHandler instance.
 
     Returns
     -------

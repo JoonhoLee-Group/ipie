@@ -29,7 +29,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     ----------
     system : system object
         System being studied.
-    system : hamiltonian object
+    hamiltonian : hamiltonian object
         Hamiltonian being studied.
     trial : trial wavefunction object
         Trial wavefunction.
@@ -48,13 +48,7 @@ def local_energy_G(system, hamiltonian, trial, G, Ghalf):
     # unfortunate interfacial problem for the HH model
     # if type(hamiltonian) == Generic[hamiltonian.chol.dtype]:
     if Ghalf is not None:
-        return local_energy_cholesky_opt(
-            system,
-            hamiltonian.ecore,
-            Ghalfa=Ghalf[0],
-            Ghalfb=Ghalf[1],
-            trial=trial,
-        )
+        return local_energy_cholesky_opt(trial, hamiltonian, Ghalf)
     else:
         return local_energy_generic_cholesky(system, hamiltonian, G)
 
@@ -75,6 +69,8 @@ def variational_energy_ortho_det(system, ham, occs, coeffs):
     ----------
     system : :class:`ipie.system` object
         System object.
+    ham : hamiltonian object
+        Hamiltonian being studied.
     occs : list of lists
         list of determinants.
     coeffs : :class:`numpy.ndarray`
