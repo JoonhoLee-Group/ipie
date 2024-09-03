@@ -56,7 +56,10 @@ class ParticleHole(TrialWavefunctionBase):
         )
         self._num_dets_for_props = num_dets_for_props
         self._num_dets = len(self.coeffs)
-        self._num_dets_for_props = num_dets_for_props
+        self._num_dets_for_props = (
+            self._num_dets if num_dets_for_props == -1 else num_dets_for_props
+        )
+        self._num_dets_for_props = min(self._num_dets, self._num_dets_for_props)
         self._num_dets_for_trial = num_dets_for_trial
         self._num_det_chunks = num_det_chunks
         self.ortho_expansion = True

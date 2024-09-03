@@ -18,8 +18,6 @@
 import numpy
 import cupy
 
-import cupyx
-
 from ipie.utils.backend import synchronize
 
 
@@ -839,7 +837,6 @@ def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     
     start = det_sls.start
     ndets = cre.shape[0]
-    nwalkers = G0.shape[0]
     
     G0_real = G0.real.copy()
     G0_imag = G0.imag.copy()
@@ -916,7 +913,6 @@ def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     
     start = det_sls.start
     ndets = cre.shape[0]
-    nwalkers = G0.shape[0]
     G0_real = G0.real.copy()
     G0_imag = G0.imag.copy()
         
@@ -1291,7 +1287,6 @@ def reduce_os_spin_factor_gpu(
     qs = cupy.asarray(qs)
     mapping = cupy.asarray(mapping)
     
-    nwalker = chol_factor.shape[0]
     ndets = det_cofactor.shape[1]
     start = det_sls.start
 
@@ -1348,8 +1343,6 @@ def fill_os_nfold_gpu(
     -------
     None
     """
-    nwalkers = cof_mat.shape[0]
-    ndet = cof_mat.shape[1]
     nexcit = det_matrix.shape[-1]
     
     cof_mat_all = cupy.zeros((nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]), dtype=numpy.complex128)
@@ -1412,7 +1405,6 @@ def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, 
     """
     
     nwalkers = dets_mat.shape[0]
-    ndet_level = dets_mat.shape[1]
     nexcit = dets_mat.shape[-1]   
     ndets = cof_mat.shape[1]
     start = det_sls.start
@@ -1425,12 +1417,8 @@ def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, 
     
     for iex in range(nexcit):
         for jex in range(nexcit):
-            ps = cre[:, iex]
-            qs = anh[:, jex]
             for kex in range(iex + 1, nexcit):
-                rs = cre[:, kex]
                 for lex in range(jex + 1, nexcit):
-                    ss = anh[:, lex]
                     build_cofactor_matrix_4_gpu(iex, jex, kex, lex, dets_mat, cof_mat)
                     cof_mat_all[iex,jex,kex,lex,:,:,:,:] = cof_mat
                     
@@ -1525,7 +1513,6 @@ def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, 
                 'get_ss_nfold_parallel_kernel',  
                 options=('-std=c++11',),
                 backend = 'nvcc',
-                #enable_cooperative_groups = True
         )
     
     get_ss_nfold_parallel_kernel((int(numpy.ceil(nexcit*nexcit*nexcit*nexcit*ndets*nwalkers/64)),),(64,),(nexcit, cre, anh, mapping, start, nwalkers, ndets, chol_factor[0].shape[0], chol_factor[0].shape[1], chol_factor[0].shape[2], chol_factor, det_cofactor, buffer_copy))

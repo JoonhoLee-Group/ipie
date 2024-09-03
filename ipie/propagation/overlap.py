@@ -29,8 +29,6 @@ else:
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
-import cupy
-
 
 def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     """Caculate overlap with single det trial wavefunction.

@@ -32,7 +32,6 @@ from ipie.propagation.overlap import (
 from ipie.utils.linalg import minor_mask, minor_mask4
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 
 if config.get_option("use_gpu"):
     from ipie.estimators.kernels.gpu import wicks_gpu as wk
@@ -41,7 +40,7 @@ else:
 
 from mpi4py import MPI 
 
-import cupy, cupyx
+import cupy
     
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
@@ -937,7 +936,6 @@ def build_contributions12_gpu(
     nfrozen_a = nocc_a - nocc_act_a
     # very messy but numba won't let us use lists for the moment
     theta_act_a = theta_a[:, :, nfrozen_a : nfrozen_a + nact].copy()
-    theta_occ_a = theta_a.copy()
     theta_occ_real_a = theta_a.real.copy()
     theta_occ_imag_a = theta_a.imag.copy()
 
@@ -945,7 +943,6 @@ def build_contributions12_gpu(
     nocc_act_b = CI_b.shape[2]
     nfrozen_b = nocc_b - nocc_act_b
     theta_act_b = theta_b[:, :, nfrozen_b : nfrozen_b + nact].copy()
-    theta_occ_b = theta_b.copy()
     theta_occ_real_b = theta_b.real.copy()
     theta_occ_imag_b = theta_b.imag.copy()    
 
@@ -958,64 +955,61 @@ def build_contributions12_gpu(
     
     for i in range(nchunks):
 
-            T = xp.einsum("weO,cEO->wceE", theta_occ_real_a, rchol_a[i]) + 1j*xp.einsum("weO,cEO->wceE", theta_occ_imag_a, rchol_a[i])
-            exx = xp.einsum("wceE,wcEe->w", T, T)#einsum("wcx,wcx->wc", T.reshape(*T.shape[0:2], -1), tmp.reshape(*tmp.shape[0:2], -1))
-            
-            X[i] += xp.einsum("...ii->...", T)
-            cont1_K +=  -0.5 * exx
-            Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_a, rchol_act_a[i]) + 1j*xp.einsum("weO,coO->wcoe", theta_occ_imag_a, rchol_act_a[i])
-            Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_a)
+        T = xp.einsum("weO,cEO->wceE", theta_occ_real_a, rchol_a[i]) + 1j*xp.einsum("weO,cEO->wceE", theta_occ_imag_a, rchol_a[i])
+        exx = xp.einsum("wceE,wcEe->w", T, T)#einsum("wcx,wcx->wc", T.reshape(*T.shape[0:2], -1), tmp.reshape(*tmp.shape[0:2], -1))
 
-            
-            Lut = (Lut_1 - Lut_2)
-            
-            time1 = time.time()
-            A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_a : nfrozen_a + nocc_act_a, :])
-            time2 = time.time()            
+        X[i] += xp.einsum("...ii->...", T)
+        cont1_K +=  -0.5 * exx
+        Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_a, rchol_act_a[i]) + 1j*xp.einsum("weO,coO->wcoe", theta_occ_imag_a, rchol_act_a[i])
+        Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_a)
 
-    
-            Lvo_a[i][:] = Lut[:, :, :, nfrozen_a : nfrozen_a + nocc_act_a]#.copy()
 
-            cont2_K -= xp.einsum("wcoE,woE->w", A, CI_a)
-            
-    
-            F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_a[i], CI_a) 
-        
-            exx = None
-            Lut_1 = None
-            Lut_2 = None
-            Lut = None
-            A = None
-            T = None 
-        
-            
-            T = xp.einsum("weO,cEO->wceE", theta_occ_real_b, rchol_b[i]) + 1j*xp.einsum("weO,cEO->wceE", theta_occ_imag_b, rchol_b[i])
-            
-            exx = xp.einsum("wceE,wcEe->w", T, T)#einsum("wcx,wcx->wc", T.reshape(*T.shape[0:2], -1), tmp.reshape(*tmp.shape[0:2], -1))
-            X[i] += xp.einsum("...ii->...", T)
-            cont1_K +=  -0.5 * exx
-            Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_b, rchol_act_a[i]) + 1j*xp.einsum("weO,coO->wcoe", theta_occ_imag_b, rchol_act_a[i])
-            Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_b)
-            Lut = (Lut_1 - Lut_2)
-            
-            A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_b : nfrozen_b + nocc_act_b, :])
-    
-            Lvo_b[i][:] = Lut[:, :, :, nfrozen_b : nfrozen_b + nocc_act_b]#.copy()
-    
-            cont2_K -= xp.einsum("wcoE,woE->w", A, CI_b)
-    
-            F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_b[i], CI_b)
-    
-            cont1_J += 0.5*xp.einsum("wc,wc->w",X[i],X[i])
-    
-            cont2_J += xp.einsum("wc,wc->w",F[i],X[i])
-        
-            exx = None
-            Lut_1 = None
-            Lut_2 = None
-            Lut = None
-            A = None
-            T = None 
+        Lut = (Lut_1 - Lut_2)
+
+        A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_a : nfrozen_a + nocc_act_a, :])         
+
+        Lvo_a[i][:] = Lut[:, :, :, nfrozen_a : nfrozen_a + nocc_act_a]#.copy()
+
+        cont2_K -= xp.einsum("wcoE,woE->w", A, CI_a)
+
+
+        F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_a[i], CI_a) 
+
+        exx = None
+        Lut_1 = None
+        Lut_2 = None
+        Lut = None
+        A = None
+        T = None 
+
+
+        T = xp.einsum("weO,cEO->wceE", theta_occ_real_b, rchol_b[i]) + 1j*xp.einsum("weO,cEO->wceE", theta_occ_imag_b, rchol_b[i])
+
+        exx = xp.einsum("wceE,wcEe->w", T, T)
+        X[i] += xp.einsum("...ii->...", T)
+        cont1_K +=  -0.5 * exx
+        Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_b, rchol_act_a[i]) + 1j*xp.einsum("weO,coO->wcoe", theta_occ_imag_b, rchol_act_a[i])
+        Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_b)
+        Lut = (Lut_1 - Lut_2)
+
+        A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_b : nfrozen_b + nocc_act_b, :])
+
+        Lvo_b[i][:] = Lut[:, :, :, nfrozen_b : nfrozen_b + nocc_act_b]#.copy()
+
+        cont2_K -= xp.einsum("wcoE,woE->w", A, CI_b)
+
+        F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_b[i], CI_b)
+
+        cont1_J += 0.5*xp.einsum("wc,wc->w",X[i],X[i])
+
+        cont2_J += xp.einsum("wc,wc->w",F[i],X[i])
+
+        exx = None
+        Lut_1 = None
+        Lut_2 = None
+        Lut = None
+        A = None
+        T = None 
     
         
     
@@ -1130,7 +1124,6 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(system, ham, walker
         alpha_ss_buffer = xp.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
         beta_ss_buffer = xp.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
         for iexcit in range(1, trial.max_excite + 1):
-            # synchronize()
             ndets_a = len(trial.cre_ex_a_chunk[ichunk][iexcit])
             det_size = (nwalkers, ndets_a, iexcit, iexcit)
             nelem_det = int(numpy.prod(det_size))

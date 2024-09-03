@@ -18,7 +18,6 @@ else:
 from ipie.legacy.estimators.greens_function import gab_mod
 
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 
 
 def greens_function_multi_det(walker_batch, trial, build_full=False):
@@ -1116,9 +1115,30 @@ def build_CI_nfold_excitation_opt(nexcit, walker_batch, trial, c_phasea_ovlpb, c
             walker_batch.CIb,
         )
 
-
-
+@jit(nopython=True, fastmath=True)
 def contract_CI(Q0_act, CI, Ghalf, G):
+    """numba kernel to contract Q, CI and Ghalf to form G
+
+    Parameters
+    ----------
+    Q0_act : numpy.ndarray
+        1-G.
+    CI : numpy.ndarray
+        Intermediate tensor.
+    Ghalf : numpy.ndarray
+        Walker half rotated Green's function
+    G: numpy.ndarray
+        Walker Green's function
+    Returns
+    -------
+    None, modifies G in place
+    """
+    nwalkers = Ghalf.shape[0]
+    for iw in range(nwalkers):
+        G[iw] += numpy.dot(Q0_act[iw], numpy.dot(CI[iw], Ghalf[iw]))
+        
+
+def contract_CI_gpu(Q0_act, CI, Ghalf, G):
     """numba kernel to contract Q, CI and Ghalf to form G
 
     Parameters
@@ -1219,7 +1239,6 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     if trial.max_excite >= 3:
         build_CI_triple_excitation_opt(walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     for iexcit in range(4, trial.max_excite + 1):
-        # print(type(walker_batch.CIb))
         build_CI_nfold_excitation_opt(iexcit, walker_batch, trial, c_phasea_ovlpb, c_phaseb_ovlpa)
     # contribution 2 (connected diagrams)
     # Frozen orbitals not in original active space calculation but reincluded in
@@ -1281,7 +1300,6 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
     logdets_b = xp.zeros_like(ovlps0)
     
     trial_psi0a_conj = xp.zeros_like(trial.psi0a.conj())
-    # print(type(trial_psi0a_conj),type(trial.psi0a.conj()))
     trial_psi0a_conj.set(trial.psi0a.conj())
     trial_psi0b_conj = xp.zeros_like(trial.psi0b.conj())
     trial_psi0b_conj.set(trial.psi0b.conj())
@@ -1322,7 +1340,6 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
         walker_batch.Ghalfa, walker_batch.Ghalfb, trial
     )
     
-
     walker_batch.det_ovlpas = dets_a_full * xp.asarray(trial.phase_a[None, :])  # phase included
     walker_batch.det_ovlpbs = dets_b_full * xp.asarray(trial.phase_b[None, :])  # phase included
     ovlpa = walker_batch.det_ovlpas
@@ -1358,20 +1375,19 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
     # AFQMC
     
     act_orb = trial.act_orb_alpha
-    contract_CI(
+    contract_CI_gpu(
         walker_batch.Q0a[:, :, act_orb].copy(),
         walker_batch.CIa,
         walker_batch.Ghalfa[:, act_orb].copy(),
         walker_batch.Ga,
     )
-    # print(walker_batch.Ghalfa[:, act_orb].copy().shape)
     act_orb = trial.act_orb_beta
-    contract_CI(
+    contract_CI_gpu(
         walker_batch.Q0b[:, :, act_orb].copy(),
         walker_batch.CIb,
         walker_batch.Ghalfb[:, act_orb].copy(),
         walker_batch.Gb,
-    )
+    )        
     # multiplying everything by reference overlap
     ovlps *= ovlps0
     walker_batch.Ga *= (ovlps0 / ovlps)[:, None, None]
