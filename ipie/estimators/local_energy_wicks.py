@@ -39,8 +39,6 @@ else:
     from ipie.estimators.kernels.cpu import wicks as wk
 
 from mpi4py import MPI 
-
-import cupy
     
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
@@ -1111,7 +1109,7 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(system, ham, walker
             for ichunk in range(trial.num_det_chunks)
         )
         max_size = max(det_sizes_a, det_sizes_b)
-        det_mat_buffer = cupy.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
+        det_mat_buffer = xp.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
     
     
     for ichunk in range(trial.num_det_chunks):
