@@ -147,7 +147,7 @@ class CoherentStateTrial(EPhTrialWavefunctionBase):
         grad *= -self.m * self.w0
         return grad
 
-    def calc_phonon_laplacian(self, walkers) -> np.ndarray:
+    def calc_phonon_laplacian(self, walkers, ovlps=None) -> np.ndarray:
         r"""Computes the Laplacian of phonon overlaps,
 
         .. math::

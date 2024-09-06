@@ -15,7 +15,7 @@
 import numpy as np
 
 np.random.seed(125)
-from mpi4py import MPI
+from ipie.config import MPI
 
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems import Generic
