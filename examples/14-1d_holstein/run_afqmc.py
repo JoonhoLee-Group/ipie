@@ -75,7 +75,7 @@ walkers = EPhWalkers(
 walkers.build(trial)
 
 num_steps_per_block = 10
-num_blocks = 10000
+num_blocks = 10
 add_est = {
     "energy": EnergyEstimator(system=system, ham=ham, trial=trial),
 }
