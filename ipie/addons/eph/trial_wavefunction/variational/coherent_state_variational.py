@@ -17,6 +17,7 @@ from scipy.optimize import basinhopping
 
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 
+# pylint: disable=import-error
 import jax
 
 

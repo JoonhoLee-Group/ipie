@@ -17,6 +17,7 @@ from scipy.optimize import minimize
 from ipie.addons.eph.trial_wavefunction.variational.estimators import gab
 from ipie.addons.eph.trial_wavefunction.toyozawa import circ_perm
 
+# pylint: disable=import-error
 import jax
 import jax.numpy as npj
 
