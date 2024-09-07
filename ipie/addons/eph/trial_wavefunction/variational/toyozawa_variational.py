@@ -96,7 +96,6 @@ def objective_function_toyozawa_mo(
     return etot.real
 
 
-
 def variational_trial_toyozawa(
     shift_init: np.ndarray, electron_init: np.ndarray, hamiltonian, system, verbose=2
 ):

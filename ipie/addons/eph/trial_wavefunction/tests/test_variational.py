@@ -4,17 +4,19 @@ import sys
 from ipie.addons.eph.utils.testing import get_random_sys_holstein
 from ipie.addons.eph.trial_wavefunction.toyozawa import ToyozawaTrial
 from ipie.addons.eph.trial_wavefunction.coherent_state import CoherentStateTrial
+
 try:
     from ipie.addons.eph.trial_wavefunction.variational.toyozawa_variational import (
         variational_trial_toyozawa,
-    )   
+    )
     from ipie.addons.eph.trial_wavefunction.variational.coherent_state_variational import (
         variational_trial,
-    )   
+    )
 except ImportError:
     pass
 
-@pytest.mark.skip('jax' not in sys.modules, reason="no jax")
+
+@pytest.mark.skip("jax" not in sys.modules, reason="no jax")
 def test_variational_energy_toyozawa():
     seed = 7
     numpy.random.seed(seed)
@@ -32,7 +34,7 @@ def test_variational_energy_toyozawa():
     assert etrial == pytest.approx(trial.energy)
 
 
-@pytest.mark.skip('jax' not in sys.modules, reason="no jax")
+@pytest.mark.skip("jax" not in sys.modules, reason="no jax")
 def test_variational_energy_coherent_state():
     seed = 7
     numpy.random.seed(seed)
