@@ -11,3 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pylint: disable=import-error
+import jax.numpy as npj
+from jax.config import config
+
+config.update("jax_enable_x64", True)
+
+
+def gab(A: npj.ndarray, B: npj.ndarray) -> npj.ndarray:
+    inv_O = npj.linalg.inv((A.conj().T).dot(B))
+    GAB = B.dot(inv_O.dot(A.conj().T))
+    return GAB
