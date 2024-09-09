@@ -16,7 +16,7 @@
 #
 
 import numpy
-import cupy
+import cupy # pylint: disable=import-error
 
 from ipie.utils.backend import synchronize
 

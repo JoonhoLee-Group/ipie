@@ -36,9 +36,7 @@ from ipie.utils.backend import arraylib as xp
 if config.get_option("use_gpu"):
     from ipie.estimators.kernels.gpu import wicks_gpu as wk
 else:
-    from ipie.estimators.kernels.cpu import wicks as wk
-
-from mpi4py import MPI 
+    from ipie.estimators.kernels.cpu import wicks as wk 
     
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):

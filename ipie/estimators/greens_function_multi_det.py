@@ -1155,7 +1155,6 @@ def contract_CI_gpu(Q0_act, CI, Ghalf, G):
     -------
     None, modifies G in place
     """
-    nwalkers = Ghalf.shape[0]
     G += xp.einsum("wOa, wae, weo-> wOo", Q0_act, CI, Ghalf)
 
         
