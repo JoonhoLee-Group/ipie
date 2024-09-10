@@ -16,7 +16,7 @@
 #
 
 import numpy
-import cupy # pylint: disable=import-error
+import cupy  # pylint: disable=import-error
 
 # Overlap
 
@@ -27,7 +27,7 @@ import cupy # pylint: disable=import-error
 # mapping[orb] is then used to address arrays of dimension nocc * nmo and
 # similar (half rotated Green's functio) and avoid out of bounds errors.
 
-        
+
 def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from singly excited Slater-Determinants.
 
@@ -50,17 +50,17 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     -------
     None
     """
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     qs = cupy.ascontiguousarray(anh[:, 0]) + offset
     ndets = qs.shape[0]
     nwalkers = G0.shape[0]
-    
+
     get_dets_singles_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void get_dets_singles_kernel(int* cre, int* qs, int* mapping, int offset, int nex, int nwalkers, int ndets, int G0_dim2, int G0_dim3, cuDoubleComplex* G0, cuDoubleComplex* dets){  
@@ -82,13 +82,29 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
                 }
                 
             }   
-            ''',
-            'get_dets_singles_kernel')
-    
-    get_dets_singles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, qs, mapping, offset, cre.shape[1], nwalkers, ndets, G0.shape[1],G0.shape[2], G0, dets))
+            """,
+        "get_dets_singles_kernel",
+    )
 
-            
-            
+    get_dets_singles_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            cre,
+            qs,
+            mapping,
+            offset,
+            cre.shape[1],
+            nwalkers,
+            ndets,
+            G0.shape[1],
+            G0.shape[2],
+            G0,
+            dets,
+        ),
+    )
+
+
 def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
     """Get overlap from double excited Slater-Determinants.
 
@@ -111,18 +127,18 @@ def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
     -------
     None
     """
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     qs = cupy.ascontiguousarray(anh[:, 0]) + offset
     ss = cupy.ascontiguousarray(anh[:, 1]) + offset
     ndets = qs.shape[0]
     nwalkers = G0.shape[0]
-    
+
     get_dets_doubles_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void get_dets_doubles_kernel(int* cre, int* qs, int* ss, int* mapping, int offset, int nex, int nwalkers, int ndets, int G0_dim2, int G0_dim3, cuDoubleComplex* G0, cuDoubleComplex* dets){  
@@ -145,15 +161,30 @@ def get_dets_doubles(cre, anh, mapping, offset, G0, dets):
                 }
                 
             }   
-            ''',
-            'get_dets_doubles_kernel')
-    
-    get_dets_doubles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, qs, ss, mapping, offset, cre.shape[1], nwalkers, ndets, G0.shape[1],G0.shape[2], G0, dets))
-    
+            """,
+        "get_dets_doubles_kernel",
+    )
+
+    get_dets_doubles_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            cre,
+            qs,
+            ss,
+            mapping,
+            offset,
+            cre.shape[1],
+            nwalkers,
+            ndets,
+            G0.shape[1],
+            G0.shape[2],
+            G0,
+            dets,
+        ),
+    )
 
 
-            
-            
 def get_dets_triples(cre, anh, mapping, offset, G0, dets):
     """Get overlap from double excited Slater-Determinants.
 
@@ -176,17 +207,16 @@ def get_dets_triples(cre, anh, mapping, offset, G0, dets):
     -------
     None
     """
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     ndets = len(cre)
     nwalkers = G0.shape[0]
-    
-    
+
     get_dets_triples_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void get_dets_triples_kernel(int* cre, int* anh, int* mapping, int offset, int nex, int nwalkers, int ndets, int G0_dim2, int G0_dim3, cuDoubleComplex* G0, cuDoubleComplex* dets){  
@@ -218,13 +248,29 @@ def get_dets_triples(cre, anh, mapping, offset, G0, dets):
                 }
                 
             }   
-            ''',
-            'get_dets_triples_kernel')
-    
-    get_dets_triples_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, anh, mapping, offset, cre.shape[1], nwalkers, ndets, G0.shape[1],G0.shape[2], G0, dets))
-    
-            
-            
+            """,
+        "get_dets_triples_kernel",
+    )
+
+    get_dets_triples_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            cre,
+            anh,
+            mapping,
+            offset,
+            cre.shape[1],
+            nwalkers,
+            ndets,
+            G0.shape[1],
+            G0.shape[2],
+            G0,
+            dets,
+        ),
+    )
+
+
 def get_dets_nfold(cre, anh, mapping, offset, G0):
     """Get overlap from n-fold excited Slater-Determinants.
 
@@ -247,19 +293,18 @@ def get_dets_nfold(cre, anh, mapping, offset, G0):
     -------
     None
     """
-    
+
     ndets = len(cre)
     nwalkers = G0.shape[0]
     nex = cre.shape[-1]
     det = cupy.zeros((nwalkers, ndets, nex, nex), dtype=numpy.complex128)
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
-    
+
     get_dets_nfold_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void get_dets_nfold_kernel(int* cre, int* anh, int* mapping, int offset, int nex, int nwalkers, int ndets, int G0_dim2, int G0_dim3, cuDoubleComplex* G0, cuDoubleComplex* det){  
@@ -289,15 +334,19 @@ def get_dets_nfold(cre, anh, mapping, offset, G0):
                 }
                 
             }   
-            ''',
-            'get_dets_nfold_kernel')
-    
-    get_dets_nfold_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, anh, mapping, offset, nex, nwalkers, ndets, G0.shape[1],G0.shape[2], G0, det))
-    
+            """,
+        "get_dets_nfold_kernel",
+    )
+
+    get_dets_nfold_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (cre, anh, mapping, offset, nex, nwalkers, ndets, G0.shape[1], G0.shape[2], G0, det),
+    )
+
     dets = cupy.linalg.det(det)
-    
+
     return dets
-    
 
 
 def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
@@ -322,20 +371,20 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
     -------
     None
     """
-    
+
     nwalkers = det_mat.shape[0]
     ndets = det_mat.shape[1]
     if ndets == 0:
         return
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     nex = det_mat.shape[2]
-    
+
     build_det_matrix_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void build_det_matrix_kernel(int* cre, int* anh, int* mapping, int offset, int nex, int nwalkers, int ndets, int G0_dim2, int G0_dim3, cuDoubleComplex* G0, cuDoubleComplex* det){  
@@ -365,15 +414,17 @@ def build_det_matrix(cre, anh, mapping, offset, G0, det_mat):
                 }
                 
             }   
-            ''',
-            'build_det_matrix_kernel')
+            """,
+        "build_det_matrix_kernel",
+    )
 
-    build_det_matrix_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, anh, mapping, offset, nex, nwalkers, ndets, G0.shape[1],G0.shape[2], G0, det_mat))
-    
-    
-    
-            
-            
+    build_det_matrix_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (cre, anh, mapping, offset, nex, nwalkers, ndets, G0.shape[1], G0.shape[2], G0, det_mat),
+    )
+
+
 def reduce_CI_singles(cre, anh, mapping, phases, CI):
     """Reduction to CI intermediate for singles.
 
@@ -396,19 +447,19 @@ def reduce_CI_singles(cre, anh, mapping, phases, CI):
     """
 
     ndets = len(cre)
-    nwalkers = phases.shape[0] 
-    
+    nwalkers = phases.shape[0]
+
     phases = cupy.ascontiguousarray(phases)
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     ps = cupy.ascontiguousarray(cre[:, 0])
     qs = cupy.ascontiguousarray(anh[:, 0])
-    
+
     reduce_CI_singles_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void reduce_CI_singles_kernel(int* ps, int* qs, int* mapping, int nwalkers, int ndets, int CI_dim2, int CI_dim3, cuDoubleComplex* phases, cuDoubleComplex* CI){  
@@ -433,14 +484,17 @@ def reduce_CI_singles(cre, anh, mapping, phases, CI):
                 }
                 
             }   
-            ''',
-            'reduce_CI_singles_kernel')
-    
-    reduce_CI_singles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, mapping, nwalkers, ndets, CI.shape[1], CI.shape[2], phases, CI))
+            """,
+        "reduce_CI_singles_kernel",
+    )
+
+    reduce_CI_singles_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (ps, qs, mapping, nwalkers, ndets, CI.shape[1], CI.shape[2], phases, CI),
+    )
 
 
-
-            
 def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
     """Reduction to CI intermediate for triples.
 
@@ -465,21 +519,21 @@ def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
     """
 
     ndets = len(cre)
-    nwalkers = G0.shape[0] 
-    
+    nwalkers = G0.shape[0]
+
     phases = cupy.ascontiguousarray(phases)
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     ps = cupy.ascontiguousarray(cre[:, 0])
     qs = cupy.ascontiguousarray(anh[:, 0])
     rs = cupy.ascontiguousarray(cre[:, 1])
     ss = cupy.ascontiguousarray(anh[:, 1])
-    
+
     reduce_CI_doubles_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void reduce_CI_doubles_kernel(int* ps, int* qs, int* rs, int* ss, int* mapping, int offset, int nwalkers, int ndets, int CI_dim2, int CI_dim3, int G0_dim2, int G0_dim3, cuDoubleComplex* phases, cuDoubleComplex* G0, cuDoubleComplex* CI){  
@@ -519,15 +573,33 @@ def reduce_CI_doubles(cre, anh, mapping, offset, phases, G0, CI):
                 }
                 
             }   
-            ''',
-            'reduce_CI_doubles_kernel')
-    
-    reduce_CI_doubles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, rs, ss, mapping, offset, nwalkers, ndets, CI.shape[1], CI.shape[2], G0.shape[1], G0.shape[2], phases, G0, CI))
+            """,
+        "reduce_CI_doubles_kernel",
+    )
+
+    reduce_CI_doubles_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            ps,
+            qs,
+            rs,
+            ss,
+            mapping,
+            offset,
+            nwalkers,
+            ndets,
+            CI.shape[1],
+            CI.shape[2],
+            G0.shape[1],
+            G0.shape[2],
+            phases,
+            G0,
+            CI,
+        ),
+    )
 
 
-
-            
-            
 def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
     """Reduction to CI intermediate for triples.
 
@@ -552,23 +624,23 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
     """
 
     ndets = len(cre)
-    nwalkers = G0.shape[0] 
-    
+    nwalkers = G0.shape[0]
+
     phases = cupy.ascontiguousarray(phases)
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     ps = cupy.ascontiguousarray(cre[:, 0])
     qs = cupy.ascontiguousarray(anh[:, 0])
     rs = cupy.ascontiguousarray(cre[:, 1])
     ss = cupy.ascontiguousarray(anh[:, 1])
     ts = cupy.ascontiguousarray(cre[:, 2])
     us = cupy.ascontiguousarray(anh[:, 2])
-    
+
     reduce_CI_triples_kernel = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             extern "C" __global__
             void reduce_CI_triples_kernel(int* ps, int* qs, int* rs, int* ss, int* ts, int* us, int* mapping, int offset, int nwalkers, int ndets, int CI_dim2, int CI_dim3, int G0_dim2, int G0_dim3, cuDoubleComplex* phases, cuDoubleComplex* G0, cuDoubleComplex* CI){  
@@ -637,17 +709,35 @@ def reduce_CI_triples(cre, anh, mapping, offset, phases, G0, CI):
                 }
                 
             }   
-            ''',
-            'reduce_CI_triples_kernel')
-    
-    reduce_CI_triples_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(ps, qs, rs, ss, ts, us, mapping, offset, nwalkers, ndets, CI.shape[1], CI.shape[2], G0.shape[1], G0.shape[2], phases, G0, CI))
-    
-    
+            """,
+        "reduce_CI_triples_kernel",
+    )
 
-            
+    reduce_CI_triples_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            ps,
+            qs,
+            rs,
+            ss,
+            ts,
+            us,
+            mapping,
+            offset,
+            nwalkers,
+            ndets,
+            CI.shape[1],
+            CI.shape[2],
+            G0.shape[1],
+            G0.shape[2],
+            phases,
+            G0,
+            CI,
+        ),
+    )
 
-            
-            
+
 def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
     """Reduction to CI intermediate for n-fold excitations.
 
@@ -679,26 +769,28 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     phases = cupy.ascontiguousarray(phases)
-    
+
     nwalkers = cof_mat.shape[0]
     ndets = cof_mat.shape[1]
-    
-    cof_mat_all = cupy.zeros((nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]), dtype=numpy.complex128)
-    
+
+    cof_mat_all = cupy.zeros(
+        (nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]),
+        dtype=numpy.complex128,
+    )
+
     for iex in range(nexcit):
         for jex in range(nexcit):
             build_cofactor_matrix_gpu(iex, jex, det_mat, cof_mat)
             cof_mat_all[iex, jex, :, :, :, :] = cof_mat.copy()
-            
+
     det = cupy.linalg.det(cof_mat_all)
-    
+
     rhs = cupy.zeros_like(det)
 
-    
     reduce_nfold_cofac_kernel2 = cupy.RawKernel(
-        r'''
+        r"""
             #include<cuComplex.h>
             #include<cuda_runtime.h>
             extern "C" __global__
@@ -732,18 +824,31 @@ def reduce_CI_nfold(cre, anh, mapping, offset, phases, det_mat, cof_mat, CI):
                 }
                 
             }   
-            ''',
-            'reduce_nfold_cofac_kernel2')
-    
+            """,
+        "reduce_nfold_cofac_kernel2",
+    )
 
-    reduce_nfold_cofac_kernel2((int(numpy.ceil(nexcit*nexcit*ndets*nwalkers/64)),),(64,),(nexcit, cre, anh, mapping, nwalkers, ndets, CI.shape[1], CI.shape[2], phases, det, rhs, CI))
-    
-       
-
+    reduce_nfold_cofac_kernel2(
+        (int(numpy.ceil(nexcit * nexcit * ndets * nwalkers / 64)),),
+        (64,),
+        (
+            nexcit,
+            cre,
+            anh,
+            mapping,
+            nwalkers,
+            ndets,
+            CI.shape[1],
+            CI.shape[2],
+            phases,
+            det,
+            rhs,
+            CI,
+        ),
+    )
 
 
 # Energy evaluation
-
 
 
 def fill_os_singles_gpu(cre, anh, mapping, offset, chol_factor, spin_buffer_cupy, det_sls):
@@ -774,33 +879,39 @@ def fill_os_singles_gpu(cre, anh, mapping, offset, chol_factor, spin_buffer_cupy
     qs = anh[:, 0]
     ndets = ps.shape[0]
     start = det_sls.start
-    
+
     ps = cupy.asarray(ps)
     qs = cupy.asarray(qs)
     mapping = cupy.asarray(mapping)
-    
-    
+
     fill_os_singles_kernel = cupy.ElementwiseKernel(
-            'raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 nchol, raw int32 nact_shape1, raw int32 nact_shape2',
-            'complex128 spin_buffer',
-            '''
+        "raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 nchol, raw int32 nact_shape1, raw int32 nact_shape2",
+        "complex128 spin_buffer",
+        """
                 int q, mappingp;
                 q = qs[(i/nchol)%ndets];
                 mappingp = mapping[ps[(i/nchol)%ndets]];
                 spin_buffer = chol_factor[i/(ndets*nchol)*(nact_shape1*nact_shape2*nchol) + q*nact_shape2*nchol + mappingp*nchol + i%nchol];
                 
-            ''',
-            'fill_os_singles_kernel')
-    
-    fill_os_singles_kernel(ps, qs, chol_factor, mapping, ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
-    
+            """,
+        "fill_os_singles_kernel",
+    )
+
+    fill_os_singles_kernel(
+        ps,
+        qs,
+        chol_factor,
+        mapping,
+        ndets,
+        chol_factor[0].shape[2],
+        chol_factor[0].shape[0],
+        chol_factor[0].shape[1],
+        spin_buffer_cupy[:, start : start + ndets, :],
+    )
+
     return spin_buffer_cupy
 
 
-        
-        
-        
-        
 def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_cupy, det_sls):
     """Fill opposite spin (os) contributions from doubles.
 
@@ -827,21 +938,21 @@ def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     -------
     None
     """
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     start = det_sls.start
     ndets = cre.shape[0]
-    
+
     G0_real = G0.real.copy()
     G0_imag = G0.imag.copy()
-        
+
     fill_os_doubles_kernel = cupy.ElementwiseKernel(
-        'raw int32 cre1, raw int32 cre2, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 Gshape0, int32 Gshape1',
-        'complex128 spin_buffer',
-        '''
+        "raw int32 cre1, raw int32 cre2, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 Gshape0, int32 Gshape1",
+        "complex128 spin_buffer",
+        """
                 #include <cupy/complex.cuh>
                 int p,q,r,s,po,qo,ro,so,iw;
                 p = mapping[cre1[(i/chol_shape)%ndets]];
@@ -867,16 +978,30 @@ def fill_os_doubles_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
                     + complex<double>(0,1)*(chol_factor[iw*nact_shape1*nact_shape2*chol_shape + s*nact_shape2*chol_shape + r*chol_shape + i%chol_shape]*G0_imag[iw*Gshape0*Gshape1 + po*Gshape1 + qo])
                     );
                 
-        ''',
-        'fill_os_doubles_kernel')       
-        
-    fill_os_doubles_kernel(cre[:, 0], cre[:, 1], anh[:, 0], anh[:, 1], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[0], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
+        """,
+        "fill_os_doubles_kernel",
+    )
+
+    fill_os_doubles_kernel(
+        cre[:, 0],
+        cre[:, 1],
+        anh[:, 0],
+        anh[:, 1],
+        chol_factor,
+        G0_real,
+        G0_imag,
+        offset,
+        mapping,
+        ndets,
+        spin_buffer_cupy[0, start, :].shape[0],
+        chol_factor[0].shape[0],
+        chol_factor[0].shape[1],
+        G0_real[0].shape[0],
+        G0_real[0].shape[1],
+        spin_buffer_cupy[:, start : start + ndets, :],
+    )
 
 
-
-            
-            
-            
 def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_cupy, det_sls):
     """Fill opposite spin (os) contributions from triples.
 
@@ -903,20 +1028,20 @@ def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
     -------
     None
     """
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
+
     start = det_sls.start
     ndets = cre.shape[0]
     G0_real = G0.real.copy()
     G0_imag = G0.imag.copy()
-        
+
     fill_os_triples_kernel = cupy.ElementwiseKernel(
-        'raw int32 cre0, raw int32 cre1, raw int32 cre2, raw int32 anh0, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 G0_dim2, int32 G0_dim3',
-        'complex128 spin_buffer',
-        '''
+        "raw int32 cre0, raw int32 cre1, raw int32 cre2, raw int32 anh0, raw int32 anh1, raw int32 anh2, raw complex128 chol_factor, raw float64 G0_real, raw float64 G0_imag, int32 offset, raw int32 mapping, int32 ndets, int32 chol_shape, int32 nact_shape1, int32 nact_shape2, int32 G0_dim2, int32 G0_dim3",
+        "complex128 spin_buffer",
+        """
                 #include <cupy/complex.cuh>
                 int p,q,r,s,t,u,po,qo,ro,so,to,uo,iw,G0_idx_rs, G0_idx_tu, G0_idx_ru, G0_idx_ts, G0_idx_rq, G0_idx_tq, G0_idx_ps, G0_idx_pu, G0_idx_pq;
                 p = mapping[cre0[(i/chol_shape)%ndets]];
@@ -1001,15 +1126,32 @@ def fill_os_triples_gpu(cre, anh, mapping, offset, G0, chol_factor, spin_buffer_
                     )
                     ;
                 
-        ''',
-        'fill_os_triples_kernel')
-        
-    fill_os_triples_kernel(cre[:, 0], cre[:, 1], cre[:, 2], anh[:, 0], anh[:, 1], anh[:, 2], chol_factor, G0_real, G0_imag, offset, mapping, ndets, spin_buffer_cupy[0, start, :].shape[0], chol_factor[0].shape[0], chol_factor[0].shape[1], G0_real[0].shape[1], G0_real[0].shape[1], spin_buffer_cupy[:, start:start+ndets, :])
+        """,
+        "fill_os_triples_kernel",
+    )
 
-    
+    fill_os_triples_kernel(
+        cre[:, 0],
+        cre[:, 1],
+        cre[:, 2],
+        anh[:, 0],
+        anh[:, 1],
+        anh[:, 2],
+        chol_factor,
+        G0_real,
+        G0_imag,
+        offset,
+        mapping,
+        ndets,
+        spin_buffer_cupy[0, start, :].shape[0],
+        chol_factor[0].shape[0],
+        chol_factor[0].shape[1],
+        G0_real[0].shape[1],
+        G0_real[0].shape[1],
+        spin_buffer_cupy[:, start : start + ndets, :],
+    )
 
-            
-            
+
 def get_ss_doubles_gpu(cre, anh, mapping, chol_fact, buffer, det_sls):
     """Fill same spin (ss) contributions from doubles.
 
@@ -1036,12 +1178,12 @@ def get_ss_doubles_gpu(cre, anh, mapping, chol_fact, buffer, det_sls):
     ndets = cre.shape[0]
     nwalkers = chol_fact.shape[0]
 
-    
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
-    get_ss_doubles_kernel = cupy.RawKernel(r'''
+
+    get_ss_doubles_kernel = cupy.RawKernel(
+        r"""
                 #include<cuComplex.h>
                 extern "C" __global__
                 void get_ss_doubles_kernel(int* cre, int* anh, int* mapping, int start, int det_dim, int nwalkers, int ndets, int nact, int nelec, int nchol, cuDoubleComplex* chol_factor, cuDoubleComplex* buffer){
@@ -1071,15 +1213,29 @@ def get_ss_doubles_gpu(cre, anh, mapping, chol_fact, buffer, det_sls):
                     }
                     
                 }
-                ''', 
-                'get_ss_doubles_kernel',                              
-        )
-    get_ss_doubles_kernel((int(numpy.ceil(ndets*nwalkers/64)),),(64,),(cre, anh, mapping, start, buffer.shape[1], nwalkers, ndets, chol_fact[0].shape[0], chol_fact[0].shape[1], chol_fact[0].shape[2], chol_fact, buffer))
-            
+                """,
+        "get_ss_doubles_kernel",
+    )
+    get_ss_doubles_kernel(
+        (int(numpy.ceil(ndets * nwalkers / 64)),),
+        (64,),
+        (
+            cre,
+            anh,
+            mapping,
+            start,
+            buffer.shape[1],
+            nwalkers,
+            ndets,
+            chol_fact[0].shape[0],
+            chol_fact[0].shape[1],
+            chol_fact[0].shape[2],
+            chol_fact,
+            buffer,
+        ),
+    )
 
-                    
 
-                    
 def build_cofactor_matrix_gpu(row, col, det_matrix, cofactor):
     """Build cofactor matrix with 2 rows/cols deleted.
 
@@ -1106,10 +1262,10 @@ def build_cofactor_matrix_gpu(row, col, det_matrix, cofactor):
     ndet = det_matrix.shape[1]
     nexcit = det_matrix.shape[2]
     if nexcit - 1 <= 0:
-        cofactor[:,:,0,0] = cupy.full(cofactor[:,:,0,0].shape, 1.0+0j)
-    
+        cofactor[:, :, 0, 0] = cupy.full(cofactor[:, :, 0, 0].shape, 1.0 + 0j)
+
     build_cofac_Kernel = cupy.RawKernel(
-        r'''
+        r"""
                 #include<cuComplex.h>
                 extern "C" __global__
                 void build_cofac_Kernel(int row, int col, int nwalkers, int ndets, int nexcit, cuDoubleComplex* det_matrix, cuDoubleComplex* cofactor){
@@ -1148,16 +1304,17 @@ def build_cofactor_matrix_gpu(row, col, det_matrix, cofactor):
                         }
                     }
                 }
-                ''', 
-                'build_cofac_Kernel', 
-    
+                """,
+        "build_cofac_Kernel",
     )
-    
-    build_cofac_Kernel((int(numpy.ceil(ndet*nwalker/64)),),(64,),(row, col, nwalker, ndet, nexcit, det_matrix, cofactor))
-    
-                    
-                    
-                                        
+
+    build_cofac_Kernel(
+        (int(numpy.ceil(ndet * nwalker / 64)),),
+        (64,),
+        (row, col, nwalker, ndet, nexcit, det_matrix, cofactor),
+    )
+
+
 def build_cofactor_matrix_4_gpu(row_1, col_1, row_2, col_2, det_matrix, cofactor):
     """Build cofactor matrix with 2 rows/cols deleted.
 
@@ -1184,10 +1341,10 @@ def build_cofactor_matrix_4_gpu(row_1, col_1, row_2, col_2, det_matrix, cofactor
     ndet = det_matrix.shape[1]
     nexcit = det_matrix.shape[2]
     if nexcit - 2 <= 0:
-        cofactor[:,:,0,0] = cupy.full(cofactor[:,:,0,0].shape, 1.0+0j)
-    
+        cofactor[:, :, 0, 0] = cupy.full(cofactor[:, :, 0, 0].shape, 1.0 + 0j)
+
     build_cofac_4_Kernel = cupy.RawKernel(
-        r'''
+        r"""
                 #include<cuComplex.h>
                 extern "C" __global__
                 void build_cofac_4_Kernel(int row_1, int col_1, int row_2, int col_2, int nwalkers, int ndets, int nexcit, cuDoubleComplex* det_matrix, cuDoubleComplex* cofactor){
@@ -1241,15 +1398,16 @@ def build_cofactor_matrix_4_gpu(row_1, col_1, row_2, col_2, det_matrix, cofactor
                         }
                     }
                 }
-                ''', 
-                'build_cofac_4_Kernel', 
-    
+                """,
+        "build_cofac_4_Kernel",
     )
-    
-    build_cofac_4_Kernel((int(numpy.ceil(ndet*nwalker/64)),),(64,),(row_1, col_1, row_2, col_2, nwalker, ndet, nexcit, det_matrix, cofactor))
-    
 
-        
+    build_cofac_4_Kernel(
+        (int(numpy.ceil(ndet * nwalker / 64)),),
+        (64,),
+        (row_1, col_1, row_2, col_2, nwalker, ndet, nexcit, det_matrix, cofactor),
+    )
+
 
 def reduce_os_spin_factor_gpu(
     ps, qs, mapping, phase, det_cofactor, chol_factor, spin_buffer_cupy, det_sls
@@ -1279,42 +1437,46 @@ def reduce_os_spin_factor_gpu(
     -------
     None
     """
-    
+
     ps = cupy.asarray(ps)
     qs = cupy.asarray(qs)
     mapping = cupy.asarray(mapping)
-    
+
     ndets = det_cofactor.shape[1]
     start = det_sls.start
 
     det_cofactor = phase * det_cofactor
-    
 
     det_cofactor_real = det_cofactor.real.copy()
     det_cofactor_imag = det_cofactor.imag.copy()
     reduce_os_spinfac = cupy.ElementwiseKernel(
-        'raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 chol_shape, raw int32 nact_shape1, raw int32 nact_shape2, raw float64 det_cofactor_real, raw float64 det_cofactor_imag, complex128 spin_buff',
-        'complex128 spin_buffer',
-        '''
+        "raw int32 ps, raw int32 qs, raw complex128 chol_factor, raw int32 mapping, raw int32 ndets, raw int32 chol_shape, raw int32 nact_shape1, raw int32 nact_shape2, raw float64 det_cofactor_real, raw float64 det_cofactor_imag, complex128 spin_buff",
+        "complex128 spin_buffer",
+        """
             int p;
             p = mapping[ps[(i/chol_shape)%ndets]];
             spin_buffer = chol_factor[i/(ndets*chol_shape)*nact_shape1*nact_shape2*chol_shape + qs[(i/chol_shape)%ndets]*nact_shape2*chol_shape + p*chol_shape + i%chol_shape]*det_cofactor_real[i/(ndets*chol_shape)*ndets + (i/chol_shape)%ndets] 
                 + complex<double>(0,1)*(chol_factor[i/(ndets*chol_shape)*nact_shape1*nact_shape2*chol_shape + qs[(i/chol_shape)%ndets]*nact_shape2*chol_shape + p*chol_shape + i%chol_shape]*det_cofactor_imag[i/(ndets*chol_shape)*ndets + (i/chol_shape)%ndets])                
-        ''',
-        'reduce_os_spinfac')
-    
-    
-    spin_buffer_cupy[:, start:start+ndets, :] += reduce_os_spinfac(ps, qs, chol_factor, mapping, ndets, chol_factor[0].shape[2], chol_factor[0].shape[0], chol_factor[0].shape[1], det_cofactor_real, det_cofactor_imag, spin_buffer_cupy[:, start:start+ndets, :])
-        
+        """,
+        "reduce_os_spinfac",
+    )
+
+    spin_buffer_cupy[:, start : start + ndets, :] += reduce_os_spinfac(
+        ps,
+        qs,
+        chol_factor,
+        mapping,
+        ndets,
+        chol_factor[0].shape[2],
+        chol_factor[0].shape[0],
+        chol_factor[0].shape[1],
+        det_cofactor_real,
+        det_cofactor_imag,
+        spin_buffer_cupy[:, start : start + ndets, :],
+    )
 
 
-
-
-            
-                      
-def fill_os_nfold_gpu(
-    cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls
-):
+def fill_os_nfold_gpu(cre, anh, mapping, det_matrix, cof_mat, chol_factor, spin_buffer, det_sls):
     """Fill opposite spin (os) n-fold contributions into spin_buffer.
 
     Parameters
@@ -1341,19 +1503,20 @@ def fill_os_nfold_gpu(
     None
     """
     nexcit = det_matrix.shape[-1]
-    
-    cof_mat_all = cupy.zeros((nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]), dtype=numpy.complex128)
 
-    
+    cof_mat_all = cupy.zeros(
+        (nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]),
+        dtype=numpy.complex128,
+    )
+
     for iex in range(nexcit):
         for jex in range(nexcit):
             build_cofactor_matrix_gpu(iex, jex, det_matrix, cof_mat)
             cof_mat_all[iex, jex, :, :, :, :] = cupy.asarray(cof_mat)
-            
+
     det_cofactor = cupy.linalg.det(cof_mat_all)
-    
+
     cof_mat_all = None
-    
 
     for iex in range(nexcit):
         ps = cre[:, iex]
@@ -1362,18 +1525,15 @@ def fill_os_nfold_gpu(
 
             phase = (-1.0 + 0.0j) ** (iex + jex)
             reduce_os_spin_factor_gpu(
-                ps, qs, mapping, phase, det_cofactor[iex,jex], chol_factor, spin_buffer, det_sls
+                ps, qs, mapping, phase, det_cofactor[iex, jex], chol_factor, spin_buffer, det_sls
             )
 
     det_cofactor = None
-     
-
 
 
 ### using cooperative groups to make reduction more efficient
-    
-    
-    
+
+
 def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, det_sls):
     """Build same-spin (ss) n-fold contributions.
 
@@ -1400,31 +1560,43 @@ def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, 
     -------
     None
     """
-    
+
     nwalkers = dets_mat.shape[0]
-    nexcit = dets_mat.shape[-1]   
+    nexcit = dets_mat.shape[-1]
     ndets = cof_mat.shape[1]
     start = det_sls.start
-    
+
     cre = cupy.asarray(cre)
     anh = cupy.asarray(anh)
     mapping = cupy.asarray(mapping)
-    
-    cof_mat_all = cupy.zeros((nexcit, nexcit, nexcit, nexcit, cof_mat.shape[0], cof_mat.shape[1], cof_mat.shape[2], cof_mat.shape[3]), dtype=numpy.complex128)
-    
+
+    cof_mat_all = cupy.zeros(
+        (
+            nexcit,
+            nexcit,
+            nexcit,
+            nexcit,
+            cof_mat.shape[0],
+            cof_mat.shape[1],
+            cof_mat.shape[2],
+            cof_mat.shape[3],
+        ),
+        dtype=numpy.complex128,
+    )
+
     for iex in range(nexcit):
         for jex in range(nexcit):
             for kex in range(iex + 1, nexcit):
                 for lex in range(jex + 1, nexcit):
                     build_cofactor_matrix_4_gpu(iex, jex, kex, lex, dets_mat, cof_mat)
-                    cof_mat_all[iex,jex,kex,lex,:,:,:,:] = cof_mat
-                    
+                    cof_mat_all[iex, jex, kex, lex, :, :, :, :] = cof_mat
 
-    det_cofactor = cupy.linalg.det(cof_mat_all)  
-    
-    buffer_copy = cupy.zeros_like(buffer[:,start:start+ndets])
+    det_cofactor = cupy.linalg.det(cof_mat_all)
 
-    get_ss_nfold_parallel_kernel = cupy.RawKernel(r'''
+    buffer_copy = cupy.zeros_like(buffer[:, start : start + ndets])
+
+    get_ss_nfold_parallel_kernel = cupy.RawKernel(
+        r"""
                 #include <cuComplex.h> 
                 #include <cooperative_groups.h>
                 #include <cooperative_groups/reduce.h>
@@ -1506,16 +1678,32 @@ def get_ss_nfold_gpu(cre, anh, mapping, dets_mat, cof_mat, chol_factor, buffer, 
                         
                     }
                 }
-                ''', 
-                'get_ss_nfold_parallel_kernel',  
-                options=('-std=c++11',),
-                backend = 'nvcc',
-        )
-    
-    get_ss_nfold_parallel_kernel((int(numpy.ceil(nexcit*nexcit*nexcit*nexcit*ndets*nwalkers/64)),),(64,),(nexcit, cre, anh, mapping, start, nwalkers, ndets, chol_factor[0].shape[0], chol_factor[0].shape[1], chol_factor[0].shape[2], chol_factor, det_cofactor, buffer_copy))
+                """,
+        "get_ss_nfold_parallel_kernel",
+        options=("-std=c++11",),
+        backend="nvcc",
+    )
 
-    buffer[:,start:start+ndets] = buffer_copy   
+    get_ss_nfold_parallel_kernel(
+        (int(numpy.ceil(nexcit * nexcit * nexcit * nexcit * ndets * nwalkers / 64)),),
+        (64,),
+        (
+            nexcit,
+            cre,
+            anh,
+            mapping,
+            start,
+            nwalkers,
+            ndets,
+            chol_factor[0].shape[0],
+            chol_factor[0].shape[1],
+            chol_factor[0].shape[2],
+            chol_factor,
+            det_cofactor,
+            buffer_copy,
+        ),
+    )
+
+    buffer[:, start : start + ndets] = buffer_copy
 
     det_cofactor = None
-    
-    
