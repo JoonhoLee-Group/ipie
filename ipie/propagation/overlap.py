@@ -21,7 +21,12 @@ import itertools
 import numpy
 import scipy.linalg
 
-from ipie.estimators.kernels.cpu import wicks as wk
+from ipie.config import config
+
+if config.get_option("use_gpu"):
+    from ipie.estimators.kernels.gpu import wicks_gpu as wk
+else:
+    from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
@@ -92,7 +97,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
         ovlp_a -= G0a[p, s] * (G0a[r, q] * G0a[t, u] - G0a[r, u] * G0a[t, q])
         ovlp_a += G0a[p, u] * (G0a[r, q] * G0a[t, s] - G0a[r, s] * G0a[t, q])
     else:
-        det_a = numpy.zeros((nex_a, nex_a), dtype=numpy.complex128)
+        det_a = xp.zeros((nex_a, nex_a), dtype=numpy.complex128)
         for iex in range(nex_a):
             p = cre_a[iex]
             q = anh_a[iex]
@@ -102,7 +107,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
                 s = anh_a[jex]
                 det_a[iex, jex] = G0a[p, s]
                 det_a[jex, iex] = G0a[r, q]
-        ovlp_a = numpy.linalg.det(det_a)
+        ovlp_a = xp.linalg.det(det_a)
 
     if nex_b == 1:
         p = cre_b[0]
@@ -125,7 +130,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
         ovlp_b -= G0b[p, s] * (G0b[r, q] * G0b[t, u] - G0b[r, u] * G0b[t, q])
         ovlp_b += G0b[p, u] * (G0b[r, q] * G0b[t, s] - G0b[r, s] * G0b[t, q])
     else:
-        det_b = numpy.zeros((nex_b, nex_b), dtype=numpy.complex128)
+        det_b = xp.zeros((nex_b, nex_b), dtype=numpy.complex128)
         for iex in range(nex_b):
             p = cre_b[iex]
             q = anh_b[iex]
@@ -135,7 +140,7 @@ def get_overlap_one_det_wicks(nex_a, cre_a, anh_a, G0a, nex_b, cre_b, anh_b, G0b
                 s = anh_b[jex]
                 det_b[iex, jex] = G0b[p, s]
                 det_b[jex, iex] = G0b[r, q]
-        ovlp_b = numpy.linalg.det(det_b)
+        ovlp_b = xp.linalg.det(det_b)
 
     return ovlp_a, ovlp_b
 
@@ -265,11 +270,12 @@ def get_dets_single_excitation_batched_opt(G0wa, G0wb, trial):
     ndets_a = trial.cre_ex_a[1].shape[0]
     ndets_b = trial.cre_ex_b[1].shape[0]
     nwalkers = G0wa.shape[0]
+
     if ndets_a == 0:
         dets_a = None
     else:
         # arrays of length ndet_per_single_excitation
-        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
         wk.get_dets_singles(
             trial.cre_ex_a[1],
             trial.anh_ex_a[1],
@@ -281,7 +287,7 @@ def get_dets_single_excitation_batched_opt(G0wa, G0wb, trial):
     if ndets_b == 0:
         dets_b = None
     else:
-        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
         wk.get_dets_singles(
             trial.cre_ex_b[1],
             trial.anh_ex_b[1],
@@ -448,6 +454,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
     dets_b : numpy.ndarray
         Beta overlaps shape (nw, ndets_excit2_beta)
     """
+    # if trial.num_det_chunks<50:
     ndets_a = trial.cre_ex_a[2].shape[0]
     ndets_b = trial.cre_ex_b[2].shape[0]
     nwalkers = G0wa.shape[0]
@@ -455,7 +462,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
         dets_a = None
     else:
         # arrays of length ndet_per_single_excitation
-        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
         wk.get_dets_doubles(
             trial.cre_ex_a[2],
             trial.anh_ex_a[2],
@@ -467,7 +474,7 @@ def get_dets_double_excitation_batched_opt(G0wa, G0wb, trial):
     if ndets_b == 0:
         dets_b = None
     else:
-        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
         wk.get_dets_doubles(
             trial.cre_ex_b[2],
             trial.anh_ex_b[2],
@@ -504,8 +511,8 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
     if ndets_a == 0:
         dets_a = None
     else:
-        # arrays of length ndet_per_single_excitation
-        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        dets_a = xp.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+        # # arrays of length ndet_per_single_excitation
         wk.get_dets_triples(
             trial.cre_ex_a[3],
             trial.anh_ex_a[3],
@@ -517,7 +524,7 @@ def get_dets_triple_excitation_batched_opt(G0wa, G0wb, trial):
     if ndets_b == 0:
         dets_b = None
     else:
-        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+        dets_b = xp.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
         wk.get_dets_triples(
             trial.cre_ex_b[3],
             trial.anh_ex_b[3],
@@ -553,54 +560,77 @@ def get_dets_nfold_excitation_batched_opt(nexcit, G0wa, G0wb, trial):
     ndets_a = trial.cre_ex_a[nexcit].shape[0]
     ndets_b = trial.cre_ex_b[nexcit].shape[0]
     nwalkers = G0wa.shape[0]
+
     if ndets_a == 0:
         dets_a = None
     else:
         # arrays of length ndet_per_single_excitation
-        dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
-        wk.get_dets_nfold(
-            trial.cre_ex_a[nexcit],
-            trial.anh_ex_a[nexcit],
-            trial.occ_map_a,
-            trial.nfrozen,
-            G0wa,
-            dets_a,
-        )
+        if config.get_option("use_gpu"):
+            dets_a = wk.get_dets_nfold(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                G0wa,
+            )
+        else:
+            dets_a = numpy.zeros((nwalkers, ndets_a), dtype=numpy.complex128)
+            wk.get_dets_nfold(
+                trial.cre_ex_a[nexcit],
+                trial.anh_ex_a[nexcit],
+                trial.occ_map_a,
+                trial.nfrozen,
+                G0wa,
+                dets_a,
+            )
     if ndets_b == 0:
         dets_b = None
     else:
-        dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
-        wk.get_dets_nfold(
-            trial.cre_ex_b[nexcit],
-            trial.anh_ex_b[nexcit],
-            trial.occ_map_b,
-            trial.nfrozen,
-            G0wb,
-            dets_b,
-        )
+        if config.get_option("use_gpu"):
+            dets_b = wk.get_dets_nfold(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                G0wb,
+            )
+        else:
+            dets_b = numpy.zeros((nwalkers, ndets_b), dtype=numpy.complex128)
+            wk.get_dets_nfold(
+                trial.cre_ex_b[nexcit],
+                trial.anh_ex_b[nexcit],
+                trial.occ_map_b,
+                trial.nfrozen,
+                G0wb,
+                dets_b,
+            )
     return dets_a, dets_b
 
 
 def compute_determinants_batched(G0a, G0b, trial):
     nwalker = G0a.shape[0]
     ndets = len(trial.coeffs)
-    dets_a_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
-    dets_b_full = numpy.ones((nwalker, ndets), dtype=numpy.complex128)
+    dets_a_full = xp.ones((nwalker, ndets), dtype=numpy.complex128)
+    dets_b_full = xp.ones((nwalker, ndets), dtype=numpy.complex128)
     # Use low level excitation optimizations
     # TODO: Optimization Use one buffer + one remapping at the end.
+
     dets_a, dets_b = get_dets_single_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:, trial.excit_map_a[1]] = dets_a
     dets_b_full[:, trial.excit_map_b[1]] = dets_b
     if trial.max_excite < 2:
         return dets_a_full, dets_b_full
+
     dets_a, dets_b = get_dets_double_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:, trial.excit_map_a[2]] = dets_a
     dets_b_full[:, trial.excit_map_b[2]] = dets_b
     if trial.max_excite < 3:
         return dets_a_full, dets_b_full
+
     dets_a, dets_b = get_dets_triple_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:, trial.excit_map_a[3]] = dets_a
     dets_b_full[:, trial.excit_map_b[3]] = dets_b
+
     for iexcit in range(4, trial.max_excite + 1):
         dets_a, dets_b = get_dets_nfold_excitation_batched_opt(iexcit, G0a, G0b, trial)
         dets_a_full[:, trial.excit_map_a[iexcit]] = dets_a
@@ -651,6 +681,56 @@ def calc_overlap_multi_det_wicks_opt(walker_batch, trial):
     # trial.phase_a,
     # trial.phase_b,
     # optimize=True)
+
+    return ovlps
+
+
+def calc_overlap_multi_det_wicks_opt_gpu(walker_batch, trial):
+    """Calculate overlap with multidet trial wavefunction using Wick's Theorem.
+
+    Parameters
+    ----------
+    walker_batch : object
+        WalkerBatch object (this stores some intermediates for the particular trial wfn).
+    trial : object
+        Trial wavefunction object.
+
+    Returns
+    -------
+    ovlps : float / complex
+        Overlap.
+    """
+    ovlps = []
+
+    trial_psi0a_conj = xp.asarray(trial.psi0a.conj())
+    trial_psi0b_conj = xp.asarray(trial.psi0b.conj())
+    ovlp_mats_a = xp.einsum("wmi,mj->wji", walker_batch.phia, trial_psi0a_conj, optimize=True)
+    signs_a, logdets_a = xp.linalg.slogdet(ovlp_mats_a)
+    ovlp_mats_b = xp.einsum("wmi,mj->wji", walker_batch.phib, trial_psi0b_conj, optimize=True)
+    signs_b, logdets_b = xp.linalg.slogdet(ovlp_mats_b)
+    ovlps0 = signs_a * signs_b * xp.exp(logdets_a + logdets_b)
+
+    trial_psi0a_conj = None
+    trial_psi0b_conj = None
+
+    inv_ovlps_a = xp.linalg.inv(ovlp_mats_a)
+    ovlp_mats_a = None
+    theta_a = xp.einsum("wmi,wij->wjm", walker_batch.phia, inv_ovlps_a, optimize=True)
+    inv_ovlps_a = None
+    inv_ovlps_b = xp.linalg.inv(ovlp_mats_b)
+    ovlp_mats_b = None
+    theta_b = xp.einsum("wmi,wij->wjm", walker_batch.phib, inv_ovlps_b, optimize=True)
+    inv_ovlps_b = None
+    # Use low level excitation optimizations
+    ovlps = xp.array(ovlps, dtype=numpy.complex128)
+
+    dets_a_full, dets_b_full = compute_determinants_batched(theta_a, theta_b, trial)
+
+    dets_full = ovlps0[:, None] * dets_a_full * dets_b_full
+    # This could be precomputed?
+
+    det_factors = xp.asarray(trial.coeffs.conj() * trial.phase_a * trial.phase_b)
+    ovlps = xp.dot(dets_full, det_factors)
 
     return ovlps
 

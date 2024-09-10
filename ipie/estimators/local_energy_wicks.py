@@ -21,15 +21,22 @@ import time
 import numpy
 from numba import jit
 
+from ipie.config import config
 from ipie.estimators.generic import local_energy_generic_cholesky
-from ipie.estimators.kernels.cpu import wicks as wk
 from ipie.propagation.overlap import (
     compute_determinants_batched,
-    get_cofactor_matrix_4_batched,
-    get_cofactor_matrix_batched,
     get_overlap_one_det_wicks,
+    get_cofactor_matrix_batched,
+    get_cofactor_matrix_4_batched,
 )
 from ipie.utils.linalg import minor_mask, minor_mask4
+
+from ipie.utils.backend import arraylib as xp
+
+if config.get_option("use_gpu"):
+    from ipie.estimators.kernels.gpu import wicks_gpu as wk
+else:
+    from ipie.estimators.kernels.cpu import wicks as wk
 
 
 def local_energy_multi_det_trial_wicks_batch(system, ham, walkers, trial):
@@ -549,7 +556,9 @@ def build_contributions12(
     return cont1_J + cont1_K, cont2_J + cont2_K
 
 
-def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, trial, max_mem=2.0):
+def local_energy_multi_det_trial_wicks_batch_opt_chunked_cpu(
+    system, ham, walkers, trial, max_mem=2.0
+):
     """Compute local energy for walker batch (all walkers at once).
 
     Multi determinant case (particle-hole) using Wick's theorem algorithm.
@@ -859,6 +868,546 @@ def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, t
     walker_energies[:, 1] = e1b
     walker_energies[:, 2] = e2b
     return walker_energies
+
+
+def build_contributions12_gpu(
+    rchol_a,
+    rchol_b,
+    rchol_act_a,
+    theta_a,
+    theta_b,
+    CI_a,
+    CI_b,
+    trial_nact,
+    trial_alpha,
+    trial_beta,
+):
+    """Build contributions one and two for wicks local energy.
+
+    A bit messy but faster to reuse intermediates for reference and contribution
+    2 (half-connected, two-leg, one-body-like terms).
+
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    cont1 : numpy.array
+        Reference determinant contribution (exchange + coulomb) (nwalker,)
+    cont2 : numpy.array
+        Half-connected, two-leg one-body-like term (nwalker,)
+    """
+
+    nchol = rchol_a.shape[0]
+    nwalkers = theta_a.shape[0]
+    nbasis = theta_a.shape[2]
+    cont1_J = xp.zeros(nwalkers, dtype=numpy.complex128)
+    cont2_J = xp.zeros(nwalkers, dtype=numpy.complex128)
+    cont1_K = xp.zeros(nwalkers, dtype=numpy.complex128)
+    cont2_K = xp.zeros(nwalkers, dtype=numpy.complex128)
+    nact = CI_a.shape[1]
+
+    Lvo_a = xp.zeros((nwalkers, nchol, trial_nact, trial_alpha), dtype=numpy.complex128)
+    Lvo_b = xp.zeros((nwalkers, nchol, trial_nact, trial_beta), dtype=numpy.complex128)
+
+    nchunks = int(
+        nbasis / 2
+    )  # the number of chunks in the Cholesky dimension, we find in practice setting it to be norb/2 gives a better balance between efficiency and memory-use for large systems
+    Lvo_a = xp.array_split(Lvo_a, nchunks, axis=1)
+    Lvo_b = xp.array_split(Lvo_b, nchunks, axis=1)
+
+    X = xp.zeros((nwalkers, nchol), dtype=numpy.complex128)
+    F = xp.zeros((nwalkers, nchol), dtype=numpy.complex128)
+
+    X.fill(0.0 + 0.0j)
+    F.fill(0.0 + 0.0j)
+
+    X = xp.array_split(X, nchunks, axis=1)
+    F = xp.array_split(F, nchunks, axis=1)
+
+    rchol_act_a = rchol_act_a.reshape(rchol_act_a.shape[0], nact, nbasis)
+    rchol_act_a = xp.array_split(rchol_act_a, nchunks, axis=0)
+
+    nocc_a = theta_a.shape[1]
+    nocc_act_a = CI_a.shape[2]
+    nfrozen_a = nocc_a - nocc_act_a
+    # very messy but numba won't let us use lists for the moment
+    theta_act_a = theta_a[:, :, nfrozen_a : nfrozen_a + nact].copy()
+    theta_occ_real_a = theta_a.real.copy()
+    theta_occ_imag_a = theta_a.imag.copy()
+
+    nocc_b = theta_b.shape[1]
+    nocc_act_b = CI_b.shape[2]
+    nfrozen_b = nocc_b - nocc_act_b
+    theta_act_b = theta_b[:, :, nfrozen_b : nfrozen_b + nact].copy()
+    theta_occ_real_b = theta_b.real.copy()
+    theta_occ_imag_b = theta_b.imag.copy()
+
+    rchol_a = rchol_a.reshape(rchol_a.shape[0], nocc_a, nbasis).copy()
+    rchol_b = rchol_b.reshape(rchol_b.shape[0], nocc_b, nbasis).copy()
+    rchol_a = xp.array_split(rchol_a, nchunks, axis=0)
+    rchol_b = xp.array_split(rchol_b, nchunks, axis=0)
+
+    for i in range(nchunks):
+
+        T = xp.einsum("weO,cEO->wceE", theta_occ_real_a, rchol_a[i]) + 1j * xp.einsum(
+            "weO,cEO->wceE", theta_occ_imag_a, rchol_a[i]
+        )
+        exx = xp.einsum(
+            "wceE,wcEe->w", T, T
+        )  # einsum("wcx,wcx->wc", T.reshape(*T.shape[0:2], -1), tmp.reshape(*tmp.shape[0:2], -1))
+
+        X[i] += xp.einsum("...ii->...", T)
+        cont1_K += -0.5 * exx
+        Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_a, rchol_act_a[i]) + 1j * xp.einsum(
+            "weO,coO->wcoe", theta_occ_imag_a, rchol_act_a[i]
+        )
+        Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_a)
+
+        Lut = Lut_1 - Lut_2
+
+        A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_a : nfrozen_a + nocc_act_a, :])
+
+        Lvo_a[i][:] = Lut[:, :, :, nfrozen_a : nfrozen_a + nocc_act_a]  # .copy()
+
+        cont2_K -= xp.einsum("wcoE,woE->w", A, CI_a)
+
+        F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_a[i], CI_a)
+
+        exx = None
+        Lut_1 = None
+        Lut_2 = None
+        Lut = None
+        A = None
+        T = None
+
+        T = xp.einsum("weO,cEO->wceE", theta_occ_real_b, rchol_b[i]) + 1j * xp.einsum(
+            "weO,cEO->wceE", theta_occ_imag_b, rchol_b[i]
+        )
+
+        exx = xp.einsum("wceE,wcEe->w", T, T)
+        X[i] += xp.einsum("...ii->...", T)
+        cont1_K += -0.5 * exx
+        Lut_1 = xp.einsum("weO,coO->wcoe", theta_occ_real_b, rchol_act_a[i]) + 1j * xp.einsum(
+            "weO,coO->wcoe", theta_occ_imag_b, rchol_act_a[i]
+        )
+        Lut_2 = xp.einsum("wceE,wEo->wcoe", T, theta_act_b)
+        Lut = Lut_1 - Lut_2
+
+        A = xp.einsum("wcoe,wcEe->wcoE", Lut, T[:, :, nfrozen_b : nfrozen_b + nocc_act_b, :])
+
+        Lvo_b[i][:] = Lut[:, :, :, nfrozen_b : nfrozen_b + nocc_act_b]  # .copy()
+
+        cont2_K -= xp.einsum("wcoE,woE->w", A, CI_b)
+
+        F[i] = F[i] + xp.einsum("wcoE,woE->wc", Lvo_b[i], CI_b)
+
+        cont1_J += 0.5 * xp.einsum("wc,wc->w", X[i], X[i])
+
+        cont2_J += xp.einsum("wc,wc->w", F[i], X[i])
+
+        exx = None
+        Lut_1 = None
+        Lut_2 = None
+        Lut = None
+        A = None
+        T = None
+
+    Lvo_a = xp.concatenate(Lvo_a, axis=1)
+    Lvo_b = xp.concatenate(Lvo_b, axis=1)
+
+    return cont1_J + cont1_K, cont2_J + cont2_K, Lvo_a, Lvo_b
+
+
+def local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(
+    system, ham, walkers, trial, max_mem=2.0
+):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Multi determinant case (particle-hole) using Wick's theorem algorithm.
+
+    Optimized algorithm that "batches" over walkers / determinants.
+
+    Chunks over determinants necessary for large expansions / larger system
+    sizes.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walkers : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+    max_mem : float
+        Max memory used for intermediate buffer in GB. Optional. Default 2 GB.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
+
+    nwalkers = walkers.nwalkers
+    nbasis = ham.nbasis
+    nchol = ham.nchol
+    Ga = walkers.Ga.reshape((nwalkers, nbasis * nbasis))
+    Gb = walkers.Gb.reshape((nwalkers, nbasis * nbasis))
+    e1b = Ga.dot(ham.H1[0].ravel()) + Gb.dot(ham.H1[1].ravel()) + ham.ecore
+
+    ovlpa0 = walkers.det_ovlpas[:, 0]
+    ovlpb0 = walkers.det_ovlpbs[:, 0]
+    ovlp0 = ovlpa0 * ovlpb0
+    ovlp = walkers.ovlp
+
+    cont1, cont2, Lvo_a, Lvo_b = build_contributions12_gpu(
+        trial._rchola,
+        trial._rcholb,
+        trial._rchola_act,
+        walkers.Ghalfa,
+        walkers.Ghalfb,
+        walkers.CIa,
+        walkers.CIb,
+        trial.nact,
+        trial.nocc_alpha,
+        trial.nocc_beta,
+    )
+    cont2 = (ovlp0 / ovlp) * cont2
+
+    Lvo_a_transpose = xp.ascontiguousarray(Lvo_a.transpose((0, 2, 3, 1)))
+    Lvo_b_transpose = xp.ascontiguousarray(Lvo_b.transpose((0, 2, 3, 1)))
+
+    Lvo_a = None
+    Lvo_b = None
+
+    dets_a_full, dets_b_full = compute_determinants_batched(walkers.Ghalfa, walkers.Ghalfb, trial)
+
+    cphase_a = trial.coeffs.conj() * trial.phase_a
+    cphase_b = trial.coeffs.conj() * trial.phase_b
+    ovlpa = dets_a_full.get() * trial.phase_a[None, :]
+    ovlpb = dets_b_full.get() * trial.phase_b[None, :]
+    c_phasea_ovlpb = cphase_a[None, :] * ovlpb
+    c_phaseb_ovlpa = cphase_b[None, :] * ovlpa
+    cphase_ab = cphase_a * trial.phase_b
+    start = time.time()
+    cont3 = xp.zeros_like(cont2)
+    if trial.max_excite > 0:
+        det_sizes_a = max(
+            [
+                max(
+                    [
+                        len(trial.cre_ex_a_chunk[ichunk][i]) * i * i
+                        for i in range(1, trial.max_excite + 1)
+                    ]
+                )
+                for ichunk in range(trial.num_det_chunks)
+            ]
+        )
+        det_sizes_b = max(
+            max(
+                [
+                    len(trial.cre_ex_b_chunk[ichunk][i]) * i * i
+                    for i in range(1, trial.max_excite + 1)
+                ]
+            )
+            for ichunk in range(trial.num_det_chunks)
+        )
+        max_size = max(det_sizes_a, det_sizes_b)
+        det_mat_buffer = xp.zeros((2 * nwalkers * max_size), dtype=numpy.complex128)
+
+    for ichunk in range(trial.num_det_chunks):
+
+        xp.cuda.Device(0).synchronize()
+
+        ndets_chunk = trial.ndets_per_chunk[ichunk]
+        alpha_os_buffer = xp.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        beta_os_buffer = xp.zeros((nwalkers, ndets_chunk, nchol), dtype=numpy.complex128)
+        alpha_ss_buffer = xp.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        beta_ss_buffer = xp.zeros((nwalkers, ndets_chunk), dtype=numpy.complex128)
+        for iexcit in range(1, trial.max_excite + 1):
+            ndets_a = len(trial.cre_ex_a_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_a, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_a = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_a, max(iexcit - 1, 1), max(iexcit - 1, 1))
+            cofactor_matrix_a = (
+                det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_size)]
+                .reshape(cof_size)
+                .copy()
+            )
+            cof_sizex = (nwalkers, ndets_a, max(iexcit - 2, 1), max(iexcit - 2, 1))
+            cofactor_matrix_ax = (
+                det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_sizex)]
+                .reshape(cof_sizex)
+                .copy()
+            )
+            _start = time.time()
+            if ndets_a > 0:
+                wk.build_det_matrix(
+                    trial.cre_ex_a_chunk[ichunk][iexcit],
+                    trial.anh_ex_a_chunk[ichunk][iexcit],
+                    trial.occ_map_a,
+                    trial.nfrozen,
+                    walkers.Ghalfa,
+                    det_mat_a,
+                )
+                if iexcit == 1:
+                    _start = time.time()
+
+                    wk.fill_os_singles_gpu(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        Lvo_a_transpose,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][1],
+                    )
+                    _end = time.time()
+
+                elif iexcit == 2:
+                    _start = time.time()
+                    wk.fill_os_doubles_gpu(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        walkers.G0a,
+                        Lvo_a_transpose,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][2],
+                    )
+                elif iexcit == 3:
+                    _start = time.time()
+                    wk.fill_os_triples_gpu(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        trial.nfrozen,
+                        walkers.G0a,
+                        Lvo_a_transpose,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][3],
+                    )
+                else:
+                    _start = time.time()
+                    wk.fill_os_nfold_gpu(
+                        trial.cre_ex_a_chunk[ichunk][iexcit],
+                        trial.anh_ex_a_chunk[ichunk][iexcit],
+                        trial.occ_map_a,
+                        det_mat_a,
+                        cofactor_matrix_a,
+                        Lvo_a_transpose,
+                        alpha_os_buffer,
+                        trial.slices_alpha_chunk[ichunk][iexcit],
+                    )
+                    _end = time.time()
+
+                if iexcit >= 2 and ndets_a > 0:
+                    if iexcit == 2:
+                        _start = time.time()
+                        wk.get_ss_doubles_gpu(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            Lvo_a_transpose,
+                            alpha_ss_buffer,
+                            trial.slices_alpha_chunk[ichunk][iexcit],
+                        )
+
+                    else:
+                        xp.cuda.Device(0).synchronize()
+                        _start = time.time()
+                        wk.get_ss_nfold_gpu(
+                            trial.cre_ex_a_chunk[ichunk][iexcit],
+                            trial.anh_ex_a_chunk[ichunk][iexcit],
+                            trial.occ_map_a,
+                            det_mat_a,
+                            cofactor_matrix_ax,
+                            Lvo_a_transpose,
+                            alpha_ss_buffer,
+                            trial.slices_alpha_chunk[ichunk][iexcit],
+                        )
+                        xp.cuda.Device(0).synchronize()
+                        _end = time.time()
+
+            ndets_b = len(trial.cre_ex_b_chunk[ichunk][iexcit])
+            det_size = (nwalkers, ndets_b, iexcit, iexcit)
+            nelem_det = int(numpy.prod(det_size))
+            det_mat_b = det_mat_buffer[:nelem_det].reshape(det_size)
+            cof_size = (nwalkers, ndets_b, max(iexcit - 1, 1), max(iexcit - 1, 1))
+            cofactor_matrix_b = (
+                det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_size)]
+                .reshape(cof_size)
+                .copy()
+            )
+            cof_sizex = (nwalkers, ndets_b, max(iexcit - 2, 1), max(iexcit - 2, 1))
+            cofactor_matrix_bx = (
+                det_mat_buffer[nelem_det : nelem_det + numpy.prod(cof_sizex)]
+                .reshape(cof_sizex)
+                .copy()
+            )
+            if ndets_b > 0:
+
+                wk.build_det_matrix(
+                    trial.cre_ex_b_chunk[ichunk][iexcit],
+                    trial.anh_ex_b_chunk[ichunk][iexcit],
+                    trial.occ_map_b,
+                    trial.nfrozen,
+                    walkers.Ghalfb,
+                    det_mat_b,
+                )
+
+                if iexcit == 1:
+                    _start = time.time()
+
+                    wk.fill_os_singles_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        trial.nfrozen,
+                        Lvo_b_transpose,
+                        beta_os_buffer,
+                        trial.slices_beta_chunk[ichunk][1],
+                    )
+                    _end = time.time()
+
+                elif iexcit == 2:
+                    _start = time.time()
+                    wk.fill_os_doubles_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        trial.nfrozen,
+                        walkers.G0b,
+                        Lvo_b_transpose,
+                        beta_os_buffer,
+                        trial.slices_beta_chunk[ichunk][2],
+                    )
+                elif iexcit == 3:
+                    _start = time.time()
+                    wk.fill_os_triples_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        trial.nfrozen,
+                        walkers.G0b,
+                        Lvo_b_transpose,
+                        beta_os_buffer,
+                        trial.slices_beta_chunk[ichunk][3],
+                    )
+                else:
+                    _start = time.time()
+                    wk.fill_os_nfold_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        det_mat_b,
+                        cofactor_matrix_b,
+                        Lvo_b_transpose,
+                        beta_os_buffer,
+                        trial.slices_beta_chunk[ichunk][iexcit],
+                    )
+                    _end = time.time()
+
+            if iexcit >= 2 and ndets_b > 0:
+                if iexcit == 2:
+                    _start = time.time()
+                    wk.get_ss_doubles_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        Lvo_b_transpose,
+                        beta_ss_buffer,
+                        trial.slices_beta_chunk[ichunk][iexcit],
+                    )
+
+                else:
+                    xp.cuda.Device(0).synchronize()
+                    _start = time.time()
+                    wk.get_ss_nfold_gpu(
+                        trial.cre_ex_b_chunk[ichunk][iexcit],
+                        trial.anh_ex_b_chunk[ichunk][iexcit],
+                        trial.occ_map_b,
+                        det_mat_b,
+                        cofactor_matrix_bx,
+                        Lvo_b_transpose,
+                        beta_ss_buffer,
+                        trial.slices_beta_chunk[ichunk][iexcit],
+                    )
+                    xp.cuda.Device(0).synchronize()
+                    _end = time.time()
+
+        # orders buffer by determinant index not alpha/beta index
+        ma = trial.excit_map_a_chunk[ichunk]
+        mb = trial.excit_map_b_chunk[ichunk]
+        # 1 for reference determinant
+        start = 1 + ichunk * trial.ndets_chunk_max
+        # inclusive of endpoint
+        end = min(1 + (ichunk + 1) * trial.ndets_chunk_max, trial.num_dets)
+
+        slices_os = 1
+
+        alpha_os_buffer = xp.array_split(alpha_os_buffer, slices_os, axis=2)
+        beta_os_buffer = xp.array_split(beta_os_buffer, slices_os, axis=2)
+
+        energy_os = xp.zeros(nwalkers, dtype=numpy.complex128)  # 0
+
+        cphase_ab_cupy = xp.asarray(cphase_ab[start:end])
+
+        for i in range(slices_os):
+            energy_os += xp.einsum(
+                "wJx,wJx,J->w",
+                alpha_os_buffer[i][:, ma],
+                beta_os_buffer[i][:, mb],
+                cphase_ab_cupy,
+                optimize=True,
+            )
+            alpha_os_buffer[i] = None
+            beta_os_buffer[i] = None
+
+        energy_ss = xp.einsum(
+            "wJ,wJ->w",
+            alpha_ss_buffer[:, ma],
+            xp.asarray(c_phasea_ovlpb[:, start:end]),
+            optimize=True,
+        )
+        alpha_ss_buffer = None
+        energy_ss += xp.einsum(
+            "wJ,wJ->w",
+            beta_ss_buffer[:, mb],
+            xp.asarray(c_phaseb_ovlpa[:, start:end]),
+            optimize=True,
+        )
+        beta_ss_buffer = None
+
+        cont3 += (energy_os + energy_ss) * (ovlp0 / ovlp)
+
+        xp.cuda.Device(0).synchronize()
+
+    e2b = cont1 + cont2 + cont3
+
+    walker_energies = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
+    walker_energies[:, 0] = e1b + e2b
+    walker_energies[:, 1] = e1b
+    walker_energies[:, 2] = e2b
+
+    return walker_energies
+
+
+def local_energy_multi_det_trial_wicks_batch_opt_chunked(system, ham, walkers, trial, max_mem=2.0):
+
+    if config.get_option("use_gpu"):
+        return local_energy_multi_det_trial_wicks_batch_opt_chunked_gpu(
+            system, ham, walkers, trial, max_mem=2.0
+        )
+    else:
+        return local_energy_multi_det_trial_wicks_batch_opt_chunked_cpu(
+            system, ham, walkers, trial, max_mem=2.0
+        )
 
 
 def local_energy_multi_det_trial_wicks_batch_opt(system, ham, walkers, trial, max_mem=2.0):

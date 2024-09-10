@@ -65,7 +65,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
     # Cholesky vectors. [M^2, nchol]
     # Why are there so many transposes here?
     if numpy.isrealobj(hamiltonian.chol):
-        vbias_batch = numpy.empty((hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128)
+        vbias_batch = xp.empty((hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128)
         vbias_batch.real = hamiltonian.chol.T.dot(Ga.T.real + Gb.T.real)
         vbias_batch.imag = hamiltonian.chol.T.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
