@@ -1,10 +1,11 @@
 import time
 from typing import Optional
 
+from typing import Union
 import numpy
 import plum
 
-from ipie.config import CommType, config, MPI
+from ipie.config import CommType, config
 from ipie.estimators.generic import half_rotated_cholesky_jk_uhf
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
@@ -23,7 +24,6 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
-from typing import Union
 
 
 # class for UHF trial
@@ -89,7 +89,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -115,7 +115,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealCholChunked,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -137,16 +137,11 @@ class SingleDet(TrialWavefunctionBase):
         self._rcholb_chunk = rot_chol[1][0]
         self.half_rotated = True
 
-        # rot_1body_1 = numpy.load('../Test_Disk_nochunk/rot_1body.npy')
-        # rot_chol_1 = numpy.load('../Test_Disk_nochunk/rot_chol.npy')
-
-        # print('compare', [numpy.allclose(rot_1body, rot_1body_1), numpy.allclose(rot_chol, rot_chol_1)])
-
     @plum.dispatch
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -180,8 +175,7 @@ class SingleDet(TrialWavefunctionBase):
     def calc_greens_function(self, walkers, build_full: bool = False) -> numpy.ndarray:
         if config.get_option("use_gpu"):
             return greens_function_single_det_batch(walkers, self, build_full=build_full)
-        else:
-            return greens_function_single_det(walkers, self, build_full=build_full)
+        return greens_function_single_det(walkers, self, build_full=build_full)
 
     @plum.dispatch
     def calc_force_bias(
@@ -194,10 +188,9 @@ class SingleDet(TrialWavefunctionBase):
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler
             )
-        else:
-            return construct_force_bias_batch_single_det(
-                hamiltonian, walkers, self._rchola, self._rcholb
-            )
+        return construct_force_bias_batch_single_det(
+            hamiltonian, walkers, self._rchola, self._rcholb
+        )
 
     @plum.dispatch
     def calc_force_bias(
