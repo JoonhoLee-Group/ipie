@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Fionn Malone <fionn.malone@gmail.com>
+# Author: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 # at config level import appropriate kernels.
 from ipie.config import config
 
 if config.get_option("use_gpu"):
-    from .gpu.exchange import exchange_reduction
+    from .gpu.vhs import call_kernel_VHS_construction1
+    from .gpu.vhs import call_kernel_VHS_construction2
 else:
-    exchange_reduction = None
+    call_kernel_VHS_construction1 = None
+    call_kernel_VHS_construction2 = None
 
-if config.get_option("use_gpu"):
-    from .gpu.exchange_kpt import exx_kpt_kernel
-else:
-    exx_kpt_kernel = None

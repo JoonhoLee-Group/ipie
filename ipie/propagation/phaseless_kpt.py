@@ -15,6 +15,8 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.walkers.uhf_walkers import UHFWalkers
 from numba import jit
+from ipie.utils.backend import get_device_memory
+from ipie.propagation.kernels import call_kernel_VHS_construction1, call_kernel_VHS_construction2
 
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_symm(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_mat, Sset, Qplus):
@@ -50,21 +52,29 @@ def construct_VHS_kernel_symm(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikp
     return VHS
 
 def construct_VHS_symm_gpu(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_mat, Sset, Qplus):
-    VHS = xp.zeros((nk, nk, nwalkers, nbasis, nbasis), dtype=numpy.complex128)
+    VHS = xp.zeros((nwalkers, nk, nbasis, nk, nbasis), dtype=xp.complex128)
     x= .5 * (1j * xshifted[0] + xshifted[1])
     xconj = .5 * (1j * xshifted[0] - xshifted[1])
-    ikpq_S = ikpq_mat[Sset]
+    unique_qs = xp.concatenate((Sset, Qplus))
+    # print("ikpq_S", ikpq_S)
     idx_lenS = xp.arange(len(Sset))
-    kidx = xp.arange(nk)[:, None]
-    kpqidx = ikpq_S.T # k, q
-    VHS[kidx, kpqidx] += sqrt_dt * xp.einsum('wXq, Xkpqr->kqwpr', x[:, :, idx_lenS], chol[:, :, :, idx_lenS, :], optimize=True)
-    VHS[kpqidx, kidx] += sqrt_dt * xp.einsum('wXq, Xkpqr->kqwrp', xconj[:, :, idx_lenS], chol[:, :, :, idx_lenS, :].conj(), optimize=True)
-    ikpq_Q = ikpq_mat[Qplus]
     idx_lenQ = xp.arange(len(Qplus)) + len(Sset)
-    kpqidx = ikpq_Q.T # k, q
-    VHS[kidx, kpqidx] += xp.sqrt(2) * sqrt_dt * xp.einsum('wXq, Xkpqr->kqwpr', x[:, :, idx_lenQ], chol[:, :, :, idx_lenQ, :], optimize=True)
-    VHS[kpqidx, kidx] += xp.sqrt(2) * sqrt_dt * xp.einsum('wXq, Xkpqr->kqwrp', xconj[:, :, idx_lenQ], chol[:, :, :, idx_lenQ, :].conj(), optimize=True)
-    VHS = VHS.transpose(2, 0, 3, 1, 4).copy()
+
+    xS = sqrt_dt * x[:, :, idx_lenS]
+    xQ = xp.sqrt(2) * sqrt_dt * x[:, :, idx_lenQ]
+    xconjS = sqrt_dt * xconj[:, :, idx_lenS]
+    xconjQ = xp.sqrt(2) * sqrt_dt * xconj[:, :, idx_lenQ]
+
+    xtot = xp.concatenate((xS, xQ), axis=-1)
+    xconjtot = xp.concatenate((xconjS, xconjQ), axis=-1)
+
+    kpq_mat = ikpq_mat[unique_qs]
+
+    naux = chol.shape[0]
+
+    call_kernel_VHS_construction1(chol, xtot, naux, nk, nbasis, nwalkers, kpq_mat, VHS)
+    call_kernel_VHS_construction2(chol, xconjtot, naux, nk, nbasis, nwalkers, kpq_mat, VHS)
+
     VHS = VHS.reshape(nwalkers, nk * nbasis, nk * nbasis)
     return VHS
 

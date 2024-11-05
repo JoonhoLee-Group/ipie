@@ -12,18 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Fionn Malone <fionn.malone@gmail.com>
+# Author: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
-
-# at config level import appropriate kernels.
-from ipie.config import config
-
-if config.get_option("use_gpu"):
-    from .gpu.exchange import exchange_reduction
-else:
-    exchange_reduction = None
-
-if config.get_option("use_gpu"):
-    from .gpu.exchange_kpt import exx_kpt_kernel
-else:
-    exx_kpt_kernel = None
