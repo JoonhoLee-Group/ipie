@@ -577,9 +577,9 @@ class AFQMC(AFQMCBase):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-            if config.get_option("use_gpu"):
-                used_bytes, total_bytes = get_device_memory()
-                print(f"# before propagation: {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
+            # if config.get_option("use_gpu"):
+            #     used_bytes, total_bytes = get_device_memory()
+            #     print(f"# before propagation: {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
             self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
 
             self.tprop_fbias = self.propagator.timer.tfbias

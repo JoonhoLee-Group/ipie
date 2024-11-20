@@ -17,6 +17,8 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.estimators.local_energy_kpt_sd import kpt_symmchol_ecoul_kernel_uhf, kpt_symmchol_exx_kernel
 
+import time
+
 # from line_profiler import profile
 
 import plum
@@ -289,7 +291,7 @@ def kpt_symmchol_ecoul_kernel_batch_rhf_gpu(rchola, rcholbara, Ghalfa, kpq_mat, 
 
     return 0.5 * ecoul / nk
 
-def kpt_symmchol_exx_kernel_batch_gpu(rchola_chunk, rcholbara_chunk, Ghalfa, kpq_mat, Sset, Qplus, max_mem=8.0):
+def kpt_symmchol_exx_kernel_batch_gpu(rchola_chunk, rcholbara_chunk, Ghalfa, kpq_mat, Sset, Qplus, max_mem=4.0):
     # shape of rchola: (nq, nk, nocc, naux, nbsf) (q, k, i, gamma, p)
     # shape of rcholbara: (nq, nk, nbsf, naux, nocc) (q, k, p, gamma, i)
     # shape of Ghalf: (nk, nk, nw, nocc, nbsf)
@@ -324,6 +326,9 @@ def kpt_symmchol_exx_kernel_batch_gpu(rchola_chunk, rcholbara_chunk, Ghalfa, kpq
     mem_needed = 16 * nwalkers * nocc * nocc * nchol * 2 * nQplus * nk * nk / (1024.0**3.0)
     num_nk_chunks_Qplus = max(1, ceil(mem_needed / max_mem))
     nk_chunk_Qplus_size = ceil(len(kcube_Qplus) / num_nk_chunks_Qplus)
+    if nk_chunk_Qplus_size > 65535:
+        nk_chunk_Qplus_size = 65535
+        num_nk_chunks_Qplus = ceil(len(kcube_Qplus) / nk_chunk_Qplus_size)
     nkcube_left = len(kcube_Qplus)
     if len(kcube_Qplus) > 0:
         for i in range(num_nk_chunks_Qplus):
@@ -338,7 +343,7 @@ def local_energy_kpt_single_det_uhf_batch_chunked_gpu(
     hamiltonian: KptComplexCholChunked,
     walker_batch: UHFWalkers,
     trial: KptSingleDet,
-    max_mem: float = 8.0
+    max_mem: float = 4.0
 ):
     """Compute local energy for walker batch (all walkers at once).
 
@@ -509,7 +514,6 @@ def local_energy_kpt_single_det_uhf_batch_chunked_gpu(
             ghalfb_send = ghalfb_recv.copy()
             # ghalfaTx_send = ghalfaTx_recv.copy()
             # ghalfbTx_send = ghalfbTx_recv.copy()
-
 
         if len(senders) > 1:
             for isend, sender in enumerate(senders):

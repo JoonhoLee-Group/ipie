@@ -1,343 +1,296 @@
-from numba import cuda, complex128
 import cupy as cp
 
-TPB = 16
-
 BM = 32
-BN = 64
+BN = 32
 BK = 8
 TM = 4
 TN = 4
 
-@cuda.jit("void(complex128[:, :, :, :, :], complex128[:, :, :], complex128[:, :, :], int64[:, :], complex128[:, :, :, :, :], complex128[:, :, :, :, :])")
-def kernel_VHS_construction(chol, xshifted, xshifted_conj, ikpq_mat, VHS1, VHS2):
-    """
-    Construct the VHS matrix in the symmetrized form using shared memory.
-    """
-    # q * k: batched index I
-    # J: nwalkers
-    # L: naux
-    # K: nbasis**2
-    nk = chol.shape[1]
-    naux = chol.shape[0]
-    nbasis = chol.shape[-1]
-    nbasis_sq = nbasis**2
-    nwalker = xshifted.shape[0]
-    J = nwalker
-    L = naux
-    K = nbasis_sq
-    iqk = cuda.blockIdx.z  # I
-    row = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y # J
-    col = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x # K
-    tx = cuda.threadIdx.x
-    ty = cuda.threadIdx.y
+kernel_code_vhs1 = r'''
+#define BM 32
+#define BN 32
+#define BK 8
+#define TM 4
+#define TN 4
 
-    p = col // nbasis
-    r = col % nbasis
+#include <cuComplex.h>
 
-    iq = iqk // nk
-    ik = iqk % nk
-    # iq_real = qset[iq]
-    ikpq = ikpq_mat[iq, ik]
+extern "C" __global__
+void VHS_construction1(int nq, int nk, int naux, int nbasis, int nwalker, const int *kpq_mat, const cuDoubleComplex *A,
+                                     const cuDoubleComplex *B, cuDoubleComplex *C) {
+  const int batchid = blockIdx.z;
+  const unsigned int cRow = blockIdx.y;
+  const unsigned int cCol = blockIdx.x;
+  const int M = nwalker;
+  const int N = nbasis * nbasis;
+  const int K = naux;
+  int iq = batchid / nk;
+  int ik = batchid % nk;
+  int ikpq = kpq_mat[iq * nk + ik];
 
-    # Allocate shared memory for tiles of chol and xshifted
-    sx = cuda.shared.array(shape=(TPB, TPB), dtype=complex128)
-    # sxbar = cuda.shared.array(shape=(TPB, TPB), dtype=complex128)
-    schol = cuda.shared.array(shape=(TPB, TPB), dtype=complex128)
-    # Initialize the accumulator
-    tmp1 = complex128(0.0)
-    tmp2 = complex128(0.0)
-    for l in range(0, L, TPB):
-        if row < J and (l + tx) < L:
-            sx[ty, tx] = xshifted[row, l + tx, iq]
-        else:
-            sx[ty, tx] = complex128(0.0)
-        if (l + ty) < L and col < K:
-            schol[ty, tx] = chol[l + ty, ik, p, iq, r]
-        else:
-            schol[ty, tx] = complex128(0.0)
-        cuda.syncthreads()
-        for k in range(TPB):
-            tmp1 += sx[ty, k] * schol[k, tx]
-        cuda.syncthreads()
+  const unsigned int totalResultsBlocktile = BM * BN;
+  // A thread is responsible for calculating TM*TN elements in the blocktile
+  const unsigned int numThreadsBlocktile = totalResultsBlocktile / (TM * TN);
 
-    if row < J and col < K:
-        VHS1[row, ik, p, ikpq, r] += tmp1
+  // BN/TN are the number of threads to span a column
+  const unsigned int threadCol = threadIdx.x % (BN / TN);
+  const unsigned int threadRow = threadIdx.x / (BN / TN);
 
-    for l in range(0, L, TPB):
-        if row < J and (l + tx) < L:
-            sx[ty, tx] = xshifted_conj[row, l + tx, iq]
-        else:
-            sx[ty, tx] = complex128(0.0)
-        cuda.syncthreads()
-        for k in range(TPB):
-            tmp2 += sx[ty, k] * schol[k, tx].conjugate()
-        cuda.syncthreads()
+  // allocate space for the current blocktile in shared memory
+  __shared__ cuDoubleComplex As[BM * BK];
+  __shared__ cuDoubleComplex Bs[BK * BN];
 
-    if row < J and col < K:
-        VHS2[row, ikpq, r, ik, p] += tmp2
+  // calculating the indices that this thread will load into shared memory
+  const unsigned int innerRowA = threadIdx.x / BK;
+  const unsigned int innerColA = threadIdx.x % BK;
+  // calculates the number of rows of As that are being loaded in a single step
+  // by a single block
+  const unsigned int strideA = numThreadsBlocktile / BK;
+  const unsigned int innerRowB = threadIdx.x / BN;
+  const unsigned int innerColB = threadIdx.x % BN;
+  // for both As and Bs we want each load to span the full column-width, for
+  // better global memory coalescing
+  const unsigned int strideB = numThreadsBlocktile / BN;
 
-def call_kernel_VHS_construction(chol, xshifted, xshifted_conj, naux, nk, nbasis, nwalker, ikpq_mat, VHS1, VHS2):
-    threadsperblock = (TPB, TPB, 1)
-    grid_x_max = max(naux, nbasis**2)
-    grid_y_max = max(nwalker, naux)
-    blockspergrid_x = (grid_x_max + TPB - 1) // TPB
-    blockspergrid_y = (grid_y_max + TPB - 1) // TPB
-    blockspergrid_z = ikpq_mat.shape[0] * nk
-    blockspergrid = (blockspergrid_x, blockspergrid_y, blockspergrid_z)
-    kernel_VHS_construction[blockspergrid, threadsperblock](chol, xshifted, xshifted_conj, ikpq_mat, VHS1, VHS2)
-    cp.cuda.stream.get_current_stream().synchronize()
+  // allocate thread-local cache for results in register file
+  cuDoubleComplex threadResults[TM * TN];
+  // Initialize threadResults to zero
+  for (int i = 0; i < TM * TN; ++i) {
+    threadResults[i] = make_cuDoubleComplex(0.0, 0.0);
+  }
+  // register caches for As and Bs
+  cuDoubleComplex regM[TM];
+  cuDoubleComplex regN[TN];
 
-@cuda.jit("void(complex128[:, :, :, :, :], complex128[:, :, :], int64[:, :], complex128[:, :, :, :, :])")
-def kernel_VHS_construction1(chol, xshifted, ikpq_mat, VHS):
-    """
-    Construct the VHS matrix in the symmetrized form using shared memory.
-    """
-    # q * k: batched index I
-    # M: nwalkers
-    # K: naux
-    # N: nbasis**2
-    nk = chol.shape[1]
-    naux = chol.shape[0]
-    nbasis = chol.shape[-1]
-    nbasis_sq = nbasis**2
-    nwalker = xshifted.shape[0]
-    M = nwalker
-    K = naux
-    N = nbasis_sq
-    iqk = cuda.blockIdx.z  # I
-    cRow = cuda.blockIdx.y
-    cCol = cuda.blockIdx.x
-    threadCol = cuda.threadIdx.x
-    threadRow = cuda.threadIdx.y
+  const cuDoubleComplex* A0 = A;
+  const cuDoubleComplex* B0 = B;
 
-    threadsPerRow = BN // TN
-    thread_id = threadRow * threadsPerRow + threadCol
+  // outer-most loop over block tiles
+  for (unsigned int bkIdx = 0; bkIdx < K; bkIdx += BK) {
+    // populate the shared memory caches
+    for (unsigned int loadOffset = 0; loadOffset < BM; loadOffset += strideA) {
+      unsigned int sharedRow = innerRowA + loadOffset;
+      unsigned int sharedCol = innerColA;
+      unsigned int globalRowA = cRow * BM + sharedRow;
+      unsigned int globalColA = bkIdx + sharedCol;
+      if (globalRowA < M && globalColA < K) {
+        As[sharedRow * BK + sharedCol] = A0[globalRowA * K * nq + globalColA * nq + iq];
+    // xshifted[arow, acol, iq]
+      } else {
+        As[sharedRow * BK + sharedCol] = make_cuDoubleComplex(0.0, 0.0);
+      }
+    }
+    for (unsigned int loadOffset = 0; loadOffset < BK; loadOffset += strideB) {
+      unsigned int sharedRow = innerRowB + loadOffset;
+      unsigned int sharedCol = innerColB;
+      unsigned int globalRowB = bkIdx + sharedRow;
+      unsigned int globalColB = cCol * BN + sharedCol;
+      unsigned int p = globalColB / nbasis;
+      unsigned int r = globalColB % nbasis;
+      if (globalRowB < K && globalColB < N) {
+        Bs[sharedRow * BN + sharedCol] = B0[globalRowB * nk * nq * nbasis * nbasis + ik * nq * nbasis * nbasis + p * nq * nbasis + iq * nbasis + r];
+    //chol[brow, ik, p, iq, r]
+      } else {
+        Bs[sharedRow * BN + sharedCol] = make_cuDoubleComplex(0.0, 0.0);
+      }
+    }
+    __syncthreads();
 
-    # p = col // nbasis
-    # r = col % nbasis
+    // calculate per-thread results
+    for (unsigned int dotIdx = 0; dotIdx < BK; ++dotIdx) {
+      // block into registers
+      for (unsigned int i = 0; i < TM; ++i) {
+        unsigned int row = threadRow * TM + i;
+        regM[i] = As[row * BK + dotIdx];
+      }
+      for (unsigned int i = 0; i < TN; ++i) {
+        unsigned int col = threadCol * TN + i;
+        regN[i] = Bs[dotIdx * BN + col];
+      }
+      for (unsigned int resIdxM = 0; resIdxM < TM; ++resIdxM) {
+        for (unsigned int resIdxN = 0; resIdxN < TN; ++resIdxN) {
+          threadResults[resIdxM * TN + resIdxN] = cuCadd(
+              threadResults[resIdxM * TN + resIdxN],
+              cuCmul(regM[resIdxM], regN[resIdxN]));
+        }
+      }
+    }
+    __syncthreads();
+  }
 
-    iq = iqk // nk
-    ik = iqk % nk
-    # iq_real = qset[iq]
-    ikpq = ikpq_mat[iq, ik]
+  // write out the results
+  for (unsigned int resIdxM = 0; resIdxM < TM; ++resIdxM) {
+    unsigned int globalRowC = cRow * BM + threadRow * TM + resIdxM;
+    for (unsigned int resIdxN = 0; resIdxN < TN; ++resIdxN) {
+      unsigned int globalColC = cCol * BN + threadCol * TN + resIdxN;
+    unsigned int p = globalColC / nbasis;
+    unsigned int r = globalColC % nbasis;
+      if (globalRowC < M && globalColC < N) {
+        C[globalRowC * nk * nk * nbasis * nbasis + ik * nbasis * nk * nbasis + p * nbasis * nk + ikpq * nbasis + r] =
+            cuCadd(C[globalRowC * nk * nk * nbasis * nbasis + ik * nbasis * nk * nbasis + p * nbasis * nk + ikpq * nbasis + r], threadResults[resIdxM * TN + resIdxN]);
+      }
+    }
+  }
+}
+'''
 
-    # Allocate shared memory for tiles of chol and xshifted
-    sx = cuda.shared.array(shape=(BM, BK), dtype=complex128)
-    schol = cuda.shared.array(shape=(BK, BN), dtype=complex128)
-    # Allocate thread-local cache for results
-    threadResults = cuda.local.array(shape=(TM, TN), dtype=complex128)
-    regM = cuda.local.array(shape=(TM,), dtype=complex128)
-    regN = cuda.local.array(shape=(TN,), dtype=complex128)
-    # Compute the starting positions
-    a_start_row = cRow * BM
-    b_start_col = cCol * BN
+kernel_code_vhs2 = r'''
+#define BM 32
+#define BN 32
+#define BK 8
+#define TM 4
+#define TN 4
 
-    # Total number of threads per block
-    numThreadsBlocktile = (BM * BN) // (TM * TN)
+#include <cuComplex.h>
 
-    # Compute strides
-    strideA = (BM * BK + numThreadsBlocktile - 1) // numThreadsBlocktile
-    strideB = (BK * BN + numThreadsBlocktile - 1) // numThreadsBlocktile
+extern "C" __global__
+void VHS_construction2(int nq, int nk, int naux, int nbasis, int nwalker, const int *kpq_mat, const cuDoubleComplex *A,
+                                     const cuDoubleComplex *B, cuDoubleComplex *C) {
+  const int batchid = blockIdx.z;
+  const unsigned int cRow = blockIdx.y;
+  const unsigned int cCol = blockIdx.x;
+  const int M = nwalker;
+  const int N = nbasis * nbasis;
+  const int K = naux;
+  int iq = batchid / nk;
+  int ik = batchid % nk;
+  int ikpq = kpq_mat[iq * nk + ik];
 
-    # Main loop over the K dimension
-    for bkIdx in range(0, K, BK):
-        # Load tiles from A into shared memory
-        for idx in range(strideA):
-            index = thread_id * strideA + idx
-            if index < BM * BK:
-                row = index // BK
-                col = index % BK
-                a_row = a_start_row + row
-                a_col = bkIdx + col
-                if a_row < M and a_col < K:
-                    sx[row, col] = xshifted[a_row, a_col, iq]
-                else:
-                    sx[row, col] = 0.0
+  const unsigned int totalResultsBlocktile = BM * BN;
+  // A thread is responsible for calculating TM*TN elements in the blocktile
+  const unsigned int numThreadsBlocktile = totalResultsBlocktile / (TM * TN);
 
-        # Load tiles from B into shared memory
-        for idx in range(strideB):
-            index = thread_id * strideB + idx
-            if index < BK * BN:
-                row = index // BN
-                col = index % BN
-                b_row = bkIdx + row
-                b_col = b_start_col + col
-                p = b_col // nbasis
-                r = b_col % nbasis
-                if b_row < K and b_col < N:
-                    schol[row, col] = chol[b_row, ik, p, iq, r]
-                else:
-                    schol[row, col] = 0.0
+  // BN/TN are the number of threads to span a column
+  const unsigned int threadCol = threadIdx.x % (BN / TN);
+  const unsigned int threadRow = threadIdx.x / (BN / TN);
 
-        # Synchronize threads after loading
-        cuda.syncthreads()
+  // allocate space for the current blocktile in shared memory
+  __shared__ cuDoubleComplex As[BM * BK];
+  __shared__ cuDoubleComplex Bs[BK * BN];
 
-        # Compute per-thread results
-        for dotIdx in range(BK):
-            # Load elements from shared memory into registers
-            for i in range(TM):
-                regM[i] = sx[threadRow * TM + i, dotIdx]
-            for j in range(TN):
-                regN[j] = schol[dotIdx, threadCol * TN + j]
+  // calculating the indices that this thread will load into shared memory
+  const unsigned int innerRowA = threadIdx.x / BK;
+  const unsigned int innerColA = threadIdx.x % BK;
+  // calculates the number of rows of As that are being loaded in a single step
+  // by a single block
+  const unsigned int strideA = numThreadsBlocktile / BK;
+  const unsigned int innerRowB = threadIdx.x / BN;
+  const unsigned int innerColB = threadIdx.x % BN;
+  // for both As and Bs we want each load to span the full column-width, for
+  // better global memory coalescing
+  const unsigned int strideB = numThreadsBlocktile / BN;
 
-            # Compute the dot product
-            for resIdxM in range(TM):
-                for resIdxN in range(TN):
-                    threadResults[resIdxM, resIdxN] += regM[resIdxM] * regN[resIdxN]
+  // allocate thread-local cache for results in register file
+  cuDoubleComplex threadResults[TM * TN];
+  // Initialize threadResults to zero
+  for (int i = 0; i < TM * TN; ++i) {
+    threadResults[i] = make_cuDoubleComplex(0.0, 0.0);
+  }
+  // register caches for As and Bs
+  cuDoubleComplex regM[TM];
+  cuDoubleComplex regN[TN];
 
-        # Synchronize threads before the next iteration
-        cuda.syncthreads()
+  const cuDoubleComplex* A0 = A;
+  const cuDoubleComplex* B0 = B;
 
-    # Write the results back to the global memory matrix C
-    for resIdxM in range(TM):
-        c_row = a_start_row + threadRow * TM + resIdxM
-        for resIdxN in range(TN):
-            c_col = b_start_col + threadCol * TN + resIdxN
-            p = c_col // nbasis
-            r = c_col % nbasis
-            if c_row < M and c_col < N:
-                VHS[c_row, ik, p, ikpq, r] += threadResults[resIdxM, resIdxN]
+  // outer-most loop over block tiles
+  for (unsigned int bkIdx = 0; bkIdx < K; bkIdx += BK) {
+    // populate the shared memory caches
+    for (unsigned int loadOffset = 0; loadOffset < BM; loadOffset += strideA) {
+      unsigned int sharedRow = innerRowA + loadOffset;
+      unsigned int sharedCol = innerColA;
+      unsigned int globalRowA = cRow * BM + sharedRow;
+      unsigned int globalColA = bkIdx + sharedCol;
+      if (globalRowA < M && globalColA < K) {
+        As[sharedRow * BK + sharedCol] = A0[globalRowA * K * nq + globalColA * nq + iq];
+    // xshifted[arow, acol, iq]
+      } else {
+        As[sharedRow * BK + sharedCol] = make_cuDoubleComplex(0.0, 0.0);
+      }
+    }
+    for (unsigned int loadOffset = 0; loadOffset < BK; loadOffset += strideB) {
+      unsigned int sharedRow = innerRowB + loadOffset;
+      unsigned int sharedCol = innerColB;
+      unsigned int globalRowB = bkIdx + sharedRow;
+      unsigned int globalColB = cCol * BN + sharedCol;
+      unsigned int p = globalColB / nbasis;
+      unsigned int r = globalColB % nbasis;
+      if (globalRowB < K && globalColB < N) {
+        Bs[sharedRow * BN + sharedCol] = B0[globalRowB * nk * nq * nbasis * nbasis + ik * nq * nbasis * nbasis + p * nq * nbasis + iq * nbasis + r];
+    //chol[brow, ik, p, iq, r]
+      } else {
+        Bs[sharedRow * BN + sharedCol] = make_cuDoubleComplex(0.0, 0.0);
+      }
+    }
+    __syncthreads();
 
-@cuda.jit("void(complex128[:, :, :, :, :], complex128[:, :, :], int64[:, :], complex128[:, :, :, :, :])")
-def kernel_VHS_construction2(chol, xshifted, ikpq_mat, VHS):
-    """
-    Construct the VHS matrix in the symmetrized form using shared memory.
-    """
-    # q * k: batched index I
-    # M: nwalkers
-    # K: naux
-    # N: nbasis**2
-    nk = chol.shape[1]
-    naux = chol.shape[0]
-    nbasis = chol.shape[-1]
-    nbasis_sq = nbasis**2
-    nwalker = xshifted.shape[0]
-    M = nwalker
-    K = naux
-    N = nbasis_sq
-    iqk = cuda.blockIdx.z  # I
-    cRow = cuda.blockIdx.y
-    cCol = cuda.blockIdx.x
-    threadCol = cuda.threadIdx.x
-    threadRow = cuda.threadIdx.y
+    // calculate per-thread results
+    for (unsigned int dotIdx = 0; dotIdx < BK; ++dotIdx) {
+      // block into registers
+      for (unsigned int i = 0; i < TM; ++i) {
+        unsigned int row = threadRow * TM + i;
+        regM[i] = As[row * BK + dotIdx];
+      }
+      for (unsigned int i = 0; i < TN; ++i) {
+        unsigned int col = threadCol * TN + i;
+        regN[i] = cuConj(Bs[dotIdx * BN + col]);
+      }
+      for (unsigned int resIdxM = 0; resIdxM < TM; ++resIdxM) {
+        for (unsigned int resIdxN = 0; resIdxN < TN; ++resIdxN) {
+          threadResults[resIdxM * TN + resIdxN] = cuCadd(
+              threadResults[resIdxM * TN + resIdxN],
+              cuCmul(regM[resIdxM], regN[resIdxN]));
+        }
+      }
+    }
+    __syncthreads();
+  }
 
-    threadsPerRow = BN // TN
-    thread_id = threadRow * threadsPerRow + threadCol
+  // write out the results
+  for (unsigned int resIdxM = 0; resIdxM < TM; ++resIdxM) {
+    unsigned int globalRowC = cRow * BM + threadRow * TM + resIdxM;
+    for (unsigned int resIdxN = 0; resIdxN < TN; ++resIdxN) {
+      unsigned int globalColC = cCol * BN + threadCol * TN + resIdxN;
+    unsigned int p = globalColC / nbasis;
+    unsigned int r = globalColC % nbasis;
+      if (globalRowC < M && globalColC < N) {
+        C[globalRowC * nk * nk * nbasis * nbasis + ikpq * nbasis * nk * nbasis + r * nbasis * nk + ik * nbasis + p] =
+            cuCadd(C[globalRowC * nk * nk * nbasis * nbasis + ikpq * nbasis * nk * nbasis + r * nbasis * nk + ik * nbasis + p], threadResults[resIdxM * TN + resIdxN]);
+      }
+    }
+  }
+}
+'''
 
-    # p = col // nbasis
-    # r = col % nbasis
-
-    iq = iqk // nk
-    ik = iqk % nk
-    # iq_real = qset[iq]
-    ikpq = ikpq_mat[iq, ik]
-
-    # Allocate shared memory for tiles of chol and xshifted
-    sx = cuda.shared.array(shape=(BM, BK), dtype=complex128)
-    schol = cuda.shared.array(shape=(BK, BN), dtype=complex128)
-    # Allocate thread-local cache for results
-    threadResults = cuda.local.array(shape=(TM, TN), dtype=complex128)
-    regM = cuda.local.array(shape=(TM,), dtype=complex128)
-    regN = cuda.local.array(shape=(TN,), dtype=complex128)
-    # Compute the starting positions
-    a_start_row = cRow * BM
-    b_start_col = cCol * BN
-
-    # Total number of threads per block
-    numThreadsBlocktile = (BM * BN) // (TM * TN)
-
-    # Compute strides
-    strideA = (BM * BK + numThreadsBlocktile - 1) // numThreadsBlocktile
-    strideB = (BK * BN + numThreadsBlocktile - 1) // numThreadsBlocktile
-
-    # Main loop over the K dimension
-    for bkIdx in range(0, K, BK):
-        # Load tiles from A into shared memory
-        for idx in range(strideA):
-            index = thread_id * strideA + idx
-            if index < BM * BK:
-                row = index // BK
-                col = index % BK
-                a_row = a_start_row + row
-                a_col = bkIdx + col
-                if a_row < M and a_col < K:
-                    sx[row, col] = xshifted[a_row, a_col, iq]
-                else:
-                    sx[row, col] = 0.0
-
-        # Load tiles from B into shared memory
-        for idx in range(strideB):
-            index = thread_id * strideB + idx
-            if index < BK * BN:
-                row = index // BN
-                col = index % BN
-                b_row = bkIdx + row
-                b_col = b_start_col + col
-                p = b_col // nbasis
-                r = b_col % nbasis
-                if b_row < K and b_col < N:
-                    schol[row, col] = chol[b_row, ik, p, iq, r]
-                else:
-                    schol[row, col] = 0.0
-
-        # Synchronize threads after loading
-        cuda.syncthreads()
-
-        # Compute per-thread results
-        for dotIdx in range(BK):
-            # Load elements from shared memory into registers
-            for i in range(TM):
-                regM[i] = sx[threadRow * TM + i, dotIdx]
-            for j in range(TN):
-                regN[j] = schol[dotIdx, threadCol * TN + j].conjugate()
-
-            # Compute the dot product
-            for resIdxM in range(TM):
-                for resIdxN in range(TN):
-                    threadResults[resIdxM, resIdxN] += regM[resIdxM] * regN[resIdxN]
-
-        # Synchronize threads before the next iteration
-        cuda.syncthreads()
-
-    # Write the results back to the global memory matrix C
-    for resIdxM in range(TM):
-        c_row = a_start_row + threadRow * TM + resIdxM
-        for resIdxN in range(TN):
-            c_col = b_start_col + threadCol * TN + resIdxN
-            p = c_col // nbasis
-            r = c_col % nbasis
-            if c_row < M and c_col < N:
-                VHS[c_row, ikpq, r, ik, p] += threadResults[resIdxM, resIdxN]
+kernel_VHS1_cupy = cp.RawKernel(kernel_code_vhs1, "VHS_construction1")
+kernel_VHS2_cupy = cp.RawKernel(kernel_code_vhs2, "VHS_construction2")
 
 def call_kernel_VHS_construction1(chol, xshifted, naux, nk, nbasis, nwalker, ikpq_mat, VHS):
-    # grid_x_max = max(naux, nbasis**2)
-    # grid_y_max = max(nwalker, naux)
+    ikpq_mat = cp.asarray(ikpq_mat, dtype=cp.int32)
     M = max(nwalker, naux)
     N = max(naux, nbasis**2)
-    block_dim_x = BN // TN
-    block_dim_y = BM // TM
+    nq = xshifted.shape[-1]
     blockspergrid_x = (N + BN - 1) // BN
     blockspergrid_y = (M + BM - 1) // BM
     blockspergrid_z = ikpq_mat.shape[0] * nk
-    # print(blockspergrid_x, blockspergrid_y, blockspergrid_z)
+
     blockspergrid = (blockspergrid_x, blockspergrid_y, blockspergrid_z)
-    threadsperblock = (block_dim_x, block_dim_y, 1)
-    kernel_VHS_construction1[blockspergrid, threadsperblock](chol, xshifted, ikpq_mat, VHS)
+    threadsperblock = ((BN * BM) // (TN * TM), 1, 1)
+    args = (nq, nk, naux, nbasis, nwalker, ikpq_mat, xshifted, chol, VHS)
+    kernel_VHS1_cupy(blockspergrid, threadsperblock, args)
     cp.cuda.stream.get_current_stream().synchronize()
 
 def call_kernel_VHS_construction2(chol, xshifted, naux, nk, nbasis, nwalker, ikpq_mat, VHS):
-    # grid_x_max = max(naux, nbasis**2)
-    # grid_y_max = max(nwalker, naux)
+    ikpq_mat = cp.asarray(ikpq_mat, dtype=cp.int32)
     M = max(nwalker, naux)
     N = max(naux, nbasis**2)
-    block_dim_x = BN // TN
-    block_dim_y = BM // TM
+    nq = xshifted.shape[-1]
     blockspergrid_x = (N + BN - 1) // BN
     blockspergrid_y = (M + BM - 1) // BM
     blockspergrid_z = ikpq_mat.shape[0] * nk
-    # print(blockspergrid_x, blockspergrid_y, blockspergrid_z)
+
     blockspergrid = (blockspergrid_x, blockspergrid_y, blockspergrid_z)
-    threadsperblock = (block_dim_x, block_dim_y, 1)
-    kernel_VHS_construction2[blockspergrid, threadsperblock](chol, xshifted, ikpq_mat, VHS)
+    threadsperblock = ((BN * BM) // (TN * TM), 1, 1)
+    args = (nq, nk, naux, nbasis, nwalker, ikpq_mat, xshifted, chol, VHS)
+    kernel_VHS2_cupy(blockspergrid, threadsperblock, args)
     cp.cuda.stream.get_current_stream().synchronize()
