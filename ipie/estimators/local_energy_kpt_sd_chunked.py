@@ -405,15 +405,13 @@ def local_energy_kpt_single_det_uhf_batch_chunked_gpu(
             for isend, sender in enumerate(senders):
                 if handler.srank == isend:
                     handler.scomm.Send(ghalfa_send, dest=receivers[isend], tag=1)
-                    handler.scomm.Send(ghalfb_send, dest=receivers[isend], tag=2)
-                    handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=3)
-                    handler.scomm.Send(exx_send, dest=receivers[isend], tag=4)
+                    handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=2)
+                    handler.scomm.Send(exx_send, dest=receivers[isend], tag=3)
                 elif handler.srank == receivers[isend]:
                     sender = numpy.where(receivers == handler.srank)[0]
                     handler.scomm.Recv(ghalfa_recv, source=sender, tag=1)
-                    handler.scomm.Recv(ghalfb_recv, source=sender, tag=2)
-                    handler.scomm.Recv(ecoul_recv, source=sender, tag=3)
-                    handler.scomm.Recv(exx_recv, source=sender, tag=4)
+                    handler.scomm.Recv(ecoul_recv, source=sender, tag=2)
+                    handler.scomm.Recv(exx_recv, source=sender, tag=3)
             handler.scomm.barrier()
 
         # prepare sending

@@ -210,7 +210,8 @@ class PhaselessKptCholChunked(PhaselessKptChol):
         self.mpi_handler.scomm.barrier()
 
         synchronize()
-        xp._default_memory_pool.free_all_blocks()
+        # if config.get_option("use_gpu"):
+        #     xp._default_memory_pool.free_all_blocks()
         return VHS_recv
 
 class PhaselessKptISDF(PhaselessKptBase):
