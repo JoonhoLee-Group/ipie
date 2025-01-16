@@ -524,7 +524,7 @@ class AFQMC(AFQMCBase):
 
         Parameters
         ----------
-        walkers : :class:`pie.walker.Walkers` object
+        walkers : :class:`ipie.walker.Walkers` object
             Initial wavefunction / distribution of walkers. Default None.
         estimator_filename : str
             File to write estimates to.
