@@ -11,7 +11,7 @@ from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.propagation.force_bias import construct_force_bias_kpt_batch_single_det, construct_force_bias_kptsymm_batch_single_det,construct_force_bias_kptisdf_batch_single_det, construct_force_bias_kptsymm_batch_single_det_chunked
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked
+from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked, half_rotate_isdf
 from ipie.propagation.overlap import calc_overlap_single_det_kpt
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.estimators.greens_function_kpt_single_det import greens_function_kpt_single_det, greens_function_kpt_single_det_batch
@@ -160,6 +160,32 @@ class KptSingleDet(TrialWavefunctionBase):
         self._rcholb_chunk = rot_chol[1][0]
         self._rcholbara_chunk = rot_chol[2][0]
         self._rcholbarb_chunk = rot_chol[3][0]
+        self.half_rotated = True
+
+    @plum.dispatch
+    def half_rotate(
+        self: "KptSingleDet",
+        hamiltonian: KptISDF,
+        comm: Optional[CommType] = MPI.COMM_WORLD,
+    ):
+        num_dets = 1
+        orbsa = self.psi0a.reshape((num_dets, self.nk, self.nbasis, self.nalpha))
+        orbsb = self.psi0b.reshape((num_dets, self.nk, self.nbasis, self.nbeta))
+        rot_1body, rot_cgto = half_rotate_isdf(
+            self,
+            hamiltonian,
+            comm,
+            orbsa,
+            orbsb,
+            ndets=num_dets,
+            verbose=self.verbose,
+        )
+        # Single determinant functions do not expect determinant index, so just
+        # grab zeroth element.
+        self._rH1a = rot_1body[0][0]
+        self._rH1b = rot_1body[1][0]
+        self._rcgtoa = rot_cgto[0][0]
+        self._rcgtob = rot_cgto[1][0]
         self.half_rotated = True
 
     def calc_overlap(self, walkers: "UHFWalkers") -> xp.ndarray:

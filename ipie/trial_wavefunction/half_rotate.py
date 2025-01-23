@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealChol
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -478,3 +478,40 @@ def half_rotate_chunked(
 
     # storing intermediates for correlation energy
     return (rH1a, rH1b), (rchola, rcholb)
+
+
+def half_rotate_isdf(trial: TrialWavefunctionBase,
+    hamiltonian: Generic,
+    comm,
+    orbsa: np.ndarray,
+    orbsb: np.ndarray,
+    ndets: int = 1,
+    verbose: bool = False,
+) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    assert len(orbsa.shape) == 4 #(ndets, nk, nbsf, nocc)
+    assert len(orbsb.shape) == 4
+    assert orbsa.shape[0] == ndets
+    assert orbsb.shape[0] == ndets
+    M = hamiltonian.nbasis
+    nk = orbsa.shape[1]
+    na = orbsa.shape[-1]
+    nb = orbsb.shape[-1]
+    assert isinstance(hamiltonian, KptISDF)
+
+    ctype = hamiltonian.cholM.dtype
+    ptype = orbsa.dtype
+    integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
+
+    rH1a = get_shared_array(comm, (ndets, nk, na, M), integral_type)
+    rH1b = get_shared_array(comm, (ndets, nk, nb, M), integral_type)
+
+    rH1a[:] = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+    rH1b[:] = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+
+    # now rotate the cgtos
+    cgto = hamiltonian.cgto # [k, P, p]
+    rot_cgtoa = np.einsum('Jkpi, kPp -> JkPi', orbsa, cgto, optimize=True)
+    rot_cgtob = np.einsum('Jkpi, kPp -> JkPi', orbsb, cgto, optimize=True)
+
+    return (rH1a, rH1b), (rot_cgtoa, rot_cgtob)
+

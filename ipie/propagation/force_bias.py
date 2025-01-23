@@ -22,6 +22,7 @@ import math
 from numba import jit
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+from ipie.utils.contract_gf_cgto import contract_gf_cgto_kpq_k, contract_gf_cgto_kmq_k, contract_gf_cgto12_kpq_k, contract_gf_cgto12_kmq_k
 
 from ipie.config import config
 
@@ -282,50 +283,39 @@ def construct_force_bias_kptisdf_batch_single_det(
     vbias_minus : :class:`numpy.ndarray`
         Force bias for Lminus.
     """
-    nisdf = hamiltonian.nisdf
-    rotweightsocc, rotweights = hamiltonian.rotweights
-    rcholM = hamiltonian.rcholM
-    Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
-    Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
     if walkers.rhf:
-        AqPG = xp.zeros((walkers.nwalkers, hamiltonian.nk, nisdf, 8), dtype=numpy.complex128)
-        BqPG = xp.zeros((walkers.nwalkers, hamiltonian.nk, nisdf, 8), dtype=numpy.complex128)
-        for iq in range(hamiltonian.nk):
-            Glis = hamiltonian.q2G[iq]
-            for iG in range(len(Glis)):
-                try:
-                    ik_lis = hamiltonian.qG2k[(iq, iG)]
-                    for ik in ik_lis:
-                        ikpq = hamiltonian.ikpq_mat[ik, iq]
-                        AqPG[:, iq, :, iG] += 2.0 * xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ik].conj(), rotweights[:, :, ikpq], Ghalfa_reshape[:, ik, :, ikpq, :])
-                        BqPG[:, iq, :, iG] += 2.0 * xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ikpq].conj(), rotweights[:, :, ik], Ghalfa_reshape[:, ikpq, :, ik, :])
-                except KeyError:
-                    continue
-        vbias = xp.einsum("XqPG, aqPG -> aXq", rcholM, AqPG)
-        vbiasconj = xp.einsum("XqPG, aqPG -> aXq", rcholM, BqPG)
-        vbias_plus = .5 * 1j * (vbias + vbiasconj)
-        vbias_minus = .5 * (vbias - vbiasconj)
-        return vbias_plus, vbias_minus
+        if config.get_option("use_gpu"):
+            pass
+        else:
+            pass
     else:
-        AqPG = xp.zeros((walkers.nwalkers, hamiltonian.nk, nisdf, 8), dtype=numpy.complex128)
-        BqPG = xp.zeros((walkers.nwalkers, hamiltonian.nk, nisdf, 8), dtype=numpy.complex128)
-        for iq in range(hamiltonian.nk):
-            Glis = hamiltonian.q2G[iq]
-            for iG in range(len(Glis)):
-                try:
-                    ik_lis = hamiltonian.qG2k[(iq, iG)]
-                    for ik in ik_lis:
-                        ikpq = hamiltonian.ikpq_mat[ik, iq]
-                        AqPG[:, iq, :, iG] += xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ik].conj(), rotweights[:, :, ikpq], Ghalfa_reshape[:, ik, :, ikpq, :]) + xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ik].conj(), rotweights[:, :, ikpq], Ghalfb_reshape[:, ik, :, ikpq, :])
-                        BqPG[:, iq, :, iG] += xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ikpq].conj(), rotweights[:, :, ik], Ghalfa_reshape[:, ikpq, :, ik, :]) + xp.einsum("Pi, Pp, aip", rotweightsocc[:, :, ikpq].conj(), rotweights[:, :, ik], Ghalfb_reshape[:, ikpq, :, ik, :])
-                except KeyError:
-                    continue
-        vbias = xp.einsum("XqPG, aqPG -> aXq", rcholM, AqPG)
-        vbiasconj = xp.einsum("XqPG, aqPG -> aXq", rcholM, BqPG)
-        vbias_plus = .5 * 1j * (vbias + vbiasconj)
-        vbias_minus = .5 * (vbias - vbiasconj)
-        return vbias_plus, vbias_minus
-    return
+        if config.get_option("use_gpu"):
+            vbias_plus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_minus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # ghalf shape: nwalkers, nk, nup, nk, nbsf
+            Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+            Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+            for iq in range(len(hamiltonian.Sset)):
+                iq_real = hamiltonian.Sset[iq]
+                X_wPa = contract_gf_cgto12_kmq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
+                X_wPb = contract_gf_cgto12_kmq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
+                L_q = hamiltonian.cholM[iq]
+                vbias_plus[:, :, iq] += .5j * (X_wPa + X_wPb).dot(L_q)
+                vbias_minus[:, :, iq] = xp.zeros_like(vbias_plus[:, :, iq])
+            
+            for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+                iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+                X_wPa = contract_gf_cgto12_kmq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
+                X_wPb = contract_gf_cgto12_kmq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
+                Y_wPa = contract_gf_cgto12_kpq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikpq_mat)
+                Y_wPb = contract_gf_cgto12_kpq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikpq_mat)
+                L_q = hamiltonian.cholM[iq]
+                vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (X_wPa + X_wPb + Y_wPa + Y_wPb).dot(L_q)
+                vbias_minus[:, :, iq] += .5 * xp.sqrt(2) * (X_wPa + X_wPb - Y_wPa - Y_wPb).dot(L_q)
+            synchronize()
+            return vbias_plus, vbias_minus
+        else:
+            pass
 
 def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
     """Compute optimal force bias.

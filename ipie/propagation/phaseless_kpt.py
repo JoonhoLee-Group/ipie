@@ -17,6 +17,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from numba import jit
 from ipie.utils.backend import get_device_memory
 from ipie.propagation.kernels import call_kernel_VHS_construction1, call_kernel_VHS_construction2
+from cuquantum import cutensornet, NetworkOptions, contract
 
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_symm(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_mat, Sset, Qplus):
@@ -215,7 +216,7 @@ class PhaselessKptCholChunked(PhaselessKptChol):
         return VHS_recv
 
 class PhaselessKptISDF(PhaselessKptBase):
-    """A class for performing phaseless propagation with k-point Hamiltonian with ERI approximated by ISDF."""
+    """A class for performing phaseless propagation with k-point Hamiltonian with ERI approximated by ISDF. Here we do not save VHS to save memory."""
 
     def __init__(self, time_step, exp_nmax=6, verbose=False):
         super().__init__(time_step, verbose=verbose)
@@ -224,58 +225,98 @@ class PhaselessKptISDF(PhaselessKptBase):
     @plum.dispatch
     def apply_VHS(self, walkers: UHFWalkers, hamiltonian: GenericBase, xshifted: xp.ndarray):
         start_time = time.time()
-        VHS = self.construct_VHS(hamiltonian, xshifted)
-        synchronize()
+        Lx, Lconjx = self.contract_cholM_xshifted(hamiltonian, xshifted)
         self.timer.tvhs += time.time() - start_time
-        assert len(VHS.shape) == 3  # shape = nwalkers, nk * nbasis, nk * nbasis
+        assert len(Lx.shape) == 3 # nwalkers, nq, nisdf
 
         start_time = time.time()
+
         if config.get_option("use_gpu"):
-            walkers.phia = apply_exponential_batch(walkers.phia, VHS, self.exp_nmax)
+            Temp = xp.zeros(walkers.phia.shape, dtype=walkers.phia.dtype)
+            xp.copyto(Temp, walkers.phia)
+            for n in range(1, self.exp_nmax + 1):
+                Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.kpq_mat, hamiltonian.kmq_mat, hamiltonian.unique_k) / n  # matmul use much less GPU memory than einsum
+                phi += Temp
+            del Temp
             if walkers.ndown > 0 and not walkers.rhf:
-                walkers.phib = apply_exponential_batch(walkers.phib, VHS, self.exp_nmax)
+                Temp = xp.zeros(walkers.phib.shape, dtype=walkers.phib.dtype)
+                xp.copyto(Temp, walkers.phib)
+                for n in range(1, self.exp_nmax + 1):
+                    Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.kpq_mat, hamiltonian.kmq_mat, hamiltonian.unique_k) / n  # matmul use much less GPU memory than einsum
+                    phi += Temp
+                del Temp
         else:
-            for iw in range(walkers.nwalkers):
-                # 2.b Apply two-body
-                walkers.phia[iw] = apply_exponential(walkers.phia[iw], VHS[iw], self.exp_nmax)
-                if walkers.ndown > 0 and not walkers.rhf:
-                    walkers.phib[iw] = apply_exponential(walkers.phib[iw], VHS[iw], self.exp_nmax)
+            raise NotImplementedError
         synchronize()
         self.timer.tgemm += time.time() - start_time
 
-    @plum.dispatch.abstract
-    def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
-        print("JOONHO here abstract function for construct VHS")
-        "abstract function for construct VHS"
+    def contract_cholM_xshifted(self, hamiltonian, xshifted):
+        cholM = hamiltonian.cholM # q, P, gamma
+        x = .5 * (1j * xshifted[0] + xshifted[1]) # w, gamma, q
+        xconj = .5 * (1j * xshifted[0] - xshifted[1]) # w, gamma, q
+        unique_qs = xp.concatenate((hamiltonian.Sset, hamiltonian.Qplus))
+        # print("ikpq_S", ikpq_S)
+        idx_lenS = xp.arange(len(hamiltonian.Sset))
+        idx_lenQ = xp.arange(len(hamiltonian.Qplus)) + len(hamiltonian.Sset)
 
-    # Any class inherited from PhaselessGeneric should override this method.
-    @plum.dispatch
-    def construct_VHS(self, hamiltonian: KptISDF, xshifted: xp.ndarray) -> xp.ndarray:
-        """
-        Construct the VHS matrix for phaseless propagation.
+        xS = self.sqrt_dt * x[:, :, idx_lenS]
+        xQ = xp.sqrt(2) * self.sqrt_dt * x[:, :, idx_lenQ]
+        xconjS = self.sqrt_dt * xconj[:, :, idx_lenS]
+        xconjQ = xp.sqrt(2) * self.sqrt_dt * xconj[:, :, idx_lenQ]
+
+        xtot = xp.concatenate((xS, xQ), axis=-1)
+        xconjtot = xp.concatenate((xconjS, xconjQ), axis=-1)
+        handle = cutensornet.create()
+        network_opts = NetworkOptions(handle=handle)
+        cholMx = contract('qPg, wgq -> wqP', cholM, xtot, options=network_opts)
+        cholMxconj = contract('qPg, wgq -> wqP', cholM.conj(), xconjtot, options=network_opts)
+        cutensornet.destroy(handle)
+        return cholMx, cholMxconj
+    
+def construct_full_Lx(Lx_iw, kpq_mat, unique_qs):
+    """
+    Construct full Lx from Lx.
+    """
+    nk = kpq_mat.shape[0]
+    nisdf = Lx_iw.shape[1]
+    fullLx = xp.zeros((nk, nk, nisdf), dtype=xp.complex128)
+    for ik in range(nk):
+        ikpq = kpq_mat[unique_qs, ik] # all k+qs for given k
+        fullLx[ikpq, ik] = Lx_iw
+    return fullLx
+
+def construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs):
+    """
+    Construct fullLconjx from Lconjx.
+    """
+    nk = kmq_mat.shape[0]
+    nisdf = Lconjx_iw.shape[1]
+    fullLconjx = xp.zeros((nk, nk, nisdf), dtype=xp.complex128)
+    for ik in range(nk):
+        ikmq = kmq_mat[ik, unique_qs] # all k+qs for given k
+        fullLconjx[ikmq, ik] = Lconjx_iw
+    return fullLconjx
+
+def apply_VHS_to_phi(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs):
+    """
+    Apply VHS to phi.
+    """
+    nwalkers = Lx.shape[0]
+    nk = kpq_mat.shape[0]
+    nbsf = cgto.shape[1]
+    outphi = xp.zeros_like(phi)
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
+    for iw in range(nwalkers):
+        Lx_iw = Lx[iw]
+        Lconjx_iw = Lconjx[iw]
+        full_Lx_iw = construct_full_Lx(Lx_iw, kpq_mat, unique_qs)
+        full_Lconjx_iw = construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs)
+        fullLpLconjx = full_Lx_iw + full_Lconjx_iw
+        phi_iw_reshape = phi[iw].reshape(nk, nbsf, nk, -1)
+        outphi[iw] = contract('KkP, kpP, KrP, KrQi -> kpQi', fullLpLconjx, cgto.conj(), cgto, phi_iw_reshape, options=network_opts)
+
+    return outphi
         
-        xshifted: [2, nwalkers, naux, nk]
-        """
-        nwalkers = xshifted.shape[1]
-        Lmat = numpy.zeros((nwalkers, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nk, hamiltonian.nbasis), dtype=numpy.complex128)
-        Lmatdagger
-
-        for iq in range(hamiltonian.nk):
-            Glis = hamiltonian.q2G[iq]
-            for iG in range(len(Glis)):
-                try:
-                    ik_lis = hamiltonian.qG2k[(iq, iG)]
-                    for ik in ik_lis:
-                        ikpq = hamiltonian.ikpq_mat[ik, iq]
-                        Lmat[:, ik, :, ikpq, :] += self.sqrt_dt * numpy.einsum("wX, XP, Pp, Pr -> wpr", xshifted[0, :, :, iq], hamiltonian.cholM[:, iq, iG, :], hamiltonian.weights[:, :, ik].conj(), hamiltonian.weights[:, :, ikpq])
-                        Lmatdagger[:, ikpq, :, ik, :] += self.sqrt_dt * numpy.einsum("wX, XP, Pp, Pr -> wpr", xshifted[1, :, :, iq], hamiltonian.cholM[:, iq, iG, :].conj(), hamiltonian.weights[:, :, ikpq].conj(), hamiltonian.weights[:, :, ik])
-                except KeyError:
-                    continue
-        Lmat = Lmat.reshape(nwalkers, hamiltonian.nk * hamiltonian.nbasis, hamiltonian.nk * hamiltonian.nbasis)
-        Lmatdagger = Lmatdagger.reshape(nwalkers, hamiltonian.nk * hamiltonian.nbasis, hamiltonian.nk * hamiltonian.nbasis)
-        VHS = Lmat + Lmatdagger
-        if config.get_option("use_gpu"):
-            raise NotImplementedError
-        return VHS
-
+    
 Phaseless = {"cholesky": PhaselessKptChol, "isdf": PhaselessKptISDF, "cholchunked": PhaselessKptCholChunked}

@@ -158,17 +158,19 @@ class KptISDF(GenericBase):
     """Class for ab-initio k-point Hamiltonian with 4-fold complex symmetric integrals.
     The electron repulsion integrals are approximated by Interpolative Separable Density Fitting (ISDF).
     """
-    def __init__(self, h1e, MPQ, cholM, cgto, halfrot_cgto, kpts, ecore=0.0, verbose=False):
+    def __init__(self, h1e, MPQ, cholM, cgto, kpts, ecore=0.0, verbose=False, halfrot_cgto=None, halfrot_M=None):
         assert h1e.shape[0] == 2
         assert len(h1e.shape) == 4 # shape = nspin, nk, nbasis, nbasis
         super().__init__(h1e, ecore, verbose)
 
         self.MPQ = numpy.array(MPQ, dtype=numpy.complex128)
-        self.cholM = numpy.array(cholM, dtype=numpy.complex128)  # [q, gamma, P], M = LL^\dagger
+        self.cholM = numpy.array(cholM, dtype=numpy.complex128)  # [q, P, gamma], M = LL^\dagger
         self.nchol = self.cholM.shape[0]
         # here we don't have spin indices for cgto because we use OAO basis for UHF cases to avoid extra storage
         self.cgto = numpy.array(cgto, dtype=numpy.complex128) # [k, P, p]
-        self.halfrot_cgto = halfrot_cgto # [k, P, p] half-rotated cgto, to get the occupied part just take the slice of first occ columns
+        self.halfrot_cgtoa, self.halfrot_cgtob, self.halfrot_cgto = halfrot_cgto # [k, \tilde{P}, i(a)], [k, \tilde{P}, i(b)], [k, \tilde{P}, p]
+        self.halfrot_M = halfrot_M
+        
 
         self.kpts = kpts
         self.ikpq_mat = construct_kpq(self.kpts)
