@@ -176,7 +176,7 @@ class KptISDF(GenericBase):
         self.ikpq_mat = construct_kpq(self.kpts)
         self.ikmq_mat = construct_kmq(self.kpts)
         self.imq_vec = construct_mq(self.kpts)
-        self.igamma = find_gamma_pt(self.kpts)
+        self.igamma = find_gamma_pt(self.kpts[self.unique_k])
         self.Sset = find_self_inverse_set(self.kpts)
         self.Qplus = find_Qplus(self.kpts)
         self.unique_k = numpy.concatenate((self.Sset, self.Qplus))

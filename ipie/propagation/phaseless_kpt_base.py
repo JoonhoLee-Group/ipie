@@ -12,6 +12,7 @@ import plum
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
+from cuquantum import cutensornet, NetworkOptions, contract
 from typing import Union
 
 try:
@@ -229,12 +230,14 @@ def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
     """
     # trial G [nk, nbsf, nbsf]
     igamma = hamiltonian.igamma
-    diagcholM = hamiltonian.cholM[:, igamma, 0, :] # [nchol, nisdf]
-    Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    cholpr = xp.einsum("XP, Ppk, Prk ->Xkpr", diagcholM, hamiltonian.weights.conj(), hamiltonian.weights)
-    cholpr = cholpr.reshape(hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
-    mf_shift = xp.dot(cholpr, Gcharge)
-    return xp.array(mf_shift)
+    diagcholM = hamiltonian.cholM[igamma] # [nisdf, naux]
+    cgto = hamiltonian.cgto
+    Gcharge = (trial.G[0] + trial.G[1])
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
+    mf_shift = contract("kpP, krP, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts)
+    cutensornet.destroy(handle)
+    return mf_shift
 
 @plum.dispatch
 def construct_one_body_propagator(
@@ -255,26 +258,25 @@ def construct_one_body_propagator(
         Timestep.
     """
     
-    diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    cholpcholconj = hamiltonian.cholM + hamiltonian.cholM.conj()
     igamma = hamiltonian.igamma
-    for ik in range(hamiltonian.nk):
-        diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-            
-    shift = xp.einsum("xkpr, x -> kpr", diagchol, mf_shift)
+    cgto = hamiltonian.cgto
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
+    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj, mf_shift, options=network_opts)
+    cutensornet.destroy(handle)
     H1 = hamiltonian.h1e_mod + xp.array([shift, shift])
     if hasattr(H1, "get"):
         H1_numpy = H1.get()
     else:
         H1_numpy = H1
 
-    full_h1 = numpy.zeros((2, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nk, hamiltonian.nbasis), dtype=numpy.complex128)
+    expH1_0 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    expH1_1 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
     for ik in range(hamiltonian.nk):
-        full_h1[0, ik, :, ik, :] = H1_numpy[0, ik]
-        full_h1[1, ik, :, ik, :] = H1_numpy[1, ik]
-    full_h1_mat = full_h1.reshape(2, hamiltonian.nk * hamiltonian.nbasis, hamiltonian.nk * hamiltonian.nbasis)
-    expH1 = xp.array(
-        [scipy.linalg.expm(-0.5 * dt * full_h1_mat[0]), scipy.linalg.expm(-0.5 * dt * full_h1_mat[1])]
-    )
+        expH1_0[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[0, ik])
+        expH1_1[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[1, ik])
+    expH1 = xp.array([expH1_0, expH1_1])
     return expH1
 
 
@@ -319,6 +321,15 @@ def construct_mf_mod_xbar(hamiltonian: Union[KptComplexCholSymm, KptComplexCholC
     mf_Lconj = mf_shift[hamiltonian.nchol:]
     mf_xbarp = .5j * (mf_L + mf_Lconj)
     mf_xbarm = .5 * (mf_L - mf_Lconj)
+    return xp.array([mf_xbarp, mf_xbarm])
+
+@plum.dispatch
+def construct_mf_mod_xbar(hamiltonian: KptISDF, mf_shift: xp.ndarray):
+    """
+    Modify xbar using mean field shift for KptISDF Hamiltonian.
+    """
+    mf_xbarp = 1j * mf_shift
+    mf_xbarm = xp.zeros_like(mf_xbarp)
     return xp.array([mf_xbarp, mf_xbarm])
 
 class PhaselessKptBase(ContinuousBase):

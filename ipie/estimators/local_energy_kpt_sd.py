@@ -500,12 +500,12 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
 
 
 def kpt_isdf_ecoul_kernel_rhf():
-    pass
+    raise NotImplementedError("CPU ISDF Coulomb kernel for RHF not implemented yet.")
     
 
 @jit(nopython=True, fastmath=True)
 def kpt_isdf_ecoul_kernel_uhf():
-    pass
+    raise NotImplementedError("CPU ISDF Coulomb kernel for UHF not implemented yet.")
 
 @plum.dispatch
 def local_energy_kpt_single_det_uhf(
