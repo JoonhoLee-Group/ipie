@@ -22,7 +22,8 @@ import math
 from numba import jit
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from ipie.utils.contract_gf_cgto import contract_gf_cgto_kpq_k, contract_gf_cgto_kmq_k, contract_gf_cgto12_kpq_k, contract_gf_cgto12_kmq_k
+from ipie.utils.contract_gf_cgto import contract_gf_cgto12_kpq_k, contract_gf_cgto12_k_kpq, slice_gf_kpq_k_given_q, slice_gf_k_kpq_given_q
+from cuquantum import cutensornet, NetworkOptions
 
 from ipie.config import config
 
@@ -295,23 +296,44 @@ def construct_force_bias_kptisdf_batch_single_det(
             # ghalf shape: nwalkers, nk, nup, nk, nbsf
             Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
             Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+            handle = cutensornet.create()
+            network_opts = NetworkOptions(handle=handle)
             for iq in range(len(hamiltonian.Sset)):
                 iq_real = hamiltonian.Sset[iq]
-                X_wPa = contract_gf_cgto12_kmq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
-                X_wPb = contract_gf_cgto12_kmq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
+                ikpq = hamiltonian.ikpq_mat[iq_real]
+                ga_kpq = slice_gf_kpq_k_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+                gb_kpq = slice_gf_kpq_k_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+                cgto_kpq = hamiltonian.halfrot_cgto[ikpq]
+                X_wPa = contract_gf_cgto12_k_kpq(ga_kpq, trial._rcgtoa, cgto_kpq, iq_real, network_opts)
+                X_wPb = contract_gf_cgto12_k_kpq(gb_kpq, trial._rcgtob, cgto_kpq, iq_real, network_opts)
                 L_q = hamiltonian.cholM[iq]
-                vbias_plus[:, :, iq] += .5j * (X_wPa + X_wPb).dot(L_q)
-                vbias_minus[:, :, iq] = xp.zeros_like(vbias_plus[:, :, iq])
-            
+                vbias_plus[:, :, iq] += 1j * (X_wPa + X_wPb).dot(L_q)
+                vbias_minus[:, :, iq] += xp.zeros_like(vbias_plus[:, :, iq])
+
             for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
                 iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
-                X_wPa = contract_gf_cgto12_kmq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
-                X_wPb = contract_gf_cgto12_kmq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikmq_mat)
-                Y_wPa = contract_gf_cgto12_kpq_k(walkers.Ghalfa, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikpq_mat)
-                Y_wPb = contract_gf_cgto12_kpq_k(walkers.Ghalfb, hamiltonian.halfrot_cgtob, hamiltonian.halfrot_cgto, iq_real, hamiltonian.ikpq_mat)
+                ikpq = hamiltonian.ikpq_mat[iq_real]
+                cgto_kpq = hamiltonian.halfrot_cgto[ikpq]
+                rcgtoa_kpq = trial._rcgtoa[ikpq]
+                rcgtob_kpq = trial._rcgtob[ikpq]
+                ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+                Y_wPa = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, hamiltonian.halfrot_cgto, iq_real, network_opts)
+                # del ga_kpq_k
+                gb_kpq_k = slice_gf_kpq_k_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+                Y_wPb = contract_gf_cgto12_kpq_k(gb_kpq_k, rcgtob_kpq, hamiltonian.halfrot_cgto, iq_real, network_opts)
+                # del gb_kpq_k
+                ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+                X_wPa = contract_gf_cgto12_k_kpq(ga_k_kpq, trial._rcgtoa, cgto_kpq, iq_real, network_opts)
+                # del ga_k_kpq
+                gb_k_kpq = slice_gf_k_kpq_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+                X_wPb = contract_gf_cgto12_k_kpq(gb_k_kpq, trial._rcgtob, cgto_kpq, iq_real, network_opts)
+                # del gb_k_kpq
                 L_q = hamiltonian.cholM[iq]
-                vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (X_wPa + X_wPb + Y_wPa + Y_wPb).dot(L_q)
-                vbias_minus[:, :, iq] += .5 * xp.sqrt(2) * (X_wPa + X_wPb - Y_wPa - Y_wPb).dot(L_q)
+                v1 = (X_wPa + X_wPb).dot(L_q)
+                v2 = (Y_wPa + Y_wPb).dot(L_q.conj())
+                vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (v1 + v2)
+                vbias_minus[:, :, iq] += .5 * xp.sqrt(2) * (v1 - v2)
+            cutensornet.destroy(handle)
             synchronize()
             return vbias_plus, vbias_minus
         else:

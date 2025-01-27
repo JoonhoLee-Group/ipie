@@ -8,8 +8,9 @@ from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+from ipie.config import config
 from cuquantum import cutensornet, NetworkOptions, contract
-from ipie.utils.contract_gf_cgto import contract_gf_cgto12_kpq_k, contract_gf_cgto12_k_kpq
+from ipie.utils.contract_gf_cgto import contract_gf_cgto12_kpq_k, contract_gf_cgto12_k_kpq, slice_gf_k_kpq_given_q, slice_gf_kpq_k_given_q
 
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
@@ -441,19 +442,49 @@ def kpt_symmchol_ecoul_kernel_uhf(rchola, rcholb, rcholbara, rcholbarb, Ghalfa, 
 
 def kpt_isdf_ecoul_kernel_gpu(MPQ, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_batch, Ghalfb_batch, kpq_mat, Sset, Qplus):
     nk = cgto.shape[0]
-    nwalkers = Ghalfa_batch.shape[2]
+    nwalkers = Ghalfa_batch.shape[0]
     ecoul = xp.zeros(nwalkers, dtype=numpy.complex128)
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
     for iq in range(len(Sset)):
         iq_real = Sset[iq]
-        v1_wP = contract_gf_cgto12_k_kpq(Ghalfa_batch, halfrot_cgtoa, cgto, iq_real, kpq_mat) + contract_gf_cgto12_k_kpq(Ghalfb_batch, halfrot_cgtob, cgto, iq_real, kpq_mat)
-        v2_wP = contract_gf_cgto12_kpq_k(Ghalfa_batch, halfrot_cgtoa, cgto, iq_real, kpq_mat) + contract_gf_cgto12_kpq_k(Ghalfb_batch, halfrot_cgtob, cgto, iq_real, kpq_mat)
-        ecoul += xp.sum((v1_wP @ MPQ) * v2_wP, axis=1)
+        MPQ_iq = MPQ[iq]
+        ikpq = kpq_mat[iq_real]
+        cgto_kpq = cgto[ikpq]
+        rcgtoa_kpq = halfrot_cgtoa[ikpq]
+        rcgtob_kpq = halfrot_cgtob[ikpq]
+        ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        gb_k_kpq = slice_gf_k_kpq_given_q(Ghalfb_batch, iq_real, kpq_mat)
+        v1_wP = contract_gf_cgto12_k_kpq(ga_k_kpq, halfrot_cgtoa, cgto_kpq, iq_real, network_opts) + contract_gf_cgto12_k_kpq(gb_k_kpq, halfrot_cgtob, cgto_kpq, iq_real, network_opts)
+        del ga_k_kpq
+        del gb_k_kpq
+        ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        gb_kpq_k = slice_gf_kpq_k_given_q(Ghalfb_batch, iq_real, kpq_mat)
+        # v2_wP = contract_gf_cgto12_kpq_k(Ghalfa_batch, halfrot_cgtoa, cgto, iq_real, kpq_mat) + contract_gf_cgto12_kpq_k(Ghalfb_batch, halfrot_cgtob, cgto, iq_real, kpq_mat)
+        v2_wP = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, cgto, iq_real, network_opts) + contract_gf_cgto12_kpq_k(gb_kpq_k, rcgtob_kpq, cgto, iq_real, network_opts)
+        del ga_kpq_k
+        del gb_kpq_k
+        ecoul += xp.sum((v1_wP @ MPQ_iq) * v2_wP, axis=1)
 
     for iq in range(len(Sset), len(Sset) + len(Qplus)):
         iq_real = Qplus[iq - len(Sset)]
-        v1_wP = contract_gf_cgto12_k_kpq(Ghalfa_batch, halfrot_cgtoa, cgto, iq_real, kpq_mat) + contract_gf_cgto12_k_kpq(Ghalfb_batch, halfrot_cgtob, cgto, iq_real, kpq_mat)
-        v2_wP = contract_gf_cgto12_kpq_k(Ghalfa_batch, halfrot_cgtoa, cgto, iq_real, kpq_mat) + contract_gf_cgto12_kpq_k(Ghalfb_batch, halfrot_cgtob, cgto, iq_real, kpq_mat)
-        ecoul += 2. * xp.sum((v1_wP @ MPQ) * v2_wP, axis=1)
+        MPQ_iq = MPQ[iq]
+        ikpq = kpq_mat[iq_real]
+        cgto_kpq = cgto[ikpq]
+        rcgtoa_kpq = halfrot_cgtoa[ikpq]
+        rcgtob_kpq = halfrot_cgtob[ikpq]
+        ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        gb_k_kpq = slice_gf_k_kpq_given_q(Ghalfb_batch, iq_real, kpq_mat)
+        v1_wP = contract_gf_cgto12_k_kpq(ga_k_kpq, halfrot_cgtoa, cgto_kpq, iq_real, network_opts) + contract_gf_cgto12_k_kpq(gb_k_kpq, halfrot_cgtob, cgto_kpq, iq_real, network_opts)
+        del ga_k_kpq
+        del gb_k_kpq
+        ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        gb_kpq_k = slice_gf_kpq_k_given_q(Ghalfb_batch, iq_real, kpq_mat)
+        v2_wP = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, cgto, iq_real, network_opts) + contract_gf_cgto12_kpq_k(gb_kpq_k, rcgtob_kpq, cgto, iq_real, network_opts)
+        del ga_kpq_k
+        del gb_kpq_k
+        ecoul += 2. * xp.sum((v1_wP @ MPQ_iq) * v2_wP, axis=1)
+    cutensornet.destroy(handle)
     return 0.5 * ecoul / nk
 
 def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
@@ -472,26 +503,26 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
     for iq in range(len(Sset)):
         iq_real = Sset[iq]
         ikpq = kpq_mat[iq_real]
-        phikr_kpq = cgto[:, ikpq, :]
-        phiki_kpq = halfrot_cgtoa[:, ikpq, :]
+        phikr_kpq = cgto[ikpq]
+        phiki_kpq = halfrot_cgtoa[ikpq]
         kpq_idx = kpq_mat[k_idx, iq_real]
         kprimepq_idx = kpq_mat[kprime_idx, iq_real]
         G_kpq_kprimepq = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
         MPQ_iq = MPQ[iq]
-        exx -= contract('Pki, Pkp, PQ, QKj, QKq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts, return_info=True)
+        exx -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts)
         xp.cuda.get_current_stream().synchronize()
         del G_kpq_kprimepq
 
     for iq in range(len(Sset), len(Sset) + len(Qplus)):
         iq_real = Qplus[iq - len(Sset)]
         ikpq = kpq_mat[iq_real]
-        phikr_kpq = cgto[:, ikpq, :]
-        phiki_kpq = halfrot_cgtoa[:, ikpq, :]
+        phikr_kpq = cgto[ikpq]
+        phiki_kpq = halfrot_cgtoa[ikpq]
         kpq_idx = kpq_mat[k_idx, iq_real]
         kprimepq_idx = kpq_mat[kprime_idx, iq_real]
         G_kpq_kprimepq = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
         MPQ_iq = MPQ[iq]
-        exx -= 2. * contract('Pki, Pkp, PQ, QKj, QKq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts, return_info=True)
+        exx -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts)
         xp.cuda.get_current_stream().synchronize()
         del G_kpq_kprimepq
 
@@ -670,6 +701,34 @@ def local_energy_kpt_single_det_uhf(
     local_energy : np.ndarray
         Total, one-body and two-body energies.
     """
+
+    if config.get_option("use_gpu"):
+        return local_energy_kpt_single_det_uhf_isdf_gpu(system, hamiltonian, walkers, trial)
+    else:
+        raise NotImplementedError("CPU ISDF Coulomb kernel for UHF not implemented yet.")
+    
+
+def local_energy_kpt_single_det_uhf_isdf_gpu(system, hamiltonian, walkers, trial):
+    """Compute local energy for walker batch (all walkers at once).
+
+    Single determinant RHF case.
+
+    Parameters
+    ----------
+    system : system object
+        System being studied.
+    hamiltonian : hamiltonian object
+        Hamiltonian being studied.
+    walkers : WalkerBatch
+        Walkers object.
+    trial : trial object
+        Trial wavefunctioni.
+
+    Returns
+    -------
+    local_energy : np.ndarray
+        Total, one-body and two-body energies.
+    """
     nwalkers = walkers.Ghalfa.shape[0]
     nk = hamiltonian.nk
     nalpha = trial.nalpha
@@ -679,20 +738,22 @@ def local_energy_kpt_single_det_uhf(
     ghalfa = walkers.Ghalfa.reshape(nwalkers, nk, nalpha, nk, nbasis)
     ghalfb = walkers.Ghalfb.reshape(nwalkers, nk, nbeta, nk, nbasis)
 
-    diagGhalfa = numpy.zeros((nwalkers, nk, nalpha, nbasis), dtype=numpy.complex128)
-    diagGhalfb = numpy.zeros((nwalkers, nk, nbeta, nbasis), dtype=numpy.complex128)
+    diagGhalfa = xp.zeros((nwalkers, nk, nalpha, nbasis), dtype=numpy.complex128)
+    diagGhalfb = xp.zeros((nwalkers, nk, nbeta, nbasis), dtype=numpy.complex128)
     for ik in range(nk):
         diagGhalfa[:, ik, :, :] = ghalfa[:, ik, :, ik, :]
         diagGhalfb[:, ik, :, :] = ghalfb[:, ik, :, ik, :]
-    e1b = numpy.einsum('wkip, kip -> w', diagGhalfa, trial._rH1a) # Ghalfa.dot(trial._rH1a.ravel())
-    e1b += numpy.einsum('wkip, kip -> w', diagGhalfb, trial._rH1b)
+    diagGhalfa = diagGhalfa.reshape(nwalkers, nk * nalpha * nbasis)
+    diagGhalfb = diagGhalfb.reshape(nwalkers, nk * nbeta * nbasis)
+    e1b = diagGhalfa.dot(trial._rH1a.ravel())
+    e1b += diagGhalfb.dot(trial._rH1b.ravel())
     e1b /= nk
     e1b += hamiltonian.ecore
 
-    ecoul = kpt_isdf_ecoul_kernel_gpu(hamiltonian.MPQ, hamiltonian.halfrot_cgtoa, hamiltonian.halfrot_cgtob, hamiltonian.cgto, ghalfa, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+    ecoul = kpt_isdf_ecoul_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, ghalfa, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
 
-    exxa = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, hamiltonian.halfrot_cgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
-    exxb = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, hamiltonian.halfrot_cgtob, hamiltonian.cgto, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+    exxa = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+    exxb = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtob, hamiltonian.cgto, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
 
     e2b = ecoul + exxa + exxb
 

@@ -1,4 +1,5 @@
 import numpy
+from numba import jit
 
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.backend import arraylib as xp
@@ -60,23 +61,37 @@ def construct_h1e_mod_symm(chol, h1e, ikmq_mat, Sset, Qplus, h1e_mod):
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
 
+@jit(nopython=True, fastmath=True)
 def construct_h1e_mod_isdf(MPQ, cgto, h1e, ikpq_mat, ikmq_mat, Sset, Qplus, h1e_mod):
     nk, nbasis = h1e.shape[1], h1e.shape[2]
     v0 = numpy.zeros((nk, nbasis, nbasis), dtype=numpy.complex128)
     for iq in range(len(Sset)):
-        ikpq = ikpq_mat[iq]
-        cgto_ikpq = cgto[ikpq]
+        iq_real = Sset[iq]
         MPQ_iq = MPQ[iq]
-        v0 += .5 * numpy.einsum('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto)
+        for ik in range(nk):
+            ikpq = ikpq_mat[iq_real, ik]
+            cgto_ikpq = cgto[ikpq]
+            # v0 += .5 * oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto)
+            cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
+            cgtoM = MPQ_iq * cgto_PQ
+            v0[ik] += .5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
     
-    for iq in range(len(Sset), len(Sset) + len(Qplus)):
+    for iq in range(len(Sset), len(Sset) + len(Qplus)):    
         iq_real = Qplus[iq - len(Sset)]
-        ikpq = ikpq_mat[iq]
-        cgto_ikpq = cgto[ikpq]
-        ikmq = ikmq_mat[iq_real]
-        cgto_ikmq = cgto[ikmq]
         MPQ_iq = MPQ[iq]
-        v0 += .5 * (numpy.einsum('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto) + numpy.einsum('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikmq, MPQ_iq.conj(), cgto_ikmq.conj(), cgto))
+        for ik in range(nk):
+            ikpq = ikpq_mat[iq_real, ik]
+            cgto_ikpq = cgto[ikpq]
+            ikmq = ikmq_mat[iq_real, ik]
+            cgto_ikmq = cgto[ikmq]
+            
+            # v0 += .5 * (oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto) + oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikmq, MPQ_iq.conj(), cgto_ikmq.conj(), cgto))
+            cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
+            cgtoM = MPQ_iq * cgto_PQ
+            v0[ik] += .5 *cgto[ik].conj().T @ cgtoM @ cgto[ik]
+            cgto_PQ = cgto_ikmq @ cgto_ikmq.T.conj()
+            cgtoM = MPQ_iq.conj() * cgto_PQ
+            v0[ik] += .5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
 
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
@@ -165,21 +180,30 @@ class KptISDF(GenericBase):
 
         self.MPQ = numpy.array(MPQ, dtype=numpy.complex128)
         self.cholM = numpy.array(cholM, dtype=numpy.complex128)  # [q, P, gamma], M = LL^\dagger
-        self.nchol = self.cholM.shape[0]
+        self.nchol = self.cholM.shape[-1]
         # here we don't have spin indices for cgto because we use OAO basis for UHF cases to avoid extra storage
         self.cgto = numpy.array(cgto, dtype=numpy.complex128) # [k, P, p]
-        self.halfrot_cgtoa, self.halfrot_cgtob, self.halfrot_cgto = halfrot_cgto # [k, \tilde{P}, i(a)], [k, \tilde{P}, i(b)], [k, \tilde{P}, p]
-        self.halfrot_M = halfrot_M
+        if halfrot_cgto is not None:
+            self.halfrot_cgtoa, self.halfrot_cgtob, self.halfrot_cgto = halfrot_cgto # [k, \tilde{P}, i(a)], [k, \tilde{P}, i(b)], [k, \tilde{P}, p]
+        else: 
+            self.halfrot_cgtoa = None
+            self.halfrot_cgtob = None
+            self.halfrot_cgto = self.cgto
+        if halfrot_M is not None:
+            self.halfrot_M = halfrot_M
+        else:
+            self.halfrot_M = None
         
 
         self.kpts = kpts
+        self.Sset = find_self_inverse_set(self.kpts)
+        self.Qplus = find_Qplus(self.kpts)
+        self.unique_k = numpy.concatenate((self.Sset, self.Qplus))
+        self.unique_nk = self.unique_k.shape[0]
         self.ikpq_mat = construct_kpq(self.kpts)
         self.ikmq_mat = construct_kmq(self.kpts)
         self.imq_vec = construct_mq(self.kpts)
         self.igamma = find_gamma_pt(self.kpts[self.unique_k])
-        self.Sset = find_self_inverse_set(self.kpts)
-        self.Qplus = find_Qplus(self.kpts)
-        self.unique_k = numpy.concatenate((self.Sset, self.Qplus))
         self.nk = self.kpts.shape[0]
         self.nisdf = self.cgto.shape[1]
         self.nisdf_halfrot = self.halfrot_cgto.shape[1]
@@ -188,7 +212,7 @@ class KptISDF(GenericBase):
 
         # this is the one-body part that comes out of re-ordering the 2-body operators
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-        construct_h1e_mod_isdf(self.cholM, self.cgto, self.H1, self.ikpq_mat, h1e_mod)
+        construct_h1e_mod_isdf(self.MPQ, self.cgto, self.H1, self.ikpq_mat, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod)
         self.h1e_mod = xp.array(h1e_mod)
 
         if verbose:

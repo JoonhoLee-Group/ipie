@@ -233,11 +233,13 @@ def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
     diagcholM = hamiltonian.cholM[igamma] # [nisdf, naux]
     cgto = hamiltonian.cgto
     Gcharge = (trial.G[0] + trial.G[1])
+    # convert to complex128
+    Gcharge = Gcharge.astype(numpy.complex128)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    mf_shift = contract("kpP, krP, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts)
+    mf_shift = contract("kPp, kPr, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts)
     cutensornet.destroy(handle)
-    return mf_shift
+    return xp.array(mf_shift)
 
 @plum.dispatch
 def construct_one_body_propagator(
@@ -261,9 +263,12 @@ def construct_one_body_propagator(
     cholpcholconj = hamiltonian.cholM + hamiltonian.cholM.conj()
     igamma = hamiltonian.igamma
     cgto = hamiltonian.cgto
+    # to cupy array
+    cholpcholconj = xp.array(cholpcholconj)
+    cgto = xp.array(cgto)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj, mf_shift, options=network_opts)
+    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj[igamma], mf_shift, options=network_opts)
     cutensornet.destroy(handle)
     H1 = hamiltonian.h1e_mod + xp.array([shift, shift])
     if hasattr(H1, "get"):
@@ -278,29 +283,6 @@ def construct_one_body_propagator(
         expH1_1[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[1, ik])
     expH1 = xp.array([expH1_0, expH1_1])
     return expH1
-
-
-
-@plum.dispatch
-def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
-    r"""Compute mean field shift.
-
-    .. math::
-
-        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
-
-    Remark: Here the convention is a little different because mf_shift without the 1j is more convenient.
-
-    """
-    # trial G [nk, nbsf, nbsf]
-    diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-    igamma = hamiltonian.igamma
-    for ik in range(hamiltonian.nk):
-        diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-    diagchol = diagchol.reshape(hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
-    Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    mf_shift = numpy.dot(diagchol, Gcharge)
-    return xp.array(mf_shift)
 
 
 @plum.dispatch

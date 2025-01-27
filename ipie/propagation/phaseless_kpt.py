@@ -234,17 +234,20 @@ class PhaselessKptISDF(PhaselessKptBase):
         if config.get_option("use_gpu"):
             Temp = xp.zeros(walkers.phia.shape, dtype=walkers.phia.dtype)
             xp.copyto(Temp, walkers.phia)
+            handle = cutensornet.create()
+            network_opts = NetworkOptions(handle=handle)
             for n in range(1, self.exp_nmax + 1):
-                Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.kpq_mat, hamiltonian.kmq_mat, hamiltonian.unique_k) / n  # matmul use much less GPU memory than einsum
-                phi += Temp
+                Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
+                walkers.phia += Temp
             del Temp
             if walkers.ndown > 0 and not walkers.rhf:
                 Temp = xp.zeros(walkers.phib.shape, dtype=walkers.phib.dtype)
                 xp.copyto(Temp, walkers.phib)
                 for n in range(1, self.exp_nmax + 1):
-                    Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.kpq_mat, hamiltonian.kmq_mat, hamiltonian.unique_k) / n  # matmul use much less GPU memory than einsum
-                    phi += Temp
+                    Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
+                    walkers.phib += Temp
                 del Temp
+            cutensornet.destroy(handle)
         else:
             raise NotImplementedError
         synchronize()
@@ -293,20 +296,18 @@ def construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs):
     nisdf = Lconjx_iw.shape[1]
     fullLconjx = xp.zeros((nk, nk, nisdf), dtype=xp.complex128)
     for ik in range(nk):
-        ikmq = kmq_mat[ik, unique_qs] # all k+qs for given k
+        ikmq = kmq_mat[unique_qs, ik] # all k-qs for given k
         fullLconjx[ikmq, ik] = Lconjx_iw
     return fullLconjx
 
-def apply_VHS_to_phi(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs):
+def apply_VHS_to_phi(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, network_opts):
     """
     Apply VHS to phi.
     """
     nwalkers = Lx.shape[0]
     nk = kpq_mat.shape[0]
-    nbsf = cgto.shape[1]
+    nbsf = cgto.shape[2]
     outphi = xp.zeros_like(phi)
-    handle = cutensornet.create()
-    network_opts = NetworkOptions(handle=handle)
     for iw in range(nwalkers):
         Lx_iw = Lx[iw]
         Lconjx_iw = Lconjx[iw]
@@ -314,8 +315,9 @@ def apply_VHS_to_phi(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs):
         full_Lconjx_iw = construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs)
         fullLpLconjx = full_Lx_iw + full_Lconjx_iw
         phi_iw_reshape = phi[iw].reshape(nk, nbsf, nk, -1)
-        outphi[iw] = contract('KkP, kpP, KrP, KrQi -> kpQi', fullLpLconjx, cgto.conj(), cgto, phi_iw_reshape, options=network_opts)
-
+        out = contract('KkP, kPp, KPr, KrQi -> kpQi', fullLpLconjx, cgto.conj(), cgto, phi_iw_reshape, options=network_opts)
+        out_reshape = out.reshape(nk * nbsf, -1)
+        outphi[iw] = out_reshape
     return outphi
         
     
