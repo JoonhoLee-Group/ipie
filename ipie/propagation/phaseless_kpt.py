@@ -237,14 +237,14 @@ class PhaselessKptISDF(PhaselessKptBase):
             handle = cutensornet.create()
             network_opts = NetworkOptions(handle=handle)
             for n in range(1, self.exp_nmax + 1):
-                Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
+                Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
                 walkers.phia += Temp
             del Temp
             if walkers.ndown > 0 and not walkers.rhf:
                 Temp = xp.zeros(walkers.phib.shape, dtype=walkers.phib.dtype)
                 xp.copyto(Temp, walkers.phib)
                 for n in range(1, self.exp_nmax + 1):
-                    Temp = apply_VHS_to_phi(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
+                    Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Lconjx, Temp, hamiltonian.ikpq_mat, hamiltonian.ikmq_mat, hamiltonian.unique_k, network_opts) / n  # matmul use much less GPU memory than einsum
                     walkers.phib += Temp
                 del Temp
             cutensornet.destroy(handle)
@@ -275,50 +275,59 @@ class PhaselessKptISDF(PhaselessKptBase):
         cholMxconj = contract('qPg, wgq -> wqP', cholM.conj(), xconjtot, options=network_opts)
         cutensornet.destroy(handle)
         return cholMx, cholMxconj
-    
-def construct_full_Lx(Lx_iw, kpq_mat, unique_qs):
-    """
-    Construct full Lx from Lx.
-    """
-    nk = kpq_mat.shape[0]
-    nisdf = Lx_iw.shape[1]
-    fullLx = xp.zeros((nk, nk, nisdf), dtype=xp.complex128)
-    for ik in range(nk):
-        ikpq = kpq_mat[unique_qs, ik] # all k+qs for given k
-        fullLx[ikpq, ik] = Lx_iw
-    return fullLx
 
-def construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs):
+def construct_full_Lx_batch(Lx, kpq_mat, unique_qs):
     """
-    Construct fullLconjx from Lconjx.
+    Construct full Lx from Lx using advanced indexing. Lx: [nwalkers, nk, nisdf]. 
     """
-    nk = kmq_mat.shape[0]
-    nisdf = Lconjx_iw.shape[1]
-    fullLconjx = xp.zeros((nk, nk, nisdf), dtype=xp.complex128)
-    for ik in range(nk):
-        ikmq = kmq_mat[unique_qs, ik] # all k-qs for given k
-        fullLconjx[ikmq, ik] = Lconjx_iw
+    nk = kpq_mat.shape[1]
+    nq = len(unique_qs)
+    nwalker = Lx.shape[0]
+    nisdf = Lx.shape[-1]  # Lx: (nwalker, nq, nisdf)
+
+    fullLconjx = xp.zeros((nwalker, nk, nk, nisdf), dtype=xp.complex128)
+    q_idx = unique_qs[:, None]          # shape (nq, 1)
+    ik_idx = xp.arange(nk)[None, :] # shape (1, nk)
+
+    row_idx = kpq_mat[q_idx, ik_idx]
+    row_idx = xp.broadcast_to(row_idx, (nq, nk))
+    col_idx = xp.broadcast_to(ik_idx, (nq, nk))
+    data = Lx[:, :, None, :]  # shape (nw, nq, 1, nisdf)
+    data = xp.broadcast_to(data, (nwalker, nq, nk, nisdf))
+    fullLconjx[:, row_idx, col_idx, :] = data
+
     return fullLconjx
-
-def apply_VHS_to_phi(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, network_opts):
+        
+def apply_VHS_to_phi_batch(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, network_opts):
     """
-    Apply VHS to phi.
+    Apply VHS to phi in batch.
     """
     nwalkers = Lx.shape[0]
-    nk = kpq_mat.shape[0]
+    nk = kpq_mat.shape[1]
     nbsf = cgto.shape[2]
+    nisdf = Lx.shape[-1]
     outphi = xp.zeros_like(phi)
-    for iw in range(nwalkers):
-        Lx_iw = Lx[iw]
-        Lconjx_iw = Lconjx[iw]
-        full_Lx_iw = construct_full_Lx(Lx_iw, kpq_mat, unique_qs)
-        full_Lconjx_iw = construct_full_Lconjx(Lconjx_iw, kmq_mat, unique_qs)
-        fullLpLconjx = full_Lx_iw + full_Lconjx_iw
-        phi_iw_reshape = phi[iw].reshape(nk, nbsf, nk, -1)
-        out = contract('KkP, kPp, KPr, KrQi -> kpQi', fullLpLconjx, cgto.conj(), cgto, phi_iw_reshape, options=network_opts)
-        out_reshape = out.reshape(nk * nbsf, -1)
-        outphi[iw] = out_reshape
+    # calculate intermediate array memory
+    mem_cost = nwalkers * nk * nk * nisdf * nbsf * 16 * 2/ 1024**3
+    # max_mem = 80 percent of available memory
+    max_mem = 0.3 * xp.cuda.Device().mem_info[0] / 1024**3
+    num_nisdf_chunks = max(1, math.ceil(mem_cost / max_mem))
+    nisdf_chunk_size = math.ceil(nisdf / num_nisdf_chunks)
+    nisdf_left = nisdf
+    for i in range(num_nisdf_chunks):
+        nisdf_chunk = min(nisdf_chunk_size, nisdf_left)
+        nisdf_left -= nisdf_chunk
+        Lx_chunk = Lx[:, :, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk]
+        Lconjx_chunk = Lconjx[:, :, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk]
+        full_Lx = construct_full_Lx_batch(Lx_chunk, kpq_mat, unique_qs)
+        full_Lconjx = construct_full_Lx_batch(Lconjx_chunk, kmq_mat, unique_qs)
+        fullLpLconjx = full_Lx + full_Lconjx
+        phi_reshape = phi.reshape(nwalkers, nk, nbsf, nk, -1)
+        cgto_slice = cgto[:, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk, :]
+        out = contract('wKkP, kPp, KPr, wKrQi -> wkpQi', fullLpLconjx, cgto_slice.conj(), cgto_slice, phi_reshape, options=network_opts)
+        outphi += out.reshape(nwalkers, nk * nbsf, -1)
+        del out
+    xp._default_memory_pool.free_all_blocks()
     return outphi
-        
-    
+
 Phaseless = {"cholesky": PhaselessKptChol, "isdf": PhaselessKptISDF, "cholchunked": PhaselessKptCholChunked}

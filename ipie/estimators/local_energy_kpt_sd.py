@@ -762,4 +762,5 @@ def local_energy_kpt_single_det_uhf_isdf_gpu(system, hamiltonian, walkers, trial
     energy[:, 1] = e1b
     energy[:, 2] = e2b
 
+    xp._default_memory_pool.free_all_blocks()
     return energy
