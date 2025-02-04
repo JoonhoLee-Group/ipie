@@ -502,13 +502,7 @@ class AFQMC(AFQMCBase):
 
         self.estimators.initialize(comm)
         # Calculate estimates for initial distribution of walkers.
-        if config.get_option("use_gpu"):
-            used_bytes, total_bytes = get_device_memory()
-            print(f"# before computing estimators {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.estimators.compute_estimators(self.system, self.hamiltonian, self.trial, self.walkers)
-        if config.get_option("use_gpu"):
-            used_bytes, total_bytes = get_device_memory()
-            print(f"# after computing estimators {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.accumulators.update(self.walkers)
         self.estimators.print_block(comm, 0, self.accumulators)
         self.accumulators.zero()
@@ -549,13 +543,7 @@ class AFQMC(AFQMCBase):
         self.get_env_info()
         # self.distribute_hamiltonian()
         self.copy_to_gpu()
-
-        # used_bytes, total_bytes = get_device_memory()
-        # print(f"# after distribute {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
         self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
-        if config.get_option("use_gpu"):
-            used_bytes, total_bytes = get_device_memory()
-            print(f"# after setting up estimators {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
 
         # TODO: This magic value of 2 is pretty much never controlled on input.
         # Moreover I'm not convinced having a two stage shift update actually
@@ -577,9 +565,6 @@ class AFQMC(AFQMCBase):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-            # if config.get_option("use_gpu"):
-            #     used_bytes, total_bytes = get_device_memory()
-            #     print(f"# before propagation: {self.mpi_handler.comm.rank}: using {used_bytes/1024**3} GB out of {total_bytes/1024**3} GB memory on GPU")
             self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
 
             self.tprop_fbias = self.propagator.timer.tfbias
