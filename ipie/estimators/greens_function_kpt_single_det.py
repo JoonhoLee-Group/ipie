@@ -90,7 +90,10 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
     nbsf = trial.nbasis
     nk = trial.nk
     phia = walker_batch.phia.reshape(walker_batch.nwalkers, nk, nbsf, nk, nup)
-    phib = walker_batch.phib.reshape(walker_batch.nwalkers, nk, nbsf, nk, ndown)
+    if ndown > 0:
+        phib = walker_batch.phib.reshape(walker_batch.nwalkers, nk, nbsf, nk, ndown)
+    else:
+        phib = None
 
     ovlp_a = xp.einsum("wlpki, lpj->wkilj", phia, trial.psi0a.conj(), optimize=True)
     ovlp_a = ovlp_a.reshape(walker_batch.nwalkers, nk * nup, nk * nup)

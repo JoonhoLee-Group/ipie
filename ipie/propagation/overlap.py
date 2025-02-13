@@ -88,7 +88,8 @@ def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
     nbsf = trial.nbasis
 
     phia = walkers.phia.reshape(nwalkers, nk, nbsf, nk, nup)
-    phib = walkers.phib.reshape(nwalkers, nk, nbsf, nk, ndown)
+    if ndown > 0 and not walkers.rhf:
+        phib = walkers.phib.reshape(nwalkers, nk, nbsf, nk, ndown)
     
     ovlpa = xp.einsum("wlpki, lpj->wkilj", phia, trial.psi0a.conj(), optimize=True)
 

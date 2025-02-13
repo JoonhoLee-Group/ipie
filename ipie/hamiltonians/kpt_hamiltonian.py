@@ -13,6 +13,7 @@ from ipie.utils.io import (
     read_hamiltonian,
 )
 
+@jit(nopython=True, fastmath=True)
 def construct_kpq(kpts_frac):
     nk = kpts_frac.shape[0]
     idx_kpq_mat = numpy.zeros((nk, nk), dtype=numpy.int64)
@@ -22,6 +23,7 @@ def construct_kpq(kpts_frac):
         idx_kpq_mat[iq] = idx_kpq
     return idx_kpq_mat
 
+@jit(nopython=True, fastmath=True)
 def construct_kmq(kpts_frac):
     nk = kpts_frac.shape[0]
     idx_kmq_mat = numpy.zeros((nk, nk), dtype=numpy.int64)

@@ -1,6 +1,7 @@
 from ipie.utils.mpi import make_splits_displacements
 import h5py
 import numpy as np
+import os
 
 
 def split_cholesky(ham_filename: str, nmembers: int, verbose=True):
@@ -50,10 +51,19 @@ def split_cholesky_kpt(ham_filename: str, nmembers: int, verbose=True):
     nmembers : int
         The number of members among which the Cholesky vectors will be distributed.
     """
-    with h5py.File(ham_filename, "r") as source_file:
+    with h5py.File(ham_filename, "r+") as source_file:
         # for huge chol file, should read in slices at one time instead of this
         dataset = np.array(source_file["chol"][:])
         num_chol = dataset.shape[0]
+        # delete the original dataset
+        del source_file["chol"]
+        with h5py.File(ham_filename + "_temp", "w") as temp_file:
+            # copy the other fields
+            for key in source_file.keys():
+                source_file.copy(key, temp_file)
+    # remove the original file
+    os.remove(ham_filename)
+    os.rename(ham_filename + "_temp", ham_filename)
     split_sizes, displacements = make_splits_displacements(num_chol, nmembers)
 
     for i, (size, displacement) in enumerate(zip(split_sizes, displacements)):

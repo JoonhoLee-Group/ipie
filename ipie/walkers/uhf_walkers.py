@@ -58,26 +58,33 @@ class UHFWalkers(BaseWalkers):
             [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128,
         )
-        self.phib = xp.array(
-            [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
-            dtype=xp.complex128,
-        )
-
+        if ndown > 0:
+            self.phib = xp.array(
+                [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
+                dtype=xp.complex128,
+            )
+        else:
+            self.phib = None
         # will be built only on request
         self.Ga = numpy.zeros(
             shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128
         )
-        self.Gb = numpy.zeros(
-            shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
-        )
+        if ndown > 0:
+            self.Gb = numpy.zeros(
+                shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
+            )
+        else:
+            self.Gb = None
 
         self.Ghalfa = numpy.zeros(
             shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128
         )
-        self.Ghalfb = numpy.zeros(
-            shape=(self.nwalkers, self.ndown, self.nbasis),
-            dtype=numpy.complex128,
-        )
+        if ndown > 0:
+            self.Ghalfb = numpy.zeros(
+                shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
+            )
+        else:
+            self.Ghalfb = None
 
         self.buff_names += ["phia", "phib"]
 

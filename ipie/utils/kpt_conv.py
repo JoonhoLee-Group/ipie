@@ -13,6 +13,7 @@ def cart2frac(reciprocal_vectors, kpts):
     kpts_frac = np.dot(kpts, b_inv)
     return kpts_frac
 
+@jit(nopython=True, fastmath=True)
 def BZ_to_1BZ(kpts):
     """
     Map k-points to the first Brillouin zone.
@@ -38,6 +39,7 @@ def find_translated_index(kpt, q_vec, kpts_list, tol=1e-6):
         if np.allclose(fbz_kpt_trs, kpts_list[j], atol=tol):
             return j
 
+@jit(nopython=True, fastmath=True)
 def find_translated_index_batched(kpts, q_vec, tol=1e-6):
     """
     Find the index of the k-point that is translated by trs_vector for the whole k point lists

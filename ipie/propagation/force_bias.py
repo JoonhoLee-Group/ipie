@@ -530,7 +530,7 @@ def construct_force_bias_kptsymm_batch_single_det_chunked(hamiltonian, walkers, 
         Force bias.
     """
     assert hamiltonian.chunked
-    if walkers.rhf:
+    if walkers.rhf or trial.nbeta == 0:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
 
         chol_idxs_chunk = hamiltonian.chol_idxs_chunk

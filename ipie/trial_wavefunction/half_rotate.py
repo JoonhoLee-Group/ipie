@@ -398,12 +398,19 @@ def half_rotate_chunked(
 
             rchola_chunk = [np.zeros((ndets, unique_nk, nk, na, hamiltonian.nchol_chunk, M), dtype=integral_type)]
             rcholbara_chunk = [np.zeros((ndets, unique_nk, nk, M, hamiltonian.nchol_chunk, na), dtype=integral_type)]
-            rcholb_chunk = [np.zeros((ndets, unique_nk, nk, nb, hamiltonian.nchol_chunk, M), dtype=integral_type)]
-            rcholbarb_chunk = [np.zeros((ndets, unique_nk, nk, M, hamiltonian.nchol_chunk, nb), dtype=integral_type)]
+            if nb > 0:
+                rcholb_chunk = [np.zeros((ndets, unique_nk, nk, nb, hamiltonian.nchol_chunk, M), dtype=integral_type)]
+                rcholbarb_chunk = [np.zeros((ndets, unique_nk, nk, M, hamiltonian.nchol_chunk, nb), dtype=integral_type)]
+            else:
+                rcholb_chunk = [None]
+                rcholbarb_chunk = [None]
 
 
             rH1a = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
-            rH1b = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+            if nb > 0:
+                rH1b = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+            else:
+                rH1b = None
 
             if verbose:
                 print("# Half-Rotating Cholesky for determinant.")
@@ -441,14 +448,16 @@ def half_rotate_chunked(
                     chol_chunk,
                     optimize=True,
                 )
-                rdn = np.einsum(
-                    "Jkpi,Xkpqr->JqkiXr",
-                    orbsb.conj(),
-                    chol_chunk,
-                    optimize=True,
-                )
+                if nb > 0:
+                    rdn = np.einsum(
+                        "Jkpi,Xkpqr->JqkiXr",
+                        orbsb.conj(),
+                        chol_chunk,
+                        optimize=True,
+                    )
                 rchola_chunk[0][:] = rup[:]
-                rcholb_chunk[0][:] = rdn[:]
+                if nb > 0:
+                    rcholb_chunk[0][:] = rdn[:]
                 for iq in range(hamiltonian.unique_nk):
                     iq_real = hamiltonian.unique_k[iq]
                     ikpq = hamiltonian.ikpq_mat[iq_real]
@@ -458,13 +467,15 @@ def half_rotate_chunked(
                         chol_chunk[:, :, :, iq, :].conj(),
                         optimize=True,
                     )
-                    rbardn = np.einsum(
-                        "Jkri, Xkpr -> JkpXi",
-                        orbsb[:, ikpq, :, :].conj(),
-                        chol_chunk[:, :, :, iq, :].conj(),
-                    )
+                    if nb > 0:
+                        rbardn = np.einsum(
+                            "Jkri, Xkpr -> JkpXi",
+                            orbsb[:, ikpq, :, :].conj(),
+                            chol_chunk[:, :, :, iq, :].conj(),
+                        )
                     rcholbara_chunk[0][:, iq, :, :, :, :] = rbarup[:]
-                    rcholbarb_chunk[0][:, iq, :, :, :, :] = rbardn[:]                    
+                    if nb > 0:
+                        rcholbarb_chunk[0][:, iq, :, :, :, :] = rbardn[:]                    
             if comm is not None:
                 comm.barrier()
 

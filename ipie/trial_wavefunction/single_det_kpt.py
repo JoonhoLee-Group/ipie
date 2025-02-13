@@ -155,11 +155,12 @@ class KptSingleDet(TrialWavefunctionBase):
         # Single determinant functions do not expect determinant index, so just
         # grab zeroth element.
         self._rH1a = rot_1body[0][0]
-        self._rH1b = rot_1body[1][0]
+        self._rH1b = rot_1body[1][0] if self.nbeta > 0 else None
+        
         self._rchola_chunk = rot_chol[0][0]
-        self._rcholb_chunk = rot_chol[1][0]
+        self._rcholb_chunk = rot_chol[1][0] if self.nbeta > 0 else None
         self._rcholbara_chunk = rot_chol[2][0]
-        self._rcholbarb_chunk = rot_chol[3][0]
+        self._rcholbarb_chunk = rot_chol[3][0] if self.nbeta > 0 else None
         self.half_rotated = True
 
     @plum.dispatch
