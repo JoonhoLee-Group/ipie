@@ -93,11 +93,9 @@ class KptComplexCholChunked(GenericBase):
         self.Qplus = find_Qplus(self.kpts)
         self.unique_k = numpy.concatenate((self.Sset, self.Qplus))
         self.ikpq_mat = construct_kpq(self.kpts)
-        print(f"finished kpq_mat")
         self.ikmq_mat = construct_kmq(self.kpts)
         self.imq_vec = construct_mq(self.kpts)
         self.igamma = find_gamma_pt(self.kpts[self.unique_k])
-        print(f"# finished k point quantities")
 
         self.unique_nk = len(self.Sset) + len(self.Qplus)
         self.nk = self.kpts.shape[0]
@@ -124,13 +122,11 @@ class KptComplexCholChunked(GenericBase):
 
         self.nchol_chunk = self.chol_chunk.shape[0]
         assert self.chol_chunk.shape == (self.nchol_chunk, self.nk, self.nbasis, self.unique_nk, self.nbasis)
-        print(f"finished constructing chol_chunk")
         
         self.chunked = True
 
         # this is the one-body part that comes out of re-ordering the 2-body operators
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-        print(f"constructing h1e_mod")
         construct_h1e_mod_symm(self.chol_chunk, self.H1, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod, handler)
         self.h1e_mod = xp.array(h1e_mod)
 
