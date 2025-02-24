@@ -530,7 +530,7 @@ def construct_force_bias_kptsymm_batch_single_det_chunked(hamiltonian, walkers, 
         Force bias.
     """
     assert hamiltonian.chunked
-    if walkers.rhf or trial.nbeta == 0:
+    if walkers.rhf:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
 
         chol_idxs_chunk = hamiltonian.chol_idxs_chunk
@@ -671,159 +671,301 @@ def construct_force_bias_kptsymm_batch_single_det_chunked(hamiltonian, walkers, 
         vbias_minus = vbias_batch_minus_recv.copy()
         synchronize()
     else:
-        Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
-        Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+        if trial.nbeta > 0:
+            Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+            Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
 
-        chol_idxs_chunk = hamiltonian.chol_idxs_chunk
+            chol_idxs_chunk = hamiltonian.chol_idxs_chunk
 
-        Ghalfa_recv = xp.zeros_like(Ghalfa)
-        Ghalfb_recv = xp.zeros_like(Ghalfb)
+            Ghalfa_recv = xp.zeros_like(Ghalfa)
+            Ghalfb_recv = xp.zeros_like(Ghalfb)
 
-        Ghalfa_send = Ghalfa.copy()
-        Ghalfb_send = Ghalfb.copy()
+            Ghalfa_send = Ghalfa.copy()
+            Ghalfb_send = Ghalfb.copy()
 
-        srank = handler.scomm.rank
+            srank = handler.scomm.rank
 
-        vbias_batch_plus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
-        vbias_batch_minus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_batch_plus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_batch_minus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
 
-        vbias_batch_plus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
-        vbias_batch_minus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
-        
-        if config.get_option("use_gpu"):
-            if len(hamiltonian.Sset) > 0:
-                iSset = xp.arange(len(hamiltonian.Sset))
-                ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
-                ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
-                Gak_kpq = Ghalfa[:, ik_Sset, :, ikpq_S, :]
-                Gakpq_k = Ghalfa[:, ikpq_S, :, ik_Sset, :]
-                Gbk_kpq = Ghalfb[:, ik_Sset, :, ikpq_S, :]
-                Gbkpq_k = Ghalfb[:, ikpq_S, :, ik_Sset, :]
-                tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iSset], Gbk_kpq, optimize=True)
-                tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iSset], Gbkpq_k, optimize=True)
-                vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
-                vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
+            vbias_batch_plus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_batch_minus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            
+            if config.get_option("use_gpu"):
+                if len(hamiltonian.Sset) > 0:
+                    iSset = xp.arange(len(hamiltonian.Sset))
+                    ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
+                    ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
+                    Gak_kpq = Ghalfa[:, ik_Sset, :, ikpq_S, :]
+                    Gakpq_k = Ghalfa[:, ikpq_S, :, ik_Sset, :]
+                    Gbk_kpq = Ghalfb[:, ik_Sset, :, ikpq_S, :]
+                    Gbkpq_k = Ghalfb[:, ikpq_S, :, ik_Sset, :]
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iSset], Gbk_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iSset], Gbkpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
 
-            if len(hamiltonian.Qplus) > 0:
-                iQplus = xp.arange(len(hamiltonian.Qplus))
-                ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
-                ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
-                Gak_kpq = Ghalfa[:, ik_Qplus, :, ikpq_Q, :]
-                Gakpq_k = Ghalfa[:, ikpq_Q, :, ik_Qplus, :]
-                Gbk_kpq = Ghalfb[:, ik_Qplus, :, ikpq_Q, :]
-                Gbkpq_k = Ghalfb[:, ikpq_Q, :, ik_Qplus, :]
-                iQplus_real = iQplus + len(hamiltonian.Sset)
-                tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iQplus_real], Gbk_kpq, optimize=True)
-                tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iQplus_real], Gbkpq_k, optimize=True)
-                vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
-                vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2)                 
-        else:
-            for iq in range(len(hamiltonian.Sset)):
-                iq_real = hamiltonian.Sset[iq]
-                for ik in range(hamiltonian.nk):
-                    ikpq = hamiltonian.ikpq_mat[iq_real, ik]
-                    vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
-                    vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
-
-                    vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
-                    vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
-                
-            for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
-                iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
-                for ik in range(hamiltonian.nk):
-                    ikpq = hamiltonian.ikpq_mat[iq_real, ik]
-                    vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
-                    vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
-
-                    vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
-                    vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
-
-        receivers = handler.receivers
-        for _ in range(handler.ssize - 1):
-            synchronize()
-
-            handler.scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
-            handler.scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
-            handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=3)
-            handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=4)
-
-            sender = numpy.where(receivers == srank)[0]
-            req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
-            req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
-            req3 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=3)
-            req4 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=4)
-            req1.wait()
-            req2.wait()
-            req3.wait()
-            req4.wait()
-
-            handler.scomm.barrier()
-
-            # prepare sending
-            vbias_batch_plus_send = vbias_batch_plus_recv.copy()
-            vbias_batch_minus_send = vbias_batch_minus_recv.copy()
-            if len(hamiltonian.Sset) > 0:
-                iSset = xp.arange(len(hamiltonian.Sset))
-                ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
-                ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
-                Gak_kpq = Ghalfa_recv[:, ik_Sset, :, ikpq_S, :]
-                Gakpq_k = Ghalfa_recv[:, ikpq_S, :, ik_Sset, :]
-                Gbk_kpq = Ghalfb_recv[:, ik_Sset, :, ikpq_S, :]
-                Gbkpq_k = Ghalfb_recv[:, ikpq_S, :, ik_Sset, :]
-                tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iSset], Gbk_kpq, optimize=True)
-                tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iSset], Gbkpq_k, optimize=True)
-                vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
-                vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
-
-            if len(hamiltonian.Qplus) > 0:
-                iQplus = xp.arange(len(hamiltonian.Qplus))
-                ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
-                ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
-                Gak_kpq = Ghalfa_recv[:, ik_Qplus, :, ikpq_Q, :]
-                Gakpq_k = Ghalfa_recv[:, ikpq_Q, :, ik_Qplus, :]
-                Gbk_kpq = Ghalfb_recv[:, ik_Qplus, :, ikpq_Q, :]
-                Gbkpq_k = Ghalfb_recv[:, ikpq_Q, :, ik_Qplus, :]
-                iQplus_real = iQplus + len(hamiltonian.Sset)
-                tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iQplus_real], Gbk_kpq, optimize=True)
-                tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iQplus_real], Gbkpq_k, optimize=True)
-                vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
-                vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2) 
-
+                if len(hamiltonian.Qplus) > 0:
+                    iQplus = xp.arange(len(hamiltonian.Qplus))
+                    ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
+                    ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
+                    Gak_kpq = Ghalfa[:, ik_Qplus, :, ikpq_Q, :]
+                    Gakpq_k = Ghalfa[:, ikpq_Q, :, ik_Qplus, :]
+                    Gbk_kpq = Ghalfb[:, ik_Qplus, :, ikpq_Q, :]
+                    Gbkpq_k = Ghalfb[:, ikpq_Q, :, ik_Qplus, :]
+                    iQplus_real = iQplus + len(hamiltonian.Sset)
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iQplus_real], Gbk_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iQplus_real], Gbkpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2)                 
             else:
                 for iq in range(len(hamiltonian.Sset)):
                     iq_real = hamiltonian.Sset[iq]
                     for ik in range(hamiltonian.nk):
                         ikpq = hamiltonian.ikpq_mat[iq_real, ik]
-                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
-                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
 
-                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
-                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
                     
                 for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
                     iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
                     for ik in range(hamiltonian.nk):
                         ikpq = hamiltonian.ikpq_mat[iq_real, ik]
-                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
-                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
 
-                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
-                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
-            Ghalfa_send = Ghalfa_recv.copy()
-            Ghalfb_send = Ghalfb_recv.copy()
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb[:, ik, :, ikpq, :], optimize=True))
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb[:, ikpq, :, ik, :], optimize=True))
 
-        synchronize()
-        handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=1)
-        handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=2)
+            receivers = handler.receivers
+            for _ in range(handler.ssize - 1):
+                synchronize()
 
-        sender = numpy.where(receivers == srank)[0]
-        req1 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=1)
-        req2 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=2)
-        req1.wait()
-        req2.wait()
-        handler.scomm.barrier()
+                handler.scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
+                handler.scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
+                handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=3)
+                handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=4)
 
-        vbias_plus = vbias_batch_plus_recv.copy()
-        vbias_minus = vbias_batch_minus_recv.copy()
-        synchronize()
+                sender = numpy.where(receivers == srank)[0]
+                req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
+                req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
+                req3 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=3)
+                req4 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=4)
+                req1.wait()
+                req2.wait()
+                req3.wait()
+                req4.wait()
+
+                handler.scomm.barrier()
+
+                # prepare sending
+                vbias_batch_plus_send = vbias_batch_plus_recv.copy()
+                vbias_batch_minus_send = vbias_batch_minus_recv.copy()
+                if len(hamiltonian.Sset) > 0:
+                    iSset = xp.arange(len(hamiltonian.Sset))
+                    ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
+                    ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
+                    Gak_kpq = Ghalfa_recv[:, ik_Sset, :, ikpq_S, :]
+                    Gakpq_k = Ghalfa_recv[:, ikpq_S, :, ik_Sset, :]
+                    Gbk_kpq = Ghalfb_recv[:, ik_Sset, :, ikpq_S, :]
+                    Gbkpq_k = Ghalfb_recv[:, ikpq_S, :, ik_Sset, :]
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iSset], Gbk_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iSset], Gbkpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
+
+                if len(hamiltonian.Qplus) > 0:
+                    iQplus = xp.arange(len(hamiltonian.Qplus))
+                    ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
+                    ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
+                    Gak_kpq = Ghalfa_recv[:, ik_Qplus, :, ikpq_Q, :]
+                    Gakpq_k = Ghalfa_recv[:, ikpq_Q, :, ik_Qplus, :]
+                    Gbk_kpq = Ghalfb_recv[:, ik_Qplus, :, ikpq_Q, :]
+                    Gbkpq_k = Ghalfb_recv[:, ikpq_Q, :, ik_Qplus, :]
+                    iQplus_real = iQplus + len(hamiltonian.Sset)
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True) + xp.einsum("qkigp, qkaip -> agq", trial._rcholb_chunk[iQplus_real], Gbk_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True) + xp.einsum("qkpgi, qkaip -> agq", trial._rcholbarb_chunk[iQplus_real], Gbkpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2) 
+
+                else:
+                    for iq in range(len(hamiltonian.Sset)):
+                        iq_real = hamiltonian.Sset[iq]
+                        for ik in range(hamiltonian.nk):
+                            ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+                        
+                    for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+                        iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+                        for ik in range(hamiltonian.nk):
+                            ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb_chunk[iq, ik], Ghalfb_recv[:, ik, :, ikpq, :], optimize=True))
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb_chunk[iq, ik], Ghalfb_recv[:, ikpq, :, ik, :], optimize=True))
+                Ghalfa_send = Ghalfa_recv.copy()
+                Ghalfb_send = Ghalfb_recv.copy()
+
+            synchronize()
+            handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=1)
+            handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=2)
+
+            sender = numpy.where(receivers == srank)[0]
+            req1 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=1)
+            req2 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=2)
+            req1.wait()
+            req2.wait()
+            handler.scomm.barrier()
+
+            vbias_plus = vbias_batch_plus_recv.copy()
+            vbias_minus = vbias_batch_minus_recv.copy()
+            synchronize()
+        else:
+            Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+
+            chol_idxs_chunk = hamiltonian.chol_idxs_chunk
+
+            Ghalfa_recv = xp.zeros_like(Ghalfa)
+
+            Ghalfa_send = Ghalfa.copy()
+
+            srank = handler.scomm.rank
+
+            vbias_batch_plus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_batch_minus_recv = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+
+            vbias_batch_plus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_batch_minus_send = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            
+            if config.get_option("use_gpu"):
+                if len(hamiltonian.Sset) > 0:
+                    iSset = xp.arange(len(hamiltonian.Sset))
+                    ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
+                    ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
+                    Gak_kpq = Ghalfa[:, ik_Sset, :, ikpq_S, :]
+                    Gakpq_k = Ghalfa[:, ikpq_S, :, ik_Sset, :]
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
+
+                if len(hamiltonian.Qplus) > 0:
+                    iQplus = xp.arange(len(hamiltonian.Qplus))
+                    ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
+                    ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
+                    Gak_kpq = Ghalfa[:, ik_Qplus, :, ikpq_Q, :]
+                    Gakpq_k = Ghalfa[:, ikpq_Q, :, ik_Qplus, :]
+                    iQplus_real = iQplus + len(hamiltonian.Sset)
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2)                 
+            else:
+                for iq in range(len(hamiltonian.Sset)):
+                    iq_real = hamiltonian.Sset[iq]
+                    for ik in range(hamiltonian.nk):
+                        ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True)
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True)
+
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True)
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True)
+                    
+                for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+                    iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+                    for ik in range(hamiltonian.nk):
+                        ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True)
+                        vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True)
+
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa[:, ik, :, ikpq, :], optimize=True)
+                        vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa[:, ikpq, :, ik, :], optimize=True)
+
+            receivers = handler.receivers
+            for _ in range(handler.ssize - 1):
+                synchronize()
+
+                handler.scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
+                handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=2)
+                handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=3)
+
+                sender = numpy.where(receivers == srank)[0]
+                req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
+                req2 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=2)
+                req3 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=3)
+                req1.wait()
+                req2.wait()
+                req3.wait()
+
+                handler.scomm.barrier()
+
+                # prepare sending
+                vbias_batch_plus_send = vbias_batch_plus_recv.copy()
+                vbias_batch_minus_send = vbias_batch_minus_recv.copy()
+                if len(hamiltonian.Sset) > 0:
+                    iSset = xp.arange(len(hamiltonian.Sset))
+                    ik_Sset = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Sset)).reshape(hamiltonian.nk, len(hamiltonian.Sset)).T
+                    ikpq_S = hamiltonian.ikpq_mat[hamiltonian.Sset]
+                    Gak_kpq = Ghalfa_recv[:, ik_Sset, :, ikpq_S, :]
+                    Gakpq_k = Ghalfa_recv[:, ikpq_S, :, ik_Sset, :]
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iSset], Gak_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iSset], Gakpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iSset] += .5j * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iSset] += .5 * (tmp1 - tmp2)
+
+                if len(hamiltonian.Qplus) > 0:
+                    iQplus = xp.arange(len(hamiltonian.Qplus))
+                    ik_Qplus = xp.repeat(xp.arange(hamiltonian.nk), len(hamiltonian.Qplus)).reshape(hamiltonian.nk, len(hamiltonian.Qplus)).T
+                    ikpq_Q = hamiltonian.ikpq_mat[hamiltonian.Qplus]
+                    Gak_kpq = Ghalfa_recv[:, ik_Qplus, :, ikpq_Q, :]
+                    Gakpq_k = Ghalfa_recv[:, ikpq_Q, :, ik_Qplus, :]
+                    iQplus_real = iQplus + len(hamiltonian.Sset)
+                    tmp1 = xp.einsum("qkigp, qkaip -> agq", trial._rchola_chunk[iQplus_real], Gak_kpq, optimize=True)
+                    tmp2 = xp.einsum("qkpgi, qkaip -> agq", trial._rcholbara_chunk[iQplus_real], Gakpq_k, optimize=True)
+                    vbias_batch_plus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5j * xp.sqrt(2) * (tmp1 + tmp2)
+                    vbias_batch_minus_send[:, chol_idxs_chunk[:, None], iQplus_real] += .5 * xp.sqrt(2) * (tmp1 - tmp2) 
+
+                else:
+                    for iq in range(len(hamiltonian.Sset)):
+                        iq_real = hamiltonian.Sset[iq]
+                        for ik in range(hamiltonian.nk):
+                            ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True)
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True)
+
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True)
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True)
+                        
+                    for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+                        iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+                        for ik in range(hamiltonian.nk):
+                            ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True)
+                            vbias_batch_plus_send[:, chol_idxs_chunk, iq] += .5j * xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True)
+
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] += .5 * xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola_chunk[iq, ik], Ghalfa_recv[:, ik, :, ikpq, :], optimize=True)
+                            vbias_batch_minus_send[:, chol_idxs_chunk, iq] -= .5 * xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara_chunk[iq, ik], Ghalfa_recv[:, ikpq, :, ik, :], optimize=True)
+                Ghalfa_send = Ghalfa_recv.copy()
+
+            synchronize()
+            handler.scomm.Isend(vbias_batch_plus_send, dest=receivers[srank], tag=1)
+            handler.scomm.Isend(vbias_batch_minus_send, dest=receivers[srank], tag=2)
+
+            sender = numpy.where(receivers == srank)[0]
+            req1 = handler.scomm.Irecv(vbias_batch_plus_recv, source=sender, tag=1)
+            req2 = handler.scomm.Irecv(vbias_batch_minus_recv, source=sender, tag=2)
+            req1.wait()
+            req2.wait()
+            handler.scomm.barrier()
+
+            vbias_plus = vbias_batch_plus_recv.copy()
+            vbias_minus = vbias_batch_minus_recv.copy()
+            synchronize()
     return vbias_plus, vbias_minus
