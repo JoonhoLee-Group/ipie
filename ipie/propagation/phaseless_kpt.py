@@ -361,6 +361,8 @@ def apply_VHS_to_phi_batch(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, n
     nisdf_chunk_size = math.ceil(nisdf / num_nisdf_chunks)
     nisdf_left = nisdf
     for i in range(num_nisdf_chunks):
+        if nisdf_left == 0:
+            break
         nisdf_chunk = min(nisdf_chunk_size, nisdf_left)
         nisdf_left -= nisdf_chunk
         Lx_chunk = Lx[:, :, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk]
@@ -371,6 +373,7 @@ def apply_VHS_to_phi_batch(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, n
         phi_reshape = phi.reshape(nwalkers, nk, nbsf, nk, -1)
         cgto_slice = cgto[:, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk, :]
         out = contract('wKkP, kPp, KPr, wKrQi -> wkpQi', fullLpLconjx, cgto_slice.conj(), cgto_slice, phi_reshape, options=network_opts)
+        del full_Lx, full_Lconjx, fullLpLconjx, cgto_slice, phi_reshape
         outphi += out.reshape(nwalkers, nk * nbsf, -1)
         del out
     xp._default_memory_pool.free_all_blocks()

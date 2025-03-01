@@ -287,7 +287,61 @@ def construct_force_bias_kptisdf_batch_single_det(
     """
     if walkers.rhf:
         if config.get_option("use_gpu"):
-            pass
+            nwalkers = walkers.nwalkers
+            vbias_plus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_minus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # ghalf shape: nwalkers, nk nup, hamiltonian.nk, nbsf
+            Ghalfa_reshape = walkers.Ghalfa.reshape(nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
+            
+            # slice Sset and Qplus according to memory
+            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha) * 16/ (1024**3)
+            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha) * 16 / (1024**3)
+
+            num_nq_chunks_Sset = max(1, ceil(mem_cost_Sset / max_mem))
+            nq_chunk_Sset_size = ceil(len(hamiltonian.Sset) / num_nq_chunks_Sset)
+            nq_left = len(hamiltonian.Sset)
+            handle = cutensornet.create()
+            network_opts = NetworkOptions(handle=handle)
+            if len(hamiltonian.Sset) > 0:
+                for i in range(num_nq_chunks_Sset):
+                    nq_chunk = min(nq_left, nq_chunk_Sset_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Sset[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    assert xp.allclose(X_wPa, Y_wPa)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    vbias_plus[:, :, i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk] += 2.0j * cutensornet.contract("qwP, qPg -> wgq", X_wPa, L_q, options=network_opts)
+
+
+            num_nq_chunks_Qplus = max(1, ceil(mem_cost_Qplus / max_mem))
+            nq_chunk_Qplus_size = ceil(len(hamiltonian.Qplus) / num_nq_chunks_Qplus)
+            nq_left = len(hamiltonian.Qplus)
+            if len(hamiltonian.Qplus) > 0:
+                for i in range(num_nq_chunks_Qplus):
+                    nq_chunk = min(nq_left, nq_chunk_Qplus_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Qplus[i * nq_chunk_Qplus_size: i * nq_chunk_Qplus_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)]
+                    v1 = cutensornet.contract("qwP, qPg -> wgq", X_wPa, L_q, options=network_opts)
+                    v2 = cutensornet.contract("qwP, qPg -> wgq", Y_wPa, L_q.conj(), options=network_opts)
+                    vbias_plus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += 1j * xp.sqrt(2) * (v1 + v2)
+                    vbias_minus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += 1. * xp.sqrt(2) * (v1 - v2)
+            cutensornet.destroy(handle)
+            synchronize()
+            return vbias_plus, vbias_minus
         else:
             pass
     else:

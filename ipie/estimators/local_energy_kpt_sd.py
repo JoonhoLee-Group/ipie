@@ -487,6 +487,42 @@ def kpt_isdf_ecoul_kernel_gpu(MPQ, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_ba
     cutensornet.destroy(handle)
     return 0.5 * ecoul / nk
 
+def kpt_isdf_ecoul_rhf_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
+    nk = cgto.shape[0]
+    nwalkers = Ghalfa_batch.shape[0]
+    ecoul = xp.zeros(nwalkers, dtype=numpy.complex128)
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
+    for iq in range(len(Sset)):
+        iq_real = Sset[iq]
+        MPQ_iq = MPQ[iq]
+        ikpq = kpq_mat[iq_real]
+        cgto_kpq = cgto[ikpq]
+        rcgtoa_kpq = halfrot_cgtoa[ikpq]
+        ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        v1_wP = contract_gf_cgto12_k_kpq(ga_k_kpq, halfrot_cgtoa, cgto_kpq, iq_real, network_opts)
+        del ga_k_kpq
+        ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        v2_wP = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, cgto, iq_real, network_opts)
+        del ga_kpq_k
+        ecoul += xp.sum((v1_wP @ MPQ_iq) * v2_wP, axis=1)
+
+    for iq in range(len(Sset), len(Sset) + len(Qplus)):
+        iq_real = Qplus[iq - len(Sset)]
+        MPQ_iq = MPQ[iq]
+        ikpq = kpq_mat[iq_real]
+        cgto_kpq = cgto[ikpq]
+        rcgtoa_kpq = halfrot_cgtoa[ikpq]
+        ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        v1_wP = contract_gf_cgto12_k_kpq(ga_k_kpq, halfrot_cgtoa, cgto_kpq, iq_real, network_opts)
+        del ga_k_kpq
+        ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_batch, iq_real, kpq_mat)
+        v2_wP = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, cgto, iq_real, network_opts)
+        del ga_kpq_k
+        ecoul += 2. * xp.sum((v1_wP @ MPQ_iq) * v2_wP, axis=1)
+    cutensornet.destroy(handle)
+    return 2. * ecoul / nk
+
 def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
     nwalker, nk, nocc, _, nbsf = Ghalfa_batch.shape
 
@@ -735,27 +771,43 @@ def local_energy_kpt_single_det_uhf_isdf_gpu(system, hamiltonian, walkers, trial
     nbeta = trial.nbeta
     nbasis = hamiltonian.nbasis
 
-    ghalfa = walkers.Ghalfa.reshape(nwalkers, nk, nalpha, nk, nbasis)
-    ghalfb = walkers.Ghalfb.reshape(nwalkers, nk, nbeta, nk, nbasis)
+    if walkers.rhf:
+        ghalfa = walkers.Ghalfa.reshape(nwalkers, nk, nalpha, nk, nbasis)
+        diagGhalfa = xp.zeros((nwalkers, nk, nalpha, nbasis), dtype=numpy.complex128)
+        for ik in range(nk):
+            diagGhalfa[:, ik, :, :] = ghalfa[:, ik, :, ik, :]
+        diagGhalfa = diagGhalfa.reshape(nwalkers, nk * nalpha * nbasis)
+        e1b = 2. * diagGhalfa.dot(trial._rH1a.ravel())
+        e1b /= nk
+        e1b += hamiltonian.ecore
 
-    diagGhalfa = xp.zeros((nwalkers, nk, nalpha, nbasis), dtype=numpy.complex128)
-    diagGhalfb = xp.zeros((nwalkers, nk, nbeta, nbasis), dtype=numpy.complex128)
-    for ik in range(nk):
-        diagGhalfa[:, ik, :, :] = ghalfa[:, ik, :, ik, :]
-        diagGhalfb[:, ik, :, :] = ghalfb[:, ik, :, ik, :]
-    diagGhalfa = diagGhalfa.reshape(nwalkers, nk * nalpha * nbasis)
-    diagGhalfb = diagGhalfb.reshape(nwalkers, nk * nbeta * nbasis)
-    e1b = diagGhalfa.dot(trial._rH1a.ravel())
-    e1b += diagGhalfb.dot(trial._rH1b.ravel())
-    e1b /= nk
-    e1b += hamiltonian.ecore
+        ecoul = kpt_isdf_ecoul_rhf_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
 
-    ecoul = kpt_isdf_ecoul_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, ghalfa, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+        exxa = 2.0 * kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
 
-    exxa = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
-    exxb = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtob, hamiltonian.cgto, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+        e2b = ecoul + exxa
+    else:
+        ghalfa = walkers.Ghalfa.reshape(nwalkers, nk, nalpha, nk, nbasis)
+        ghalfb = walkers.Ghalfb.reshape(nwalkers, nk, nbeta, nk, nbasis)
 
-    e2b = ecoul + exxa + exxb
+        diagGhalfa = xp.zeros((nwalkers, nk, nalpha, nbasis), dtype=numpy.complex128)
+        diagGhalfb = xp.zeros((nwalkers, nk, nbeta, nbasis), dtype=numpy.complex128)
+        for ik in range(nk):
+            diagGhalfa[:, ik, :, :] = ghalfa[:, ik, :, ik, :]
+            diagGhalfb[:, ik, :, :] = ghalfb[:, ik, :, ik, :]
+        diagGhalfa = diagGhalfa.reshape(nwalkers, nk * nalpha * nbasis)
+        diagGhalfb = diagGhalfb.reshape(nwalkers, nk * nbeta * nbasis)
+        e1b = diagGhalfa.dot(trial._rH1a.ravel())
+        e1b += diagGhalfb.dot(trial._rH1b.ravel())
+        e1b /= nk
+        e1b += hamiltonian.ecore
+
+        ecoul = kpt_isdf_ecoul_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, ghalfa, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+
+        exxa = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, ghalfa, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+        exxb = kpt_isdf_exx_kernel_gpu(hamiltonian.MPQ, trial._rcgtob, hamiltonian.cgto, ghalfb, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus)
+
+        e2b = ecoul + exxa + exxb
 
     energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = e1b + e2b

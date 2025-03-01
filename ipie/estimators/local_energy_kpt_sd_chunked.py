@@ -200,7 +200,6 @@ def local_energy_kpt_single_det_uhf_chunked_cpu(
                 handler.scomm.Recv(ecoul_recv, source=sender, tag=1)
                 handler.scomm.Recv(exx_recv, source=sender, tag=2)
     e2b = ecoul_recv + exx_recv
-
     energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = e1b + e2b
     energy[:, 1] = e1b

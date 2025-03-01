@@ -94,6 +94,7 @@ def construct_h1e_mod_isdf(MPQ, cgto, h1e, ikpq_mat, ikmq_mat, Sset, Qplus, h1e_
             cgto_PQ = cgto_ikmq @ cgto_ikmq.T.conj()
             cgtoM = MPQ_iq.conj() * cgto_PQ
             v0[ik] += .5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
+        print(f"Finished constructing h1e_mod for iq = {iq}")
 
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
@@ -175,7 +176,7 @@ class KptISDF(GenericBase):
     """Class for ab-initio k-point Hamiltonian with 4-fold complex symmetric integrals.
     The electron repulsion integrals are approximated by Interpolative Separable Density Fitting (ISDF).
     """
-    def __init__(self, h1e, MPQ, cholM, cgto, kpts, ecore=0.0, verbose=False, halfrot_cgto=None, halfrot_M=None):
+    def __init__(self, h1e, MPQ, cholM, cgto, kpts, ecore=0.0, verbose=False, halfrot_cgto=None, halfrot_M=None, h1e_mod=None):
         assert h1e.shape[0] == 2
         assert len(h1e.shape) == 4 # shape = nspin, nk, nbasis, nbasis
         super().__init__(h1e, ecore, verbose)
@@ -213,9 +214,12 @@ class KptISDF(GenericBase):
         self.chunked = False
 
         # this is the one-body part that comes out of re-ordering the 2-body operators
-        h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-        construct_h1e_mod_isdf(self.MPQ, self.cgto, self.H1, self.ikpq_mat, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod)
-        self.h1e_mod = xp.array(h1e_mod)
+        if h1e_mod is not None:
+            self.h1e_mod = xp.array(h1e_mod)
+        else:
+            h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
+            construct_h1e_mod_isdf(self.MPQ, self.cgto, self.H1, self.ikpq_mat, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod)
+            self.h1e_mod = xp.array(h1e_mod)
 
         if verbose:
             mem = 2 * self.cholM.nbytes / (1024.0**3) + 2 * self.cgto.nbytes / (1024.0**3)
