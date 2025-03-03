@@ -525,6 +525,7 @@ def kpt_isdf_ecoul_rhf_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_ma
 
 def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
     nwalker, nk, nocc, _, nbsf = Ghalfa_batch.shape
+    nisdf = MPQ.shape[-1]
 
     w_idx = xp.arange(nwalker)[:, None, None, None, None]  # shape (W,1,1,1,1)
     k_idx = xp.arange(nk)[None, :, None, None, None]  # shape (1,nk,1,1,1)
@@ -536,31 +537,47 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
 
     exx = xp.zeros(nwalker, dtype=numpy.complex128)
 
-    for iq in range(len(Sset)):
-        iq_real = Sset[iq]
-        ikpq = kpq_mat[iq_real]
-        phikr_kpq = cgto[ikpq]
-        phiki_kpq = halfrot_cgtoa[ikpq]
-        kpq_idx = kpq_mat[k_idx, iq_real]
-        kprimepq_idx = kpq_mat[kprime_idx, iq_real]
-        G_kpq_kprimepq = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
-        MPQ_iq = MPQ[iq]
-        exx -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts)
-        xp.cuda.get_current_stream().synchronize()
-        del G_kpq_kprimepq
+    intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
+    free_bytes = xp.cuda.Device().mem_info[0]
+    free_gb = free_bytes / 1024**3.0
+    max_mem = .8 * free_gb
+    num_chunks = max(1, ceil(intermediate_mem/ max_mem))
+    chunk_size = ceil(nwalker / num_chunks)
+    nw_left = nwalker
+    for i_chunk in range(num_chunks):
+        if nw_left == 0:
+            break
+        n_chunk = min(nw_left, chunk_size)
+        nw_left -= n_chunk
+        w_sls = xp.arange(nwalker)[i_chunk * chunk_size: i_chunk * chunk_size + n_chunk]
+        Ga_chunk = Ghalfa_batch[w_sls]
+        w_chunk_idx = xp.arange(n_chunk)[:, None, None, None, None]  # shape (W_chunk,1,1,1,1)
 
-    for iq in range(len(Sset), len(Sset) + len(Qplus)):
-        iq_real = Qplus[iq - len(Sset)]
-        ikpq = kpq_mat[iq_real]
-        phikr_kpq = cgto[ikpq]
-        phiki_kpq = halfrot_cgtoa[ikpq]
-        kpq_idx = kpq_mat[k_idx, iq_real]
-        kprimepq_idx = kpq_mat[kprime_idx, iq_real]
-        G_kpq_kprimepq = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
-        MPQ_iq = MPQ[iq]
-        exx -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ghalfa_batch, G_kpq_kprimepq, options=network_opts)
-        xp.cuda.get_current_stream().synchronize()
-        del G_kpq_kprimepq
+        for iq in range(len(Sset)):
+            iq_real = Sset[iq]
+            ikpq = kpq_mat[iq_real]
+            phikr_kpq = cgto[ikpq]
+            phiki_kpq = halfrot_cgtoa[ikpq]
+            kpq_idx = kpq_mat[k_idx, iq_real]
+            kprimepq_idx = kpq_mat[kprime_idx, iq_real]
+            G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+            MPQ_iq = MPQ[iq]
+            exx[w_sls] -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
+            xp.cuda.get_current_stream().synchronize()
+            del G_kpq_kprimepq_chunk
+
+        for iq in range(len(Sset), len(Sset) + len(Qplus)):
+            iq_real = Qplus[iq - len(Sset)]
+            ikpq = kpq_mat[iq_real]
+            phikr_kpq = cgto[ikpq]
+            phiki_kpq = halfrot_cgtoa[ikpq]
+            kpq_idx = kpq_mat[k_idx, iq_real]
+            kprimepq_idx = kpq_mat[kprime_idx, iq_real]
+            G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+            MPQ_iq = MPQ[iq]
+            exx[w_sls] -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
+            xp.cuda.get_current_stream().synchronize()
+            del G_kpq_kprimepq_chunk
 
     cutensornet.destroy(handle)
     return 0.5 * exx / nk

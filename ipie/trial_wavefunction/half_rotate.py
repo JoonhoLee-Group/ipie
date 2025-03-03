@@ -509,15 +509,15 @@ def half_rotate_isdf(trial: TrialWavefunctionBase,
     nb = orbsb.shape[-1]
     assert isinstance(hamiltonian, KptISDF)
 
-    ctype = hamiltonian.cholM.dtype
-    ptype = orbsa.dtype
-    integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
+    # ctype = hamiltonian.cholM.dtype
+    # ptype = orbsa.dtype
+    # integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
 
-    rH1a = get_shared_array(comm, (ndets, nk, na, M), integral_type)
-    rH1b = get_shared_array(comm, (ndets, nk, nb, M), integral_type)
+    # rH1a = get_shared_array(comm, (ndets, nk, na, M), integral_type)
+    # rH1b = get_shared_array(comm, (ndets, nk, nb, M), integral_type)
 
-    rH1a[:] = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
-    rH1b[:] = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+    rH1a = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+    rH1b = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
     # now rotate the cgtos
     cgto = hamiltonian.cgto # [k, P, p]
