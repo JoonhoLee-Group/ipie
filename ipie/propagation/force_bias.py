@@ -294,8 +294,8 @@ def construct_force_bias_kptisdf_batch_single_det(
             Ghalfa_reshape = walkers.Ghalfa.reshape(nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
             
             # slice Sset and Qplus according to memory
-            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha) * 16/ (1024**3)
-            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha) * 16 / (1024**3)
+            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha) * 2 * 16/ (1024**3)
+            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha) * 2 * 16 / (1024**3)
 
             num_nq_chunks_Sset = max(1, ceil(mem_cost_Sset / max_mem))
             nq_chunk_Sset_size = ceil(len(hamiltonian.Sset) / num_nq_chunks_Sset)

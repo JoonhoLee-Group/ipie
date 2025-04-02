@@ -97,6 +97,7 @@ class BaseWalkers(metaclass=ABCMeta):
     def __init__(
         self,
         nwalkers,
+        write_file=None,
         verbose=False,
     ):
         self.nwalkers = nwalkers
@@ -136,8 +137,8 @@ class BaseWalkers(metaclass=ABCMeta):
         ]
         self.buff_size = None
         self.walker_buffer = None
-        self.write_file = None
-        self.read_file = None
+        self.write_file = write_file
+        self.read_file = write_file
 
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")

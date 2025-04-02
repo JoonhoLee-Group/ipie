@@ -177,10 +177,13 @@ def read_integrals(integral_file):
     except KeyError:
         pass
     try:
-        (h1e, chol_vecs, ecore) = read_hamiltonian(integral_file)
-        naux = chol_vecs.shape[0]
-        nbsf = chol_vecs.shape[-1]
-        return h1e, chol_vecs.transpose(1, 2, 0).reshape((nbsf, nbsf, naux)), ecore
+        (h1e, chol_vecs, ecore, transposed) = read_hamiltonian(integral_file)
+        if transposed:
+            return h1e, chol_vecs, ecore
+        else:
+            naux = chol_vecs.shape[0]
+            nbsf = chol_vecs.shape[-1]
+            return h1e, chol_vecs.transpose(1, 2, 0).reshape((nbsf, nbsf, naux)), ecore
     except KeyError:
         return None
 

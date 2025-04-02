@@ -88,7 +88,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealChol,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -145,7 +145,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericComplexChol,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))

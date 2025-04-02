@@ -537,7 +537,10 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
 
     exx = xp.zeros(nwalker, dtype=numpy.complex128)
 
-    intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
+    if nk < 64:
+        intermediate_mem = nwalker * nisdf * nk * nk * nbsf * 6 * 16 / 1024 ** 3
+    else:
+        intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
     free_bytes = xp.cuda.Device().mem_info[0]
     free_gb = free_bytes / 1024**3.0
     max_mem = .8 * free_gb
