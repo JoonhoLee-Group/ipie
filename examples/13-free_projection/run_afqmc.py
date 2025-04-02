@@ -5,10 +5,7 @@ from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
 comm = MPI.COMM_WORLD
 mol = gto.M(
-    atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
-    basis="sto-6g",
-    verbose=4,
-    unit="Bohr",
+    atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)], basis="sto-6g", verbose=4, unit="Bohr",
 )
 if comm.rank == 0:
     mf = scf.UHF(mol)
@@ -30,12 +27,7 @@ qmc_options = {
     "num_walkers": 10,
     "dt": 0.05,
 }
-afqmc = build_fpafqmc_driver(
-    comm,
-    nelec=mol.nelec,
-    seed=41100801,
-    qmc_options=qmc_options,
-)
+afqmc = build_fpafqmc_driver(comm, nelec=mol.nelec, seed=41100801, qmc_options=qmc_options,)
 if comm.rank == 0:
     print(afqmc.params)  # Inspect the default qmc options
 afqmc.run()
@@ -52,3 +44,14 @@ if comm.rank == 0:
         qmc_data = extract_observable(afqmc.estimators[i].filename, "energy")
         energy_mean, energy_err = jackknife_ratios(qmc_data["ENumer"], qmc_data["EDenom"])
         print(f"Energy: {energy_mean:.8e} +/- {energy_err:.8e}")
+
+        qmc_data = extract_observable(afqmc.estimators[i].filename, "phase")
+        phase_real_mean, phase_real_err = jackknife_ratios(
+            qmc_data["PhaseRealNumer"], qmc_data["PhaseDenom"]
+        )
+        phase_imag_mean, phase_imag_err = jackknife_ratios(
+            qmc_data["PhaseImagNumer"], qmc_data["PhaseDenom"]
+        )
+        print(
+            f"Phase: {phase_real_mean + 1j * phase_imag_mean:.8e} +/- {phase_real_err+ 1j * phase_imag_err:.8e}"
+        )

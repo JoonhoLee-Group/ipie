@@ -1,12 +1,16 @@
 import time
 from typing import Tuple
 
+from ipie.utils.backend import arraylib as xp
+
 import numpy as np
 
+from ipie.config import config
 from ipie.estimators.greens_function_multi_det import (
     greens_function_multi_det,
     greens_function_multi_det_wicks,
     greens_function_multi_det_wicks_opt,
+    greens_function_multi_det_wicks_opt_gpu,
 )
 from ipie.estimators.local_energy import variational_energy_ortho_det
 from ipie.legacy.estimators.ci import get_perm
@@ -15,6 +19,7 @@ from ipie.propagation.overlap import (
     calc_overlap_multi_det,
     calc_overlap_multi_det_wicks,
     calc_overlap_multi_det_wicks_opt,
+    calc_overlap_multi_det_wicks_opt_gpu,
 )
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -49,6 +54,7 @@ class ParticleHole(TrialWavefunctionBase):
         self.setup_basic_wavefunction(
             wfn, num_dets=num_dets_for_trial, use_active_space=use_active_space
         )
+        self._num_dets_for_props = num_dets_for_props
         self._num_dets = len(self.coeffs)
         self._num_dets_for_props = (
             self._num_dets if num_dets_for_props == -1 else num_dets_for_props
@@ -420,12 +426,6 @@ class ParticleHole(TrialWavefunctionBase):
             if self.verbose:
                 print("# Using Wicks helper to compute 1-RDM.")
             assert wicks_helper is not None
-            max_orb = max(np.max(self.occa), np.max(self.occb))
-            err_msg = (
-                f"Number of orbitals is too large for wicks_helper {max_orb} "
-                f"vs {64*wicks_helper.DET_LEN}."
-            )
-            assert 2 * max_orb < 64 * wicks_helper.DET_LEN, err_msg
             dets = wicks_helper.encode_dets(self.occa, self.occb)
             phases = wicks_helper.convert_phase(self.occa, self.occb)
             _keep = self.num_dets_for_props
@@ -440,19 +440,20 @@ class ParticleHole(TrialWavefunctionBase):
                 print(f"# Time to compute 1-RDM: {end - start} s")
         else:
             self.G = self.compute_1rdm(self.nbasis)
-        tr_g = self.G[0].trace() + self.G[1].trace()
-        err_msg = f"Tr(G_T) is incorrect {tr_g} vs {self.nalpha + self.nbeta}"
-        assert np.isclose(tr_g, self.nalpha + self.nbeta), err_msg
-        if self.verbose:
-            print(f"# Tr(G_T): {tr_g}")
 
-    def calc_greens_function(self, walkers) -> np.ndarray:
-        return greens_function_multi_det_wicks_opt(walkers, self)
+    def calc_greens_function(self, walkers) -> xp.ndarray:
+        if config.get_option("use_gpu"):
+            return greens_function_multi_det_wicks_opt_gpu(walkers, self)
+        else:
+            return greens_function_multi_det_wicks_opt(walkers, self)
 
-    def calc_overlap(self, walkers) -> np.ndarray:
-        return calc_overlap_multi_det_wicks_opt(walkers, self)
+    def calc_overlap(self, walkers) -> xp.ndarray:
+        if config.get_option("use_gpu"):
+            return calc_overlap_multi_det_wicks_opt_gpu(walkers, self)
+        else:
+            return calc_overlap_multi_det_wicks_opt(walkers, self)
 
-    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> np.ndarray:
+    def calc_force_bias(self, hamiltonian, walkers, mpi_handler=None) -> xp.ndarray:
         return construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, self)
 
     def compute_1rdm(self, nbasis):

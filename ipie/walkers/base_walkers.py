@@ -18,7 +18,6 @@
 #
 
 import cmath
-import time
 from abc import ABCMeta, abstractmethod
 
 import h5py
@@ -197,24 +196,34 @@ class BaseWalkers(metaclass=ABCMeta):
         self.phi = buff[self.nwalkers * 3 :].reshape(self.phi.shape)
 
     def write_walkers_batch(self, comm):
-        start = time.time()
-        assert self.write_file is not None
-        raise NotImplementedError("This is not tested. Please implement.")
-        with h5py.File(self.write_file, "r+", driver="mpio", comm=comm) as fh5:
-            # for (i,w) in enumerate(self.walkers):
-            # ix = i + self.nwalkers*comm.rank
-            fh5["walker_%d" % comm.rank][:] = self.get_write_buffer()
-        if comm.rank == 0:
-            print(" # Writing walkers to file.")
-            print(f" # Time to write restart: {time.time() - start:13.8e} s")
+        write_file = f"walkers_{comm.rank}.h5"
+        with h5py.File(write_file, "a") as fh5:
+            num_slices = len(fh5.keys()) // 3
+            phia = self.phia
+            phib = self.phib
+            weight = self.weight
+            hybrid_energy = self.hybrid_energy
+            fh5[f"walker_timeslice_{num_slices}"] = numpy.array([phia, phib])
+            fh5[f"walker_weight_{num_slices}"] = weight
+            fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
 
-    def read_walkers_batch(self, comm):
-        assert self.write_file is not None
-        with h5py.File(self.read_file, "r") as fh5:
+    def read_walkers_batch(self, trial, comm):
+        read_file = f"walkers_{comm.rank}.h5"
+        with h5py.File(read_file, "r") as fh5:
             try:
-                self.set_walkers_from_buffer(fh5["walker_%d" % comm.rank][:])
+                num_slices = len(fh5.keys()) // 3 - 1
+                phia = fh5[f"walker_timeslice_{num_slices}"][0]
+                phib = fh5[f"walker_timeslice_{num_slices}"][1]
+                self.phia = phia
+                self.phib = phib
+                weight = fh5[f"walker_weight_{num_slices}"][:]
+                hybrid_energy = fh5[f"walker_hybrid_energy_{num_slices}"][:]
+                self.weight = weight
+                self.hybrid_energy = hybrid_energy
+                self.ovlp = trial.calc_greens_function(self)
+
             except KeyError:
-                print(f" # Could not read walker data from: {self.read_file}")
+                print(f" # Could not read walker data from: {read_file}")
 
     @abstractmethod
     def reortho(self):

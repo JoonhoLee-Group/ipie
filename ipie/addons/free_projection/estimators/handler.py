@@ -26,6 +26,7 @@ import h5py
 import numpy
 
 from ipie.addons.free_projection.estimators.energy import EnergyEstimatorFP
+from ipie.addons.free_projection.estimators.phase import PhaseEstimatorFP
 from ipie.config import MPI
 from ipie.estimators.handler import EstimatorHandler
 from ipie.estimators.utils import H5EstimatorHelper
@@ -66,6 +67,7 @@ class EstimatorHandlerFP(EstimatorHandler):
             ham=hamiltonian,
             trial=trial,
         )
+        self["phase"] = PhaseEstimatorFP()
 
     def initialize(self, comm, print_header=True):
         self.local_estimates = numpy.zeros(
@@ -116,6 +118,7 @@ class EstimatorHandlerFP(EstimatorHandler):
                 est_string = e.data_to_text(est_data)
                 e.to_ascii_file(est_string)
                 if e.print_to_stdout:
+                    output_string += " "
                     output_string += est_string
         if comm.rank == 0:
             shift = self.global_estimates[walker_factors.get_index("HybridEnergy")]

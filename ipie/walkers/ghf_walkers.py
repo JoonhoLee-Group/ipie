@@ -31,8 +31,20 @@ class GHFWalkers(BaseWalkers):
 
     Parameters
     ----------
+    walkers : UHFWalkers
+        UHFWalkers instance.
+    initial_walker : :class:`numpy.ndarray`
+        Initial GHF coefficient matrix.
+    nup, ndown : int
+        Number of spin up, down electrons.
+    nbasis : int
+        Number of basis functions.
     nwalkers : int
-        The number of walkers in this batch
+        Number of walkers.
+    mpi_handler : MPIHandler
+        MPIHandler instance.
+    verbose : bool
+        Verbosity.
     """
 
     @plum.dispatch
@@ -48,8 +60,8 @@ class GHFWalkers(BaseWalkers):
         )
 
         # for iw in range(self.nwalkers):
-        self.phi[:, : self.nbasis, : self.nup] = walkers.phia
-        self.phi[:, self.nbasis :, self.nup :] = walkers.phib
+        self.phi[:, : self.nbasis, : self.nup] = walkers.phia.copy()
+        self.phi[:, self.nbasis :, self.nup :] = walkers.phib.copy()
 
         self.G = numpy.zeros(
             (self.nwalkers, 2 * self.nbasis, 2 * self.nbasis), dtype=walkers.Ga.dtype
@@ -88,7 +100,7 @@ class GHFWalkers(BaseWalkers):
         ndown: int,
         nbasis: int,
         nwalkers: int,
-        mpi_handler,
+        mpi_handler=None,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -109,12 +121,13 @@ class GHFWalkers(BaseWalkers):
 
         # will be built only on request
         self.G = numpy.zeros(
-            shape=(self.nwalkers, self.nbasis, self.nbasis),
+            shape=(self.nwalkers, 2 * self.nbasis, 2 * self.nbasis),
             dtype=numpy.complex128,
         )
 
-        self.buff_names += ["phi", "phia", "phib"]
+        self.rhf = None
 
+        self.buff_names += ["phi"]
         self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
@@ -126,11 +139,7 @@ class GHFWalkers(BaseWalkers):
         cast_to_device(self, verbose)
 
     def reortho(self):
-        """reorthogonalise walkers.
-
-        parameters
-        ----------
-        """
+        """reorthogonalise walkers."""
         if config.get_option("use_gpu"):
             return self.reortho_batched()
         detR = []
@@ -159,11 +168,7 @@ class GHFWalkers(BaseWalkers):
         return detR
 
     def reortho_batched(self):
-        """reorthogonalise walkers.
-
-        parameters
-        ----------
-        """
+        """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
         (self.phi, Rup) = qr(self.phi, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)

@@ -18,6 +18,7 @@
 
 import numpy
 import math
+import plum
 
 from numba import jit
 from ipie.utils.backend import arraylib as xp
@@ -27,6 +28,9 @@ from math import ceil
 from cuquantum import cutensornet, NetworkOptions
 
 from ipie.config import config
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.ghf_walkers import GHFWalkers
 
 
 def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
@@ -38,12 +42,12 @@ def construct_force_bias_batch(hamiltonian, walkers, trial, mpi_handler=None):
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
     trial : class
         Trial wavefunction object.
+    mpi_handler : class
+        MPIHandler instance.
 
     Returns
     -------
@@ -68,7 +72,7 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
     # Cholesky vectors. [M^2, nchol]
     # Why are there so many transposes here?
     if numpy.isrealobj(hamiltonian.chol):
-        vbias_batch = numpy.empty((hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128)
+        vbias_batch = xp.empty((hamiltonian.nchol, walkers.nwalkers), dtype=numpy.complex128)
         vbias_batch.real = hamiltonian.chol.T.dot(Ga.T.real + Gb.T.real)
         vbias_batch.imag = hamiltonian.chol.T.dot(Ga.T.imag + Gb.T.imag)
         vbias_batch = vbias_batch.T.copy()
@@ -79,9 +83,9 @@ def construct_force_bias_batch_multi_det_trial(hamiltonian, walkers, trial):
         return vbias_batch_tmp
 
 
-# only implement real Hamiltonian
+@plum.dispatch
 def construct_force_bias_batch_single_det(
-    hamiltonian: "GenericRealChol", walkers: "UHFWalkers", trial: "SingleDetTrial"
+    hamiltonian: GenericRealChol, walkers: UHFWalkers, rchola, rcholb
 ):
     """Compute optimal force bias.
 
@@ -91,12 +95,10 @@ def construct_force_bias_batch_single_det(
     ----------
     hamiltonian : class
         hamiltonian object.
-
     walkers : class
         walkers object.
-
-    trial : class
-        Trial wavefunction object.
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
 
     Returns
     -------
@@ -105,8 +107,8 @@ def construct_force_bias_batch_single_det(
     """
     if walkers.rhf:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
-        vbias_batch_real = 2.0 * trial._rchola.dot(Ghalfa.T.real)
-        vbias_batch_imag = 2.0 * trial._rchola.dot(Ghalfa.T.imag)
+        vbias_batch_real = 2.0 * rchola.dot(Ghalfa.T.real)
+        vbias_batch_imag = 2.0 * rchola.dot(Ghalfa.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
@@ -117,13 +119,105 @@ def construct_force_bias_batch_single_det(
     else:
         Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
         Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
-        vbias_batch_real = trial._rchola.dot(Ghalfa.T.real) + trial._rcholb.dot(Ghalfb.T.real)
-        vbias_batch_imag = trial._rchola.dot(Ghalfa.T.imag) + trial._rcholb.dot(Ghalfb.T.imag)
+        vbias_batch_real = rchola.dot(Ghalfa.T.real) + rcholb.dot(Ghalfb.T.real)
+        vbias_batch_imag = rchola.dot(Ghalfa.T.imag) + rcholb.dot(Ghalfb.T.imag)
         vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
         vbias_batch.real = vbias_batch_real.T.copy()
         vbias_batch.imag = vbias_batch_imag.T.copy()
         synchronize()
         return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericComplexChol, walkers: UHFWalkers, rAa, rAb, rBa, rBb
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+    Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
+    vbias_batch = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
+    vbias_batch[: hamiltonian.nchol, :] = rAa.dot(Ghalfa.T) + rAb.dot(Ghalfb.T)
+    vbias_batch[hamiltonian.nchol :, :] = rBa.dot(Ghalfa.T) + rBb.dot(Ghalfb.T)
+    vbias_batch = vbias_batch.T.copy()
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericRealChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.real)
+    vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.imag)
+    vbias_batch.real = vbias_real
+    vbias_batch.imag = vbias_imag
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericComplexChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, Gcharge)
+    vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, Gcharge)
+    vbias_batch[:, : hamiltonian.nchol] = vbias_A
+    vbias_batch[:, hamiltonian.nchol :] = vbias_B
+    synchronize()
+    return vbias_batch
 
 def construct_force_bias_kpt_batch_single_det(
     hamiltonian: "KptComplexChol", walkers: "UHFWalkers", trial: "KptSingleDet"
@@ -462,7 +556,100 @@ def construct_force_bias_kptisdf_batch_single_det(
         else:
             pass
 
-def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericComplexChol, walkers: UHFWalkers, rAa, rAb, rBa, rBb
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
+    Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
+    vbias_batch = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
+    vbias_batch[: hamiltonian.nchol, :] = rAa.dot(Ghalfa.T) + rAb.dot(Ghalfb.T)
+    vbias_batch[hamiltonian.nchol :, :] = rBa.dot(Ghalfa.T) + rBb.dot(Ghalfb.T)
+    vbias_batch = vbias_batch.T.copy()
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericRealChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_real = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.real)
+    vbias_imag = xp.einsum("pl, wp->wl", hamiltonian.chol, Gcharge.imag)
+    vbias_batch.real = vbias_real
+    vbias_batch.imag = vbias_imag
+    synchronize()
+    return vbias_batch
+
+
+@plum.dispatch
+def construct_force_bias_batch_single_det(hamiltonian: GenericComplexChol, walkers: GHFWalkers):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    Ga = walkers.Ga
+    Gb = walkers.Gb
+    Gcharge = (Ga + Gb).reshape(walkers.nwalkers, -1)  # (nwalkers, nbasis**2)
+
+    vbias_batch = numpy.zeros((walkers.nwalkers, hamiltonian.nfields), dtype=Ga.dtype)
+    vbias_A = xp.einsum("pl, wp->wl", hamiltonian.A, Gcharge)
+    vbias_B = xp.einsum("pl, wp->wl", hamiltonian.B, Gcharge)
+    vbias_batch[:, : hamiltonian.nchol] = vbias_A
+    vbias_batch[:, hamiltonian.nchol :] = vbias_B
+    synchronize()
+    return vbias_batch
+
+def construct_force_bias_kpt_batch_single_det(
+    hamiltonian: "KptComplexChol", walkers: "UHFWalkers", trial: "KptSingleDet"
+):
     """Compute optimal force bias.
 
     Uses rotated Green's function.
@@ -477,6 +664,341 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
 
     trial : class
         Trial wavefunction object.
+
+    Returns
+    -------
+    vbias_plus : :class:`numpy.ndarray`
+        Force bias for Lplus.
+    vbias_minus : :class:`numpy.ndarray`
+        Force bias for Lminus.
+    """
+    if walkers.rhf:
+        vbias = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.nk), dtype=numpy.complex128)
+        # ghalf shape: nwalkers, nk, nup, nk, nbsf
+        Ghalf_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+        for iq in range(hamiltonian.nk):
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[ik, iq]
+                vbias[:, :, iq] += 2.0 * xp.einsum("gip, aip -> ga", trial._rchola[:, ik, :, iq, :], Ghalf_reshape[:, ik, :, ikpq, :], optimize=True)
+        synchronize()
+        imq = hamiltonian.imq_vec
+        vbias_plus = .5 * 1j * (vbias + vbias[:, :, imq])
+        vbias_minus = .5 * (vbias - vbias[:, :, imq])
+        return vbias_plus, vbias_minus
+
+    else:
+        vbias = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.nk), dtype=numpy.complex128)
+        # ghalf shape: nwalkers, nk, nup, nk, nbsf
+        Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+        Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+        for iq in range(hamiltonian.nk):
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[ik, iq]
+                vbias[:, :, iq] += xp.einsum("gip, aip -> ag", trial._rchola[:, ik, :, iq, :], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True) + xp.einsum("gip, bip -> bg", trial._rcholb[:, ik, :, iq, :], Ghalfb_reshape[:, ik, :, ikpq, :], optimize=True)
+        synchronize()
+        imq = hamiltonian.imq_vec
+        vbias_plus = .5 * 1j * (vbias + vbias[:, :, imq])
+        vbias_minus = .5 * (vbias - vbias[:, :, imq])
+        return vbias_plus, vbias_minus
+
+def construct_force_bias_kptsymm_batch_single_det(
+    hamiltonian: "KptComplexCholSymm", walkers: "UHFWalkers", trial: "KptSingleDet"
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+
+    walkers : class
+        walkers object.
+
+    trial : class
+        Trial wavefunction object.
+
+    Returns
+    -------
+    vbias_plus : :class:`numpy.ndarray`
+        Force bias for Lplus.
+    vbias_minus : :class:`numpy.ndarray`
+        Force bias for Lminus.
+    """
+    if walkers.rhf:
+        vbias_plus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+        vbias_minus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+        # ghalf shape: nwalkers, nk, nup, nk, nbsf
+        Ghalf_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+        for iq in range(len(hamiltonian.Sset)):
+            iq_real = hamiltonian.Sset[iq]
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                vbias_plus[:, :, iq] += 1.0j * xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True)
+                vbias_plus[:, :, iq] += 1.0j * xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True)
+
+                vbias_minus[:, :, iq] += xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True)
+                vbias_minus[:, :, iq] -= xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True)
+
+        for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+            iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                vbias_plus[:, :, iq] += 1.0j * xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True)
+                vbias_plus[:, :, iq] += 1.0j * xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True)
+
+                vbias_minus[:, :, iq] += xp.sqrt(2) * xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True)
+                vbias_minus[:, :, iq] -= xp.sqrt(2) * xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True)
+        synchronize()
+        return vbias_plus, vbias_minus
+
+    else:
+        vbias_plus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+        vbias_minus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+        # ghalf shape: nwalkers, nk, nup, nk, nbsf
+        Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+        Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+        for iq in range(len(hamiltonian.Sset)):
+            iq_real = hamiltonian.Sset[iq]
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                vbias_plus[:, :, iq] += .5j * (xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb[iq, ik], Ghalfb_reshape[:, ik, :, ikpq, :], optimize=True))
+                vbias_plus[:, :, iq] += .5j * (xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb[iq, ik], Ghalfb_reshape[:, ikpq, :, ik, :], optimize=True))
+
+                vbias_minus[:, :, iq] += .5 * (xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb[iq, ik], Ghalfb_reshape[:, ik, :, ikpq, :], optimize=True))
+                vbias_minus[:, :, iq] -= .5 * (xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb[iq, ik], Ghalfb_reshape[:, ikpq, :, ik, :], optimize=True))
+        
+        for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+            iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+            for ik in range(hamiltonian.nk):
+                ikpq = hamiltonian.ikpq_mat[iq_real, ik]
+                vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb[iq, ik], Ghalfb_reshape[:, ik, :, ikpq, :], optimize=True))
+                vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb[iq, ik], Ghalfb_reshape[:, ikpq, :, ik, :], optimize=True))
+
+                vbias_minus[:, :, iq] += .5 * xp.sqrt(2) * (xp.einsum("igp, aip -> ag", trial._rchola[iq, ik], Ghalfa_reshape[:, ik, :, ikpq, :], optimize=True) + xp.einsum("igp, bip -> bg", trial._rcholb[iq, ik], Ghalfb_reshape[:, ik, :, ikpq, :], optimize=True))
+                vbias_minus[:, :, iq] -= .5 * xp.sqrt(2) * (xp.einsum("pgi, aip -> ag", trial._rcholbara[iq, ik], Ghalfa_reshape[:, ikpq, :, ik, :], optimize=True) + xp.einsum("pgi, bip -> bg", trial._rcholbarb[iq, ik], Ghalfb_reshape[:, ikpq, :, ik, :], optimize=True))
+        synchronize()
+        return vbias_plus, vbias_minus
+
+
+def construct_force_bias_kptisdf_batch_single_det(
+    hamiltonian: "KptISDF", walkers: "UHFWalkers", trial: "KptSingleDet", max_mem=4.0
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+    trial : class
+        Trial wavefunction object.
+    handler : class
+        MPIHandler instance.
+
+    Returns
+    -------
+    vbias_plus : :class:`numpy.ndarray`
+        Force bias for Lplus.
+    vbias_minus : :class:`numpy.ndarray`
+        Force bias for Lminus.
+    """
+    if walkers.rhf:
+        if config.get_option("use_gpu"):
+            nwalkers = walkers.nwalkers
+            vbias_plus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_minus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # ghalf shape: nwalkers, nk nup, hamiltonian.nk, nbsf
+            Ghalfa_reshape = walkers.Ghalfa.reshape(nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
+            
+            # slice Sset and Qplus according to memory
+            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha) * 2 * 16/ (1024**3)
+            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha) * 2 * 16 / (1024**3)
+
+            num_nq_chunks_Sset = max(1, ceil(mem_cost_Sset / max_mem))
+            nq_chunk_Sset_size = ceil(len(hamiltonian.Sset) / num_nq_chunks_Sset)
+            nq_left = len(hamiltonian.Sset)
+            handle = cutensornet.create()
+            network_opts = NetworkOptions(handle=handle)
+            if len(hamiltonian.Sset) > 0:
+                for i in range(num_nq_chunks_Sset):
+                    nq_chunk = min(nq_left, nq_chunk_Sset_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Sset[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    assert xp.allclose(X_wPa, Y_wPa)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    vbias_plus[:, :, i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk] += 2.0j * cutensornet.contract("qwP, qPg -> wgq", X_wPa, L_q, options=network_opts)
+
+
+            num_nq_chunks_Qplus = max(1, ceil(mem_cost_Qplus / max_mem))
+            nq_chunk_Qplus_size = ceil(len(hamiltonian.Qplus) / num_nq_chunks_Qplus)
+            nq_left = len(hamiltonian.Qplus)
+            if len(hamiltonian.Qplus) > 0:
+                for i in range(num_nq_chunks_Qplus):
+                    nq_chunk = min(nq_left, nq_chunk_Qplus_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Qplus[i * nq_chunk_Qplus_size: i * nq_chunk_Qplus_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)]
+                    v1 = cutensornet.contract("qwP, qPg -> wgq", X_wPa, L_q, options=network_opts)
+                    v2 = cutensornet.contract("qwP, qPg -> wgq", Y_wPa, L_q.conj(), options=network_opts)
+                    vbias_plus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += 1j * xp.sqrt(2) * (v1 + v2)
+                    vbias_minus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += 1. * xp.sqrt(2) * (v1 - v2)
+            cutensornet.destroy(handle)
+            synchronize()
+            return vbias_plus, vbias_minus
+        else:
+            pass
+    else:
+        if config.get_option("use_gpu"):
+            nwalkers = walkers.nwalkers
+            vbias_plus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            vbias_minus = xp.zeros((nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # ghalf shape: nwalkers, nk nup, hamiltonian.nk, nbsf
+            Ghalfa_reshape = walkers.Ghalfa.reshape(nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
+            Ghalfb_reshape = walkers.Ghalfb.reshape(nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
+            
+            # slice Sset and Qplus according to memory
+            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16/ (1024**3)
+            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16 / (1024**3)
+
+            num_nq_chunks_Sset = max(1, ceil(mem_cost_Sset / max_mem))
+            nq_chunk_Sset_size = ceil(len(hamiltonian.Sset) / num_nq_chunks_Sset)
+            nq_left = len(hamiltonian.Sset)
+            handle = cutensornet.create()
+            network_opts = NetworkOptions(handle=handle)
+            if len(hamiltonian.Sset) > 0:
+                for i in range(num_nq_chunks_Sset):
+                    nq_chunk = min(nq_left, nq_chunk_Sset_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Sset[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    gb_kmq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikmq_mat)
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    rcgtob_kmq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikmq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    X_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kmq.conj(), hamiltonian.halfrot_cgto, gb_kmq, options=network_opts)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    gb_kpq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    rcgtob_kpq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikpq_mat, q_sls)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    Y_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kpq.conj(), hamiltonian.halfrot_cgto, gb_kpq, options=network_opts)
+                    assert xp.allclose(X_wPa + X_wPb, Y_wPa + Y_wPb)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
+                    vbias_plus[:, :, i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk] += 1j * cutensornet.contract("qwP, qPg -> wgq", X_wPa + X_wPb, L_q, options=network_opts)
+
+
+            num_nq_chunks_Qplus = max(1, ceil(mem_cost_Qplus / max_mem))
+            nq_chunk_Qplus_size = ceil(len(hamiltonian.Qplus) / num_nq_chunks_Qplus)
+            nq_left = len(hamiltonian.Qplus)
+            if len(hamiltonian.Qplus) > 0:
+                for i in range(num_nq_chunks_Qplus):
+                    nq_chunk = min(nq_left, nq_chunk_Qplus_size)
+                    nq_left -= nq_chunk
+                    q_sls = hamiltonian.Qplus[i * nq_chunk_Qplus_size: i * nq_chunk_Qplus_size + nq_chunk]
+                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat) # q, k, w, p, r
+                    gb_kmq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikmq_mat)
+                    rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
+                    rcgtob_kmq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikmq_mat, q_sls)
+                    ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
+                    gb_kpq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikpq_mat)
+                    rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
+                    rcgtob_kpq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikpq_mat, q_sls)
+                    X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
+                    X_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kmq.conj(), hamiltonian.halfrot_cgto, gb_kmq, options=network_opts)
+                    Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
+                    Y_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kpq.conj(), hamiltonian.halfrot_cgto, gb_kpq, options=network_opts)
+                    L_q = hamiltonian.cholM[i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)]
+                    v1 = cutensornet.contract("qwP, qPg -> wgq", X_wPa + X_wPb, L_q, options=network_opts)
+                    v2 = cutensornet.contract("qwP, qPg -> wgq", Y_wPa + Y_wPb, L_q.conj(), options=network_opts)
+                    vbias_plus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += .5j * xp.sqrt(2) * (v1 + v2)
+                    vbias_minus[:, :, i * nq_chunk_Qplus_size + len(hamiltonian.Sset): i * nq_chunk_Qplus_size + nq_chunk + len(hamiltonian.Sset)] += .5 * xp.sqrt(2) * (v1 - v2)
+            cutensornet.destroy(handle)
+            synchronize()
+            return vbias_plus, vbias_minus
+            # vbias_plus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # vbias_minus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+            # # ghalf shape: nwalkers, nk, nup, nk, nbsf
+            # Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+            # Ghalfb_reshape = walkers.Ghalfb.reshape(walkers.nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.nbasis)
+            # handle = cutensornet.create()
+            # network_opts = NetworkOptions(handle=handle)
+            # for iq in range(len(hamiltonian.Sset)):
+            #     iq_real = hamiltonian.Sset[iq]
+            #     ikpq = hamiltonian.ikpq_mat[iq_real]
+            #     ga_kpq = slice_gf_kpq_k_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     gb_kpq = slice_gf_kpq_k_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     cgto_kpq = hamiltonian.halfrot_cgto[ikpq]
+            #     X_wPa = contract_gf_cgto12_k_kpq(ga_kpq, trial._rcgtoa, cgto_kpq, iq_real, network_opts)
+            #     X_wPb = contract_gf_cgto12_k_kpq(gb_kpq, trial._rcgtob, cgto_kpq, iq_real, network_opts)
+            #     L_q = hamiltonian.cholM[iq]
+            #     vbias_plus[:, :, iq] += 1j * (X_wPa + X_wPb).dot(L_q)
+            #     vbias_minus[:, :, iq] += xp.zeros_like(vbias_plus[:, :, iq])
+
+            # for iq in range(len(hamiltonian.Sset), len(hamiltonian.Sset) + len(hamiltonian.Qplus)):
+            #     iq_real = hamiltonian.Qplus[iq - len(hamiltonian.Sset)]
+            #     ikpq = hamiltonian.ikpq_mat[iq_real]
+            #     cgto_kpq = hamiltonian.halfrot_cgto[ikpq]
+            #     rcgtoa_kpq = trial._rcgtoa[ikpq]
+            #     rcgtob_kpq = trial._rcgtob[ikpq]
+            #     ga_kpq_k = slice_gf_kpq_k_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     Y_wPa = contract_gf_cgto12_kpq_k(ga_kpq_k, rcgtoa_kpq, hamiltonian.halfrot_cgto, iq_real, network_opts)
+            #     # del ga_kpq_k
+            #     gb_kpq_k = slice_gf_kpq_k_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     Y_wPb = contract_gf_cgto12_kpq_k(gb_kpq_k, rcgtob_kpq, hamiltonian.halfrot_cgto, iq_real, network_opts)
+            #     # del gb_kpq_k
+            #     ga_k_kpq = slice_gf_k_kpq_given_q(Ghalfa_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     X_wPa = contract_gf_cgto12_k_kpq(ga_k_kpq, trial._rcgtoa, cgto_kpq, iq_real, network_opts)
+            #     # del ga_k_kpq
+            #     gb_k_kpq = slice_gf_k_kpq_given_q(Ghalfb_reshape, iq_real, hamiltonian.ikpq_mat)
+            #     X_wPb = contract_gf_cgto12_k_kpq(gb_k_kpq, trial._rcgtob, cgto_kpq, iq_real, network_opts)
+            #     # del gb_k_kpq
+            #     L_q = hamiltonian.cholM[iq]
+            #     v1 = (X_wPa + X_wPb).dot(L_q)
+            #     v2 = (Y_wPa + Y_wPb).dot(L_q.conj())
+            #     vbias_plus[:, :, iq] += .5j * xp.sqrt(2) * (v1 + v2)
+            #     vbias_minus[:, :, iq] += .5 * xp.sqrt(2) * (v1 - v2)
+            # cutensornet.destroy(handle)
+            # synchronize()
+            # return vbias_plus, vbias_minus
+        else:
+            pass
+
+def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+    trial : class
+        Trial wavefunction object.
+    handler : class
+        MPIHandler instance.
 
     Returns
     -------

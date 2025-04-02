@@ -831,7 +831,7 @@ class CoherentState(object):
                 return f, df
 
             def print_fun(x, f, accepted):
-                print("at minimum %.4f accepted %d" % (f, int(accepted)))
+                print(f"at minimum {f:.4f} accepted {int(accepted)}")
 
             res = basinhopping(
                 func,

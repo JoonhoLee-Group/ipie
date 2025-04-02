@@ -717,9 +717,9 @@ def read_fortran_complex_numbers(filename):
 def fcidump_header(nel, norb, spin):
     header = (
         "&FCI\n"
-        + "NORB=%d,\n" % int(norb)
-        + "NELEC=%d,\n" % int(nel)
-        + "MS2=%d,\n" % int(spin)
+        + f"NORB={int(norb)},\n"
+        + f"NELEC={int(nel)},\n"
+        + f"MS2={int(spin)},\n"
         + "UHF=.FALSE.,\n"
         + "ORBSYM="
         + ",".join([str(1)] * norb)

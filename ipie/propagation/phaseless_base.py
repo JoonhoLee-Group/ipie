@@ -9,6 +9,10 @@ from ipie.utils.backend import synchronize, cast_to_device
 
 import plum
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
+from ipie.trial_wavefunction.noci import NOCI
+from ipie.trial_wavefunction.particle_hole import ParticleHole
+from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from typing import Union
@@ -35,6 +39,8 @@ def construct_one_body_propagator(
     ----------
     hamiltonian : hamiltonian class.
         Generic hamiltonian object.
+    mf_shift : xp.ndarray
+        Average value of Choleskies with respect to the trial wavefunction.
     dt : float
         Timestep.
     """
@@ -70,6 +76,22 @@ def construct_one_body_propagator(
 
 @plum.dispatch
 def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.ndarray, dt: float):
+    r"""Construct mean-field shifted one-body propagator.
+
+    .. math::
+
+        H1 \rightarrow H1 - v0
+        v0_{ik} = \sum_n v_{(ik),n} \bar{v}_n
+
+    Parameters
+    ----------
+    hamiltonian : hamiltonian class.
+        Generic hamiltonian object.
+    mf_shift : xp.ndarray
+        Average value of Choleskies with respect to the trial wavefunction.
+    dt : float
+        Timestep.
+    """
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
     shift = numpy.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
@@ -92,9 +114,11 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
         \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
     """
-    # hamiltonian.chol [X, M^2]
+    # hamiltonian.chol [M^2, nchol]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
+
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
+    # a problem of large chol cases.
     tmp_real = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol_chunk.T, Gcharge.imag)
 
@@ -127,7 +151,9 @@ def construct_mean_field_shift(hamiltonian: GenericRealCholChunked, trial: Trial
 
 
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefunctionBase):
+def construct_mean_field_shift(
+    hamiltonian: GenericRealChol, trial: Union[SingleDet, ParticleHole, NOCI]
+):
     r"""Compute mean field shift.
 
     .. math::
@@ -135,9 +161,11 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
         \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
     """
-    # hamiltonian.chol [X, M^2]
+    # hamiltonian.chol [M^2, nchol]
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
-    # Use numpy to reduce GPU memory use at this point, otherwise will be a problem of large chol cases
+
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
+    # a problem of large chol cases.
     tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
     tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
     mf_shift = 1.0j * tmp_real - tmp_imag
@@ -145,7 +173,7 @@ def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: TrialWavefun
 
 
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWavefunctionBase):
+def construct_mean_field_shift(hamiltonian: GenericRealChol, trial: SingleDetGHF):
     r"""Compute mean field shift.
 
     .. math::
@@ -153,12 +181,58 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: TrialWave
         \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
     """
-    # hamiltonian.chol [X, M^2]
-    Gcharge = (trial.G[0] + trial.G[1]).ravel()
+    # hamiltonian.chol [M^2, nchol]
+    nbasis = hamiltonian.nbasis
+    Gaa = trial.G[:nbasis, :nbasis]
+    Gbb = trial.G[nbasis:, nbasis:]
+    Gcharge = (Gaa + Gbb).ravel()
 
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
+    # a problem of large chol cases.
+    tmp_real = numpy.dot(hamiltonian.chol.T, Gcharge.real)
+    tmp_imag = numpy.dot(hamiltonian.chol.T, Gcharge.imag)
+    mf_shift = 1.0j * tmp_real - tmp_imag
+    return xp.array(mf_shift)
+
+
+@plum.dispatch
+def construct_mean_field_shift(
+    hamiltonian: GenericComplexChol, trial: Union[SingleDet, ParticleHole, NOCI]
+):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [M^2, nchol]
+    Gcharge = (trial.G[0] + trial.G[1]).ravel()
     nchol = hamiltonian.nchol
     nfields = hamiltonian.nfields
+    mf_shift = numpy.zeros(nfields, dtype=hamiltonian.chol.dtype)
+    mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, Gcharge.ravel())
+    mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
+    return mf_shift
 
+
+# TODO: check.
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: SingleDetGHF):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [M^2, nchol]
+    nbasis = hamiltonian.nbasis
+    Gaa = trial.G[:nbasis, :nbasis]
+    Gbb = trial.G[nbasis:, nbasis:]
+    Gcharge = (Gaa + Gbb).ravel()
+    nchol = hamiltonian.nchol
+    nfields = hamiltonian.nfields
     mf_shift = numpy.zeros(nfields, dtype=hamiltonian.chol.dtype)
     mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, Gcharge.ravel())
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())

@@ -259,8 +259,7 @@ def read_cholesky(filename, full=True, ichunk=None, real_ints=False):
                 s += bs
             chol_vecs = scipy.sparse.csr_matrix((vals, (row_ix, col_ix)), shape=(nmo * nmo, nchol))
             return chol_vecs
-        else:
-            return get_chunk(fh5, ichunk, real_ints)
+        return get_chunk(fh5, ichunk, real_ints)
 
 
 def get_chunk(fh5, ichunk, real_ints):
@@ -291,20 +290,17 @@ def check_sym(ikjl, nmo, sym):
     """
     if sym == 1:
         return True
-    else:
-        i, k, j, l = ikjl
-        if sym == 4:
-            kilj = (k, i, l, j)
-            jlik = (j, l, i, k)
-            ljki = (l, j, k, i)
-            if (ikjl > jlik) or (ikjl > kilj) or (ikjl > ljki):
-                return False
-            else:
-                return True
-        else:
-            ik = i + k * nmo
-            jl = j + l * nmo
-            return (i >= k and j >= l) and ik >= jl
+    i, k, j, l = ikjl
+    if sym == 4:
+        kilj = (k, i, l, j)
+        jlik = (j, l, i, k)
+        ljki = (l, j, k, i)
+        if (ikjl > jlik) or (ikjl > kilj) or (ikjl > ljki):
+            return False
+        return True
+    ik = i + k * nmo
+    jl = j + l * nmo
+    return (i >= k and j >= l) and ik >= jl
 
 
 def fmt_integral(intg, i, k, j, l, cplx, paren=False):
@@ -417,8 +413,9 @@ def read_qmcpack_cholesky_kpoint(filename, get_chol=True):
         nbeta = dims[5]
         for i in range(0, nkp):
             hk = fh5[f"Hamiltonian/H1_kp{i}"][:]
+            hk = numpy.array(hk, dtype=numpy.complex128)
             nmo = nmo_pk[i]
-            hcore.append(hk.view(numpy.complex128).reshape(nmo, nmo))
+            hcore.append(hk.reshape(nmo, nmo))
         chol_vecs = []
     if get_chol:
         for i in range(0, nkp):
@@ -443,10 +440,12 @@ def get_kpoint_chol(filename, nchol_pk, minus_k, i):
     with h5py.File(filename, "r") as fh5:
         try:
             Lk = fh5[f"Hamiltonian/KPFactorized/L{i}"][:]
-            Lk = Lk.view(numpy.complex128)[:, :, 0]
+            Lk = numpy.array(Lk, dtype=numpy.complex128)
+            Lk = Lk[:, :, 0]
         except KeyError:
             Lk = fh5[f"Hamiltonian/KPFactorized/L{minus_k[i]}"][:]
-            Lk = Lk.view(numpy.complex128).conj()[:, :, 0]
+            Lk = numpy.array(Lk, dtype=numpy.complex128)
+            Lk = Lk[:, :, 0].conj()[:, :, 0]
     return Lk
 
 

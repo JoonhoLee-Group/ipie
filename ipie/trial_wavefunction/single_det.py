@@ -1,11 +1,12 @@
 import time
 from typing import Optional
 
+from typing import Union
 import numpy
 import plum
 
-from ipie.config import CommType, config, MPI
-from ipie.estimators.generic import half_rotated_cholesky_jk
+from ipie.config import CommType, config
+from ipie.estimators.generic import half_rotated_cholesky_jk_uhf
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
     greens_function_single_det_batch,
@@ -23,7 +24,6 @@ from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
-from typing import Union
 
 
 # class for UHF trial
@@ -63,6 +63,9 @@ class SingleDet(TrialWavefunctionBase):
         raise RuntimeError("Cannot modify number of determinants in SingleDet trial.")
 
     def calculate_energy(self, system, hamiltonian) -> numpy.ndarray:
+        """
+        `system` is just for backwards compatibillity.
+        """
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
@@ -71,10 +74,8 @@ class SingleDet(TrialWavefunctionBase):
             + numpy.sum(self.Ghalf[1] * self._rH1b)
             + hamiltonian.ecore
         )
-        self.ej, self.ek = half_rotated_cholesky_jk(
-            system, self.Ghalf[0], self.Ghalf[1], trial=self
-        )
-        self.e2b = self.ej + self.ek
+        self.ej, self.ek = half_rotated_cholesky_jk_uhf(self, hamiltonian, self.Ghalf)
+        self.e2b = self.ej - self.ek
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
@@ -82,7 +83,7 @@ class SingleDet(TrialWavefunctionBase):
                 "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
-            print(f"# Time to evaluate local energy: {time.time() - start} s")
+            print(f"# Time to evaluate trial energy: {time.time() - start} s")
 
     @plum.dispatch
     def half_rotate(
@@ -114,7 +115,7 @@ class SingleDet(TrialWavefunctionBase):
     def half_rotate(
         self: "SingleDet",
         hamiltonian: GenericRealCholChunked,
-        comm: Optional[CommType] = MPI.COMM_WORLD,
+        comm: Optional[CommType] = MPIHandler().scomm,
     ):
         num_dets = 1
         orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
@@ -135,11 +136,6 @@ class SingleDet(TrialWavefunctionBase):
         self._rchola_chunk = rot_chol[0][0]
         self._rcholb_chunk = rot_chol[1][0]
         self.half_rotated = True
-
-        # rot_1body_1 = numpy.load('../Test_Disk_nochunk/rot_1body.npy')
-        # rot_chol_1 = numpy.load('../Test_Disk_nochunk/rot_chol.npy')
-
-        # print('compare', [numpy.allclose(rot_1body, rot_1body_1), numpy.allclose(rot_chol, rot_chol_1)])
 
     @plum.dispatch
     def half_rotate(
@@ -179,8 +175,7 @@ class SingleDet(TrialWavefunctionBase):
     def calc_greens_function(self, walkers, build_full: bool = False) -> numpy.ndarray:
         if config.get_option("use_gpu"):
             return greens_function_single_det_batch(walkers, self, build_full=build_full)
-        else:
-            return greens_function_single_det(walkers, self, build_full=build_full)
+        return greens_function_single_det(walkers, self, build_full=build_full)
 
     @plum.dispatch
     def calc_force_bias(
@@ -193,8 +188,9 @@ class SingleDet(TrialWavefunctionBase):
             return construct_force_bias_batch_single_det_chunked(
                 hamiltonian, walkers, self, mpi_handler
             )
-        else:
-            return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
+        return construct_force_bias_batch_single_det(
+            hamiltonian, walkers, self._rchola, self._rcholb
+        )
 
     @plum.dispatch
     def calc_force_bias(
@@ -203,11 +199,6 @@ class SingleDet(TrialWavefunctionBase):
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> numpy.ndarray:
-        # return construct_force_bias_batch_single_det(hamiltonian, walkers, self)
-        Ghalfa = walkers.Ghalfa.reshape(walkers.nwalkers, walkers.nup * hamiltonian.nbasis)
-        Ghalfb = walkers.Ghalfb.reshape(walkers.nwalkers, walkers.ndown * hamiltonian.nbasis)
-        vbias = xp.zeros((hamiltonian.nfields, walkers.nwalkers), dtype=Ghalfa.dtype)
-        vbias[: hamiltonian.nchol, :] = self._rAa.dot(Ghalfa.T) + self._rAb.dot(Ghalfb.T)
-        vbias[hamiltonian.nchol :, :] = -self._rBa.dot(Ghalfa.T) - self._rBb.dot(Ghalfb.T)
-        vbias = vbias.T.copy()
-        return vbias
+        return construct_force_bias_batch_single_det(
+            hamiltonian, walkers, self._rAa, self._rAb, self._rBa, self._rBb
+        )
