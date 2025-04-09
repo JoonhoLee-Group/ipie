@@ -104,7 +104,12 @@ class UHFWalkers(BaseWalkers):
         self.rhf = False  # interfacing with old codes...
 
     def build(self, trial):
-        self.ovlp = trial.calc_greens_function(self)
+        ovlp = trial.calc_greens_function(self)
+        # if it is a 3-tuple
+        if isinstance(ovlp, tuple):
+            self.ovlp, self.sgn_ovlp, self.log_ovlp = ovlp
+        else:
+            self.ovlp = ovlp
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
@@ -143,7 +148,8 @@ class UHFWalkers(BaseWalkers):
             self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
-
+            self.log_ovlp[iw] = self.log_ovlp[iw] - (log_det - self.detR_shift)
+            
         synchronize()
         return detR
 
@@ -160,6 +166,7 @@ class UHFWalkers(BaseWalkers):
             log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
         self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR
+        self.log_ovlp = self.log_ovlp - (log_det - self.detR_shift)
 
         synchronize()
 

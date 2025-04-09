@@ -340,7 +340,13 @@ class PhaselessBase(ContinuousBase):
         self.timer.tupdate += time.time() - start_time
 
     def update_weight(self, walkers, ovlp, ovlp_new, cfb, cmf, eshift):
-        ovlp_ratio = ovlp_new / ovlp
+        if isinstance(ovlp, tuple):
+            sgn_ovlp, log_ovlp = ovlp
+            assert isinstance(ovlp_new, tuple), "overlap new should also be a tuple"
+            sgn_ovlpnew, log_ovlpnew = ovlp_new
+            ovlp_ratio = sgn_ovlpnew / sgn_ovlp * xp.exp(log_ovlpnew - log_ovlp)
+        else:
+            ovlp_ratio = ovlp_new / ovlp
         hybrid_energy = -(xp.log(ovlp_ratio) + cfb + cmf) / self.dt
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
         importance_function = xp.exp(
@@ -358,6 +364,9 @@ class PhaselessBase(ContinuousBase):
         )  # in-place clipping (cosine projection)
         walkers.weight = walkers.weight * magn * cosine_fac
         walkers.ovlp = ovlp_new
+        if isinstance(ovlp, tuple):
+            walkers.sgn_ovlp = sgn_ovlpnew
+            walkers.log_ovlp = log_ovlpnew
 
     def apply_bound_force_bias(self, xbar, max_bound=1.0):
         absxbar = xp.abs(xbar)

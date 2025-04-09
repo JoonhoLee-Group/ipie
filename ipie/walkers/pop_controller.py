@@ -109,6 +109,7 @@ class PopController:
         # Todo: Just standardise information we want to send between routines.
         walkers.unscaled_weight = walkers.weight
         walkers.weight = walkers.weight / scale
+        self.total_weight = self.target_weight
         if self.method == "comb":
             global_weights = global_weights / scale
             self.timer.add_non_communication()

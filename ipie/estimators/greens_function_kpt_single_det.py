@@ -25,6 +25,8 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
     phia = walker_batch.phia.reshape(walker_batch.nwalkers, nk, nbsf, nk, nup).copy()
     phib = walker_batch.phib.reshape(walker_batch.nwalkers, nk, nbsf, nk, ndown).copy()
     det = []
+    signovlp = []
+    logovlp = []
     for iw in range(walker_batch.nwalkers):
         ovlpt = numpy.zeros((nk, nup, nk, nup), dtype=numpy.complex128)
         for ik1 in range(nk):
@@ -59,16 +61,24 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
                         Gb[iw, ik1, :, ik2, :] = numpy.dot(trial.psi0b[ik1].conj(), Ghalfb_reshaped[iw, ik1, :, ik2, :])
                 walker_batch.Gb[iw] = Gb.reshape(nk * nbsf, nk * nbsf)
             det += [sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift[iw])]
+            signovlp += [sign_a * sign_b]
+            logovlp += [log_ovlp_a + log_ovlp_b - walker_batch.log_shift[iw]]
         elif ndown > 0 and walker_batch.rhf:
             det += [sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift[iw])]
+            signovlp += [sign_a * sign_a]
+            logovlp += [log_ovlp_a + log_ovlp_a - walker_batch.log_shift[iw]]
         elif ndown == 0:
             det += [sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift[iw])]
+            signovlp += [sign_a]
+            logovlp += [log_ovlp_a - walker_batch.log_shift[iw]]
 
     det = xp.array(det, dtype=xp.complex128)
+    signovlp = xp.array(signovlp, dtype=xp.complex128)
+    logovlp = xp.array(logovlp, dtype=xp.float64)
 
     synchronize()
 
-    return det
+    return det, signovlp, logovlp
 
 
 def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
@@ -121,11 +131,17 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
             )
             walker_batch.Gb = Gb.reshape(walker_batch.nwalkers, nk, nbsf, nk, nbsf)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walker_batch.log_shift)
+        sgnot = sign_a * sign_b
+        logot = log_ovlp_a + log_ovlp_b - walker_batch.log_shift
     elif ndown > 0 and walker_batch.rhf:
         ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walker_batch.log_shift)
+        sgnot = sign_a * sign_a
+        logot = log_ovlp_a + log_ovlp_a - walker_batch.log_shift
     elif ndown == 0:
         ot = sign_a * xp.exp(log_ovlp_a - walker_batch.log_shift)
+        sgnot = sign_a
+        logot = log_ovlp_a - walker_batch.log_shift
 
     synchronize()
 
-    return ot
+    return ot, sgnot, logot

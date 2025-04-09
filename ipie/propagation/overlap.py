@@ -107,14 +107,20 @@ def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
         ovlpb_reshape = ovlpb.reshape((nwalkers, nk * ndown, nk * ndown))
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlpb_reshape)
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
+        sgnot = sign_a * sign_b
+        logot = log_ovlp_a + log_ovlp_b - walkers.log_shift
     elif ndown > 0 and walkers.rhf:
         ot = sign_a * sign_a * xp.exp(log_ovlp_a + log_ovlp_a - walkers.log_shift)
+        sgnot = sign_a * sign_a
+        logot = log_ovlp_a + log_ovlp_a - walkers.log_shift
     elif ndown == 0:
         ot = sign_a * xp.exp(log_ovlp_a - walkers.log_shift)
+        sgnot = sign_a
+        logot = log_ovlp_a - walkers.log_shift
 
     synchronize()
 
-    return ot
+    return ot, sgnot, logot
 
 
 # overlap for a given determinant
