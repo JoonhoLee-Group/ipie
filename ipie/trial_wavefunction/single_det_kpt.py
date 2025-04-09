@@ -5,7 +5,6 @@ import numpy
 import plum
 
 from ipie.config import CommType, config, MPI
-from ipie.estimators.generic import half_rotated_cholesky_jk
 from ipie.estimators.utils import gabk_spin
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked

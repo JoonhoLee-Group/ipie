@@ -568,7 +568,7 @@ class AFQMC(AFQMCBase):
                 self.tortho += time.time() - start
             start = time.time()
             self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
-
+            
             self.tprop_fbias = self.propagator.timer.tfbias
             self.tprop_ovlp = self.propagator.timer.tovlp
             self.tprop_update = self.propagator.timer.tupdate
@@ -621,8 +621,14 @@ class AFQMC(AFQMCBase):
             self.testim += time.time() - start
 
             # restart write features disabled
-            # if self.walkers.write_restart and step % self.walkers.write_freq == 0:
-            #     self.walkers.write_walkers_batch(comm)
+            if self.walkers.write_restart:
+                if self.walkers.write_freq is not None:
+                    if step % self.walkers.write_freq == 0:
+                        self.walkers.write_walkers_batch(comm)
+                else:
+                    assert self.walkers.write_time is not None
+                    if step == self.walkers.write_time:
+                        self.walkers.write_walkers_batch(comm)
 
             if step < num_eqlb_steps:
                 eshift = self.accumulators.eshift

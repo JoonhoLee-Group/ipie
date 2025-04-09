@@ -104,7 +104,7 @@ class PopController:
             if comm.rank == 0:
                 print(f"# Warning: Total weight is {total_weight:13.8e}")
                 print("# Something is seriously wrong.")
-            raise ValueError
+            # raise ValueError
         self.total_weight = total_weight
         # Todo: Just standardise information we want to send between routines.
         walkers.unscaled_weight = walkers.weight

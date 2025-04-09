@@ -96,7 +96,10 @@ class BaseWalkers(metaclass=ABCMeta):
     def __init__(
         self,
         nwalkers,
-        write_file=None,
+        write_filepath=None,
+        write_restart=False,
+        write_freq=None,
+        write_time=None,
         verbose=False,
     ):
         self.nwalkers = nwalkers
@@ -136,8 +139,11 @@ class BaseWalkers(metaclass=ABCMeta):
         ]
         self.buff_size = None
         self.walker_buffer = None
-        self.write_file = write_file
-        self.read_file = write_file
+        self.write_filepath = write_filepath
+        self.read_filepath = write_filepath
+        self.write_restart = write_restart
+        self.write_freq = write_freq
+        self.write_time = write_time
 
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
@@ -196,7 +202,7 @@ class BaseWalkers(metaclass=ABCMeta):
         self.phi = buff[self.nwalkers * 3 :].reshape(self.phi.shape)
 
     def write_walkers_batch(self, comm):
-        write_file = f"walkers_{comm.rank}.h5"
+        write_file = self.write_filepath + f"walkers_{comm.rank}.h5"
         with h5py.File(write_file, "a") as fh5:
             num_slices = len(fh5.keys()) // 3
             phia = self.phia
@@ -208,7 +214,7 @@ class BaseWalkers(metaclass=ABCMeta):
             fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
 
     def read_walkers_batch(self, trial, comm):
-        read_file = f"walkers_{comm.rank}.h5"
+        read_file = self.write_filepath + f"walkers_{comm.rank}.h5"
         with h5py.File(read_file, "r") as fh5:
             try:
                 num_slices = len(fh5.keys()) // 3 - 1
