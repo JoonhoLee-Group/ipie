@@ -32,6 +32,10 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
         for ik1 in range(nk):
             for ik2 in range(nk):
                 ovlpt[ik1, :, ik2, :] = numpy.dot(phia[iw, ik2, :, ik1, :].T, trial.psi0a[ik2].conj())
+        if trial.noccas is not None:
+            mask = xp.arange(nup)[None, :] >= xp.array(trial.noccas)[:, None]
+            ik_idx, diag_idx = xp.nonzero(mask)
+            ovlpt[ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
         ovlpt = ovlpt.reshape(nk*nup, nk*nup)
         ovlpinvt = numpy.linalg.inv(ovlpt)
         walker_batch.Ghalfa[iw] = numpy.dot(ovlpinvt, walker_batch.phia[iw].T)
@@ -49,6 +53,10 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
             for ik1 in range(nk):
                 for ik2 in range(nk):
                     ovlpt[ik1, :, ik2, :] = numpy.dot(phib[iw, ik2, :, ik1, :].T, trial.psi0b[ik2].conj())
+            if trial.noccbs is not None:
+                mask = xp.arange(ndown)[None, :] >= xp.array(trial.noccbs)[:, None]
+                ik_idx, diag_idx = xp.nonzero(mask)
+                ovlpt[ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
             ovlpt = ovlpt.reshape(nk*ndown, nk*ndown)
             sign_b, log_ovlp_b = xp.linalg.slogdet(ovlpt)
             ovlpinvt = numpy.linalg.inv(ovlpt)
@@ -106,6 +114,10 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         phib = None
 
     ovlp_a = xp.einsum("wlpki, lpj->wkilj", phia, trial.psi0a.conj(), optimize=True)
+    if trial.noccas is not None:
+        mask = xp.arange(nup)[None, :] >= xp.array(trial.noccas)[:, None]
+        ik_idx, diag_idx = xp.nonzero(mask)
+        ovlp_a[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
     ovlp_a = ovlp_a.reshape(walker_batch.nwalkers, nk * nup, nk * nup)
     ovlp_inv_a = xp.linalg.inv(ovlp_a)
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
@@ -120,6 +132,10 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
 
     if ndown > 0 and not walker_batch.rhf:
         ovlp_b = xp.einsum("wlpki, lpj->wkilj", phib, trial.psi0b.conj(), optimize=True)
+        if trial.noccbs is not None:
+            mask = xp.arange(ndown)[None, :] >= xp.array(trial.noccbs)[:, None]
+            ik_idx, diag_idx = xp.nonzero(mask)
+            ovlp_b[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
         ovlp_b = ovlp_b.reshape(walker_batch.nwalkers, nk * ndown, nk * ndown)
         ovlp_inv_b = xp.linalg.inv(ovlp_b)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)

@@ -5,7 +5,7 @@ import numpy
 import plum
 
 from ipie.config import CommType, config, MPI
-from ipie.estimators.utils import gabk_spin
+from ipie.estimators.utils import gabk_spin, gabk_spin_nonuniform
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.walkers.uhf_walkers import UHFWalkers
@@ -21,7 +21,7 @@ from typing import Union
 
 # class for UHF trial
 class KptSingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), noccs=None, verbose=False):
+    def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), noccas=None, noccbs=None, verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 3 # nkpts, nbasis, nocc
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
@@ -39,7 +39,16 @@ class KptSingleDet(TrialWavefunctionBase):
 
         self.psi0a = self.psi[:, :, : self.nalpha]
         self.psi0b = self.psi[:, :, self.nalpha :]
-        self.G, self.Ghalf = gabk_spin(self.psi, self.psi, self.nalpha, self.nbeta)
+        if noccas is not None:
+            self.noccas = noccas
+            if noccbs is None:
+                self.noccbs = noccas
+                self.G, self.Ghalf = gabk_spin_nonuniform(self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccas)
+            else:
+                self.noccbs = noccbs
+                self.G, self.Ghalf = gabk_spin_nonuniform(self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccbs)
+        else:
+            self.G, self.Ghalf = gabk_spin(self.psi, self.psi, self.nalpha, self.nbeta)
         self.handler = handler
 
         self.psi0a = numpy.ascontiguousarray(self.psi0a)
