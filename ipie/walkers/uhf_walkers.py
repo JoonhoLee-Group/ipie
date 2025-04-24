@@ -51,6 +51,10 @@ class UHFWalkers(BaseWalkers):
         nbasis: int,
         nwalkers: int,
         mpi_handler,
+        write_filepath=None,
+        write_restart=False,
+        write_freq=None,
+        write_time=None,
         verbose: bool = False,
     ):
         assert len(initial_walker.shape) == 2
@@ -59,7 +63,8 @@ class UHFWalkers(BaseWalkers):
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
 
-        super().__init__(nwalkers, verbose=verbose)
+        super().__init__(nwalkers, write_filepath=write_filepath, write_restart=write_restart,
+                         write_freq=write_freq, write_time=write_time, verbose=verbose)
 
         # should completely deprecate these
         self.field_configs = None

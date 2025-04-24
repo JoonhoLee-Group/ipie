@@ -36,8 +36,8 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
         ovlpinvt = numpy.linalg.inv(ovlpt)
         walker_batch.Ghalfa[iw] = numpy.dot(ovlpinvt, walker_batch.phia[iw].T)
         Ghalfa_reshaped = walker_batch.Ghalfa[iw].reshape(nk, nup, nk, nbsf)
-        Ga = numpy.zeros((nk, nbsf, nk, nbsf), dtype=numpy.complex128)
         if not trial.half_rotated or build_full:
+            Ga = numpy.zeros((nk, nbsf, nk, nbsf), dtype=numpy.complex128)
             for ik1 in range(nk):
                 for ik2 in range(nk):
                     Ga[ik1, :, ik2, :] = numpy.dot(trial.psi0a[ik1].conj(), Ghalfa_reshaped[iw, ik1, :, ik2, :])
@@ -54,8 +54,8 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
             ovlpinvt = numpy.linalg.inv(ovlpt)
             walker_batch.Ghalfb[iw] = numpy.dot(ovlpinvt, walker_batch.phib[iw].T)
             Ghalfb_reshaped = walker_batch.Ghalfb[iw].reshape(nk, ndown, nk, nbsf)
-            Gb = numpy.zeros((nk, nbsf, nk, nbsf), dtype=numpy.complex128)
             if not trial.half_rotated or build_full:
+                Gb = numpy.zeros((nk, nbsf, nk, nbsf), dtype=numpy.complex128)
                 for ik1 in range(nk):
                     for ik2 in range(nk):
                         Gb[iw, ik1, :, ik2, :] = numpy.dot(trial.psi0b[ik1].conj(), Ghalfb_reshaped[iw, ik1, :, ik2, :])

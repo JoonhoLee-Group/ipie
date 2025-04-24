@@ -21,7 +21,7 @@ from typing import Union
 
 # class for UHF trial
 class KptSingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), verbose=False):
+    def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), noccs=None, verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
         assert len(wavefunction.shape) == 3 # nkpts, nbasis, nocc
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)

@@ -209,9 +209,16 @@ class BaseWalkers(metaclass=ABCMeta):
             phib = self.phib
             weight = self.weight
             hybrid_energy = self.hybrid_energy
-            fh5[f"walker_timeslice_{num_slices}"] = numpy.array([phia, phib])
-            fh5[f"walker_weight_{num_slices}"] = weight
-            fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
+            if isinstance(phia, numpy.ndarray):
+                fh5[f"walker_timeslice_{num_slices}"] = numpy.array([phia, phib])
+                fh5[f"walker_weight_{num_slices}"] = weight
+                fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
+            else:
+                fh5[f"walker_timeslice_{num_slices}"] = xp.asnumpy(
+                    xp.array([phia, phib])
+                )
+                fh5[f"walker_weight_{num_slices}"] = xp.asnumpy(weight)
+                fh5[f"walker_hybrid_energy_{num_slices}"] = xp.asnumpy(hybrid_energy)
 
     def read_walkers_batch(self, trial, comm):
         read_file = self.write_filepath + f"walkers_{comm.rank}.h5"
@@ -220,12 +227,12 @@ class BaseWalkers(metaclass=ABCMeta):
                 num_slices = len(fh5.keys()) // 3 - 1
                 phia = fh5[f"walker_timeslice_{num_slices}"][0]
                 phib = fh5[f"walker_timeslice_{num_slices}"][1]
-                self.phia = phia
-                self.phib = phib
+                self.phia = xp.array(phia)
+                self.phib = xp.array(phib)
                 weight = fh5[f"walker_weight_{num_slices}"][:]
                 hybrid_energy = fh5[f"walker_hybrid_energy_{num_slices}"][:]
-                self.weight = weight
-                self.hybrid_energy = hybrid_energy
+                self.weight = xp.array(weight)
+                self.hybrid_energy = xp.array(hybrid_energy)
                 self.ovlp = trial.calc_greens_function(self)
 
             except KeyError:
