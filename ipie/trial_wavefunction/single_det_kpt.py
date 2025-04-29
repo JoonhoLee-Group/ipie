@@ -48,6 +48,9 @@ class KptSingleDet(TrialWavefunctionBase):
                 self.noccbs = noccbs
                 self.G, self.Ghalf = gabk_spin_nonuniform(self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccbs)
         else:
+            self.noccas = None
+            self.noccbs = None
+
             self.G, self.Ghalf = gabk_spin(self.psi, self.psi, self.nalpha, self.nbeta)
         self.handler = handler
 

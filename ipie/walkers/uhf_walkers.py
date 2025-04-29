@@ -22,6 +22,7 @@ from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
+from ipie.walkers.reortho_nonzero import batched_qr_nonzero
 
 
 class UHFWalkers(BaseWalkers):
@@ -107,6 +108,7 @@ class UHFWalkers(BaseWalkers):
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
         self.rhf = False  # interfacing with old codes...
+        self.padding=False
 
     def build(self, trial):
         ovlp = trial.calc_greens_function(self)
@@ -115,6 +117,8 @@ class UHFWalkers(BaseWalkers):
             self.ovlp, self.sgn_ovlp, self.log_ovlp = ovlp
         else:
             self.ovlp = ovlp
+        if trial.noccas is not None:
+            self.padding = True
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
@@ -123,7 +127,10 @@ class UHFWalkers(BaseWalkers):
     def reortho(self):
         """reorthogonalise walkers."""
         if config.get_option("use_gpu"):
-            return self.reortho_batched()
+            if self.padding:
+                return self.reortho_nonzero()
+            else:
+                return self.reortho_batched()
         ndown = self.ndown
         detR = []
         for iw in range(self.nwalkers):
@@ -176,7 +183,18 @@ class UHFWalkers(BaseWalkers):
         synchronize()
 
         return self.detR
+    
+    def reortho_nonzero(self):
+        (self.phia, log_det) = batched_qr_nonzero(self.phia, mode=qr_mode)
+        if self.ndown > 0:
+            (self.phib, log_det_dn) = batched_qr_nonzero(self.phib, mode=qr_mode)
+            log_det += log_det_dn
+        self.detR = xp.exp(log_det - self.detR_shift)
+        self.ovlp = self.ovlp / self.detR
+        self.log_ovlp = self.log_ovlp - (log_det - self.detR_shift)
+        synchronize()
 
+        return self.detR
 
 class UHFWalkersParticleHole(UHFWalkers):
     """UHF style walker specialized for its use with ParticleHole trial.

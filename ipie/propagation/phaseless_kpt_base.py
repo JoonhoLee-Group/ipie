@@ -435,7 +435,12 @@ class PhaselessKptBase(ContinuousBase):
             -self.dt * (0.5 * (hybrid_energy + walkers.hybrid_energy) - eshift)
         )
         magn = xp.abs(importance_function)
-        walkers.hybrid_energy = hybrid_energy
+        walkers.hybrid_energy = xp.where(
+            xp.isnan(hybrid_energy),       
+            walkers.hybrid_energy,        
+            hybrid_energy
+        )
+
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         cosine_fac = xp.cos(dtheta)
