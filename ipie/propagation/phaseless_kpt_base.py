@@ -12,7 +12,8 @@ import plum
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
-from cuquantum import cutensornet, NetworkOptions, contract
+from cuquantum.bindings import cutensornet
+from cuquantum.tensornet import NetworkOptions, contract
 from typing import Union
 
 try:

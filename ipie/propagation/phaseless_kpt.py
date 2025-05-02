@@ -17,7 +17,8 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from numba import jit
 from ipie.utils.backend import get_device_memory
 from ipie.propagation.kernels import call_kernel_VHS_construction1, call_kernel_VHS_construction2
-from cuquantum import cutensornet, NetworkOptions, contract
+from cuquantum.bindings import cutensornet
+from cuquantum.tensornet import NetworkOptions, contract
 
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_symm(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_mat, Sset, Qplus):

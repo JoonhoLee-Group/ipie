@@ -9,7 +9,8 @@ from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.config import config
-from cuquantum import cutensornet, NetworkOptions, contract
+from cuquantum.bindings import cutensornet
+from cuquantum.tensornet import NetworkOptions, contract
 from ipie.utils.contract_gf_cgto import contract_gf_cgto12_kpq_k, contract_gf_cgto12_k_kpq, slice_gf_k_kpq_given_q, slice_gf_kpq_k_given_q
 
 from ipie.systems.generic import Generic
