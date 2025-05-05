@@ -165,6 +165,15 @@ class QMCParams:
     timestep: float
     num_steps_per_block: int
     num_blocks: int
+    eq_timestep: Optional[float] = None
+    eq_num_steps_per_block: Optional[int] = None
+    num_eq_blocks: int = 50
     num_stblz: int = 5
     pop_control_freq: int = 5
     rng_seed: Optional[int] = None
+
+    def __post_init__(self):
+        if self.eq_timestep is None:
+            self.eq_timestep = self.timestep
+        if self.eq_num_steps_per_block is None:
+            self.eq_num_steps_per_block = self.num_steps_per_block

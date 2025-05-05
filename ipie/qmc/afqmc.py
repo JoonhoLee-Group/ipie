@@ -21,6 +21,7 @@ import abc
 import json
 import time
 import uuid
+import math
 from typing import Dict, Optional, Tuple
 
 
@@ -57,6 +58,7 @@ class AFQMCBase(metaclass=abc.ABCMeta):
         propagator,
         mpi_handler,
         params: QMCParams,
+        eq_propagator = None,
         verbose: int = 0,
     ):
         self.system = system
@@ -64,6 +66,7 @@ class AFQMCBase(metaclass=abc.ABCMeta):
         self.trial = trial
         self.walkers = walkers
         self.propagator = propagator
+        self.eq_propagator = eq_propagator
         self.mpi_handler = mpi_handler  # mpi_handler should be passed into here
         self.shared_comm = self.mpi_handler.shared_comm
         self.verbose = verbose
@@ -290,10 +293,11 @@ class AFQMC(AFQMCBase):
         propagator,
         mpi_handler,
         params: QMCParams,
+        eq_propagator = None,
         verbose: int = 0,
     ):
         super().__init__(
-            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, verbose
+            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, eq_propagator, verbose
         )
 
     @staticmethod
@@ -310,6 +314,9 @@ class AFQMC(AFQMCBase):
         timestep: float = 0.005,
         stabilize_freq=5,
         pop_control_freq=5,
+        eq_timestep = None,
+        eq_num_steps_per_block = None,
+        num_eq_blocks: int = 50,
         verbose=True,
         mpi_handler=None,
     ) -> "AFQMC":
@@ -357,6 +364,9 @@ class AFQMC(AFQMCBase):
             num_stblz=stabilize_freq,
             pop_control_freq=pop_control_freq,
             rng_seed=seed,
+            eq_timestep=eq_timestep,
+            eq_num_steps_per_block=eq_num_steps_per_block,
+            num_eq_blocks=num_eq_blocks,
         )
         # 2. Calculation objects.
         system = Generic(num_elec)
@@ -384,6 +394,11 @@ class AFQMC(AFQMCBase):
         # TODO: this is a factory not a class
         propagator = Propagator[type(hamiltonian)](params.timestep)
         propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
+        if not math.isclose(params.timestep, params.eq_timestep, rel_tol=1e-8):
+            eq_propagator = Propagator[type(hamiltonian)](params.eq_timestep)
+            eq_propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
+        else:
+            eq_propagator = propagator
         return AFQMC(
             system,
             hamiltonian,
@@ -392,6 +407,7 @@ class AFQMC(AFQMCBase):
             propagator,
             mpi_handler,
             params,
+            eq_propagator,
             verbose=(verbose and comm.rank == 0),
         )
 
@@ -550,9 +566,10 @@ class AFQMC(AFQMCBase):
         # TODO: This magic value of 2 is pretty much never controlled on input.
         # Moreover I'm not convinced having a two stage shift update actually
         # matters at all.
-        num_eqlb_steps = 2.0 / self.params.timestep
+        # num_eqlb_steps = 2.0 / self.params.timestep
+        num_eqlb_steps = self.params.num_eq_blocks * self.params.eq_num_steps_per_block
 
-        total_steps = self.params.num_steps_per_block * self.params.num_blocks
+        total_steps = self.params.num_steps_per_block * self.params.num_blocks + num_eqlb_steps
 
         synchronize()
         comm = self.mpi_handler.comm
@@ -567,14 +584,22 @@ class AFQMC(AFQMCBase):
                 synchronize()
                 self.tortho += time.time() - start
             start = time.time()
-            self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
-            
-            self.tprop_fbias = self.propagator.timer.tfbias
-            self.tprop_ovlp = self.propagator.timer.tovlp
-            self.tprop_update = self.propagator.timer.tupdate
-            self.tprop_gf = self.propagator.timer.tgf
-            self.tprop_vhs = self.propagator.timer.tvhs
-            self.tprop_gemm = self.propagator.timer.tgemm
+            if step <= num_eqlb_steps:
+                self.eq_propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
+                self.tprop_fbias = self.eq_propagator.timer.tfbias
+                self.tprop_ovlp = self.eq_propagator.timer.tovlp
+                self.tprop_update = self.eq_propagator.timer.tupdate
+                self.tprop_gf = self.eq_propagator.timer.tgf
+                self.tprop_vhs = self.eq_propagator.timer.tvhs
+                self.tprop_gemm = self.eq_propagator.timer.tgemm
+            else:
+                self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
+                self.tprop_fbias = self.propagator.timer.tfbias
+                self.tprop_ovlp = self.propagator.timer.tovlp
+                self.tprop_update = self.propagator.timer.tupdate
+                self.tprop_gf = self.propagator.timer.tgf
+                self.tprop_vhs = self.propagator.timer.tvhs
+                self.tprop_gemm = self.propagator.timer.tgemm
 
             start_clip = time.time()
             if step > 1:
@@ -610,14 +635,24 @@ class AFQMC(AFQMCBase):
             self.testim += time.time() - start  # we dump this time into estimator
             # calculate estimators
             start = time.time()
-            if step % self.params.num_steps_per_block == 0:
-                self.estimators.compute_estimators(
-                    self.system, self.hamiltonian, self.trial, self.walkers
-                )
-                self.estimators.print_block(
-                    comm, step // self.params.num_steps_per_block, self.accumulators
-                )
-                self.accumulators.zero()
+            if step > num_eqlb_steps:
+                if step % self.params.num_steps_per_block == 0:
+                    self.estimators.compute_estimators(
+                        self.system, self.hamiltonian, self.trial, self.walkers
+                    )
+                    self.estimators.print_block(
+                        comm, step // self.params.num_steps_per_block - self.params.num_eq_blocks, self.accumulators
+                    )
+                    self.accumulators.zero()
+            else:
+                if step % self.params.eq_num_steps_per_block == 0:
+                    self.estimators.compute_estimators(
+                        self.system, self.hamiltonian, self.trial, self.walkers
+                    )
+                    self.estimators.print_block(
+                        comm, step // self.params.eq_num_steps_per_block, self.accumulators
+                    )
+                    self.accumulators.zero()
             synchronize()
             self.testim += time.time() - start
 
