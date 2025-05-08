@@ -534,7 +534,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
     kprime_idx = xp.arange(nk)[None, None, None, :, None]  # shape (1,1,1,nk,1)
     p_idx = xp.arange(nbsf)[None, None, None, None, :] # shape (1,1,1,1,nbsf)
     handle = cutensornet.create()
-    network_opts = NetworkOptions(handle=handle)
+    
 
     exx = xp.zeros(nwalker, dtype=numpy.complex128)
 
@@ -544,7 +544,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
         intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
     free_bytes = xp.cuda.Device().mem_info[0]
     free_gb = free_bytes / 1024**3.0
-    max_mem = .8 * free_gb
+    max_mem = .7 * free_gb
     num_chunks = max(1, ceil(intermediate_mem/ max_mem))
     chunk_size = ceil(nwalker / num_chunks)
     nw_left = nwalker
@@ -566,6 +566,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
             kprimepq_idx = kpq_mat[kprime_idx, iq_real]
             G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
             MPQ_iq = MPQ[iq]
+            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
             exx[w_sls] -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
             xp.cuda.get_current_stream().synchronize()
             del G_kpq_kprimepq_chunk
@@ -579,6 +580,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
             kprimepq_idx = kpq_mat[kprime_idx, iq_real]
             G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
             MPQ_iq = MPQ[iq]
+            network_opts = NetworkOptions(handle=handle, memory_limit=0.7 * xp.cuda.Device().mem_info[0])
             exx[w_sls] -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
             xp.cuda.get_current_stream().synchronize()
             del G_kpq_kprimepq_chunk
