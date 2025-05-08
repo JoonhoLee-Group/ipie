@@ -376,9 +376,9 @@ def apply_VHS_to_phi_batch(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, h
     nknocc = phi.shape[-1]
     outphi = xp.zeros_like(phi)
     # calculate intermediate array memory
-    mem_cost =  nwalkers * nisdf * nisdf * nknocc * 16 * 4/ 1024**3
+    mem_cost = nwalkers * nisdf * nisdf * nknocc * 16 * 4/ 1024**3
     # max_mem = 80 percent of available memory
-    max_mem = 0.8 * xp.cuda.Device().mem_info[0] / 1024**3
+    max_mem = 0.3 * xp.cuda.Device().mem_info[0] / 1024**3
     num_nisdf_chunks = max(1, math.ceil(mem_cost / max_mem))
     nisdf_chunk_size = math.ceil(nisdf / num_nisdf_chunks)
     nisdf_left = nisdf
@@ -394,7 +394,7 @@ def apply_VHS_to_phi_batch(cgto, Lx, Lconjx, phi, kpq_mat, kmq_mat, unique_qs, h
         fullLpLconjx = full_Lx + full_Lconjx
         phi_reshape = phi.reshape(nwalkers, nk, nbsf, nk, -1)
         cgto_slice = cgto[:, i * nisdf_chunk_size: i * nisdf_chunk_size + nisdf_chunk, :]
-        network_opts = NetworkOptions(handle=handle, memory_limit=0.7 * xp.cuda.Device().mem_info[0])
+        network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
         out = contract('wKkP, kPp, KPr, wKrQi -> wkpQi', fullLpLconjx, cgto_slice.conj(), cgto_slice, phi_reshape, options=network_opts)
         del full_Lx, full_Lconjx, fullLpLconjx, cgto_slice, phi_reshape
         outphi += out.reshape(nwalkers, nk * nbsf, -1)
