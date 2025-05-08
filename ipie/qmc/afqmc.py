@@ -530,6 +530,7 @@ class AFQMC(AFQMCBase):
         walkers=None,
         estimator_filename=None,
         verbose=True,
+        discard_weights_aftereq=False,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
     ):
         """Perform AFQMC simulation on state object using open-ended random walk.
@@ -593,6 +594,9 @@ class AFQMC(AFQMCBase):
                 self.tprop_vhs = self.eq_propagator.timer.tvhs
                 self.tprop_gemm = self.eq_propagator.timer.tgemm
             else:
+                if discard_weights_aftereq:
+                    if step == num_eqlb_steps + 1:
+                        self.walkers.weight.fill(1.)
                 self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
                 self.tprop_fbias = self.propagator.timer.tfbias
                 self.tprop_ovlp = self.propagator.timer.tovlp
@@ -641,7 +645,7 @@ class AFQMC(AFQMCBase):
                         self.system, self.hamiltonian, self.trial, self.walkers
                     )
                     self.estimators.print_block(
-                        comm, step // self.params.num_steps_per_block - self.params.num_eq_blocks, self.accumulators
+                        comm, (step - num_eqlb_steps)// self.params.num_steps_per_block , self.accumulators
                     )
                     self.accumulators.zero()
             else:

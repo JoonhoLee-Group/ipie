@@ -160,7 +160,7 @@ class UHFWalkers(BaseWalkers):
             self.log_detR[iw] += xp.log(detR[iw])
             self.detR[iw] = detR[iw]
             self.ovlp[iw] = self.ovlp[iw] / detR[iw]
-            self.log_ovlp[iw] = self.log_ovlp[iw] - (log_det - self.detR_shift)
+            self.log_ovlp[iw] = self.log_ovlp[iw] - (log_det - self.detR_shift[iw])
             
         synchronize()
         return detR
