@@ -171,6 +171,9 @@ class QMCParams:
     num_stblz: int = 5
     pop_control_freq: int = 5
     rng_seed: Optional[int] = None
+    fb_bound: float = 1.0
+    ene_bound_const: float = 2.0
+
 
     def __post_init__(self):
         if self.eq_timestep is None:

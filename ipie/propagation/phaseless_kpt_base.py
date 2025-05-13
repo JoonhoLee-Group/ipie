@@ -318,15 +318,15 @@ def construct_mf_mod_xbar(hamiltonian: KptISDF, mf_shift: xp.ndarray):
 class PhaselessKptBase(ContinuousBase):
     """A base class for generic continuous HS transform AFQMC propagators."""
 
-    def __init__(self, time_step, verbose=False):
+    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, verbose=False):
         super().__init__(time_step, verbose=verbose)
         self.sqrt_dt = self.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
 
         self.nfb_trig = 0  # number of force bias triggered
         self.nhe_trig = 0  # number of hybrid enerby bound triggered
-        self.ebound = (2.0 / self.dt) ** 0.5  # energy bound range
-        self.fbbound = 1.0
+        self.ebound = (ebound_const / self.dt) ** 0.5  # energy bound range
+        self.fbbound = fbbound
         self.mpi_handler = None
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):

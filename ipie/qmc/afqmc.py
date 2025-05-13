@@ -317,6 +317,8 @@ class AFQMC(AFQMCBase):
         eq_timestep = None,
         eq_num_steps_per_block = None,
         num_eq_blocks: int = 50,
+        ene_bound_const: float = 2.0,
+        fb_bound: float = 1.0,
         verbose=True,
         mpi_handler=None,
     ) -> "AFQMC":
@@ -367,6 +369,8 @@ class AFQMC(AFQMCBase):
             eq_timestep=eq_timestep,
             eq_num_steps_per_block=eq_num_steps_per_block,
             num_eq_blocks=num_eq_blocks,
+            fb_bound=fb_bound,
+            ene_bound_const=ene_bound_const
         )
         # 2. Calculation objects.
         system = Generic(num_elec)
@@ -392,10 +396,10 @@ class AFQMC(AFQMCBase):
                 trial_wavefunction
             )  # any intermediates that require information from trial_wavefunction
         # TODO: this is a factory not a class
-        propagator = Propagator[type(hamiltonian)](params.timestep)
+        propagator = Propagator[type(hamiltonian)](params.timestep, params.ene_bound_const, params.fb_bound)
         propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
         if not math.isclose(params.timestep, params.eq_timestep, rel_tol=1e-8):
-            eq_propagator = Propagator[type(hamiltonian)](params.eq_timestep)
+            eq_propagator = Propagator[type(hamiltonian)](params.eq_timestep, params.ene_bound_const, params.fb_bound)
             eq_propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
         else:
             eq_propagator = propagator

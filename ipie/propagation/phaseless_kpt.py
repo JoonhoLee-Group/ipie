@@ -122,8 +122,8 @@ def construct_VHS_cuquantum(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_
 class PhaselessKptChol(PhaselessKptBase):
     """A class for performing phaseless propagation with k-point Hamiltonian."""
 
-    def __init__(self, time_step, exp_nmax=6, verbose=False):
-        super().__init__(time_step, verbose=verbose)
+    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
@@ -195,8 +195,8 @@ class PhaselessKptChol(PhaselessKptBase):
 class PhaselessKptCholChunked(PhaselessKptChol):
     """A class for performing phaseless propagation with complex hamiltonian with k point symmetry."""
 
-    def __init__(self, time_step, exp_nmax=6, verbose=False):
-        super().__init__(time_step, exp_nmax=exp_nmax, verbose=verbose)
+    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
@@ -265,8 +265,8 @@ class PhaselessKptCholChunked(PhaselessKptChol):
 class PhaselessKptISDF(PhaselessKptBase):
     """A class for performing phaseless propagation with k-point Hamiltonian with ERI approximated by ISDF. Here we do not save VHS to save memory."""
 
-    def __init__(self, time_step, exp_nmax=6, verbose=False):
-        super().__init__(time_step, verbose=verbose)
+    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
