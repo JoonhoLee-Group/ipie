@@ -23,6 +23,7 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.reortho_nonzero import batched_qr_nonzero
+from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 
 
 class UHFWalkers(BaseWalkers):
@@ -117,8 +118,9 @@ class UHFWalkers(BaseWalkers):
             self.ovlp, self.sgn_ovlp, self.log_ovlp = ovlp
         else:
             self.ovlp = ovlp
-        if trial.noccas is not None:
-            self.padding = True
+        if isinstance(trial, KptSingleDet):
+            if trial.noccas is not None:
+                self.padding = True
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):
