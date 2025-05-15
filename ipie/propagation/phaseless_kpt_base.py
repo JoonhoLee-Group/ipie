@@ -376,6 +376,7 @@ class PhaselessKptBase(ContinuousBase):
         xbar_minus[:, :, igamma] = -self.sqrt_dt * (self.vbias_minus[:, :, igamma] - mf_xbarm[numpy.newaxis, :])
         xbar[0] = xbar_plus
         xbar[1] = xbar_minus
+        xp._default_memory_pool.free_all_blocks()
         synchronize()
         self.timer.tfbias += time.time() - start_time
 

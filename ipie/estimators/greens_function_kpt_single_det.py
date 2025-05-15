@@ -119,11 +119,11 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         ik_idx, diag_idx = xp.nonzero(mask)
         ovlp_a[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
     ovlp_a = ovlp_a.reshape(walker_batch.nwalkers, nk * nup, nk * nup)
-    ovlp_inv_a = xp.linalg.inv(ovlp_a)
+    
+    walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1))
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
-
-    # walker_batch.Ghalfa = xp.einsum("wij,wmj->wim", ovlp_inv_a, walker_batch.phia, optimize=True)
-    walker_batch.Ghalfa = xp.matmul(ovlp_inv_a, walker_batch.phia.transpose(0, 2, 1))
+    # ovlp_inv_a = xp.linalg.inv(ovlp_a)
+    # walker_batch.Ghalfa = xp.matmul(ovlp_inv_a, walker_batch.phia.transpose(0, 2, 1))
     if not trial.half_rotated or build_full:
         Ga = xp.einsum(
             "kpi,wkilq->wkplq", trial.psi0a.conj(), walker_batch.Ghalfa, optimize=True
@@ -137,10 +137,10 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
             ik_idx, diag_idx = xp.nonzero(mask)
             ovlp_b[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
         ovlp_b = ovlp_b.reshape(walker_batch.nwalkers, nk * ndown, nk * ndown)
-        ovlp_inv_b = xp.linalg.inv(ovlp_b)
+        # ovlp_inv_b = xp.linalg.inv(ovlp_b)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
-
-        walker_batch.Ghalfb = xp.matmul(ovlp_inv_b, walker_batch.phib.transpose(0, 2, 1))
+        walker_batch.Ghalfb = xp.linalg.solve(ovlp_b, walker_batch.phib.transpose(0, 2, 1))
+        # walker_batch.Ghalfb = xp.matmul(ovlp_inv_b, walker_batch.phib.transpose(0, 2, 1))
         if not trial.half_rotated or build_full:
             Gb = xp.einsum(
                 "kpi,wkilq->wkplq", trial.psi0b.conj(), walker_batch.Ghalfb, optimize=True

@@ -278,7 +278,7 @@ class PhaselessKptISDF(PhaselessKptBase):
             nwalkers = walkers.nwalkers
             occ_ratio = walkers.nup / walkers.nbasis if walkers.rhf else (walkers.nup + walkers.ndown) / (walkers.nbasis)
             mem_vhs = 2* nwalkers * nbsf**2 * nk**2 * 16
-            if mem_vhs > 0.35 * xp.cuda.Device().mem_info[0] or occ_ratio < 0.2:
+            if mem_vhs > 0.45 * xp.cuda.Device().mem_info[0] or occ_ratio < 0.2:
                 start_time = time.time()
                 Lx, Lconjx = self.contract_cholM_xshifted(hamiltonian, xshifted)
                 self.timer.tvhs += time.time() - start_time
