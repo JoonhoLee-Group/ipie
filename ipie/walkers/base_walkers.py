@@ -108,25 +108,25 @@ class BaseWalkers(metaclass=ABCMeta):
             print("# Setting up BaseWalkers.")
             print(f"# nwalkers = {self.nwalkers}")
 
-        self.weight = numpy.array(
+        self.weight = xp.array(
             [1.0 for iw in range(self.nwalkers)]  # TODO: allow for arbitrary initial weights
         )
         self.unscaled_weight = self.weight.copy()
-        self.phase = numpy.array([1.0 + 0.0j for iw in range(self.nwalkers)])
+        self.phase = xp.array([1.0 + 0.0j for iw in range(self.nwalkers)])
 
-        self.ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
-        self.sgn_ovlp = numpy.array([1.0 for iw in range(self.nwalkers)])
-        self.log_ovlp = numpy.array([0.0 for iw in range(self.nwalkers)])
+        self.ovlp = xp.array([1.0 for iw in range(self.nwalkers)])
+        self.sgn_ovlp = xp.array([1.0 for iw in range(self.nwalkers)])
+        self.log_ovlp = xp.array([0.0 for iw in range(self.nwalkers)])
 
         # in case we use local energy approximation to the propagation
-        self.eloc = numpy.array([0.0 for iw in range(self.nwalkers)])
+        self.eloc = xp.array([0.0 for iw in range(self.nwalkers)])
 
-        self.hybrid_energy = numpy.array([0.0 for iw in range(self.nwalkers)])
-        self.detR = [1.0 for iw in range(self.nwalkers)]
+        self.hybrid_energy = xp.array([0.0 for iw in range(self.nwalkers)])
+        self.detR = xp.array([1.0 for iw in range(self.nwalkers)])
         self.detR_shift = xp.array([0.0 for iw in range(self.nwalkers)])
-        self.log_detR = [0.0 for iw in range(self.nwalkers)]
+        self.log_detR = xp.array([0.0 for iw in range(self.nwalkers)])
         self.log_shift = xp.array([0.0 for iw in range(self.nwalkers)])
-        self.log_detR_shift = [0.0 for iw in range(self.nwalkers)]
+        self.log_detR_shift = xp.array([0.0 for iw in range(self.nwalkers)])
 
         self.buff_names = [
             "weight",
@@ -214,8 +214,8 @@ class BaseWalkers(metaclass=ABCMeta):
                 fh5[f"walker_weight_{num_slices}"] = weight
                 fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
             else:
-                fh5[f"walker_timeslice_{num_slices}"] = xp.asnumpy(
-                    xp.array([phia, phib])
+                fh5[f"walker_timeslice_{num_slices}"] = numpy.concatenate(
+                    [xp.asnumpy(phia), xp.asnumpy(phib)], axis=-1
                 )
                 fh5[f"walker_weight_{num_slices}"] = xp.asnumpy(weight)
                 fh5[f"walker_hybrid_energy_{num_slices}"] = xp.asnumpy(hybrid_energy)
