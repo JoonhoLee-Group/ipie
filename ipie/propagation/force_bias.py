@@ -28,7 +28,7 @@ from math import ceil
 from cuquantum import cutensornet, NetworkOptions
 
 from ipie.config import config
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol, GenericRealISDF
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
 
@@ -157,6 +157,55 @@ def construct_force_bias_batch_single_det(
     synchronize()
     return vbias_batch
 
+@plum.dispatch
+def construct_force_bias_batch_single_det(
+    hamiltonian: GenericRealISDF, walkers: UHFWalkers, rcgtoa, rcgtob,
+):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+    rchola, rcholb : :class:`numpy.ndarray`
+        Half-rotated cholesky for each spin.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    if walkers.rhf:
+        Ghalfa = walkers.Ghalfa
+        handle = cutensornet.create()
+        network_opts = NetworkOptions(handle=handle)
+        vbias_batch_real = 2.0 * cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtoa, hamiltonian.cgto, hamiltonian.cholM, Ghalfa.real, options=network_opts) 
+        vbias_batch_imag = 2.0 * cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtoa, hamiltonian.cgto, hamiltonian.cholM, Ghalfa.imag, options=network_opts) 
+        vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
+        vbias_batch.real = vbias_batch_real
+        vbias_batch.imag = vbias_batch_imag
+        cutensornet.destroy(handle)
+        synchronize()
+
+        return vbias_batch
+
+    else:
+        Ghalfa = walkers.Ghalfa
+        Ghalfb = walkers.Ghalfb
+        handle = cutensornet.create()
+        network_opts = NetworkOptions(handle=handle)
+        vbias_batch_real = cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtoa, hamiltonian.cgto, hamiltonian.cholM, Ghalfa.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtob, hamiltonian.cgto, hamiltonian.cholM, Ghalfb.real, options=network_opts)
+        vbias_batch_imag = cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtoa, hamiltonian.cgto, hamiltonian.cholM, Ghalfa.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> wg", rcgtob, hamiltonian.cgto, hamiltonian.cholM, Ghalfb.imag, options=network_opts)
+        vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
+        vbias_batch.real = vbias_batch_real
+        vbias_batch.imag = vbias_batch_imag
+        cutensornet.destroy(handle)
+        synchronize()
+        return vbias_batch
 
 @plum.dispatch
 def construct_force_bias_batch_single_det(hamiltonian: GenericRealChol, walkers: GHFWalkers):
