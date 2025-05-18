@@ -28,6 +28,7 @@ from ipie.estimators.local_energy_noci import local_energy_noci
 from ipie.estimators.local_energy_sd import (
     local_energy_single_det_uhf_batch,
     local_energy_single_det_ghf_batch,
+    local_energy_single_det_isdf_batch_gpu,
 )
 from ipie.estimators.local_energy_wicks import (
     local_energy_multi_det_trial_wicks_batch,
@@ -36,7 +37,7 @@ from ipie.estimators.local_energy_wicks import (
 )
 from ipie.estimators.local_energy_kpt_sd import local_energy_kpt_single_det_uhf
 from ipie.estimators.local_energy_kpt_sd_chunked import local_energy_kpt_single_det_uhf_chunked
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol, GenericRealISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
@@ -154,6 +155,11 @@ def local_energy(
 ):
     return local_energy_single_det_ghf_batch(system, hamiltonian, walkers, trial)
 
+@plum.dispatch
+def local_energy(
+    system: Generic, hamiltonian: GenericRealISDF, walkers: UHFWalkers, trial: SingleDet
+):
+    return local_energy_single_det_isdf_batch_gpu(system, hamiltonian, walkers, trial)
 
 class EnergyEstimator(EstimatorBase):
     def __init__(

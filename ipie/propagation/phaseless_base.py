@@ -13,7 +13,7 @@ from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol, GenericRealISDF, GenericComplexISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from typing import Union
 
@@ -26,7 +26,7 @@ from ipie.utils.mpi import make_splits_displacements
 
 @plum.dispatch
 def construct_one_body_propagator(
-    hamiltonian: Union[GenericRealChol, GenericRealCholChunked], mf_shift: xp.ndarray, dt: float
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked, GenericRealISDF], mf_shift: xp.ndarray, dt: float
 ):
     r"""Construct mean-field shifted one-body propagator.
 
@@ -60,8 +60,12 @@ def construct_one_body_propagator(
             raise ImportError("mpi4py is not installed.")
         else:
             shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
-    else:
+    elif hasattr(hamiltonian, "chol"):
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
+    elif hasattr(hamiltonian, "cholM"):
+        shift = 1j * xp.einsum(
+            "Pp, Pq, Pg, g -> pq", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, mf_shift, optimize=True
+        )
     shift = xp.array(shift)
     H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
     if hasattr(H1, "get"):
@@ -238,6 +242,38 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: SingleDet
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
     return mf_shift
 
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial:Union[SingleDet, ParticleHole, NOCI]):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [M^2, nchol]
+    Gcharge = (trial.G[0] + trial.G[1])
+
+    # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
+    # a problem of large chol cases.
+    print(hamiltonian.cgto.shape, hamiltonian.cholM.shape, Gcharge.shape)
+    tmp_real = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.real, optimize=True)
+    tmp_imag = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.imag, optimize=True)
+    mf_shift = 1.0j * tmp_real - tmp_imag
+    return xp.array(mf_shift)
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericComplexISDF, trial:Union[SingleDet, ParticleHole, NOCI]):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    raise NotImplementedError(
+        "GenericComplexISDF does not have mean field shift yet."
+    )
 
 class PhaselessBase(ContinuousBase):
     """A base class for generic continuous HS transform AFQMC propagators."""

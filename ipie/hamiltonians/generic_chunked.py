@@ -128,3 +128,78 @@ class GenericRealCholChunked(GenericBase):
         ik = i * self.nbasis + k
         jl = j * self.nbasis + l
         return numpy.dot(self.chol[ik], self.chol[jl])
+
+class GenericRealISDFChunked(GenericBase):
+    """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
+    Can be created by passing the one and two electron integrals directly.
+    """
+
+    def __init__(
+        self, h1e, cholM, cgto,
+        cholM_chunk,
+        ecore=0.0,
+        handler=None,
+        verbose=False,
+    ):
+        super().__init__(h1e, ecore, verbose)
+        self.handler = handler
+        assert (
+            h1e.shape[0] == 2
+        )  # assuming each spin component is given. this should be fixed for GHF...?
+
+        self.sym_idx = numpy.triu_indices(self.nbasis)
+        self.sym_idx_i = self.sym_idx[0].copy()
+        self.sym_idx_j = self.sym_idx[1].copy()
+
+        if cholM is not None:
+            self.cholM = cholM  # [M^2, nchol]
+            self.nchol = self.cholM.shape[-1]
+            self.cholM = self.cholM.reshape((self.nbasis, self.nbasis, self.nchol))
+            cp_shape = (self.nbasis * (self.nbasis + 1) // 2, self.cholM.shape[-1])
+            self.chol_packed = numpy.zeros(cp_shape, dtype=self.cholM.dtype)
+            pack_cholesky(self.sym_idx[0], self.sym_idx[1], self.chol_packed, self.cholM)
+            self.cholM = self.cholM.reshape((self.nbasis * self.nbasis, self.nchol))
+            self.chunk(handler)
+        else:
+            self.cholM_chunk = cholM_chunk  # [M^2, nchol]
+            self.chol_packed_chunk = chol_packed_chunk
+
+        chunked_chols = self.cholM_chunk.shape[-1]
+        num_chol = handler.scomm.allreduce(chunked_chols, op=MPI.SUM)
+        self.nchol = num_chol
+
+        chol_idxs = [i for i in range(self.nchol)]
+        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
+
+        assert self.cholM_chunk.dtype == numpy.dtype("float64")
+        assert self.chol_packed_chunk.dtype == numpy.dtype("float64")
+
+        self.nchol_chunk = self.cholM_chunk.shape[-1]
+        self.nfields = self.nchol
+        assert self.nbasis**2 == self.cholM_chunk.shape[0]
+
+        self.chunked = True
+
+        # this is the one-body part that comes out of re-ordering the 2-body operators
+        h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
+        construct_h1e_mod(self.cholM_chunk, self.H1, h1e_mod, handler)
+        self.h1e_mod = xp.array(h1e_mod)
+
+        split_size = make_splits_displacements(num_chol, handler.nmembers)[0]
+        self.chunk_displacements = [0] + numpy.cumsum(split_size).tolist()
+
+        if verbose:
+            mem = self.cholM_chunk.nbytes / (1024.0**3)
+            mem_packed = self.chol_packed_chunk.nbytes / (1024.0**3)
+            print("# Number of orbitals: %d" % self.nbasis)
+            print(f"# Approximate memory required by Cholesky vectors {mem:f} GB")
+            print(f"# Approximate memory required by packed Cholesky vectors {mem_packed:f} GB")
+            print(f"# Approximate memory required total {mem_packed + mem:f} GB")
+            print("# Number of Cholesky vectors: %d" % (self.nchol))
+            print("# Number of fields: %d" % (self.nchol))
+            print("# Finished setting up GenericRealChol object.")
+
+    def hijkl(self, i, j, k, l):  # (ik|jl) somehow physicist notation - terrible!!
+        ik = i * self.nbasis + k
+        jl = j * self.nbasis + l
+        return numpy.dot(self.cholM[ik], self.cholM[jl])

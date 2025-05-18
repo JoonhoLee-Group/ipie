@@ -499,30 +499,48 @@ def half_rotate_isdf(trial: TrialWavefunctionBase,
     ndets: int = 1,
     verbose: bool = False,
 ) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
-    assert len(orbsa.shape) == 4 #(ndets, nk, nbsf, nocc)
-    assert len(orbsb.shape) == 4
-    assert orbsa.shape[0] == ndets
-    assert orbsb.shape[0] == ndets
-    M = hamiltonian.nbasis
-    nk = orbsa.shape[1]
-    na = orbsa.shape[-1]
-    nb = orbsb.shape[-1]
-    assert isinstance(hamiltonian, KptISDF)
+    if len(orbsa.shape) == 3:
+        # molecular/gamma pt case
+        assert len(orbsb.shape) == 3
+        assert orbsa.shape[0] == ndets
+        assert orbsb.shape[0] == ndets
+        M = hamiltonian.nbasis
+        na = orbsa.shape[-1]
+        nb = orbsb.shape[-1]
 
-    # ctype = hamiltonian.cholM.dtype
-    # ptype = orbsa.dtype
-    # integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
+        rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+        rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
 
-    # rH1a = get_shared_array(comm, (ndets, nk, na, M), integral_type)
-    # rH1b = get_shared_array(comm, (ndets, nk, nb, M), integral_type)
+        # now rotate the cgtos
+        cgto = hamiltonian.cgto # [k, P, p]
+        rot_cgtoa = np.einsum('Jpi, Pp -> JPi', orbsa, cgto, optimize=True)
+        rot_cgtob = np.einsum('Jpi, Pp -> JPi', orbsb, cgto, optimize=True)
+        
+    else:
+        assert len(orbsa.shape) == 4 #(ndets, nk, nbsf, nocc)
+        assert len(orbsb.shape) == 4
+        assert orbsa.shape[0] == ndets
+        assert orbsb.shape[0] == ndets
+        M = hamiltonian.nbasis
+        nk = orbsa.shape[1]
+        na = orbsa.shape[-1]
+        nb = orbsb.shape[-1]
+        assert isinstance(hamiltonian, KptISDF)
 
-    rH1a = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
-    rH1b = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+        # ctype = hamiltonian.cholM.dtype
+        # ptype = orbsa.dtype
+        # integral_type = ctype if ctype.itemsize > ptype.itemsize else ptype
 
-    # now rotate the cgtos
-    cgto = hamiltonian.cgto # [k, P, p]
-    rot_cgtoa = np.einsum('Jkpi, kPp -> JkPi', orbsa, cgto, optimize=True)
-    rot_cgtob = np.einsum('Jkpi, kPp -> JkPi', orbsb, cgto, optimize=True)
+        # rH1a = get_shared_array(comm, (ndets, nk, na, M), integral_type)
+        # rH1b = get_shared_array(comm, (ndets, nk, nb, M), integral_type)
+
+        rH1a = np.einsum("Jkpi,kpq->Jkiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+        rH1b = np.einsum("Jkpi,kpq->Jkiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+
+        # now rotate the cgtos
+        cgto = hamiltonian.cgto # [k, P, p]
+        rot_cgtoa = np.einsum('Jkpi, kPp -> JkPi', orbsa, cgto, optimize=True)
+        rot_cgtob = np.einsum('Jkpi, kPp -> JkPi', orbsb, cgto, optimize=True)
 
     return (rH1a, rH1b), (rot_cgtoa, rot_cgtob)
 
