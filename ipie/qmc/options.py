@@ -169,7 +169,9 @@ class QMCParams:
     eq_num_steps_per_block: Optional[int] = None
     num_eq_blocks: int = 50
     num_stblz: int = 5
+    num_eq_stblz: int = 2
     pop_control_freq: int = 5
+    eq_pop_control_freq: int = 2
     rng_seed: Optional[int] = None
     fb_bound: float = 1.0
     ene_bound_const: float = 2.0

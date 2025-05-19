@@ -313,7 +313,9 @@ class AFQMC(AFQMCBase):
         num_blocks: int = 100,
         timestep: float = 0.005,
         stabilize_freq=5,
+        eq_stabilize_freq=2,
         pop_control_freq=5,
+        eq_pop_control_freq=2,
         eq_timestep = None,
         eq_num_steps_per_block = None,
         num_eq_blocks: int = 50,
@@ -364,7 +366,9 @@ class AFQMC(AFQMCBase):
             num_steps_per_block=num_steps_per_block,
             timestep=timestep,
             num_stblz=stabilize_freq,
+            num_eq_stblz=eq_stabilize_freq,
             pop_control_freq=pop_control_freq,
+            eq_pop_control_freq=eq_pop_control_freq,
             rng_seed=seed,
             eq_timestep=eq_timestep,
             eq_num_steps_per_block=eq_num_steps_per_block,
@@ -583,11 +587,18 @@ class AFQMC(AFQMCBase):
         for step in range(1, total_steps + 1):
             synchronize()
             start_step = time.time()
-            if step % self.params.num_stblz == 0:
-                start = time.time()
-                self.walkers.orthogonalise()
-                synchronize()
-                self.tortho += time.time() - start
+            if step <= num_eqlb_steps:
+                if step % self.params.num_eq_stblz == 0:
+                    start = time.time()
+                    self.walkers.orthogonalise()
+                    synchronize()
+                    self.tortho += time.time() - start
+            else:
+                if step % self.params.num_stblz == 0:
+                    start = time.time()
+                    self.walkers.orthogonalise()
+                    synchronize()
+                    self.tortho += time.time() - start
             start = time.time()
             if step <= num_eqlb_steps:
                 self.eq_propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
@@ -626,15 +637,26 @@ class AFQMC(AFQMCBase):
             self.tprop_barrier += time.time() - start_barrier
 
             self.tprop += time.time() - start
-            if step % self.params.pop_control_freq == 0:
-                start = time.time()
-                self.pcontrol.pop_control(self.walkers, comm)
-                synchronize()
-                self.tpopc += time.time() - start
-                self.tpopc_send = self.pcontrol.timer.send_time
-                self.tpopc_recv = self.pcontrol.timer.recv_time
-                self.tpopc_comm = self.pcontrol.timer.communication_time
-                self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
+            if step <= num_eqlb_steps:
+                if step % self.params.eq_pop_control_freq == 0:
+                    start = time.time()
+                    self.pcontrol.pop_control(self.walkers, comm)
+                    synchronize()
+                    self.tpopc += time.time() - start
+                    self.tpopc_send = self.pcontrol.timer.send_time
+                    self.tpopc_recv = self.pcontrol.timer.recv_time
+                    self.tpopc_comm = self.pcontrol.timer.communication_time
+                    self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
+            else:
+                if step % self.params.pop_control_freq == 0:
+                    start = time.time()
+                    self.pcontrol.pop_control(self.walkers, comm)
+                    synchronize()
+                    self.tpopc += time.time() - start
+                    self.tpopc_send = self.pcontrol.timer.send_time
+                    self.tpopc_recv = self.pcontrol.timer.recv_time
+                    self.tpopc_comm = self.pcontrol.timer.communication_time
+                    self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
 
             # accumulate weight, hybrid energy etc. across block
             start = time.time()

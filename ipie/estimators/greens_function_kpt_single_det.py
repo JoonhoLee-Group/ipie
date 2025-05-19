@@ -120,7 +120,7 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         ovlp_a[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
     ovlp_a = ovlp_a.reshape(walker_batch.nwalkers, nk * nup, nk * nup)
     
-    walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1))
+    walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1).copy())
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
     # ovlp_inv_a = xp.linalg.inv(ovlp_a)
     # walker_batch.Ghalfa = xp.matmul(ovlp_inv_a, walker_batch.phia.transpose(0, 2, 1))
@@ -139,7 +139,7 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         ovlp_b = ovlp_b.reshape(walker_batch.nwalkers, nk * ndown, nk * ndown)
         # ovlp_inv_b = xp.linalg.inv(ovlp_b)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
-        walker_batch.Ghalfb = xp.linalg.solve(ovlp_b, walker_batch.phib.transpose(0, 2, 1))
+        walker_batch.Ghalfb = xp.linalg.solve(ovlp_b, walker_batch.phib.transpose(0, 2, 1).copy())
         # walker_batch.Ghalfb = xp.matmul(ovlp_inv_b, walker_batch.phib.transpose(0, 2, 1))
         if not trial.half_rotated or build_full:
             Gb = xp.einsum(
