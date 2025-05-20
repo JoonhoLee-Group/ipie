@@ -59,6 +59,12 @@ def synchronize_cpu():
 def synchronize_gpu():
     _cp.cuda.stream.get_current_stream().synchronize()
 
+def free_blocks_gpu():
+    _cp._default_memory_pool.free_all_blocks()
+
+def free_blocks_cpu():
+    pass
+
 
 if _use_gpu and _have_cupy:
     arraylib = _cp
@@ -68,6 +74,7 @@ if _use_gpu and _have_cupy:
     qr = _cp.linalg.qr
     get_device_memory = get_gpu_free_memory
     get_host_memory = get_cpu_free_memory
+    free_blocks = free_blocks_gpu
 else:
     arraylib = _np
     to_host = to_host_cpu
@@ -78,6 +85,7 @@ else:
     qr = scipy.linalg.qr
     get_device_memory = get_cpu_free_memory
     get_host_memory = get_cpu_free_memory
+    free_blocks = free_blocks_cpu
 
 
 def cast_to_device(self, verbose=False):

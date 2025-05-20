@@ -1,6 +1,7 @@
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import qr, qr_mode
 
-def batched_qr_nonzero(A, mode="reduced"):
+def batched_qr_nonzero(A, mode=qr_mode):
     """
     Perform a batched QR where zero-columns remain zero:
       A : array of shape (w, a, b)
@@ -23,7 +24,7 @@ def batched_qr_nonzero(A, mode="reduced"):
 
         # 2) do reduced QR on only the nonzero columns
         #    A[i][:, ~zero_cols] has shape (a, k) with k ≤ b
-        Qi, Ri = xp.linalg.qr(A[i][:, ~zero_cols], mode=mode)  # :contentReference[oaicite:1]{index=1}
+        Qi, Ri = qr(A[i][:, ~zero_cols], mode=mode)  # :contentReference[oaicite:1]{index=1}
 
         Ri_diag = xp.diag(Ri)
         signs_i = xp.sign(Ri_diag)

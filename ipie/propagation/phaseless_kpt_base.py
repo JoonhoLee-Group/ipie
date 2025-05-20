@@ -5,7 +5,7 @@ from abc import abstractmethod
 from ipie.propagation.continuous_base import ContinuousBase
 from ipie.propagation.operations import propagate_one_body, propagate_one_body_kpt
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize, cast_to_device
+from ipie.utils.backend import synchronize, cast_to_device, free_blocks
 import h5py
 
 import plum
@@ -376,7 +376,7 @@ class PhaselessKptBase(ContinuousBase):
         xbar_minus[:, :, igamma] = -self.sqrt_dt * (self.vbias_minus[:, :, igamma] - mf_xbarm[numpy.newaxis, :])
         xbar[0] = xbar_plus
         xbar[1] = xbar_minus
-        xp._default_memory_pool.free_all_blocks()
+        free_blocks()
         synchronize()
         self.timer.tfbias += time.time() - start_time
 

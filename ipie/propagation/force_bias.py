@@ -777,7 +777,7 @@ def construct_force_bias_kptsymm_batch_single_det(
         vbias_plus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
         vbias_minus = xp.zeros((walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
         # ghalf shape: nwalkers, nk, nup, nk, nbsf
-        Ghalf_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
+        Ghalfa_reshape = walkers.Ghalfa.reshape(walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis)
         for iq in range(len(hamiltonian.Sset)):
             iq_real = hamiltonian.Sset[iq]
             for ik in range(hamiltonian.nk):
