@@ -1102,7 +1102,11 @@ def ecoul_kernel_batch_real_isdf_rhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
 
-    v_wP = 2. * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch, options=network_opts)
+    v_wP_real = 2.0 * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts)
+    v_wP_imag = 2.0 * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts)
+    v_wP = xp.zeros_like(v_wP_real, dtype=xp.complex128)
+    v_wP.real = v_wP_real
+    v_wP.imag = v_wP_imag
     ecoul += xp.sum((v_wP @ MPQ) * v_wP, axis=1)
     cutensornet.destroy(handle)
     return .5 * ecoul
@@ -1150,13 +1154,18 @@ def exx_kernel_batch_real_isdf_uhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch):
 
 def local_energy_single_det_isdf_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
     nwalkers = walkers.Ghalfa.shape[0]
+    if walkers.rhf:
+        Ghalfa_batch = walkers.Ghalfa.reshape((nwalkers, -1))
 
-    Ghalfa_batch = walkers.Ghalfa.reshape((nwalkers, -1))
-    Ghalfb_batch = walkers.Ghalfb.reshape((nwalkers, -1))
+        e1b = 2.0 * Ghalfa_batch.dot(trial._rH1a.ravel())
+        e1b += hamiltonian.ecore
+    else:
+        Ghalfa_batch = walkers.Ghalfa.reshape((nwalkers, -1))
+        Ghalfb_batch = walkers.Ghalfb.reshape((nwalkers, -1))
 
-    e1b = Ghalfa_batch.dot(trial._rH1a.ravel())
-    e1b += Ghalfb_batch.dot(trial._rH1b.ravel())
-    e1b += hamiltonian.ecore
+        e1b = Ghalfa_batch.dot(trial._rH1a.ravel())
+        e1b += Ghalfb_batch.dot(trial._rH1b.ravel())
+        e1b += hamiltonian.ecore
 
     if walkers.rhf:
         ecoul = ecoul_kernel_batch_real_isdf_rhf_gpu(

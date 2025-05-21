@@ -14,7 +14,7 @@ from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol, GenericRealISDF, GenericComplexISDF
-from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRealISDFChunked
 from typing import Union
 
 try:
@@ -256,10 +256,49 @@ def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial:Union[SingleD
 
     # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
     # a problem of large chol cases.
-    print(hamiltonian.cgto.shape, hamiltonian.cholM.shape, Gcharge.shape)
     tmp_real = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.real, optimize=True)
     tmp_imag = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.imag, optimize=True)
     mf_shift = 1.0j * tmp_real - tmp_imag
+    return xp.array(mf_shift)
+
+@plum.dispatch
+def construct_mean_field_shift(hamiltonian: GenericRealISDFChunked, trial: TrialWavefunctionBase):
+    r"""Compute mean field shift.
+
+    .. math::
+
+        \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
+
+    """
+    # hamiltonian.chol [M^2, nchol]
+    Gcharge = (trial.G[0] + trial.G[1])
+
+    tmp_real = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, Gcharge.real, optimize=True)
+    tmp_imag = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, Gcharge.imag, optimize=True)
+
+    split_sizes, displacements = make_splits_displacements(hamiltonian.nchol, trial.handler.ssize)
+    split_sizes_np = numpy.array(split_sizes, dtype=int)
+    displacements_np = numpy.array(displacements, dtype=int)
+
+    recvbuf_real = numpy.zeros(hamiltonian.nchol, dtype=tmp_real.dtype)
+    recvbuf_imag = numpy.zeros(hamiltonian.nchol, dtype=tmp_imag.dtype)
+
+    # print(split_sizes_np, displacements_np)
+    if MPI is None:
+        raise ImportError("mpi4py is not installed.")
+    else:
+        trial.handler.scomm.Gatherv(
+            tmp_real, [recvbuf_real, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+        trial.handler.scomm.Gatherv(
+            tmp_imag, [recvbuf_imag, split_sizes_np, displacements_np, MPI.DOUBLE], root=0
+        )
+
+    trial.handler.scomm.Bcast(recvbuf_real, root=0)
+    trial.handler.scomm.Bcast(recvbuf_imag, root=0)
+
+    mf_shift = 1.0j * recvbuf_real - recvbuf_imag
+
     return xp.array(mf_shift)
 
 @plum.dispatch

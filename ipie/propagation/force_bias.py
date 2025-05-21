@@ -1121,6 +1121,100 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
     synchronize()
     return vbias_batch
 
+def construct_force_bias_batch_single_det_isdf_chunked(hamiltonian, walkers, rcgtoa, rcgtob, handler):
+    """Compute optimal force bias.
+
+    Uses rotated Green's function.
+
+    Parameters
+    ----------
+    hamiltonian : class
+        hamiltonian object.
+    walkers : class
+        walkers object.
+    trial : class
+        Trial wavefunction object.
+    handler : class
+        MPIHandler instance.
+
+    Returns
+    -------
+    xbar : :class:`numpy.ndarray`
+        Force bias.
+    """
+    assert hamiltonian.chunked
+    assert xp.isrealobj(hamiltonian.cholM_chunked)
+
+    Ghalfa = walkers.Ghalfa
+    Ghalfb = walkers.Ghalfb
+
+    chol_idxs_chunk = hamiltonian.chol_idxs_chunk
+
+    Ghalfa_recv = xp.zeros_like(Ghalfa)
+    Ghalfb_recv = xp.zeros_like(Ghalfb)
+
+    Ghalfa_send = Ghalfa.copy()
+    Ghalfb_send = Ghalfb.copy()
+
+    srank = handler.scomm.rank
+
+    vbias_batch_real_recv = xp.zeros((hamiltonian.nchol, walkers.nwalkers))
+    vbias_batch_imag_recv = xp.zeros((hamiltonian.nchol, walkers.nwalkers))
+
+    vbias_batch_real_send = xp.zeros((hamiltonian.nchol, walkers.nwalkers))
+    vbias_batch_imag_send = xp.zeros((hamiltonian.nchol, walkers.nwalkers))
+
+    handle = cutensornet.create()
+    network_opts = NetworkOptions(handle=handle)
+    vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb.real, options=network_opts)
+    vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb.imag, options=network_opts)
+
+    receivers = handler.receivers
+    for _ in range(handler.ssize - 1):
+        synchronize()
+
+        handler.scomm.Isend(Ghalfa_send, dest=receivers[srank], tag=1)
+        handler.scomm.Isend(Ghalfb_send, dest=receivers[srank], tag=2)
+        handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=3)
+        handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=4)
+
+        sender = numpy.where(receivers == srank)[0]
+        req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
+        req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
+        req3 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=3)
+        req4 = handler.scomm.Irecv(vbias_batch_imag_recv, source=sender, tag=4)
+        req1.wait()
+        req2.wait()
+        req3.wait()
+        req4.wait()
+
+        handler.scomm.barrier()
+
+        # prepare sending
+        vbias_batch_real_send = vbias_batch_real_recv.copy()
+        vbias_batch_imag_send = vbias_batch_imag_recv.copy()
+        vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa_recv.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb_recv.real, options=network_opts)
+        vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa_recv.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb_recv.imag, options=network_opts)
+        Ghalfa_send = Ghalfa_recv.copy()
+        Ghalfb_send = Ghalfb_recv.copy()
+
+    synchronize()
+    handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=1)
+    handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=2)
+
+    sender = numpy.where(receivers == srank)[0]
+    req1 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=1)
+    req2 = handler.scomm.Irecv(vbias_batch_imag_recv, source=sender, tag=2)
+    req1.wait()
+    req2.wait()
+    handler.scomm.barrier()
+
+    vbias_batch = xp.empty((walkers.nwalkers, hamiltonian.nchol), dtype=Ghalfa.dtype)
+    vbias_batch.real = vbias_batch_real_recv.T.copy()
+    vbias_batch.imag = vbias_batch_imag_recv.T.copy()
+    synchronize()
+    return vbias_batch
+
 def construct_force_bias_kptsymm_batch_single_det_chunked(hamiltonian, walkers, trial, handler):
     """Compute optimal force bias.
 

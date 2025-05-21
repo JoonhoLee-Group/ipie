@@ -100,3 +100,26 @@ class GenericBase(metaclass=ABCMeta):
         tot_size = handler.allreduce_group(self.chol_chunk.size)
         assert self.chol.size == tot_size
         del self.chol
+
+    def chunk_cholM(self, handler, verbose=False):
+        """Chunk the cholesky factorization for MPQ."""
+        self.chunked = True
+        chol_idxs = [i for i in range(self.nchol)]
+        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
+
+        handler.comm.barrier()
+
+        # distributing cholM
+        if handler.srank == 0:
+            self.cholM = self.cholM.T.copy()  # [chol, M^2]
+        else:
+            self.cholM = self.cholM.T
+        handler.comm.barrier()
+        self.cholM_chunk = handler.scatter_group(self.cholM)  # distribute over chol
+        handler.comm.barrier()
+
+        self.cholM_chunk = self.cholM_chunk.T  # [M^2, cholM_chunk]
+
+        tot_size = handler.allreduce_group(self.cholM_chunk.size)
+        assert self.cholM.size == tot_size
+        del self.cholM
