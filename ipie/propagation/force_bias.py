@@ -919,14 +919,13 @@ def construct_force_bias_kptisdf_batch_single_det(
             Ghalfb_reshape = walkers.Ghalfb.reshape(nwalkers, hamiltonian.nk, trial.nbeta, hamiltonian.nk, hamiltonian.halfrot_cgto.shape[-1])
             
             # slice Sset and Qplus according to memory
-            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16/ (1024**3)
-            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16 / (1024**3)
+            mem_cost_Sset = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Sset) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16 * 2/ (1024**3)
+            mem_cost_Qplus = max(nwalkers * hamiltonian.nbasis, hamiltonian.nisdf) * len(hamiltonian.Qplus) * hamiltonian.nk * (trial.nalpha + trial.nbeta) * 16 * 2/ (1024**3)
 
             num_nq_chunks_Sset = max(1, ceil(mem_cost_Sset / max_mem))
             nq_chunk_Sset_size = ceil(len(hamiltonian.Sset) / num_nq_chunks_Sset)
             nq_left = len(hamiltonian.Sset)
             handle = cutensornet.create()
-            network_opts = NetworkOptions(handle=handle)
             if len(hamiltonian.Sset) > 0:
                 for i in range(num_nq_chunks_Sset):
                     nq_chunk = min(nq_left, nq_chunk_Sset_size)
@@ -937,6 +936,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     gb_kmq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikmq_mat)
                     rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
                     rcgtob_kmq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikmq_mat, q_sls)
+                    network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
                     X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
                     X_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kmq.conj(), hamiltonian.halfrot_cgto, gb_kmq, options=network_opts)
                     L_q = hamiltonian.cholM[i * nq_chunk_Sset_size: i * nq_chunk_Sset_size + nq_chunk]
@@ -960,6 +960,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     gb_kpq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikpq_mat)
                     rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
                     rcgtob_kpq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikpq_mat, q_sls)
+                    network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
                     X_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kmq.conj(), hamiltonian.halfrot_cgto, ga_kmq, options=network_opts)
                     X_wPb = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtob_kmq.conj(), hamiltonian.halfrot_cgto, gb_kmq, options=network_opts)
                     Y_wPa = cutensornet.contract("qkPp, kPr, qkwpr -> qwP", rcgtoa_kpq.conj(), hamiltonian.halfrot_cgto, ga_kpq, options=network_opts)
