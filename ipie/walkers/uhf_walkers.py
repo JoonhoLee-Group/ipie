@@ -95,12 +95,9 @@ class UHFWalkers(BaseWalkers):
         self.Ghalfa = numpy.zeros(
             shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128
         )
-        if ndown > 0:
-            self.Ghalfb = numpy.zeros(
-                shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
-            )
-        else:
-            self.Ghalfb = None
+        self.Ghalfb = numpy.zeros(
+            shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
+        )
 
         self.buff_names += ["phia", "phib"]
 
