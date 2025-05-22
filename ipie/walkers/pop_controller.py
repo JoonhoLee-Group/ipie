@@ -117,10 +117,10 @@ class PopController:
         elif self.method == "pair_branch":
             pair_branch(walkers, comm, self.max_weight, self.min_weight, self.timer)
         elif self.method == "stochastic_reconfiguration":
-            self.reconfiguration_counter += 1
-            if self.reconfiguration_counter % self.reconfiguration_freq == 0:
-                stochastic_reconfiguration(walkers, comm, self.timer)
-                self.reconfiguration_counter = 0
+            # self.reconfiguration_counter += 1
+            # if self.reconfiguration_counter % self.reconfiguration_freq == 0:
+            stochastic_reconfiguration(walkers, comm, self.timer)
+                # self.reconfiguration_counter = 0
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")

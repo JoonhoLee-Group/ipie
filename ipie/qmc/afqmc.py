@@ -564,6 +564,7 @@ class AFQMC(AFQMCBase):
             self.params.num_walkers,
             self.params.num_steps_per_block,
             self.mpi_handler,
+            pop_control_method="stochastic_reconfiguration",
             verbose=self.verbose,
         )
 

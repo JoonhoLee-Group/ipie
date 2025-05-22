@@ -217,6 +217,7 @@ class KptISDF(GenericBase):
         if h1e_mod is not None:
             self.h1e_mod = xp.array(h1e_mod)
         else:
+            print("# Constructing h1e_mod...")
             h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
             construct_h1e_mod_isdf(self.MPQ, self.cgto, self.H1, self.ikpq_mat, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod)
             self.h1e_mod = xp.array(h1e_mod)

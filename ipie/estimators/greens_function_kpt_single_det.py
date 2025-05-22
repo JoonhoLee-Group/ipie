@@ -2,6 +2,7 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from numba import jit
 import numpy
+import time
 
 def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
@@ -119,9 +120,24 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         ik_idx, diag_idx = xp.nonzero(mask)
         ovlp_a[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
     ovlp_a = ovlp_a.reshape(walker_batch.nwalkers, nk * nup, nk * nup)
-    
-    walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1).copy())
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlp_a)
+    # detect zeros in sign_a, return the index
+    mask = xp.isclose(sign_a, 0.0, atol=1e-8)
+    zero_indices = xp.where(mask)[0]
+    
+    # # regularize the overlap matrix
+    # if len(zero_indices) > 0:
+    #     for i in zero_indices:
+    #         # add a small value to the diagonal
+    #         ovlp_a[i] += 1e-10 * xp.eye(nk * nup, dtype=ovlp_a.dtype)
+
+    walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1).copy())
+    # detect if there is nan   
+    if len(zero_indices) > 0:
+        for i in zero_indices:
+            # set Ghalf to zero
+            walker_batch.Ghalfa[i, :, :] = 0.0 + 0.0j
+    
     # ovlp_inv_a = xp.linalg.inv(ovlp_a)
     # walker_batch.Ghalfa = xp.matmul(ovlp_inv_a, walker_batch.phia.transpose(0, 2, 1))
     if not trial.half_rotated or build_full:
@@ -139,7 +155,14 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
         ovlp_b = ovlp_b.reshape(walker_batch.nwalkers, nk * ndown, nk * ndown)
         # ovlp_inv_b = xp.linalg.inv(ovlp_b)
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlp_b)
-        walker_batch.Ghalfb = xp.linalg.solve(ovlp_b, walker_batch.phib.transpose(0, 2, 1).copy())
+        mask = xp.isclose(sign_b, 0.0, atol=1e-8)
+        zero_indices = xp.where(mask)[0]
+        
+        walker_batch.Ghalfb = xp.linalg.solve(ovlp_b, walker_batch.phib.transpose(0, 2, 1).copy()) 
+        if len(zero_indices) > 0:
+            for i in zero_indices:
+                # set Ghalf to zero
+                walker_batch.Ghalfb[i, :, :] = 0.0 + 0.0j 
         # walker_batch.Ghalfb = xp.matmul(ovlp_inv_b, walker_batch.phib.transpose(0, 2, 1))
         if not trial.half_rotated or build_full:
             Gb = xp.einsum(
