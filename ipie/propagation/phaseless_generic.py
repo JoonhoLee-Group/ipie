@@ -331,7 +331,7 @@ class PhaselessISDFChunked(PhaselessBase):
 
     @plum.dispatch
     def apply_VHS(
-        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray
+        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray
     ):
         if config.get_option("use_gpu"):
             nbsf = hamiltonian.nbasis
@@ -341,7 +341,7 @@ class PhaselessISDFChunked(PhaselessBase):
             if mem_vhs > 0.35 * xp.cuda.Device().mem_info[0] or occ_ratio < 0.2:
                 start_time = time.time()
                 assert walkers.nwalkers == xshifted.shape[-1]
-                Lx = self.contract_cholM_xshifted(hamiltonian, xshifted)
+                Lx = self.contract_cholM_xshifted_chunked(hamiltonian, xshifted)
                 synchronize()
                 self.timer.tvhs += time.time() - start_time
                 assert len(VHS.shape) == 3
@@ -402,8 +402,8 @@ class PhaselessISDFChunked(PhaselessBase):
 
     # Any class inherited from PhaselessGeneric should override this method.
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray) -> xp.ndarray:
-        if isinstance(hamiltonian, GenericRealISDF):
+    def construct_VHS(self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray) -> xp.ndarray:
+        if isinstance(hamiltonian, GenericRealISDFChunked):
             xshifted_send = xshifted.copy()
             xshifted_recv = xp.zeros_like(xshifted)
 
@@ -423,6 +423,7 @@ class PhaselessISDFChunked(PhaselessBase):
                     xshifted_send, dest=self.mpi_handler.receivers[srank], tag=1
                 )
                 self.mpi_handler.scomm.Isend(Lx_send_real, dest=self.mpi_handler.receivers[srank], tag=2)
+                self.mpi_handler.scomm.Isend(Lx_send_imag, dest=self.mpi_handler.receivers[srank], tag=3)
 
                 req1 = self.mpi_handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
                 req2 = self.mpi_handler.scomm.Irecv(Lx_recv_real, source=sender, tag=2)
@@ -461,8 +462,6 @@ class PhaselessISDFChunked(PhaselessBase):
             VHS = self.isqrt_dt * VHS
             synchronize()
             xp._default_memory_pool.free_all_blocks()
-        elif isinstance(hamiltonian, GenericComplexISDF):
-            raise NotImplementedError("Chunked ISDF complex not implemented")
         else:
             raise ValueError("Invalid hamiltonian type")
         return VHS

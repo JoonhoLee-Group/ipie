@@ -212,7 +212,7 @@ class GenericRealISDFChunked(GenericBase):
             self.h1e_mod = xp.array(h1e_mod)
         else:
             h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-            construct_h1e_mod_isdf(self.cholM_chunk, self.H1, h1e_mod, handler)
+            construct_h1e_mod_isdf(self.cholM_chunk, self.cgto, self.H1, h1e_mod, handler)
             self.h1e_mod = xp.array(h1e_mod)
         
 

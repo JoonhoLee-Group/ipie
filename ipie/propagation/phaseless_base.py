@@ -26,7 +26,7 @@ from ipie.utils.mpi import make_splits_displacements
 
 @plum.dispatch
 def construct_one_body_propagator(
-    hamiltonian: Union[GenericRealChol, GenericRealCholChunked, GenericRealISDF], mf_shift: xp.ndarray, dt: float
+    hamiltonian: Union[GenericRealChol, GenericRealCholChunked, GenericRealISDF, GenericRealISDFChunked], mf_shift: xp.ndarray, dt: float
 ):
     r"""Construct mean-field shifted one-body propagator.
 
@@ -46,20 +46,33 @@ def construct_one_body_propagator(
     """
     nb = hamiltonian.nbasis
     if hamiltonian.chunked:
-        start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
-        end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
-        if hasattr(mf_shift, "get"):
-            shift = 1j * numpy.einsum(
-                "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
-            ).reshape(nb, nb)
+        if hasattr(hamiltonian, "chol_chunk"):
+            start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
+            end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
+            if hasattr(mf_shift, "get"):
+                shift = 1j * numpy.einsum(
+                    "mx,x->m", hamiltonian.chol_chunk, mf_shift.get()[start_n:end_n]
+                ).reshape(nb, nb)
+            else:
+                shift = 1j * numpy.einsum(
+                    "mx,x->m", hamiltonian.chol_chunk, mf_shift[start_n:end_n]
+                ).reshape(nb, nb)
+            if MPI is None:
+                raise ImportError("mpi4py is not installed.")
+            else:
+                shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
+        elif hasattr(hamiltonian, "cholM_chunk"):
+            start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
+            end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
+            shift = 1j * xp.einsum(
+                "Pp, Pq, Pg, g -> pq", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, mf_shift[start_n:end_n], optimize=True
+            )
+            if MPI is None:
+                raise ImportError("mpi4py is not installed.")
+            else:
+                shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
         else:
-            shift = 1j * numpy.einsum(
-                "mx,x->m", hamiltonian.chol_chunk, mf_shift[start_n:end_n]
-            ).reshape(nb, nb)
-        if MPI is None:
-            raise ImportError("mpi4py is not installed.")
-        else:
-            shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
+            raise ValueError("chol_chunk or cholM_chunk not found in hamiltonian.")
     elif hasattr(hamiltonian, "chol"):
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     elif hasattr(hamiltonian, "cholM"):
@@ -396,9 +409,13 @@ class PhaselessBase(ContinuousBase):
         # 2. Update Slater matrix
         # 2.a Apply one-body
         self.propagate_walkers_one_body(walkers)
+        if trial.handler.rank == 0:
+            print(f"walkersphia norm after one-body: {xp.linalg.norm(walkers.phia)}")
 
         # 2.b Apply two-body
         (cmf, cfb) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
+        if trial.handler.rank == 0:
+            print(f"walkersphia norm after two-body: {xp.linalg.norm(walkers.phia)}")
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers)

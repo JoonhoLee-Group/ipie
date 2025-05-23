@@ -1143,15 +1143,15 @@ def construct_force_bias_batch_single_det_isdf_chunked(hamiltonian, walkers, rcg
         Force bias.
     """
     assert hamiltonian.chunked
-    assert xp.isrealobj(hamiltonian.cholM_chunked)
+    assert xp.isrealobj(hamiltonian.cholM_chunk)
 
     Ghalfa = walkers.Ghalfa
     Ghalfb = walkers.Ghalfb
 
     chol_idxs_chunk = hamiltonian.chol_idxs_chunk
 
-    Ghalfa_recv = xp.zeros_like(Ghalfa)
-    Ghalfb_recv = xp.zeros_like(Ghalfb)
+    Ghalfa_recv = xp.ascontiguousarray(xp.zeros_like(Ghalfa))
+    Ghalfb_recv = xp.ascontiguousarray(xp.zeros_like(Ghalfb))
 
     Ghalfa_send = Ghalfa.copy()
     Ghalfb_send = Ghalfb.copy()
@@ -1166,8 +1166,8 @@ def construct_force_bias_batch_single_det_isdf_chunked(hamiltonian, walkers, rcg
 
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb.real, options=network_opts)
-    vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb.imag, options=network_opts)
+    vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfa.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfb.real, options=network_opts)
+    vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfa.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfb.imag, options=network_opts)
 
     receivers = handler.receivers
     for _ in range(handler.ssize - 1):
@@ -1193,8 +1193,8 @@ def construct_force_bias_batch_single_det_isdf_chunked(hamiltonian, walkers, rcg
         # prepare sending
         vbias_batch_real_send = vbias_batch_real_recv.copy()
         vbias_batch_imag_send = vbias_batch_imag_recv.copy()
-        vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa_recv.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb_recv.real, options=network_opts)
-        vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfa_recv.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunked, Ghalfb_recv.imag, options=network_opts)
+        vbias_batch_real_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfa_recv.real, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfb_recv.real, options=network_opts)
+        vbias_batch_imag_send[chol_idxs_chunk, :] = cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtoa, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfa_recv.imag, options=network_opts) + cutensornet.contract("Pi, Pr, Pg, wir -> gw", rcgtob, hamiltonian.cgto, hamiltonian.cholM_chunk, Ghalfb_recv.imag, options=network_opts)
         Ghalfa_send = Ghalfa_recv.copy()
         Ghalfb_send = Ghalfb_recv.copy()
 

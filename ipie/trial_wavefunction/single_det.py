@@ -17,6 +17,7 @@ from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRea
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
+    construct_force_bias_batch_single_det_isdf_chunked,
 )
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked, half_rotate_isdf
@@ -172,7 +173,7 @@ class SingleDet(TrialWavefunctionBase):
     @plum.dispatch
     def half_rotate(
         self: "SingleDet",
-        hamiltonian: GenericRealISDF,
+        hamiltonian: Union[GenericRealISDF, GenericRealISDFChunked],
         comm: Optional[CommType] = MPI.COMM_WORLD,
     ):
         num_dets = 1
@@ -248,5 +249,5 @@ class SingleDet(TrialWavefunctionBase):
         mpi_handler: MPIHandler,
     ) -> xp.ndarray:
         return construct_force_bias_batch_single_det_isdf_chunked(
-            hamiltonian, walkers, self._rchola, self._rcholb
+            hamiltonian, walkers, self._rcgtoa, self._rcgtob, mpi_handler
         )

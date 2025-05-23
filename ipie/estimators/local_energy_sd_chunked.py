@@ -509,13 +509,13 @@ def local_energy_single_det_uhf_batch_isdf_chunked_gpu(
         receivers = handler.receivers
     
         ecoul_send = ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunked, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_send, Ghalfb_send
+            hamiltonian.cholM_chunk, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_send, Ghalfb_send
         )
         exx_send = exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunked, trial._rcgtoa, hamiltonian.cgto, Ghalfa_send,
+            hamiltonian.cholM_chunk, trial._rcgtoa, hamiltonian.cgto, Ghalfa_send,
         )
         exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunked, trial._rcgtob, hamiltonian.cgto, Ghalfb_send,
+            hamiltonian.cholM_chunk, trial._rcgtob, hamiltonian.cgto, Ghalfb_send,
         )
         exx_recv = exx_send.copy()
         ecoul_recv = ecoul_send.copy()
@@ -542,15 +542,15 @@ def local_energy_single_det_uhf_batch_isdf_chunked_gpu(
 
             # prepare sending
             ecoul_send = ecoul_recv.copy()
-            ecoul_send = ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunked, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_recv, Ghalfb_recv
+            ecoul_send += ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
+                hamiltonian.cholM_chunk, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_recv, Ghalfb_recv
             )
             exx_send = exx_recv.copy()
-            exx_send = exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunked, trial._rcgtoa, hamiltonian.cgto, Ghalfa_recv,
+            exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
+                hamiltonian.cholM_chunk, trial._rcgtoa, hamiltonian.cgto, Ghalfa_recv,
             )
             exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunked, trial._rcgtob, hamiltonian.cgto, Ghalfb_recv,
+                hamiltonian.cholM_chunk, trial._rcgtob, hamiltonian.cgto, Ghalfb_recv,
             )
             Ghalfa_send = Ghalfa_recv.copy()
             Ghalfb_send = Ghalfb_recv.copy()
