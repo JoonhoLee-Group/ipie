@@ -442,6 +442,8 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     timer.add_non_communication()
 
     timer.start_time()
+    if hasattr(local_buffer, "get"):
+        local_buffer = local_buffer.get()
     comm.Gather(local_buffer, global_buffer, root=0)
     timer.add_communication()
 
