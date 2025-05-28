@@ -201,6 +201,36 @@ def set_buffer(walkers, iw, buff):
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
 
+def minimize_communication(new_idx):
+    """
+    Given new_idx, a 1D int array of length N (monotonic or not),
+    returns a permutation out of the same multiset that maximizes
+    the count of i where out[i] == i.
+    """
+    N = new_idx.size
+
+    # 1) count how many of each index we have
+    counts = numpy.bincount(new_idx, minlength=N)
+    counts_out = counts.copy()  # keep a copy of the counts for later use
+
+    # 2) prepare output, mark slots we can't fill yet as -1
+    out = -numpy.ones(N, dtype=int)
+
+    # 3) first pass: fix all i for which counts[i] > 0
+    for i in range(N):
+        if counts[i] > 0:
+            out[i]      = i   # keep walker i in place
+            counts[i]  -= 1   # use up one copy
+
+    # 4) collect leftover values
+    #    numpy.repeat builds [0 repeated counts[0] times, 1 repeated counts[1] times, …]
+    leftovers = numpy.repeat(numpy.arange(N), counts)
+
+    # 5) second pass: fill the holes
+    holes = numpy.where(out < 0)[0]
+    out[holes] = leftovers[: holes.size]
+
+    return out, counts_out
 
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
     """Apply the comb method of population control / branching.
@@ -503,18 +533,27 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
         cumulative_weights = numpy.cumsum(abs(global_weight))
         total_weight = cumulative_weights[-1]
         new_average_weight = total_weight / nwalkers / comm.size
+        numpy.random.seed(0)  # Ensure reproducibility
         zeta = numpy.random.rand()
         new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
         for i in range(comm.size * nwalkers):
             z = (i + zeta) / nwalkers / comm.size
             new_indices[i] = numpy.searchsorted(cumulative_weights, z * total_weight)
+        reordered_indices, counts = minimize_communication(new_indices)
+        new_weights = global_weight.ravel()[reordered_indices]
     timer.add_non_communication()
 
     timer.start_time()
     glob_inf = None
     if comm.rank == 0:
         glob_indices = numpy.arange(comm.size * nwalkers, dtype=numpy.int64)
-        glob_inf = numpy.stack([new_indices, glob_indices], axis=1)
+        mask = (reordered_indices != glob_indices)
+        sendidx = reordered_indices[mask]
+        destidx = glob_indices[mask]
+        glob_inf = numpy.column_stack((sendidx, destidx))
+
+    
+
     timer.add_non_communication()
     timer.start_time()
     glob_inf = comm.bcast(glob_inf, root=0)
@@ -522,46 +561,151 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     timer.add_communication()
 
     timer.start_time()
-    loc_mask = (glob_inf[:, 0] // nwalkers == comm.rank)
-    local_send = glob_inf[loc_mask]
     local_sends = [glob_inf[(glob_inf[:, 0] // nwalkers == i)] for i in range(comm.size)]
+    local_recvs = [glob_inf[(glob_inf[:, 1] // nwalkers == i)] for i in range(comm.size)]
     num_local_sends = numpy.array([len(s) for s in local_sends])
     cumsum_local_sends = numpy.cumsum(num_local_sends) - num_local_sends
+    num_local_recvs = numpy.array([len(r) for r in local_recvs])
+    cumsum_local_recvs = numpy.cumsum(num_local_recvs) - num_local_recvs
 
     buflis = {}
+    local_send = local_sends[comm.rank]
     local_send_loc_idx = local_send[:, 0] % nwalkers
+    local_recv = local_recvs[comm.rank]
     for i in range(nwalkers):
         if i in local_send_loc_idx:
             buflis[i] = get_buffer(walkers, i)
     timer.add_non_communication()
-    reqs = []
+    comm.barrier()
+    send_reqs = []
     for isend, (src_idx, dest_idx) in enumerate(local_send):
-        timer.start_time()
-        src_loc_idx = src_idx % nwalkers
+        src_loc = src_idx % nwalkers
         dest_rk = dest_idx // nwalkers
-        tag = isend + cumsum_local_sends[comm.rank]
-        timer.add_non_communication()
-        timer.start_time()
-        reqs.append(comm.Isend(buflis[src_loc_idx], dest=dest_rk, tag=tag))
-        timer.add_communication()
+        tag      = isend + cumsum_local_sends[comm.rank]
 
-    for iw in numpy.arange(nwalkers):
-        timer.start_time()
-        glob_walker_idx = comm.rank * nwalkers + iw
-        src_rank = glob_inf[glob_walker_idx, 0] // nwalkers
-        timer.add_non_communication()
-        timer.start_time()
-        comm.Recv(walkers.walker_buffer, source=src_rank, tag=glob_walker_idx)
-        timer.add_communication()
-        timer.start_time()
-        set_buffer(walkers, iw, walkers.walker_buffer)
-        timer.add_non_communication()
-    
-    timer.start_time()
-    for r in reqs:
-        r.Wait()
-    timer.add_communication()
+        buf = buflis[src_loc]
+        req = comm.Issend(buf, dest=int(dest_rk), tag=int(tag))
+        send_reqs.append(req)
+
+    # 2) Post all nonblocking recvs, saving a Status for each to inspect later
+    walker_len = get_buffer(walkers, 0).shape[0]
+    recv_reqs  = []
+    for irecv, (src_idx, dest_idx) in enumerate(local_recv):
+        iw       = dest_idx % nwalkers
+        src_rank = src_idx  // nwalkers
+        tag_recv = irecv + cumsum_local_recvs[comm.rank]
+
+        recv_buf = numpy.empty(walker_len, dtype=numpy.complex128)
+        status   = MPI.Status()
+        req      = comm.Irecv(recv_buf, source=int(src_rank), tag=int(tag_recv))
+        recv_reqs.append((iw, recv_buf, status, req))
+
+    # 3) Wait on recvs and inspect their Status
+    for iw, buf, status, req in recv_reqs:
+        req.Wait(status)                        # note: status passed here
+        # count = status.Get_count(MPI.DOUBLE_COMPLEX)
+        # src   = status.Get_source()
+        # tag   = status.Get_tag()
+        # err   = status.Get_error()
+        # print(f"[Rank {comm.rank}] Recv ← from {src} tag={tag} "
+        #     f"count={count} err={err}")
+
+        set_buffer(walkers, iw, buf)
+
+    # 4) Wait on sends
+    MPI.Request.Waitall(send_reqs)
+
+    comm.Barrier()
 
     timer.start_time()
     walkers.weight[:] = new_average_weight
     timer.add_non_communication()
+
+# def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
+#     timer.start_time()
+#     nwalkers = walkers.nwalkers
+#     local_weight = walkers.weight.get() if hasattr(walkers.weight, 'get') else walkers.weight
+#     global_weight = None
+#     if comm.rank == 0:
+#         global_weight = numpy.zeros((comm.size, nwalkers), dtype=local_weight.dtype)
+#     timer.add_non_communication()
+
+#     timer.start_time()
+#     comm.Gather(local_weight, global_weight, root=0)
+#     timer.add_communication()
+
+#     # perform sr on the root
+#     timer.start_time()
+#     new_average_weight = None
+#     if comm.rank == 0:
+#         cumulative_weights = numpy.cumsum(abs(global_weight))
+#         total_weight = cumulative_weights[-1]
+#         new_average_weight = total_weight / nwalkers / comm.size
+#         zeta = numpy.random.rand()
+#         new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
+#         for i in range(comm.size * nwalkers):
+#             z = (i + zeta) / nwalkers / comm.size
+#             new_indices[i] = numpy.searchsorted(cumulative_weights, z * total_weight)
+#     timer.add_non_communication()
+
+#     timer.start_time()
+#     glob_inf = None
+#     if comm.rank == 0:
+#         glob_indices = numpy.arange(comm.size * nwalkers, dtype=numpy.int64)
+#         glob_inf = numpy.stack([new_indices, glob_indices], axis=1)
+#     timer.add_non_communication()
+#     timer.start_time()
+#     glob_inf = comm.bcast(glob_inf, root=0)
+#     new_average_weight = comm.bcast(new_average_weight, root=0)
+#     print(f"# SR communication time 1: {timer.communication_time:.4f} seconds")
+#     timer.add_communication()
+
+#     timer.start_time()
+#     loc_mask = (glob_inf[:, 0] // nwalkers == comm.rank)
+#     local_send = glob_inf[loc_mask]
+#     local_sends = [glob_inf[(glob_inf[:, 0] // nwalkers == i)] for i in range(comm.size)]
+#     num_local_sends = numpy.array([len(s) for s in local_sends])
+#     cumsum_local_sends = numpy.cumsum(num_local_sends) - num_local_sends
+
+#     buflis = {}
+#     local_send_loc_idx = local_send[:, 0] % nwalkers
+#     for i in range(nwalkers):
+#         if i in local_send_loc_idx:
+#             buflis[i] = get_buffer(walkers, i)
+#     timer.add_non_communication()
+#     reqs = []
+#     for isend, (src_idx, dest_idx) in enumerate(local_send):
+#         timer.start_time()
+#         src_loc_idx = src_idx % nwalkers
+#         dest_rk = dest_idx // nwalkers
+#         tag = isend + cumsum_local_sends[comm.rank]
+#         timer.add_non_communication()
+#         timer.start_time()
+#         reqs.append(comm.Isend(buflis[src_loc_idx], dest=dest_rk, tag=tag))
+#         timer.add_send_time()
+
+#     for iw in numpy.arange(nwalkers):
+#         timer.start_time()
+#         glob_walker_idx = comm.rank * nwalkers + iw
+#         src_rank = glob_inf[glob_walker_idx, 0] // nwalkers
+#         timer.add_non_communication()
+#         timer.start_time()
+#         comm.Recv(walkers.walker_buffer, source=src_rank, tag=glob_walker_idx)
+#         timer.add_recv_time()
+#         timer.start_time()
+#         set_buffer(walkers, iw, walkers.walker_buffer)
+#         timer.add_non_communication()
+    
+#     timer.start_time()
+#     for r in reqs:
+#         r.Wait()
+#     print(f"# SR communication time 2: {timer.communication_time:.4f} seconds")
+#     timer.add_communication()
+
+#     timer.start_time()
+#     walkers.weight[:] = new_average_weight
+#     timer.add_non_communication()
+#     print(f"# SR non-communication time: {timer.non_communication_time:.4f} seconds")
+#     print(f"# SR total time: {timer.communication_time + timer.non_communication_time:.4f} seconds")
+#     print(f"# SR recv time: {timer.recv_time:.4f} seconds")
+#     print(f"# SR send time: {timer.send_time:.4f} seconds")
