@@ -533,7 +533,6 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
         cumulative_weights = numpy.cumsum(abs(global_weight))
         total_weight = cumulative_weights[-1]
         new_average_weight = total_weight / nwalkers / comm.size
-        numpy.random.seed(0)  # Ensure reproducibility
         zeta = numpy.random.rand()
         new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
         for i in range(comm.size * nwalkers):
