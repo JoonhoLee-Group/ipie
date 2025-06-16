@@ -409,13 +409,9 @@ class PhaselessBase(ContinuousBase):
         # 2. Update Slater matrix
         # 2.a Apply one-body
         self.propagate_walkers_one_body(walkers)
-        if trial.handler.rank == 0:
-            print(f"walkersphia norm after one-body: {xp.linalg.norm(walkers.phia)}")
 
         # 2.b Apply two-body
         (cmf, cfb) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
-        if trial.handler.rank == 0:
-            print(f"walkersphia norm after two-body: {xp.linalg.norm(walkers.phia)}")
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers)
