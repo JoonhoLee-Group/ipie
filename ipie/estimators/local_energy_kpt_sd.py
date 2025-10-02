@@ -544,39 +544,72 @@ def kpt_isdf_ecoul_rhf_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_ma
     cutensornet.destroy(handle)
     return 2. * ecoul / nk
 
+def contract_psi_G_psi(psiiP_slice, psiqQ_slice, G, buff, nP, nQ):
+    nw, nk, nocc, nbsf = G.shape[0], G.shape[1], G.shape[2], G.shape[4]
+    G = G.transpose(3, 0, 1, 2, 4).reshape(nk, nw * nk * nocc, nbsf)  # k', wki, q
+    size_Gpsi = nw * nocc * nk**2 * nQ
+    Gpsi = buff[:size_Gpsi].reshape(nk, nw * nocc * nk, nQ)
+    xp.matmul(G, psiqQ_slice, out=Gpsi)  # k', wki, Q
+    Gpsi = Gpsi.reshape(nk, nw, nk, nocc, nQ).transpose(2, 1, 4, 0, 3).reshape(nk, nw * nQ * nk, nocc) # k, wQk', i
+    size_TPQ = nk**2 * nw * nP * nQ
+    TPQ = buff[:size_TPQ].reshape(nk, nw * nQ * nk, nP)
+    xp.matmul(Gpsi, psiiP_slice, out=TPQ)
+    return TPQ
+
+def X_contract_cupy_lowk(halfrot_cgtoa, phikr_kpq, M_PQ_iq, phiki_kpq, cgto, Ga_chunk, G_kpq_kprimepq_chunk, buff1, buff2, slices_isdf):
+    # low k algorithm
+    nw = Ga_chunk.shape[0]
+    nk = cgto.shape[0]
+    exx = xp.zeros((nw,), dtype=xp.complex128)
+
+    for ia, P in enumerate(slices_isdf): # ia is the chunk index
+        psi_iP_k = halfrot_cgtoa[:, P, :].transpose(0, 2, 1).conj()  # k, i, P
+        phip_kpq_P = phikr_kpq[:, P, :].transpose(0, 2, 1) # k+q, p, P
+        nP = P.stop - P.start
+        # for ib, Q in enumerate(slices_isdf[ia:], start=ia): # only compute upper triangle
+        for ib, Q in enumerate(slices_isdf):
+            nQ = Q.stop - Q.start
+            psi_iQ_kp = cgto[:, Q, :].transpose(0, 2, 1)  # k', q, Q
+            phij_kpq_Q = phiki_kpq[:, Q, :].transpose(0, 2, 1).conj() # k'+q, j, Q
+            TPQ = contract_psi_G_psi(psi_iP_k, psi_iQ_kp, Ga_chunk, buff1, nP, nQ)
+            TQP_kpq = contract_psi_G_psi(phij_kpq_Q, phip_kpq_P, G_kpq_kprimepq_chunk, buff2, nQ, nP)
+            TPQ = TPQ.reshape(nk, nw, nQ, nk, nP).transpose(1, 0, 3, 4, 2).reshape(nw, nk * nk, nP, nQ)  # wkk', P, Q
+            TQP_kpq = TQP_kpq.reshape(nk, nw, nP, nk, nQ).transpose(1, 3, 0, 2, 4).reshape(nw, nk * nk, nP, nQ)  # wkk', P, Q
+            Tsq = xp.sum(TPQ * TQP_kpq, axis=1) # w, P, Q
+            M_PQ_iq_sliced = M_PQ_iq[P, Q].astype(xp.complex128, copy=False)  # P, Q
+            exx += (Tsq.reshape(nw, nP * nQ) @ M_PQ_iq_sliced.ravel())
+    return exx
+
 def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
     nwalker, nk, nocc, _, nbsf = Ghalfa_batch.shape
     nisdf = MPQ.shape[-1]
+    if nbsf > 16 * nk:
+        # lowk algo
+        exx = xp.zeros((nwalker,), dtype=xp.complex128)
+        nisdf = MPQ.shape[-1]
 
-    w_idx = xp.arange(nwalker)[:, None, None, None, None]  # shape (W,1,1,1,1)
-    k_idx = xp.arange(nk)[None, :, None, None, None]  # shape (1,nk,1,1,1)
-    i_idx = xp.arange(nocc)[None, None, :, None, None]  # shape (1,1,nocc,1,1)
-    kprime_idx = xp.arange(nk)[None, None, None, :, None]  # shape (1,1,1,nk,1)
-    p_idx = xp.arange(nbsf)[None, None, None, None, :] # shape (1,1,1,1,nbsf)
-    handle = cutensornet.create()
+        w_idx = xp.arange(nwalker)[:, None, None, None, None]  # shape (W,1,1,1,1)
+        k_idx = xp.arange(nk)[None, :, None, None, None]  # shape (1,nk,1,1,1)
+        i_idx = xp.arange(nocc)[None, None, :, None, None]  # shape (1,1,nocc,1,1)
+        kprime_idx = xp.arange(nk)[None, None, None, :, None]  # shape (1,1,1,nk,1)
+        p_idx = xp.arange(nbsf)[None, None, None, None, :] # shape (1,1,1,1,nbsf)
     
-
-    exx = xp.zeros(nwalker, dtype=numpy.complex128)
-
-    if nk < 64:
-        intermediate_mem = nwalker * nisdf * nk * nk * nbsf * 6 * 16 / 1024 ** 3
-    else:
-        intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
-    free_bytes = xp.cuda.Device().mem_info[0]
-    free_gb = free_bytes / 1024**3.0
-    max_mem = .7 * free_gb
-    num_chunks = max(1, ceil(intermediate_mem/ max_mem))
-    chunk_size = ceil(nwalker / num_chunks)
-    nw_left = nwalker
-    for i_chunk in range(num_chunks):
-        if nw_left == 0:
-            break
-        n_chunk = min(nw_left, chunk_size)
-        nw_left -= n_chunk
-        w_sls = xp.arange(nwalker)[i_chunk * chunk_size: i_chunk * chunk_size + n_chunk]
-        Ga_chunk = Ghalfa_batch[w_sls]
-        w_chunk_idx = xp.arange(n_chunk)[:, None, None, None, None]  # shape (W_chunk,1,1,1,1)
-
+        intermediate_mem = nisdf * nisdf * nk**2 * nwalker * 3 * 16 / 1024**3
+        max_mem = 8.0
+        num_chunks = ceil(intermediate_mem / max_mem)
+        num_chunk_per_dim = ceil(num_chunks ** 0.5)
+        nisdf_per_chunk = ceil(nisdf / num_chunk_per_dim)
+        nisdf_left = nisdf
+        slices_isdf = []
+        for i_chunk in range(num_chunks):
+            if nisdf_left == 0:
+                break
+            nisdf_chunk = min(nisdf_left, nisdf_per_chunk)
+            nisdf_left -= nisdf_chunk
+            slices_isdf.append(slice(i_chunk * nisdf_per_chunk, i_chunk * nisdf_per_chunk + nisdf_chunk))
+        max_dim = max(nisdf_per_chunk, nocc)
+        buff1 = xp.empty(nwalker * nk**2 * max_dim**2, dtype=xp.complex128)
+        buff2 = xp.empty(nwalker * nk**2 * max_dim**2, dtype=xp.complex128)
         for iq in range(len(Sset)):
             iq_real = Sset[iq]
             ikpq = kpq_mat[iq_real]
@@ -584,12 +617,10 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
             phiki_kpq = halfrot_cgtoa[ikpq]
             kpq_idx = kpq_mat[k_idx, iq_real]
             kprimepq_idx = kpq_mat[kprime_idx, iq_real]
-            G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+            G_kpq_kprimepq_chunk = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
             MPQ_iq = MPQ[iq]
-            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-            exx[w_sls] -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
-            xp.cuda.get_current_stream().synchronize()
-            del G_kpq_kprimepq_chunk
+            exx_iq = X_contract_cupy_lowk(halfrot_cgtoa, phikr_kpq, MPQ_iq, phiki_kpq, cgto, Ghalfa_batch, G_kpq_kprimepq_chunk, buff1, buff2, slices_isdf)
+            exx -= exx_iq
 
         for iq in range(len(Sset), len(Sset) + len(Qplus)):
             iq_real = Qplus[iq - len(Sset)]
@@ -598,14 +629,71 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
             phiki_kpq = halfrot_cgtoa[ikpq]
             kpq_idx = kpq_mat[k_idx, iq_real]
             kprimepq_idx = kpq_mat[kprime_idx, iq_real]
-            G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+            G_kpq_kprimepq_chunk = Ghalfa_batch[w_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
             MPQ_iq = MPQ[iq]
-            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-            exx[w_sls] -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
-            xp.cuda.get_current_stream().synchronize()
-            del G_kpq_kprimepq_chunk
+            exx_iq = X_contract_cupy_lowk(halfrot_cgtoa, phikr_kpq, MPQ_iq, phiki_kpq, cgto, Ghalfa_batch, G_kpq_kprimepq_chunk, buff1, buff2, slices_isdf)
+            exx -= 2. * exx_iq
 
-    cutensornet.destroy(handle)
+    else:
+        # large k algo
+        w_idx = xp.arange(nwalker)[:, None, None, None, None]  # shape (W,1,1,1,1)
+        k_idx = xp.arange(nk)[None, :, None, None, None]  # shape (1,nk,1,1,1)
+        i_idx = xp.arange(nocc)[None, None, :, None, None]  # shape (1,1,nocc,1,1)
+        kprime_idx = xp.arange(nk)[None, None, None, :, None]  # shape (1,1,1,nk,1)
+        p_idx = xp.arange(nbsf)[None, None, None, None, :] # shape (1,1,1,1,nbsf)
+        handle = cutensornet.create()
+        
+
+        exx = xp.zeros(nwalker, dtype=numpy.complex128)
+
+        if nk < 64:
+            intermediate_mem = nwalker * nisdf * nk * nk * nbsf * 6 * 16 / 1024 ** 3
+        else:
+            intermediate_mem = nwalker * nisdf * nk * nbsf * 6 * 16 / 1024 ** 3
+        free_bytes = xp.cuda.Device().mem_info[0]
+        free_gb = free_bytes / 1024**3.0
+        max_mem = .7 * free_gb
+        num_chunks = max(1, ceil(intermediate_mem/ max_mem))
+        chunk_size = ceil(nwalker / num_chunks)
+        nw_left = nwalker
+        for i_chunk in range(num_chunks):
+            if nw_left == 0:
+                break
+            n_chunk = min(nw_left, chunk_size)
+            nw_left -= n_chunk
+            w_sls = xp.arange(nwalker)[i_chunk * chunk_size: i_chunk * chunk_size + n_chunk]
+            Ga_chunk = Ghalfa_batch[w_sls]
+            w_chunk_idx = xp.arange(n_chunk)[:, None, None, None, None]  # shape (W_chunk,1,1,1,1)
+
+            for iq in range(len(Sset)):
+                iq_real = Sset[iq]
+                ikpq = kpq_mat[iq_real]
+                phikr_kpq = cgto[ikpq]
+                phiki_kpq = halfrot_cgtoa[ikpq]
+                kpq_idx = kpq_mat[k_idx, iq_real]
+                kprimepq_idx = kpq_mat[kprime_idx, iq_real]
+                G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+                MPQ_iq = MPQ[iq]
+                network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
+                exx[w_sls] -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
+                xp.cuda.get_current_stream().synchronize()
+                del G_kpq_kprimepq_chunk
+
+            for iq in range(len(Sset), len(Sset) + len(Qplus)):
+                iq_real = Qplus[iq - len(Sset)]
+                ikpq = kpq_mat[iq_real]
+                phikr_kpq = cgto[ikpq]
+                phiki_kpq = halfrot_cgtoa[ikpq]
+                kpq_idx = kpq_mat[k_idx, iq_real]
+                kprimepq_idx = kpq_mat[kprime_idx, iq_real]
+                G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
+                MPQ_iq = MPQ[iq]
+                network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
+                exx[w_sls] -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
+                xp.cuda.get_current_stream().synchronize()
+                del G_kpq_kprimepq_chunk
+
+        cutensornet.destroy(handle)
     return 0.5 * exx / nk
 
 
