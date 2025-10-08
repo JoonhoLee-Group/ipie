@@ -9,7 +9,7 @@ from ipie.estimators.utils import gabk_spin, gabk_spin_nonuniform
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.walkers.uhf_walkers import UHFWalkers
-from ipie.propagation.force_bias import construct_force_bias_kpt_batch_single_det, construct_force_bias_kptsymm_batch_single_det,construct_force_bias_kptisdf_batch_single_det, construct_force_bias_kptsymm_batch_single_det_chunked
+from ipie.propagation.force_bias import construct_force_bias_kpt_batch_single_det, construct_force_bias_kptsymm_batch_single_det, construct_force_bias_kptisdf_batch_single_det, construct_force_bias_kptsymm_batch_single_det_chunked
 from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked, half_rotate_isdf
 from ipie.propagation.overlap import calc_overlap_single_det_kpt
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
@@ -37,8 +37,8 @@ class KptSingleDet(TrialWavefunctionBase):
             # print("# making trial wavefunction MO coefficient real")
             self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
 
-        self.psi0a = self.psi[:, :, : self.nalpha]
-        self.psi0b = self.psi[:, :, self.nalpha :]
+        self.psi0a = self.psi[:, :, :self.nalpha]
+        self.psi0b = self.psi[:, :, self.nalpha:]
         if noccas is not None:
             self.noccas = noccas
             if noccbs is None:
@@ -220,7 +220,7 @@ class KptSingleDet(TrialWavefunctionBase):
             raise NotImplementedError
         else:
             return construct_force_bias_kpt_batch_single_det(hamiltonian, walkers, self)
-        
+
     @plum.dispatch
     def calc_force_bias(
         self,
@@ -244,5 +244,3 @@ class KptSingleDet(TrialWavefunctionBase):
             raise NotImplementedError
         else:
             return construct_force_bias_kptisdf_batch_single_det(hamiltonian, walkers, self)
-
-
