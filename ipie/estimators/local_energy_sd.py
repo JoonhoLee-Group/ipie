@@ -1016,60 +1016,98 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
     nbeta = walkers.Ghalfb.shape[1]
     nbasis = walkers.Ghalfa.shape[-1]
     nchol = hamiltonian.nchol
+    if walkers.rhf:
+        Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
 
-    Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
-    Ghalfb = walkers.Ghalfb.reshape(nwalkers, nbeta * nbasis)
+        e1b = Ghalfa.dot(trial._rH1a.ravel()) * 2.0 + hamiltonian.ecore
 
-    e1b = Ghalfa.dot(trial._rH1a.ravel()) + Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
+        if xp.isrealobj(trial._rchola):
+            Xa = trial._rchola.dot(Ghalfa.real.T) + 1.0j * trial._rchola.dot(
+                Ghalfa.imag.T
+            )  # naux x nwalkers
+        else:
+            Xa = trial._rchola.dot(Ghalfa.T)
 
-    if xp.isrealobj(trial._rchola):
-        Xa = trial._rchola.dot(Ghalfa.real.T) + 1.0j * trial._rchola.dot(
-            Ghalfa.imag.T
-        )  # naux x nwalkers
-        Xb = trial._rcholb.dot(Ghalfb.real.T) + 1.0j * trial._rcholb.dot(
-            Ghalfb.imag.T
-        )  # naux x nwalkers
+        ecoul = 4.0 * xp.einsum("xw,xw->w", Xa, Xa, optimize=True)
+
+        max_nocc = max(nalpha, nbeta)
+        mem_needed = 16 * nwalkers * max_nocc * max_nocc * nchol / (1024.0**3.0)
+        num_chunks = max(1, ceil(mem_needed / max_mem))
+        chunk_size = ceil(nchol / num_chunks)
+        nchol_chunks = ceil(nchol / chunk_size)
+
+        # Buffer for large intermediate tensor
+        buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128)
+        nchol_chunk_size = chunk_size
+        nchol_left = nchol
+        exx = xp.zeros(nwalkers, dtype=xp.complex128)
+        Ghalfa = walkers.Ghalfa.reshape((nwalkers * nalpha, nbasis))
+        for i in range(nchol_chunks):
+            nchol_chunk = min(nchol_chunk_size, nchol_left)
+            chol_sls = slice(i * chunk_size, i * chunk_size + nchol_chunk)
+            size = nwalkers * nchol_chunk * nalpha * nalpha
+            # alpha-alpha
+            Txij = buff[:size].reshape((nchol_chunk * nalpha, nwalkers * nalpha))
+            rchol = trial._rchola[chol_sls].reshape((nchol_chunk * nalpha, nbasis))
+            xp.dot(rchol, Ghalfa.T, out=Txij)
+            Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
+            exchange_reduction(Txij, exx)
+            nchol_left -= chunk_size
+        e2b = 0.5 * (ecoul - 2. * exx)
     else:
-        Xa = trial._rchola.dot(Ghalfa.T)
-        Xb = trial._rcholb.dot(Ghalfb.T)
+        Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
+        Ghalfb = walkers.Ghalfb.reshape(nwalkers, nbeta * nbasis)
 
-    ecoul = xp.einsum("xw,xw->w", Xa, Xa, optimize=True)
-    ecoul += xp.einsum("xw,xw->w", Xb, Xb, optimize=True)
-    ecoul += 2.0 * xp.einsum("xw,xw->w", Xa, Xb, optimize=True)
+        e1b = Ghalfa.dot(trial._rH1a.ravel()) + Ghalfb.dot(trial._rH1b.ravel()) + hamiltonian.ecore
 
-    max_nocc = max(nalpha, nbeta)
-    mem_needed = 16 * nwalkers * max_nocc * max_nocc * nchol / (1024.0**3.0)
-    num_chunks = max(1, ceil(mem_needed / max_mem))
-    chunk_size = ceil(nchol / num_chunks)
-    nchol_chunks = ceil(nchol / chunk_size)
+        if xp.isrealobj(trial._rchola):
+            Xa = trial._rchola.dot(Ghalfa.real.T) + 1.0j * trial._rchola.dot(
+                Ghalfa.imag.T
+            )  # naux x nwalkers
+            Xb = trial._rcholb.dot(Ghalfb.real.T) + 1.0j * trial._rcholb.dot(
+                Ghalfb.imag.T
+            )  # naux x nwalkers
+        else:
+            Xa = trial._rchola.dot(Ghalfa.T)
+            Xb = trial._rcholb.dot(Ghalfb.T)
 
-    # Buffer for large intermediate tensor
-    buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128)
-    nchol_chunk_size = chunk_size
-    nchol_left = nchol
-    exx = xp.zeros(nwalkers, dtype=xp.complex128)
-    Ghalfa = walkers.Ghalfa.reshape((nwalkers * nalpha, nbasis))
-    Ghalfb = walkers.Ghalfb.reshape((nwalkers * nbeta, nbasis))
-    for i in range(nchol_chunks):
-        nchol_chunk = min(nchol_chunk_size, nchol_left)
-        chol_sls = slice(i * chunk_size, i * chunk_size + nchol_chunk)
-        size = nwalkers * nchol_chunk * nalpha * nalpha
-        # alpha-alpha
-        Txij = buff[:size].reshape((nchol_chunk * nalpha, nwalkers * nalpha))
-        rchol = trial._rchola[chol_sls].reshape((nchol_chunk * nalpha, nbasis))
-        xp.dot(rchol, Ghalfa.T, out=Txij)
-        Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
-        exchange_reduction(Txij, exx)
-        # beta-beta
-        size = nwalkers * nchol_chunk * nbeta * nbeta
-        Txij = buff[:size].reshape((nchol_chunk * nbeta, nwalkers * nbeta))
-        rchol = trial._rcholb[chol_sls].reshape((nchol_chunk * nbeta, nbasis))
-        xp.dot(rchol, Ghalfb.T, out=Txij)
-        Txij = Txij.reshape((nchol_chunk, nbeta, nwalkers, nbeta))
-        exchange_reduction(Txij, exx)
-        nchol_left -= chunk_size
+        ecoul = xp.einsum("xw,xw->w", Xa, Xa, optimize=True)
+        ecoul += xp.einsum("xw,xw->w", Xb, Xb, optimize=True)
+        ecoul += 2.0 * xp.einsum("xw,xw->w", Xa, Xb, optimize=True)
 
-    e2b = 0.5 * (ecoul - exx)
+        max_nocc = max(nalpha, nbeta)
+        mem_needed = 16 * nwalkers * max_nocc * max_nocc * nchol / (1024.0**3.0)
+        num_chunks = max(1, ceil(mem_needed / max_mem))
+        chunk_size = ceil(nchol / num_chunks)
+        nchol_chunks = ceil(nchol / chunk_size)
+
+        # Buffer for large intermediate tensor
+        buff = xp.zeros(shape=(nwalkers * chunk_size * max_nocc * max_nocc), dtype=xp.complex128)
+        nchol_chunk_size = chunk_size
+        nchol_left = nchol
+        exx = xp.zeros(nwalkers, dtype=xp.complex128)
+        Ghalfa = walkers.Ghalfa.reshape((nwalkers * nalpha, nbasis))
+        Ghalfb = walkers.Ghalfb.reshape((nwalkers * nbeta, nbasis))
+        for i in range(nchol_chunks):
+            nchol_chunk = min(nchol_chunk_size, nchol_left)
+            chol_sls = slice(i * chunk_size, i * chunk_size + nchol_chunk)
+            size = nwalkers * nchol_chunk * nalpha * nalpha
+            # alpha-alpha
+            Txij = buff[:size].reshape((nchol_chunk * nalpha, nwalkers * nalpha))
+            rchol = trial._rchola[chol_sls].reshape((nchol_chunk * nalpha, nbasis))
+            xp.dot(rchol, Ghalfa.T, out=Txij)
+            Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
+            exchange_reduction(Txij, exx)
+            # beta-beta
+            size = nwalkers * nchol_chunk * nbeta * nbeta
+            Txij = buff[:size].reshape((nchol_chunk * nbeta, nwalkers * nbeta))
+            rchol = trial._rcholb[chol_sls].reshape((nchol_chunk * nbeta, nbasis))
+            xp.dot(rchol, Ghalfb.T, out=Txij)
+            Txij = Txij.reshape((nchol_chunk, nbeta, nwalkers, nbeta))
+            exchange_reduction(Txij, exx)
+            nchol_left -= chunk_size
+
+        e2b = 0.5 * (ecoul - exx)
 
     energy = xp.zeros((nwalkers, 3), dtype=numpy.complex128)
     energy[:, 0] = e1b + e2b

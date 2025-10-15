@@ -61,15 +61,16 @@ def local_energy_batch(system, hamiltonian, walkers, trial):
                 )
             else:
                 return local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial)
-        elif walkers.rhf:
-            return local_energy_single_det_rhf_batch(system, hamiltonian, walkers, trial)
         else:
             if hamiltonian.chunked:
                 return local_energy_single_det_uhf_batch_chunked(
                     system, hamiltonian, walkers, trial
                 )
             else:
-                return local_energy_single_det_uhf_batch(system, hamiltonian, walkers, trial)
+                if walkers.rhf:
+                    return local_energy_single_det_rhf_batch(system, hamiltonian, walkers, trial)
+                else:
+                    return local_energy_single_det_uhf_batch(system, hamiltonian, walkers, trial)
     else:
         print("# Warning: local_energy_batch is not production level for multi-det trials.")
         return local_energy_multi_det_trial_batch(system, hamiltonian, walkers, trial)
