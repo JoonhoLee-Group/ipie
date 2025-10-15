@@ -39,7 +39,7 @@ with cp.cuda.Device(rank % 2):
     t0 = time.time()
     vfb = rchol_gpu.dot(walkers_batch_Ghalf_gpu[0].T) + rchol_gpu.dot(walkers_batch_Ghalf_gpu[1].T)
     t1 = time.time()
-print("MPI Rank {} - CPU/GPU Time: {} on GPU {}".format(rank, t1 - t0, vfb.device))
+print(f"MPI Rank {rank} - CPU/GPU Time: {t1 - t0} on GPU {vfb.device}")
 
 cp.cuda.get_current_stream().synchronize()
 if rank == 0:

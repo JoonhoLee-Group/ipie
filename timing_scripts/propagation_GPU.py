@@ -55,7 +55,7 @@ with cp.cuda.Device(rank):
                     iw
                 ].dot(walkers_batch_phi[iw].imag)
     t1 = time.time()
-print("MPI Rank {} GPU for loop Time: {} on GPU {}".format(rank, (t1 - t0), VHS.device))
+print(f"MPI Rank {rank} GPU for loop Time: {t1 - t0} on GPU {VHS.device}")
 
 
 """ MPI GPU using einsum"""
@@ -71,4 +71,4 @@ with cp.cuda.Device(rank):
                 "wmn,wni->wmi", VHS, walkers_batch_phi.real, optimize=True
             ) + 1.0j * cp.einsum("wmn,wni->wmi", VHS, walkers_batch_phi.imag, optimize=True)
     t1 = time.time()
-print("MPI Rank {} GPU einsum Time: {} on GPU {}".format(rank, (t1 - t0), VHS.device))
+print(f"MPI Rank {rank} GPU einsum Time: {t1 - t0} on GPU {VHS.device}")

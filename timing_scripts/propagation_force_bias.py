@@ -46,14 +46,14 @@ for iw in range(nwalkers):
     ]
 vfb = np.array(vfb)
 t1 = time.time()
-print("forming vfb naive = {}".format(t1 - t0))
+print(f"forming vfb naive = {t1 - t0}")
 
 walkers_batch_Ghalf = walkers_batch_Ghalf.reshape(2, nwalkers, nao * nocc)
 t0 = time.time()
 vfb2 = rchol.dot(walkers_batch_Ghalf[0].T) + rchol.dot(walkers_batch_Ghalf[1].T)
 vfb2 = vfb2.T.copy()
 t1 = time.time()
-print("forming vfb combined = {}".format(t1 - t0))
+print(f"forming vfb combined = {t1 - t0}")
 
 assert np.allclose(vfb2, vfb)
 
@@ -66,7 +66,7 @@ vfb2.real = vfb2_real
 vfb2.imag = vfb2_imag
 vfb2 = vfb2.T.copy()
 t1 = time.time()
-print("forming vfb combined split complex = {}".format(t1 - t0))
+print(f"forming vfb combined split complex = {t1 - t0}")
 
 assert np.allclose(vfb2, vfb)
 
@@ -85,7 +85,7 @@ vfb2.real = vfb2_real
 vfb2.imag = vfb2_imag
 vfb2 = vfb2.T.copy()
 t1 = time.time()
-print("forming vfb combined split complex + contiguous = {}".format(t1 - t0))
+print(f"forming vfb combined split complex + contiguous = {t1 - t0}")
 
 assert np.allclose(vfb2, vfb)
 
@@ -99,5 +99,5 @@ vfb3 = force_bias_numba(rchol, walkers_batch_Ghalf)
 t0 = time.time()
 vfb3 = force_bias_numba(rchol, walkers_batch_Ghalf)
 t1 = time.time()
-print("forming vfb numba = {}".format(t1 - t0))
+print(f"forming vfb numba = {t1 - t0}")
 assert np.allclose(vfb3, vfb)

@@ -102,9 +102,7 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
             # prepare sending
             ecoul_send = ecoul_recv.copy()
             Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha * nbasis)
-            ecoul_send += ecoul_kernel_batch_real_rchol_uhf(
-                rchola_chunk, Ghalfa_recv
-            )
+            ecoul_send += ecoul_kernel_batch_real_rchol_rhf(rchola_chunk, Ghalfa_recv)
             Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha, nbasis)
             exx_send = exx_recv.copy()
             exx_send += 2.0 * exx_kernel_batch_real_rchol(rchola_chunk, Ghalfa_recv)
@@ -241,6 +239,7 @@ def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
 
     return ecoul
 
+
 def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
     """Compute coulomb contribution for rchol with RHF trial.
 
@@ -271,6 +270,7 @@ def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
     ecoul *= 0.5
 
     return ecoul
+
 
 def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
     """Compute exchange contribution for complex rchol.

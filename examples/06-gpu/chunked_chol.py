@@ -2,7 +2,7 @@ from pyscf import cc, gto, scf
 from ipie.utils.mpi import make_splits_displacements
 import h5py
 import numpy as np
-import gc 
+import gc
 
 
 mol = gto.M(
@@ -16,8 +16,10 @@ mf.chkfile = "scf.chk"
 mf.kernel()
 
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
+
 gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 
 
 from ipie.utils.chunk_large_chol import split_cholesky
-split_cholesky('hamiltonian.h5', 4) # split the cholesky to 4 subfiles
+
+split_cholesky("hamiltonian.h5", 4)  # split the cholesky to 4 subfiles

@@ -24,7 +24,7 @@ for i in range(nwalkers):
     VHS1 += [chol2.dot(x[i])]
 t1 = time.time()
 VHS1 = numpy.array(VHS1)
-print("forming VHS1 naive = {}".format(t1 - t0))
+print(f"forming VHS1 naive = {t1 - t0}")
 
 print(VHS1.shape)
 # print(VHS1)
@@ -34,7 +34,7 @@ t0 = time.time()
 VHS2 = numpy.einsum("wX,Xu->wu", x, chol3, optimize=True)
 VHS2 = VHS2.reshape((nwalkers, nao, nao))
 t1 = time.time()
-print("forming VHS2 combined = {}".format(t1 - t0))
+print(f"forming VHS2 combined = {t1 - t0}")
 print(VHS2.shape)
 # print(VHS2)
 #
@@ -43,7 +43,7 @@ t0 = time.time()
 VHS3 = x.dot(chol3)
 VHS3 = VHS3.reshape((nwalkers, nao, nao))
 t1 = time.time()
-print("forming VHS3 combined 3 = {}".format(t1 - t0))
+print(f"forming VHS3 combined 3 = {t1 - t0}")
 #
 assert numpy.allclose(VHS1, VHS2)
 assert numpy.allclose(VHS2, VHS3)

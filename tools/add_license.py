@@ -58,15 +58,13 @@ for file_path, names in files:
                     continue
                 if ".com" not in e:
                     _email = ""
-                    string += "{:s} {:s}\n# {:9s}".format(f, l, "")
+                    string += f"{f:s} {l:s}\n# {'':9s}"
                 else:
                     _email = e
-                    string += "{:s} {:s} {:s}\n# {:9s}".format(f, l, _email, "")
+                    string += f"{f:s} {l:s} {_email:s}\n# {'':9s}"
                 num_authors += 1
-            authors = """#
-# Author{:s}: {}
-""".format(
-                "s" if num_authors > 1 else "", string.strip()
-            )
+            authors = f"""#
+# Author{('s' if num_authors > 1 else ''):s}: {string.strip()}
+"""
         file.seek(0, 0)
         file.write(NOTICE + authors + "\n" + file_data)

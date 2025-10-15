@@ -142,7 +142,7 @@ def main(args):
             av_tau=options.av_tau,
             verbose=options.verbose,
         )
-        fmt = lambda x: "{:13.8f}".format(x)
+        fmt = lambda x: f"{x:13.8f}"
         print(res.to_string(index=False, float_format=fmt))
     else:
         results = reblock_minimal(
@@ -150,7 +150,7 @@ def main(args):
             start_block=options.block_start,
             verbose=options.verbose,
         )
-        fmt = lambda x: "{:13.8f}".format(x)
+        fmt = lambda x: f"{x:13.8f}"
         print(results.to_string(index=False, float_format=fmt))
 
 

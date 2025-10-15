@@ -28,6 +28,7 @@ mol = gto.M(
 )
 
 from ipie.config import config
+
 config.update_option("use_gpu", True)
 
 gpu_number_per_node = 4
@@ -52,6 +53,7 @@ size = comm.Get_size()
 srank = rank % nmembers
 
 from ipie.utils.mpi import MPIHandler, make_splits_displacements
+
 handler = MPIHandler(nmembers=nmembers)
 
 from ipie.utils.pack_numba import pack_cholesky
@@ -81,13 +83,7 @@ with h5py.File("wavefunction.h5") as fa:
 num_basis = hcore.shape[-1]
 mol_nelec = mol.nelec
 system = Generic(nelec=mol_nelec)
-ham = HamGeneric(
-    numpy.array([hcore, hcore]),
-    None,
-    chol_chunk,
-    chol_packed_chunk,
-    e0, handler
-)
+ham = HamGeneric(numpy.array([hcore, hcore]), None, chol_chunk, chol_packed_chunk, e0, handler)
 ham.nchol = num_chol
 ham.handler = handler
 
@@ -97,7 +93,15 @@ trial.half_rotate(ham)
 
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.utils.mpi import MPIHandler
-walkers = UHFWalkers(numpy.hstack([phi0a, phi0a]), system.nup, system.ndown, ham.nbasis, num_walkers, mpi_handler=handler)
+
+walkers = UHFWalkers(
+    numpy.hstack([phi0a, phi0a]),
+    system.nup,
+    system.ndown,
+    ham.nbasis,
+    num_walkers,
+    mpi_handler=handler,
+)
 walkers.build(trial)
 
 afqmc = AFQMC.build(
@@ -110,7 +114,8 @@ afqmc = AFQMC.build(
     nsteps,
     nblocks,
     timestep,
-    mpi_handler=handler)
+    mpi_handler=handler,
+)
 
 
 afqmc.run()

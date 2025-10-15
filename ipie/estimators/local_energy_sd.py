@@ -1053,7 +1053,7 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
             Txij = Txij.reshape((nchol_chunk, nalpha, nwalkers, nalpha))
             exchange_reduction(Txij, exx)
             nchol_left -= chunk_size
-        e2b = 0.5 * (ecoul - 2. * exx)
+        e2b = 0.5 * (ecoul - 2.0 * exx)
     else:
         Ghalfa = walkers.Ghalfa.reshape(nwalkers, nalpha * nbasis)
         Ghalfb = walkers.Ghalfb.reshape(nwalkers, nbeta * nbasis)
