@@ -222,7 +222,7 @@ start = time.time()
 for iw in range(nwalkers):
     energies3 += [local_energy_generic_cholesky_opt_rhf(Ghalfa_batch[iw], rchola)]
 energies3 = numpy.complex128(energies3)
-print("new algorithm (RHF) = {}".format(time.time() - start))
+print(f"new algorithm (RHF) = {time.time() - start}")
 
 start = time.time()
 for iw in range(nwalkers):
@@ -232,7 +232,7 @@ for iw in range(nwalkers):
         )
     ]
 energies6 = numpy.complex128(energies6)
-print("cubic algorithm (RHF) = {}".format(time.time() - start))
+print(f"cubic algorithm (RHF) = {time.time() - start}")
 
 # start = time.time()
 # energies4 = local_energy_generic_cholesky_opt_rhf_batch(Ghalfa_batch, Ghalfb_batch, rchola, rcholb)
@@ -245,7 +245,7 @@ GhalfaT_batch = Ghalfa_batch.transpose(0, 2, 1).copy()
 
 energies5 = local_energy_generic_cholesky_exx_rhf_batch(GhalfaT_batch, rchola)
 energies5 = numpy.complex128(energies5)
-print("new algorithm batch (RHF, Cython) = {}".format(time.time() - start))
+print(f"new algorithm batch (RHF, Cython) = {time.time() - start}")
 
 # assert(numpy.allclose(energies,energies2))
 # assert(numpy.allclose(energies3,energies4))
@@ -264,7 +264,7 @@ for iw in range(nwalkers):
 # lp_wrapper = lp(local_energy_generic_cholesky_opt_rhf_batch)
 # lp_wrapper(Ghalfa_batch, rchola)
 # lp.print_stats()
-print("local_energy_generic_cholesky_opt_rhf profiled = {}".format(time.time() - start))
+print(f"local_energy_generic_cholesky_opt_rhf profiled = {time.time() - start}")
 
 pr.disable()
 pr.print_stats(sort="tottime")

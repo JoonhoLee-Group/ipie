@@ -57,4 +57,4 @@ with cp.cuda.Device(rank):
         )
         vfb = tmp.T.copy()
     t1 = time.time()
-print("MPI Rank {} - CPU/GPU Time: {} on GPU {}".format(rank, t1 - t0, vfb.device))
+print(f"MPI Rank {rank} - CPU/GPU Time: {t1 - t0} on GPU {vfb.device}")

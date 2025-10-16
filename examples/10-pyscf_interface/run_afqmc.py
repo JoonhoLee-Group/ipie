@@ -16,7 +16,7 @@ if comm.rank == 0:
     mf.kernel()
     mycc = cc.UCCSD(mf).run()
     et = mycc.ccsd_t()
-    print("UCCSD(T) energy {}".format(mf.e_tot + mycc.e_corr + et))
+    print(f"UCCSD(T) energy {mf.e_tot + mycc.e_corr + et}")
 
     gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 comm.barrier()

@@ -2,6 +2,7 @@
 Run AFQMC with multi-determinant trial wavefunction.
 Both GPU and MPI can be enabled in this script.
 """
+
 import h5py
 import numpy
 from pyscf import fci, gto, mcscf, scf
@@ -16,14 +17,17 @@ from ipie.utils.mpi import MPIHandler
 
 try:
     from mpi4py import MPI
+
     comm = MPI.COMM_WORLD
 except ImportError:
     from ipie.qmc.comm import FakeComm
+
     comm = FakeComm()
 
 from ipie.config import config
+
 # config.update_option("use_gpu", True) # enable GPU
-config.update_option("use_gpu", False) # disable GPU
+config.update_option("use_gpu", False)  # disable GPU
 
 comm_size = comm.size if comm is not None else 1
 num_walkers = 640 // comm_size

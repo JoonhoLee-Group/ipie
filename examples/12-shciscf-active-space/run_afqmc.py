@@ -32,6 +32,7 @@ controllable from the factory method) may require tuning. One should always
 visualize the active space too (and the orbitals) to make sure things are
 sensible.
 """
+
 import numpy as np
 
 try:

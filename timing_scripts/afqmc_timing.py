@@ -66,5 +66,5 @@ pr.print_stats(sort="cumtime")
 walker.greens_function(trial)  # Green's function gets updated
 etot = local_energy(sys, ham, walker, trial)[0]
 
-print("a sample of local_energy = {}".format(etot))
+print(f"a sample of local_energy = {etot}")
 # a sample of local_energy = (-2244.6424862764557+0.00047855044660360946j)

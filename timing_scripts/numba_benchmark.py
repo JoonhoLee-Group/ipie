@@ -77,4 +77,4 @@ for nmult in [1, 2, 3, 4, 5, 6]:
 
     start = time.time()
     exx = local_energy_numba(rchola, Ghalfa_batch)
-    print("{}: Numba = {}".format(nmult, time.time() - start))
+    print(f"{nmult}: Numba = {time.time() - start}")

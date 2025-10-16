@@ -43,4 +43,4 @@ with cp.cuda.Device(rank):
         VHS = cp.dot(x, chol)
     t1 = time.time()
     print(VHS.dtype)
-print("MPI Rank {} - GPU Time: {} on GPU {}".format(rank, t1 - t0, VHS.device))
+print(f"MPI Rank {rank} - GPU Time: {t1 - t0} on GPU {VHS.device}")
