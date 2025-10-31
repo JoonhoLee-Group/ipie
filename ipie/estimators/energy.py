@@ -161,7 +161,6 @@ class EnergyEstimator(EstimatorBase):
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
         self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
-
         return self.data
 
     def get_index(self, name):
