@@ -214,9 +214,7 @@ class BaseWalkers(metaclass=ABCMeta):
                 fh5[f"walker_weight_{num_slices}"] = weight
                 fh5[f"walker_hybrid_energy_{num_slices}"] = hybrid_energy
             else:
-                fh5[f"walker_timeslice_{num_slices}"] = numpy.concatenate(
-                    [xp.asnumpy(phia), xp.asnumpy(phib)], axis=-1
-                )
+                fh5[f"walker_timeslice_{num_slices}"] = numpy.array([xp.asnumpy(phia), xp.asnumpy(phib)])
                 fh5[f"walker_weight_{num_slices}"] = xp.asnumpy(weight)
                 fh5[f"walker_hybrid_energy_{num_slices}"] = xp.asnumpy(hybrid_energy)
 
@@ -233,7 +231,7 @@ class BaseWalkers(metaclass=ABCMeta):
                 hybrid_energy = fh5[f"walker_hybrid_energy_{num_slices}"][:]
                 self.weight = xp.array(weight)
                 self.hybrid_energy = xp.array(hybrid_energy)
-                self.ovlp = trial.calc_greens_function(self)
+                # self.ovlp = trial.calc_greens_function(self)
 
             except KeyError:
                 print(f" # Could not read walker data from: {read_file}")

@@ -321,7 +321,6 @@ def exx_kpt_kernel(rchol, rcholbar, Ghalf, kcubelist, kpq_mat):
     naux = rchol.shape[3]
     nbasis = rchol.shape[-1]
     nk = Ghalf.shape[0]
-
     T1 = cp.zeros((nwalkers, len(kcubelist) * nocc * naux * nocc), dtype=cp.complex128)
     T2 = cp.zeros((nwalkers, len(kcubelist) * nocc * naux * nocc), dtype=cp.complex128)
 

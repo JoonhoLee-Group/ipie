@@ -341,6 +341,8 @@ def kpt_symmchol_exx_kernel_batch_gpu(rchola_chunk, rcholbara_chunk, Ghalfa, kpq
     nkcube_left = len(kcube_Sset)
     if len(kcube_Sset) > 0:
         for i in range(num_nk_chunks_Sset):
+            if nkcube_left <= 0:
+                break
             nk_chunk = min(nkcube_left, nk_chunk_Sset_size)
             nkcube_left -= nk_chunk
             k_sls = kcube_Sset[i * nk_chunk_Sset_size: i * nk_chunk_Sset_size + nk_chunk]
@@ -355,6 +357,8 @@ def kpt_symmchol_exx_kernel_batch_gpu(rchola_chunk, rcholbara_chunk, Ghalfa, kpq
     nkcube_left = len(kcube_Qplus)
     if len(kcube_Qplus) > 0:
         for i in range(num_nk_chunks_Qplus):
+            if nkcube_left <= 0:
+                break
             nk_chunk = min(nkcube_left, nk_chunk_Qplus_size)
             nkcube_left -= nk_chunk
             k_sls = kcube_Qplus[i * nk_chunk_Qplus_size: i * nk_chunk_Qplus_size + nk_chunk]

@@ -1,5 +1,5 @@
 import time
-
+import h5py
 import numpy
 
 from ipie.config import MPI
@@ -39,8 +39,10 @@ class PopController:
         pop_control_method="pair_branch",
         min_weight=0.1,
         max_weight=4,
-        reconfiguration_freq=50,
         verbose=False,
+        correlated_samp=False,
+        reference_run=False,
+        walkermap_filepath=None,
     ):
         self.verbose = verbose
 
@@ -54,8 +56,7 @@ class PopController:
 
         self.min_weight = min_weight
         self.max_weight = max_weight
-        self.reconfiguration_counter = 0
-        self.reconfiguration_freq = reconfiguration_freq
+        self.pop_control_counter = 0
 
         self.mpi_handler = mpi_handler
 
@@ -68,6 +69,9 @@ class PopController:
 
         self.target_weight = self.ntot_walkers
         self.total_weight = self.ntot_walkers
+        self.correlated_samp = correlated_samp
+        self.reference_run = reference_run
+        self.walkermap_filepath = walkermap_filepath
 
         if verbose:
             print(f"# target weight is {self.target_weight}")
@@ -117,13 +121,17 @@ class PopController:
         elif self.method == "pair_branch":
             pair_branch(walkers, comm, self.max_weight, self.min_weight, self.timer)
         elif self.method == "stochastic_reconfiguration":
-            # self.reconfiguration_counter += 1
-            # if self.reconfiguration_counter % self.reconfiguration_freq == 0:
-            stochastic_reconfiguration(walkers, comm, self.timer)
-                # self.reconfiguration_counter = 0
+            if not self.correlated_samp:
+                stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter)
+            else:
+                if self.reference_run:
+                    stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter, store_walkermap=True, walkermap_file=self.walkermap_filepath)
+                else:
+                    stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter, read_walkermap=True, walkermap_file=self.walkermap_filepath)
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
+        self.pop_control_counter += 1
 
 
 def get_buffer(walkers, iw):
@@ -219,8 +227,8 @@ def minimize_communication(new_idx):
     # 3) first pass: fix all i for which counts[i] > 0
     for i in range(N):
         if counts[i] > 0:
-            out[i]      = i   # keep walker i in place
-            counts[i]  -= 1   # use up one copy
+            out[i] = i  # keep walker i in place
+            counts[i] -= 1  # use up one copy
 
     # 4) collect leftover values
     #    numpy.repeat builds [0 repeated counts[0] times, 1 repeated counts[1] times, …]
@@ -464,7 +472,7 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         r.wait()
     timer.add_communication()
 
-def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
+def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_control_counter=0, store_walkermap=False, read_walkermap=False, walkermap_file=None):
     timer.start_time()
     nwalkers = walkers.nwalkers
     local_weight = walkers.weight.get() if hasattr(walkers.weight, 'get') else walkers.weight
@@ -484,13 +492,26 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
         cumulative_weights = numpy.cumsum(abs(global_weight))
         total_weight = cumulative_weights[-1]
         new_average_weight = total_weight / nwalkers / comm.size
-        zeta = numpy.random.rand()
-        new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
-        for i in range(comm.size * nwalkers):
-            z = (i + zeta) / nwalkers / comm.size
-            new_indices[i] = numpy.searchsorted(cumulative_weights, z * total_weight)
-        reordered_indices, counts = minimize_communication(new_indices)
-        new_weights = global_weight.ravel()[reordered_indices]
+        if not read_walkermap:
+            zeta = numpy.random.rand()
+            new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
+            for i in range(comm.size * nwalkers):
+                z = (i + zeta) / nwalkers / comm.size
+                new_indices[i] = numpy.searchsorted(cumulative_weights, z * total_weight)
+            reordered_indices, _ = minimize_communication(new_indices)
+            if store_walkermap:
+                assert walkermap_file is not None, "Must provide filename to store the walker map."
+                with h5py.File(walkermap_file, 'a') as f:
+                    name = f"walker_map_{pop_control_counter}"
+                    if name in f:
+                        f[name][...] = reordered_indices
+                    else:
+                        f.create_dataset(name, data=reordered_indices)
+        else:
+            assert walkermap_file is not None, "Must provide filename to read the walker map."
+            with h5py.File(walkermap_file, 'r') as f:
+                reordered_indices = f[f"walker_map_{pop_control_counter}"][:]
+        # new_weights = global_weight.ravel()[reordered_indices]
     timer.add_non_communication()
 
     timer.start_time()
@@ -501,8 +522,6 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
         sendidx = reordered_indices[mask]
         destidx = glob_indices[mask]
         glob_inf = numpy.column_stack((sendidx, destidx))
-
-    
 
     timer.add_non_communication()
     timer.start_time()
@@ -531,7 +550,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
     for isend, (src_idx, dest_idx) in enumerate(local_send):
         src_loc = src_idx % nwalkers
         dest_rk = dest_idx // nwalkers
-        tag      = isend + cumsum_local_sends[comm.rank]
+        tag = isend + cumsum_local_sends[comm.rank]
 
         buf = buflis[src_loc]
         req = comm.Issend(buf, dest=int(dest_rk), tag=int(tag))
@@ -539,20 +558,20 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
 
     # 2) Post all nonblocking recvs, saving a Status for each to inspect later
     walker_len = get_buffer(walkers, 0).shape[0]
-    recv_reqs  = []
+    recv_reqs = []
     for irecv, (src_idx, dest_idx) in enumerate(local_recv):
-        iw       = dest_idx % nwalkers
-        src_rank = src_idx  // nwalkers
+        iw = dest_idx % nwalkers
+        src_rank = src_idx // nwalkers
         tag_recv = irecv + cumsum_local_recvs[comm.rank]
 
         recv_buf = numpy.empty(walker_len, dtype=numpy.complex128)
-        status   = MPI.Status()
-        req      = comm.Irecv(recv_buf, source=int(src_rank), tag=int(tag_recv))
+        status = MPI.Status()
+        req = comm.Irecv(recv_buf, source=int(src_rank), tag=int(tag_recv))
         recv_reqs.append((iw, recv_buf, status, req))
 
     # 3) Wait on recvs and inspect their Status
     for iw, buf, status, req in recv_reqs:
-        req.Wait(status)                        # note: status passed here
+        req.Wait(status)
         # count = status.Get_count(MPI.DOUBLE_COMPLEX)
         # src   = status.Get_source()
         # tag   = status.Get_tag()

@@ -25,7 +25,6 @@ import math
 from typing import Dict, Optional, Tuple
 
 
-from ipie.utils.backend import get_device_memory
 from ipie.config import config
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.handler import EstimatorHandler
@@ -58,7 +57,7 @@ class AFQMCBase(metaclass=abc.ABCMeta):
         propagator,
         mpi_handler,
         params: QMCParams,
-        eq_propagator = None,
+        eq_propagator=None,
         verbose: int = 0,
     ):
         self.system = system
@@ -293,7 +292,7 @@ class AFQMC(AFQMCBase):
         propagator,
         mpi_handler,
         params: QMCParams,
-        eq_propagator = None,
+        eq_propagator=None,
         verbose: int = 0,
     ):
         super().__init__(
@@ -316,11 +315,14 @@ class AFQMC(AFQMCBase):
         eq_stabilize_freq=2,
         pop_control_freq=5,
         eq_pop_control_freq=2,
-        eq_timestep = None,
-        eq_num_steps_per_block = None,
+        eq_timestep=None,
+        eq_num_steps_per_block=None,
         num_eq_blocks: int = 50,
         ene_bound_const: float = 2.0,
         fb_bound: float = 1.0,
+        correlated_samp: bool = False,
+        reference_run: bool = False,
+        walkermap_filepath: Optional[str] = None,
         verbose=True,
         mpi_handler=None,
     ) -> "AFQMC":
@@ -374,7 +376,10 @@ class AFQMC(AFQMCBase):
             eq_num_steps_per_block=eq_num_steps_per_block,
             num_eq_blocks=num_eq_blocks,
             fb_bound=fb_bound,
-            ene_bound_const=ene_bound_const
+            ene_bound_const=ene_bound_const,
+            correlated_samp=correlated_samp,
+            reference_run=reference_run,
+            walkermap_filepath=walkermap_filepath,
         )
         # 2. Calculation objects.
         system = Generic(num_elec)
@@ -560,12 +565,23 @@ class AFQMC(AFQMCBase):
         eshift = 0.0
         self.walkers.orthogonalise()
 
+        self.pcontrol_eq = PopController(
+            self.params.num_walkers,
+            self.params.num_steps_per_block,
+            self.mpi_handler,
+            pop_control_method="stochastic_reconfiguration",
+            verbose=self.verbose,
+        )
+
         self.pcontrol = PopController(
             self.params.num_walkers,
             self.params.num_steps_per_block,
             self.mpi_handler,
             pop_control_method="stochastic_reconfiguration",
             verbose=self.verbose,
+            correlated_samp=self.params.correlated_samp,
+            reference_run=self.params.reference_run,
+            walkermap_filepath=self.params.walkermap_filepath,
         )
 
         self.get_env_info()
@@ -622,7 +638,13 @@ class AFQMC(AFQMCBase):
                 self.tprop_gemm = self.propagator.timer.tgemm
 
             start_clip = time.time()
-            if step > 1:
+            if step > 1 and step <= num_eqlb_steps:
+                wbound = self.pcontrol_eq.total_weight * 0.10
+                xp.nan_to_num(self.walkers.weight, copy=False)
+                xp.clip(
+                    self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
+                )  # in-place clipping
+            elif step > num_eqlb_steps:
                 wbound = self.pcontrol.total_weight * 0.10
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
@@ -641,13 +663,13 @@ class AFQMC(AFQMCBase):
             if step <= num_eqlb_steps:
                 if step % self.params.eq_pop_control_freq == 0:
                     start = time.time()
-                    self.pcontrol.pop_control(self.walkers, comm)
+                    self.pcontrol_eq.pop_control(self.walkers, comm)
                     synchronize()
                     self.tpopc += time.time() - start
-                    self.tpopc_send = self.pcontrol.timer.send_time
-                    self.tpopc_recv = self.pcontrol.timer.recv_time
-                    self.tpopc_comm = self.pcontrol.timer.communication_time
-                    self.tpopc_non_comm = self.pcontrol.timer.non_communication_time
+                    self.tpopc_send = self.pcontrol_eq.timer.send_time
+                    self.tpopc_recv = self.pcontrol_eq.timer.recv_time
+                    self.tpopc_comm = self.pcontrol_eq.timer.communication_time
+                    self.tpopc_non_comm = self.pcontrol_eq.timer.non_communication_time
             else:
                 if step % self.params.pop_control_freq == 0:
                     start = time.time()
@@ -672,7 +694,7 @@ class AFQMC(AFQMCBase):
                         self.system, self.hamiltonian, self.trial, self.walkers
                     )
                     self.estimators.print_block(
-                        comm, (step - num_eqlb_steps)// self.params.num_steps_per_block , self.accumulators
+                        comm, (step - num_eqlb_steps) // self.params.num_steps_per_block, self.accumulators
                     )
                     self.accumulators.zero()
             else:

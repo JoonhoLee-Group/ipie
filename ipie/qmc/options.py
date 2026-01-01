@@ -175,7 +175,9 @@ class QMCParams:
     rng_seed: Optional[int] = None
     fb_bound: float = 1.0
     ene_bound_const: float = 2.0
-
+    correlated_samp: bool = False
+    reference_run: bool = False  # indicates if this is a reference run for correlated sampling
+    walkermap_filepath: Optional[str] = None
 
     def __post_init__(self):
         if self.eq_timestep is None:

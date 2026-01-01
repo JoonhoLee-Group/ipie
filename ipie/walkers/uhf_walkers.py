@@ -71,12 +71,12 @@ class UHFWalkers(BaseWalkers):
         self.field_configs = None
 
         self.phia = xp.array(
-            [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
+            [initial_walker[:, :self.nup].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128,
         )
         if ndown > 0:
             self.phib = xp.array(
-                [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
+                [initial_walker[:, self.nup:].copy() for iw in range(self.nwalkers)],
                 dtype=xp.complex128,
             )
         else:
@@ -105,7 +105,7 @@ class UHFWalkers(BaseWalkers):
         self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
 
         self.rhf = False  # interfacing with old codes...
-        self.padding=False
+        self.padding = False
 
     def build(self, trial):
         ovlp = trial.calc_greens_function(self)
