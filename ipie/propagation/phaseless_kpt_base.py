@@ -240,6 +240,7 @@ def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
     network_opts = NetworkOptions(handle=handle)
     mf_shift = contract("kPp, kPr, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts)
     cutensornet.destroy(handle)
+    xp._default_memory_pool.free_all_blocks()
     return xp.array(mf_shift)
 
 @plum.dispatch
@@ -260,18 +261,17 @@ def construct_one_body_propagator(
     dt : float
         Timestep.
     """
-    
-    cholpcholconj = hamiltonian.cholM + hamiltonian.cholM.conj()
     igamma = hamiltonian.igamma
+    cholpcholconj_igamma = hamiltonian.cholM[igamma] + hamiltonian.cholM[igamma].conj()
     cgto = hamiltonian.cgto
     # to cupy array
-    cholpcholconj = xp.array(cholpcholconj)
+    cholpcholconj_igamma = xp.array(cholpcholconj_igamma)
     cgto = xp.array(cgto)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj[igamma], mf_shift, options=network_opts)
+    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj_igamma, mf_shift, options=network_opts)
     cutensornet.destroy(handle)
-    H1 = hamiltonian.h1e_mod + xp.array([shift, shift])
+    H1 = xp.array(hamiltonian.h1e_mod) + xp.array([shift, shift])
     if hasattr(H1, "get"):
         H1_numpy = H1.get()
     else:

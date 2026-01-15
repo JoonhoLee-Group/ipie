@@ -181,11 +181,11 @@ class KptISDF(GenericBase):
         assert len(h1e.shape) == 4 # shape = nspin, nk, nbasis, nbasis
         super().__init__(h1e, ecore, verbose)
 
-        self.MPQ = numpy.array(MPQ, dtype=numpy.complex128)
-        self.cholM = numpy.array(cholM, dtype=numpy.complex128)  # [q, P, gamma], M = LL^\dagger
+        self.MPQ = numpy.asarray(MPQ, dtype=numpy.complex128)
+        self.cholM = numpy.asarray(cholM, dtype=numpy.complex128)  # [q, P, gamma], M = LL^\dagger
         self.nchol = self.cholM.shape[-1]
         # here we don't have spin indices for cgto because we use OAO basis for UHF cases to avoid extra storage
-        self.cgto = numpy.array(cgto, dtype=numpy.complex128) # [k, P, p]
+        self.cgto = numpy.asarray(cgto, dtype=numpy.complex128) # [k, P, p]
         if halfrot_cgto is not None:
             self.halfrot_cgtoa, self.halfrot_cgtob, self.halfrot_cgto = halfrot_cgto # [k, \tilde{P}, i(a)], [k, \tilde{P}, i(b)], [k, \tilde{P}, p]
         else: 
@@ -215,7 +215,8 @@ class KptISDF(GenericBase):
 
         # this is the one-body part that comes out of re-ordering the 2-body operators
         if h1e_mod is not None:
-            self.h1e_mod = xp.array(h1e_mod)
+            self.h1e_mod = h1e_mod
+            print("# Using provided h1e_mod...")
         else:
             print("# Constructing h1e_mod...")
             h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)

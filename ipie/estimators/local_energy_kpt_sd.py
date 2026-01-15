@@ -583,7 +583,7 @@ def X_contract_cupy_lowk(halfrot_cgtoa, phikr_kpq, M_PQ_iq, phiki_kpq, cgto, Ga_
 def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sset, Qplus):
     nwalker, nk, nocc, _, nbsf = Ghalfa_batch.shape
     nisdf = MPQ.shape[-1]
-    if nbsf > 16 * nk:
+    if nbsf > 8 * nk:
         # lowk algo
         exx = xp.zeros((nwalker,), dtype=xp.complex128)
         nisdf = MPQ.shape[-1]
@@ -674,7 +674,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
                 kprimepq_idx = kpq_mat[kprime_idx, iq_real]
                 G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
                 MPQ_iq = MPQ[iq]
-                network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
+                network_opts = NetworkOptions(handle=handle, memory_limit=0.7 * xp.cuda.Device().mem_info[0])
                 exx[w_sls] -= contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
                 xp.cuda.get_current_stream().synchronize()
                 del G_kpq_kprimepq_chunk
@@ -688,7 +688,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
                 kprimepq_idx = kpq_mat[kprime_idx, iq_real]
                 G_kpq_kprimepq_chunk = Ga_chunk[w_chunk_idx, kpq_idx, i_idx, kprimepq_idx, p_idx]
                 MPQ_iq = MPQ[iq]
-                network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
+                network_opts = NetworkOptions(handle=handle, memory_limit=0.7 * xp.cuda.Device().mem_info[0])
                 exx[w_sls] -= 2. * contract('kPi, kPp, PQ, KQj, KQq, wkiKq, wKjkp -> w', halfrot_cgtoa.conj(), phikr_kpq, MPQ_iq, phiki_kpq.conj(), cgto, Ga_chunk, G_kpq_kprimepq_chunk, options=network_opts)
                 xp.cuda.get_current_stream().synchronize()
                 del G_kpq_kprimepq_chunk
