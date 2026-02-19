@@ -111,13 +111,17 @@ def construct_one_body_propagator(hamiltonian: GenericComplexChol, mf_shift: xp.
     """
     nb = hamiltonian.nbasis
     nchol = hamiltonian.nchol
-    shift = numpy.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
-    shift = 1j * numpy.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(nb, nb)
-    shift += 1j * numpy.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(nb, nb)
+    shift = xp.zeros((nb, nb), dtype=hamiltonian.chol.dtype)
+    shift = 1j * xp.einsum("mx,x->m", hamiltonian.A, mf_shift[:nchol]).reshape(nb, nb)
+    shift += 1j * xp.einsum("mx,x->m", hamiltonian.B, mf_shift[nchol:]).reshape(nb, nb)
 
-    H1 = hamiltonian.h1e_mod - numpy.array([shift, shift])
-    expH1 = numpy.array(
-        [scipy.linalg.expm(-0.5 * dt * H1[0]), scipy.linalg.expm(-0.5 * dt * H1[1])]
+    H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
+    if hasattr(H1, "get"):
+        H1_numpy = H1.get()
+    else:
+        H1_numpy = H1
+    expH1 = xp.array(
+        [scipy.linalg.expm(-0.5 * dt * H1_numpy[0]), scipy.linalg.expm(-0.5 * dt * H1_numpy[1])]
     )
     return expH1
 
@@ -230,7 +234,7 @@ def construct_mean_field_shift(
     mf_shift = numpy.zeros(nfields, dtype=hamiltonian.chol.dtype)
     mf_shift[:nchol] = 1j * numpy.dot(hamiltonian.A.T, Gcharge.ravel())
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
-    return mf_shift
+    return xp.array(mf_shift)
 
 
 # TODO: check.
