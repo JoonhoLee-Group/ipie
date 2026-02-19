@@ -55,10 +55,7 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.backend import arraylib as xp
-from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
-
-from ipie.utils.backend import get_device_memory
 
 
 @plum.dispatch

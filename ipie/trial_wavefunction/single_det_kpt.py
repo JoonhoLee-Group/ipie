@@ -19,7 +19,7 @@ from ipie.utils.mpi import MPIHandler
 from typing import Union
 
 
-# class for UHF trial
+# class for Single Determinant trial wavefunction for k-point calculations
 class KptSingleDet(TrialWavefunctionBase):
     def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), noccas=None, noccbs=None, verbose=False):
         assert isinstance(wavefunction, numpy.ndarray)
@@ -69,26 +69,6 @@ class KptSingleDet(TrialWavefunctionBase):
         raise RuntimeError("Cannot modify number of determinants in SingleDet trial.")
 
     def calculate_energy(self, system, hamiltonian) -> numpy.ndarray:
-        # if self.verbose:
-        #     print("# Computing trial wavefunction energy.")
-        # start = time.time()
-        # # self.e1b = (
-        # #     numpy.sum(self.Ghalf[0] * self._rH1a)
-        # #     + numpy.sum(self.Ghalf[1] * self._rH1b)
-        # #     + hamiltonian.ecore
-        # # )
-        # # self.ej, self.ek = half_rotated_cholesky_jk(
-        # #     system, self.Ghalf[0], self.Ghalf[1], trial=self
-        # # )
-        # # self.e2b = self.ej + self.ek
-        # # self.energy = self.e1b + self.e2b
-
-        # if self.verbose:
-        #     print(
-        #         "# (E, E1B, E2B): (%13.8e, %13.8e, %13.8e)"
-        #         % (self.energy.real, self.e1b.real, self.e2b.real)
-        #     )
-        #     print(f"# Time to evaluate local energy: {time.time() - start} s")
         pass
 
     @plum.dispatch

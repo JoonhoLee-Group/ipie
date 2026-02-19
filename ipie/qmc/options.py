@@ -14,6 +14,7 @@
 #
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 from dataclasses import dataclass
@@ -155,9 +156,21 @@ class QMCParams:
         Number of steps before QR stabilization of walkers is performed.
     pop_control_freq : int
         Frequency at which population control occurs.
+    eq_pop_control_freq : int
+        Frequency at which population control occurs during equilibration phase.
     rng_seed : int
         The random number seed. If run in parallel the seeds on other cores /
         threads are determined from this.
+    fb_bound : float
+        The force bias bound.
+    ene_bound_const : float
+        The local energy bound constant.
+    correlated_samp : bool
+        Whether to use correlated sampling.
+    reference_run : bool
+        Whether this is a reference run (i.e. generating the reference population control decisions for the sample runs in correlated sampling).
+    walkermap_filepath : str
+        Filepath to read / write the walkermap for correlated sampling.
     """
 
     num_walkers: int
@@ -176,7 +189,7 @@ class QMCParams:
     fb_bound: float = 1.0
     ene_bound_const: float = 2.0
     correlated_samp: bool = False
-    reference_run: bool = False  # indicates if this is a reference run for correlated sampling
+    reference_run: bool = False
     walkermap_filepath: Optional[str] = None
 
     def __post_init__(self):

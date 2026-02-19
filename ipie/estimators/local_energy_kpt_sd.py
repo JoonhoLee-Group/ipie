@@ -1,4 +1,21 @@
-# from line_profiler import LineProfiler
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+#
+
 from math import ceil, sqrt
 
 import numpy
@@ -566,7 +583,6 @@ def X_contract_cupy_lowk(halfrot_cgtoa, phikr_kpq, M_PQ_iq, phiki_kpq, cgto, Ga_
         psi_iP_k = halfrot_cgtoa[:, P, :].transpose(0, 2, 1).conj()  # k, i, P
         phip_kpq_P = phikr_kpq[:, P, :].transpose(0, 2, 1) # k+q, p, P
         nP = P.stop - P.start
-        # for ib, Q in enumerate(slices_isdf[ia:], start=ia): # only compute upper triangle
         for ib, Q in enumerate(slices_isdf):
             nQ = Q.stop - Q.start
             psi_iQ_kp = cgto[:, Q, :].transpose(0, 2, 1)  # k', q, Q
@@ -653,7 +669,7 @@ def kpt_isdf_exx_kernel_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch, kpq_mat, Sse
         free_bytes = xp.cuda.Device().mem_info[0]
         free_gb = free_bytes / 1024**3.0
         max_mem = .7 * free_gb
-        num_chunks = max(1, ceil(intermediate_mem/ max_mem))
+        num_chunks = max(1, ceil(intermediate_mem / max_mem))
         chunk_size = ceil(nwalker / num_chunks)
         nw_left = nwalker
         for i_chunk in range(num_chunks):

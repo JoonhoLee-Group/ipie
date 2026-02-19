@@ -14,6 +14,7 @@
 #
 # Authors: Joonho Lee <linusjoonho@gmail.com>
 #          Fionn Malone <fmalone@google.com>
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 import numpy

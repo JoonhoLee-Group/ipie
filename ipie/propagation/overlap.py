@@ -14,6 +14,7 @@
 #
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 import itertools
@@ -107,11 +108,6 @@ def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
     # detect 0.+0.js in sign_a (array)
     mask = xp.isclose(sign_a, 0.0, atol=1e-8)
     zero_indices = xp.where(mask)[0]
-    
-    # regularize the overlap matrix
-    # if len(zero_indices) > 0:
-    #     print("Warning: zero overlap detected in ovlpa")
-    #     print(f"zero_indices: {zero_indices}")
 
     if ndown > 0 and not walkers.rhf:
         ovlpb = xp.einsum("wlpki, lpj->wkilj", phib, trial.psi0b.conj(), optimize=True)
@@ -123,9 +119,6 @@ def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlpb_reshape)
         mask = xp.isclose(sign_b, 0.0, atol=1e-8)
         zero_indices = xp.where(mask)[0]
-        # if len(zero_indices) > 0:
-        #     print("Warning: zero overlap detected in ovlpb")
-        #     print(f"zero_indices: {zero_indices}")
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
         sgnot = sign_a * sign_b
         logot = log_ovlp_a + log_ovlp_b - walkers.log_shift

@@ -1,8 +1,25 @@
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+#
+
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from numba import jit
 import numpy
-import time
+
 
 def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
     """Compute walker's green's function.
@@ -124,22 +141,13 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
     # detect zeros in sign_a, return the index
     mask = xp.isclose(sign_a, 0.0, atol=1e-8)
     zero_indices = xp.where(mask)[0]
-    
-    # # regularize the overlap matrix
-    # if len(zero_indices) > 0:
-    #     for i in zero_indices:
-    #         # add a small value to the diagonal
-    #         ovlp_a[i] += 1e-10 * xp.eye(nk * nup, dtype=ovlp_a.dtype)
 
     walker_batch.Ghalfa = xp.linalg.solve(ovlp_a, walker_batch.phia.transpose(0, 2, 1).copy())
-    # detect if there is nan   
     if len(zero_indices) > 0:
         for i in zero_indices:
             # set Ghalf to zero
             walker_batch.Ghalfa[i, :, :] = 0.0 + 0.0j
     
-    # ovlp_inv_a = xp.linalg.inv(ovlp_a)
-    # walker_batch.Ghalfa = xp.matmul(ovlp_inv_a, walker_batch.phia.transpose(0, 2, 1))
     if not trial.half_rotated or build_full:
         Ga = xp.einsum(
             "kpi,wkilq->wkplq", trial.psi0a.conj(), walker_batch.Ghalfa, optimize=True
@@ -163,7 +171,6 @@ def greens_function_kpt_single_det_batch(walker_batch, trial, build_full=False):
             for i in zero_indices:
                 # set Ghalf to zero
                 walker_batch.Ghalfb[i, :, :] = 0.0 + 0.0j 
-        # walker_batch.Ghalfb = xp.matmul(ovlp_inv_b, walker_batch.phib.transpose(0, 2, 1))
         if not trial.half_rotated or build_full:
             Gb = xp.einsum(
                 "kpi,wkilq->wkplq", trial.psi0b.conj(), walker_batch.Ghalfb, optimize=True

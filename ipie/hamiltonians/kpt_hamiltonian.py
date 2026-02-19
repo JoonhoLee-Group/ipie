@@ -1,3 +1,21 @@
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+#
+
 import numpy
 from numba import jit
 
@@ -73,7 +91,6 @@ def construct_h1e_mod_isdf(MPQ, cgto, h1e, ikpq_mat, ikmq_mat, Sset, Qplus, h1e_
         for ik in range(nk):
             ikpq = ikpq_mat[iq_real, ik]
             cgto_ikpq = cgto[ikpq]
-            # v0 += .5 * oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto)
             cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
             cgtoM = MPQ_iq * cgto_PQ
             v0[ik] += .5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
@@ -86,8 +103,6 @@ def construct_h1e_mod_isdf(MPQ, cgto, h1e, ikpq_mat, ikmq_mat, Sset, Qplus, h1e_
             cgto_ikpq = cgto[ikpq]
             ikmq = ikmq_mat[iq_real, ik]
             cgto_ikmq = cgto[ikmq]
-            
-            # v0 += .5 * (oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikpq, MPQ_iq, cgto_ikpq.conj(), cgto) + oe.contract('kPp, kPr, PQ, kQr, kQq -> kpq', cgto.conj(), cgto_ikmq, MPQ_iq.conj(), cgto_ikmq.conj(), cgto))
             cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
             cgtoM = MPQ_iq * cgto_PQ
             v0[ik] += .5 *cgto[ik].conj().T @ cgtoM @ cgto[ik]

@@ -14,6 +14,7 @@
 #
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee <linusjoonho@gmail.com>
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 """Driver to perform AFQMC calculation"""
@@ -347,12 +348,34 @@ class AFQMC(AFQMCBase):
                 num_steps_per_block.
         timestep : float
             Imaginary timestep. Default 0.005.
-        stabilize_freq : float
+        stabilize_freq : int
             Frequency at which to perform QR factorization of walkers (in units
-                of steps.) Default 25.
+                of steps.) Default 5.
+        eq_stabilize_freq : int
+            Frequency at which to perform QR factorization of walkers during equilibration (in units
+                of steps.) Default 2.
         pop_control_freq : int
             Frequency at which to perform population control (in units of
-                steps.) Default 25.
+                steps.) Default 5.
+        eq_pop_control_freq : int
+            Frequency at which to perform population control during equilibration (in units of
+                steps.) Default 2.
+        eq_timestep : float
+            Imaginary timestep to use during equilibration. Default None (use same as timestep).
+        eq_num_steps_per_block : int
+            Number of Monte Carlo steps before estimators are evaluatied during equilibration. Default None (use same as num_steps_per_block).
+        num_eq_blocks : int
+            Number of blocks to perform during equilibration. Total number of steps = num_eq_blocks * eq_num_steps_per_block. Default 50.
+        ene_bound_const : float
+            Constant to determine local energy bound.
+        fb_bound : float
+            Constant to determine force bias bound.
+        correlated_samp : bool
+            Whether to use correlated sampling for population control. Default False.
+        reference_run : bool
+            Whether this is a reference run (i.e. generating the reference population control decisions for the sample runs in correlated sampling). Default False.
+        walkermap_filepath : str
+            Filepath to write walkermap (the population control decisions) to. If None, do not write walkermap. Default None, only write walkermap if this is a reference run.
         verbose : bool
             Log verbosity. Default True i.e. print information to stdout.
         """

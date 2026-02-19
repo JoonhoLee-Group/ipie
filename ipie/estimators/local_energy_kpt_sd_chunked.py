@@ -1,4 +1,21 @@
-# from line_profiler import LineProfiler
+# Copyright 2022 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+#
+
 from math import ceil, sqrt
 
 import numpy
@@ -514,16 +531,12 @@ def local_energy_kpt_single_det_uhf_batch_chunked_gpu(
                     if handler.srank == isend:
                         handler.scomm.Send(ghalfa_send, dest=receivers[isend], tag=1)
                         handler.scomm.Send(ghalfb_send, dest=receivers[isend], tag=2)
-                        # handler.scomm.Send(ghalfaTx_send, dest=receivers[isend], tag=3)
-                        # handler.scomm.Send(ghalfbTx_send, dest=receivers[isend], tag=4)
                         handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=3)
                         handler.scomm.Send(exx_send, dest=receivers[isend], tag=4)
                     elif handler.srank == receivers[isend]:
                         sender = numpy.where(receivers == handler.srank)[0]
                         handler.scomm.Recv(ghalfa_recv, source=sender, tag=1)
                         handler.scomm.Recv(ghalfb_recv, source=sender, tag=2)
-                        # handler.scomm.Recv(ghalfaTx_recv, source=sender, tag=3)
-                        # handler.scomm.Recv(ghalfbTx_recv, source=sender, tag=4)
                         handler.scomm.Recv(ecoul_recv, source=sender, tag=3)
                         handler.scomm.Recv(exx_recv, source=sender, tag=4)
                 handler.scomm.barrier()
@@ -538,9 +551,7 @@ def local_energy_kpt_single_det_uhf_batch_chunked_gpu(
                 exx_send += kpt_symmchol_exx_kernel_batch_gpu(rcholb_chunk, rcholbarb_chunk, ghalfb_recv, hamiltonian.ikpq_mat, hamiltonian.Sset, hamiltonian.Qplus, max_mem)
                 ghalfa_send = ghalfa_recv.copy()
                 ghalfb_send = ghalfb_recv.copy()
-                # ghalfaTx_send = ghalfaTx_recv.copy()
-                # ghalfbTx_send = ghalfbTx_recv.copy()
-
+                
             if len(senders) > 1:
                 for isend, sender in enumerate(senders):
                     if handler.srank == sender:  # sending 1 xshifted to 0 xshifted_buf

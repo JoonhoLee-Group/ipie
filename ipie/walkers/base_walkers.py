@@ -15,6 +15,7 @@
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee
 #          Ankit Mahajan <ankitmahajan76@gmail.com>
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 import cmath

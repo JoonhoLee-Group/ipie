@@ -14,6 +14,7 @@
 #
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
@@ -56,6 +57,19 @@ def propagate_one_body(phi, bt2, H1diag=False):
     return phi
 
 def propagate_one_body_kpt(phi, bt2):
+    """
+    Propagate by the kinetic term by direct matrix multiplication for k-point calculations.
+    Only one spin component. Assuming phi is a batch.
+    For use with the continuus algorithm and free propagation.
+    Parameters
+    ----------
+    phi : xp.ndarray
+        Walker object to be updated. on output we have acted on
+        :math:`|\phi_i\rangle` by :math:`B_{T/2}` and updated the weight
+        appropriately.  updates inplace.
+    bt2 : xp.ndarray
+        The kinetic propagator for k-point calculations.
+    """
     if is_cupy(bt2):
         phi = xp.einsum("kpr,wkrs->wkps", bt2, phi, optimize=True)
         return phi

@@ -216,25 +216,17 @@ def minimize_communication(new_idx):
     the count of i where out[i] == i.
     """
     N = new_idx.size
-
-    # 1) count how many of each index we have
     counts = numpy.bincount(new_idx, minlength=N)
-    counts_out = counts.copy()  # keep a copy of the counts for later use
+    counts_out = counts.copy()
 
-    # 2) prepare output, mark slots we can't fill yet as -1
     out = -numpy.ones(N, dtype=int)
 
-    # 3) first pass: fix all i for which counts[i] > 0
     for i in range(N):
         if counts[i] > 0:
-            out[i] = i  # keep walker i in place
-            counts[i] -= 1  # use up one copy
+            out[i] = i
+            counts[i] -= 1
 
-    # 4) collect leftover values
-    #    numpy.repeat builds [0 repeated counts[0] times, 1 repeated counts[1] times, …]
     leftovers = numpy.repeat(numpy.arange(N), counts)
-
-    # 5) second pass: fill the holes
     holes = numpy.where(out < 0)[0]
     out[holes] = leftovers[: holes.size]
 
@@ -511,7 +503,6 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
             assert walkermap_file is not None, "Must provide filename to read the walker map."
             with h5py.File(walkermap_file, 'r') as f:
                 reordered_indices = f[f"walker_map_{pop_control_counter}"][:]
-        # new_weights = global_weight.ravel()[reordered_indices]
     timer.add_non_communication()
 
     timer.start_time()
@@ -556,7 +547,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
         req = comm.Issend(buf, dest=int(dest_rk), tag=int(tag))
         send_reqs.append(req)
 
-    # 2) Post all nonblocking recvs, saving a Status for each to inspect later
+    # Post all nonblocking recvs, saving a Status for each to inspect later
     walker_len = get_buffer(walkers, 0).shape[0]
     recv_reqs = []
     for irecv, (src_idx, dest_idx) in enumerate(local_recv):
@@ -569,16 +560,9 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
         req = comm.Irecv(recv_buf, source=int(src_rank), tag=int(tag_recv))
         recv_reqs.append((iw, recv_buf, status, req))
 
-    # 3) Wait on recvs and inspect their Status
+    # Wait on recvs and inspect their Status
     for iw, buf, status, req in recv_reqs:
         req.Wait(status)
-        # count = status.Get_count(MPI.DOUBLE_COMPLEX)
-        # src   = status.Get_source()
-        # tag   = status.Get_tag()
-        # err   = status.Get_error()
-        # print(f"[Rank {comm.rank}] Recv ← from {src} tag={tag} "
-        #     f"count={count} err={err}")
-
         set_buffer(walkers, iw, buf)
 
     # 4) Wait on sends
