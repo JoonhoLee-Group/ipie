@@ -5,7 +5,7 @@ from typing import Union
 import numpy
 import plum
 
-from ipie.config import CommType, config, MPI 
+from ipie.config import CommType, config, MPI
 from ipie.estimators.generic import half_rotated_cholesky_jk_uhf
 from ipie.estimators.greens_function_single_det import (
     greens_function_single_det,
@@ -20,7 +20,11 @@ from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det_isdf_chunked,
 )
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked, half_rotate_isdf
+from ipie.trial_wavefunction.half_rotate import (
+    half_rotate_generic,
+    half_rotate_chunked,
+    half_rotate_isdf,
+)
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
@@ -229,7 +233,7 @@ class SingleDet(TrialWavefunctionBase):
         return construct_force_bias_batch_single_det(
             hamiltonian, walkers, self._rAa, self._rAb, self._rBa, self._rBb
         )
-    
+
     @plum.dispatch
     def calc_force_bias(
         self,
@@ -240,7 +244,7 @@ class SingleDet(TrialWavefunctionBase):
         return construct_force_bias_batch_single_det(
             hamiltonian, walkers, self._rcgtoa, self._rcgtob
         )
-    
+
     @plum.dispatch
     def calc_force_bias(
         self,

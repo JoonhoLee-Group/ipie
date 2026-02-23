@@ -24,9 +24,7 @@ from ipie.utils.mpi import make_splits_displacements
 
 
 @plum.dispatch
-def construct_one_body_propagator(
-    hamiltonian: KptComplexChol, mf_shift: xp.ndarray, dt: float
-):
+def construct_one_body_propagator(hamiltonian: KptComplexChol, mf_shift: xp.ndarray, dt: float):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -41,12 +39,15 @@ def construct_one_body_propagator(
     dt : float
         Timestep.
     """
-    
-    diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+
+    diagchol = numpy.zeros(
+        (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+        dtype=numpy.complex128,
+    )
     igamma = hamiltonian.igamma
     for ik in range(hamiltonian.nk):
         diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-            
+
     shift = xp.einsum("xkpr, x -> kpr", diagchol, mf_shift)
     H1 = hamiltonian.h1e_mod + xp.array([shift, shift])
     if hasattr(H1, "get"):
@@ -54,15 +55,24 @@ def construct_one_body_propagator(
     else:
         H1_numpy = H1
 
-    full_h1 = numpy.zeros((2, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nk, hamiltonian.nbasis), dtype=numpy.complex128)
+    full_h1 = numpy.zeros(
+        (2, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nk, hamiltonian.nbasis),
+        dtype=numpy.complex128,
+    )
     for ik in range(hamiltonian.nk):
         full_h1[0, ik, :, ik, :] = H1_numpy[0, ik]
         full_h1[1, ik, :, ik, :] = H1_numpy[1, ik]
-    full_h1_mat = full_h1.reshape(2, hamiltonian.nk * hamiltonian.nbasis, hamiltonian.nk * hamiltonian.nbasis)
+    full_h1_mat = full_h1.reshape(
+        2, hamiltonian.nk * hamiltonian.nbasis, hamiltonian.nk * hamiltonian.nbasis
+    )
     expH1 = xp.array(
-        [scipy.linalg.expm(-0.5 * dt * full_h1_mat[0]), scipy.linalg.expm(-0.5 * dt * full_h1_mat[1])]
+        [
+            scipy.linalg.expm(-0.5 * dt * full_h1_mat[0]),
+            scipy.linalg.expm(-0.5 * dt * full_h1_mat[1]),
+        ]
     )
     return expH1
+
 
 @plum.dispatch
 def construct_one_body_propagator(
@@ -83,48 +93,75 @@ def construct_one_body_propagator(
         Timestep.
     """
     igamma = hamiltonian.igamma
-    
+
     if hamiltonian.chunked:
         start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
         end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
-        diagcholchunk = numpy.zeros((end_n - start_n, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-        diagcholdaggerchunk = numpy.zeros((end_n - start_n, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+        diagcholchunk = numpy.zeros(
+            (end_n - start_n, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+            dtype=numpy.complex128,
+        )
+        diagcholdaggerchunk = numpy.zeros(
+            (end_n - start_n, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+            dtype=numpy.complex128,
+        )
 
         for ik in range(hamiltonian.nk):
             diagcholchunk[:, ik, :, :] = hamiltonian.chol_chunk[:, ik, :, igamma, :]
-            diagcholdaggerchunk[:, ik, :, :] = hamiltonian.chol_chunk[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+            diagcholdaggerchunk[:, ik, :, :] = (
+                hamiltonian.chol_chunk[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+            )
 
-        mf_shiftL = mf_shift[:hamiltonian.nchol]
-        mf_shiftLdag = mf_shift[hamiltonian.nchol:]
-        shift = .5 * (xp.einsum("xkpr, x -> kpr", diagcholchunk, mf_shiftLdag[start_n:end_n]) + xp.einsum("xkpr, x -> kpr", diagcholdaggerchunk, mf_shiftL[start_n:end_n]))
+        mf_shiftL = mf_shift[: hamiltonian.nchol]
+        mf_shiftLdag = mf_shift[hamiltonian.nchol :]
+        shift = 0.5 * (
+            xp.einsum("xkpr, x -> kpr", diagcholchunk, mf_shiftLdag[start_n:end_n])
+            + xp.einsum("xkpr, x -> kpr", diagcholdaggerchunk, mf_shiftL[start_n:end_n])
+        )
         if MPI is None:
             raise ImportError("mpi4py is not installed.")
         else:
             shift = hamiltonian.handler.scomm.allreduce(shift, op=MPI.SUM)
     else:
-        diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-        diagcholdagger = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-        
+        diagchol = numpy.zeros(
+            (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+            dtype=numpy.complex128,
+        )
+        diagcholdagger = numpy.zeros(
+            (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+            dtype=numpy.complex128,
+        )
+
         for ik in range(hamiltonian.nk):
             diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-            diagcholdagger[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+            diagcholdagger[:, ik, :, :] = (
+                hamiltonian.chol[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+            )
 
-        mf_shiftL = mf_shift[:hamiltonian.nchol]
-        mf_shiftLdag = mf_shift[hamiltonian.nchol:]
-        shift = .5 * (xp.einsum("xkpr, x -> kpr", diagchol, mf_shiftLdag) + xp.einsum("xkpr, x -> kpr", diagcholdagger, mf_shiftL))
+        mf_shiftL = mf_shift[: hamiltonian.nchol]
+        mf_shiftLdag = mf_shift[hamiltonian.nchol :]
+        shift = 0.5 * (
+            xp.einsum("xkpr, x -> kpr", diagchol, mf_shiftLdag)
+            + xp.einsum("xkpr, x -> kpr", diagcholdagger, mf_shiftL)
+        )
     H1 = hamiltonian.h1e_mod + xp.array([shift, shift])
     if hasattr(H1, "get"):
         H1_numpy = H1.get()
     else:
         H1_numpy = H1
 
-    expH1_0 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-    expH1_1 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    expH1_0 = numpy.zeros(
+        (hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
+    expH1_1 = numpy.zeros(
+        (hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
     for ik in range(hamiltonian.nk):
         expH1_0[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[0, ik])
         expH1_1[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[1, ik])
     expH1 = xp.array([expH1_0, expH1_1])
     return expH1
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: KptComplexChol, trial: KptSingleDet):
@@ -138,14 +175,20 @@ def construct_mean_field_shift(hamiltonian: KptComplexChol, trial: KptSingleDet)
 
     """
     # trial G [nk, nbsf, nbsf]
-    diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    diagchol = numpy.zeros(
+        (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+        dtype=numpy.complex128,
+    )
     igamma = hamiltonian.igamma
     for ik in range(hamiltonian.nk):
         diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-    diagchol = diagchol.reshape(hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
+    diagchol = diagchol.reshape(
+        hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis
+    )
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
     mf_shift = numpy.dot(diagchol, Gcharge)
     return xp.array(mf_shift)
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: KptComplexCholSymm, trial: KptSingleDet):
@@ -159,20 +202,33 @@ def construct_mean_field_shift(hamiltonian: KptComplexCholSymm, trial: KptSingle
 
     """
     # trial G [nk, nbsf, nbsf]
-    diagchol = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-    diagcholdagger = numpy.zeros((hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    diagchol = numpy.zeros(
+        (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+        dtype=numpy.complex128,
+    )
+    diagcholdagger = numpy.zeros(
+        (hamiltonian.nchol, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis),
+        dtype=numpy.complex128,
+    )
     igamma = hamiltonian.igamma
     for ik in range(hamiltonian.nk):
         diagchol[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :]
-        diagcholdagger[:, ik, :, :] = hamiltonian.chol[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
-    diagchol = diagchol.reshape(hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
-    diagcholdagger = diagcholdagger.reshape(hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
+        diagcholdagger[:, ik, :, :] = (
+            hamiltonian.chol[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+        )
+    diagchol = diagchol.reshape(
+        hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis
+    )
+    diagcholdagger = diagcholdagger.reshape(
+        hamiltonian.nchol, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis
+    )
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
     mf_shiftL = numpy.dot(diagchol, Gcharge)
     mf_shiftLconj = numpy.dot(diagcholdagger, Gcharge)
 
     mf_shift = xp.concatenate((mf_shiftL, mf_shiftLconj))
     return xp.array(mf_shift)
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: KptComplexCholChunked, trial: KptSingleDet):
@@ -187,15 +243,25 @@ def construct_mean_field_shift(hamiltonian: KptComplexCholChunked, trial: KptSin
     """
     igamma = hamiltonian.igamma
     ncholchunk = hamiltonian.chol_chunk.shape[0]
-    diagcholchunk = numpy.zeros((ncholchunk, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-    diagcholdaggerchunk = numpy.zeros((ncholchunk, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    diagcholchunk = numpy.zeros(
+        (ncholchunk, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
+    diagcholdaggerchunk = numpy.zeros(
+        (ncholchunk, hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
 
     for ik in range(hamiltonian.nk):
         diagcholchunk[:, ik, :, :] = hamiltonian.chol_chunk[:, ik, :, igamma, :]
-        diagcholdaggerchunk[:, ik, :, :] = hamiltonian.chol_chunk[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
-    
-    diagcholchunk = diagcholchunk.reshape(-1, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
-    diagcholdaggerchunk = diagcholdaggerchunk.reshape(-1, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis)
+        diagcholdaggerchunk[:, ik, :, :] = (
+            hamiltonian.chol_chunk[:, ik, :, igamma, :].transpose(0, 2, 1).conj()
+        )
+
+    diagcholchunk = diagcholchunk.reshape(
+        -1, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis
+    )
+    diagcholdaggerchunk = diagcholdaggerchunk.reshape(
+        -1, hamiltonian.nk * hamiltonian.nbasis * hamiltonian.nbasis
+    )
     Gcharge = (trial.G[0] + trial.G[1]).ravel()
     mf_shiftL = numpy.dot(diagcholchunk, Gcharge)
     mf_shiftLconj = numpy.dot(diagcholdaggerchunk, Gcharge)
@@ -209,14 +275,19 @@ def construct_mean_field_shift(hamiltonian: KptComplexCholChunked, trial: KptSin
     if MPI is None:
         raise ImportError("mpi4py is not installed.")
     else:
-        trial.handler.scomm.Allgatherv(mf_shiftL, [recvbuf, split_sizes_np, displacements_np, MPI.DOUBLE_COMPLEX])
-        trial.handler.scomm.Allgatherv(mf_shiftLconj, [recvbuf_conj, split_sizes_np, displacements_np, MPI.DOUBLE_COMPLEX])
+        trial.handler.scomm.Allgatherv(
+            mf_shiftL, [recvbuf, split_sizes_np, displacements_np, MPI.DOUBLE_COMPLEX]
+        )
+        trial.handler.scomm.Allgatherv(
+            mf_shiftLconj, [recvbuf_conj, split_sizes_np, displacements_np, MPI.DOUBLE_COMPLEX]
+        )
 
     trial.handler.scomm.Bcast(recvbuf, root=0)
     trial.handler.scomm.Bcast(recvbuf_conj, root=0)
 
     mf_shift = numpy.concatenate((recvbuf, recvbuf_conj))
     return xp.array(mf_shift)
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
@@ -231,22 +302,23 @@ def construct_mean_field_shift(hamiltonian: KptISDF, trial: KptSingleDet):
     """
     # trial G [nk, nbsf, nbsf]
     igamma = hamiltonian.igamma
-    diagcholM = hamiltonian.cholM[igamma] # [nisdf, naux]
+    diagcholM = hamiltonian.cholM[igamma]  # [nisdf, naux]
     cgto = hamiltonian.cgto
-    Gcharge = (trial.G[0] + trial.G[1])
+    Gcharge = trial.G[0] + trial.G[1]
     # convert to complex128
     Gcharge = Gcharge.astype(numpy.complex128)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    mf_shift = contract("kPp, kPr, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts)
+    mf_shift = contract(
+        "kPp, kPr, Pg, kpr -> g", cgto.conj(), cgto, diagcholM, Gcharge, options=network_opts
+    )
     cutensornet.destroy(handle)
     xp._default_memory_pool.free_all_blocks()
     return xp.array(mf_shift)
 
+
 @plum.dispatch
-def construct_one_body_propagator(
-    hamiltonian: KptISDF, mf_shift: xp.ndarray, dt: float
-):
+def construct_one_body_propagator(hamiltonian: KptISDF, mf_shift: xp.ndarray, dt: float):
     r"""Construct mean-field shifted one-body propagator.
 
     .. math::
@@ -269,7 +341,14 @@ def construct_one_body_propagator(
     cgto = xp.array(cgto)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    shift = .5 * contract("kPp, kPq, Pg, g -> kpq", cgto.conj(), cgto, cholpcholconj_igamma, mf_shift, options=network_opts)
+    shift = 0.5 * contract(
+        "kPp, kPq, Pg, g -> kpq",
+        cgto.conj(),
+        cgto,
+        cholpcholconj_igamma,
+        mf_shift,
+        options=network_opts,
+    )
     cutensornet.destroy(handle)
     H1 = xp.array(hamiltonian.h1e_mod) + xp.array([shift, shift])
     if hasattr(H1, "get"):
@@ -277,8 +356,12 @@ def construct_one_body_propagator(
     else:
         H1_numpy = H1
 
-    expH1_0 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
-    expH1_1 = numpy.zeros((hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128)
+    expH1_0 = numpy.zeros(
+        (hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
+    expH1_1 = numpy.zeros(
+        (hamiltonian.nk, hamiltonian.nbasis, hamiltonian.nbasis), dtype=numpy.complex128
+    )
     for ik in range(hamiltonian.nk):
         expH1_0[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[0, ik])
         expH1_1[ik] = scipy.linalg.expm(-0.5 * dt * H1_numpy[1, ik])
@@ -295,16 +378,20 @@ def construct_mf_mod_xbar(hamiltonian: KptComplexChol, mf_shift: xp.ndarray):
     mf_xbarm = xp.zeros_like(mf_xbarp)
     return xp.array([mf_xbarp, mf_xbarm])
 
+
 @plum.dispatch
-def construct_mf_mod_xbar(hamiltonian: Union[KptComplexCholSymm, KptComplexCholChunked], mf_shift: xp.ndarray):
+def construct_mf_mod_xbar(
+    hamiltonian: Union[KptComplexCholSymm, KptComplexCholChunked], mf_shift: xp.ndarray
+):
     """
     Modify xbar using mean field shift for KptComplexCholSymm Hamiltonian.
     """
-    mf_L = mf_shift[:hamiltonian.nchol]
-    mf_Lconj = mf_shift[hamiltonian.nchol:]
-    mf_xbarp = .5j * (mf_L + mf_Lconj)
-    mf_xbarm = .5 * (mf_L - mf_Lconj)
+    mf_L = mf_shift[: hamiltonian.nchol]
+    mf_Lconj = mf_shift[hamiltonian.nchol :]
+    mf_xbarp = 0.5j * (mf_L + mf_Lconj)
+    mf_xbarm = 0.5 * (mf_L - mf_Lconj)
     return xp.array([mf_xbarp, mf_xbarm])
+
 
 @plum.dispatch
 def construct_mf_mod_xbar(hamiltonian: KptISDF, mf_shift: xp.ndarray):
@@ -315,10 +402,11 @@ def construct_mf_mod_xbar(hamiltonian: KptISDF, mf_shift: xp.ndarray):
     mf_xbarm = xp.zeros_like(mf_xbarp)
     return xp.array([mf_xbarp, mf_xbarm])
 
+
 class PhaselessKptBase(ContinuousBase):
     """A base class for generic continuous HS transform AFQMC propagators."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, verbose=False):
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, verbose=False):
         super().__init__(time_step, verbose=verbose)
         self.sqrt_dt = self.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
@@ -346,14 +434,17 @@ class PhaselessKptBase(ContinuousBase):
         # # Allocate force bias (we don't need to do this here - it will be allocated when it is needed)
         self.vbias = None
 
-
     def propagate_walkers_one_body(self, walkers, hamiltonian):
         start_time = time.time()
-        phia_reshaped = walkers.phia.reshape(walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1)
+        phia_reshaped = walkers.phia.reshape(
+            walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1
+        )
         phia = propagate_one_body_kpt(phia_reshaped, self.expH1[0])
         walkers.phia = phia.reshape(walkers.nwalkers, hamiltonian.nk * hamiltonian.nbasis, -1)
         if walkers.ndown > 0 and not walkers.rhf:
-            phib_reshaped = walkers.phib.reshape(walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1)
+            phib_reshaped = walkers.phib.reshape(
+                walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1
+            )
             phib = propagate_one_body_kpt(phib_reshaped, self.expH1[1])
             walkers.phib = phib.reshape(walkers.nwalkers, hamiltonian.nk * hamiltonian.nbasis, -1)
         synchronize()
@@ -361,19 +452,27 @@ class PhaselessKptBase(ContinuousBase):
 
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         # optimal force bias
-        xbar = xp.zeros((2, walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128)
+        xbar = xp.zeros(
+            (2, walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128
+        )
 
         start_time = time.time()
-        self.vbias_plus, self.vbias_minus = trial.calc_force_bias(hamiltonian, walkers, walkers.mpi_handler)
+        self.vbias_plus, self.vbias_minus = trial.calc_force_bias(
+            hamiltonian, walkers, walkers.mpi_handler
+        )
 
         xbar_plus = numpy.zeros_like(self.vbias)
         igamma = hamiltonian.igamma
         mf_xbarp, mf_xbarm = construct_mf_mod_xbar(hamiltonian, self.mf_shift)
 
         xbar_plus = -self.sqrt_dt * self.vbias_plus
-        xbar_plus[:, :, igamma] = -self.sqrt_dt * (self.vbias_plus[:, :, igamma] - mf_xbarp[numpy.newaxis, :]) 
+        xbar_plus[:, :, igamma] = -self.sqrt_dt * (
+            self.vbias_plus[:, :, igamma] - mf_xbarp[numpy.newaxis, :]
+        )
         xbar_minus = -self.sqrt_dt * self.vbias_minus
-        xbar_minus[:, :, igamma] = -self.sqrt_dt * (self.vbias_minus[:, :, igamma] - mf_xbarm[numpy.newaxis, :])
+        xbar_minus[:, :, igamma] = -self.sqrt_dt * (
+            self.vbias_minus[:, :, igamma] - mf_xbarm[numpy.newaxis, :]
+        )
         xbar[0] = xbar_plus
         xbar[1] = xbar_minus
         free_blocks()
@@ -385,14 +484,18 @@ class PhaselessKptBase(ContinuousBase):
 
         # Normally distributed auxiliary fields.
 
-        xi = xp.random.normal(0.0, 1.0, 2 * hamiltonian.nchol * hamiltonian.unique_nk * walkers.nwalkers).reshape(2, walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk)
+        xi = xp.random.normal(
+            0.0, 1.0, 2 * hamiltonian.nchol * hamiltonian.unique_nk * walkers.nwalkers
+        ).reshape(2, walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk)
 
         xshifted = xi - xbar
 
         # Constant factor arising from force bias and mean field shift
         xshifted_plus_q0 = xshifted[0, :, :, hamiltonian.igamma]
         xshifted_minus_q0 = xshifted[1, :, :, hamiltonian.igamma]
-        cmf = - self.sqrt_dt * xp.einsum("wx,x->w", xshifted_plus_q0, mf_xbarp) - self.sqrt_dt * xp.einsum("wx,x->w", xshifted_minus_q0, mf_xbarm)
+        cmf = -self.sqrt_dt * xp.einsum(
+            "wx,x->w", xshifted_plus_q0, mf_xbarp
+        ) - self.sqrt_dt * xp.einsum("wx,x->w", xshifted_minus_q0, mf_xbarm)
 
         cfb = xp.einsum("swxq,swxq->w", xi, xbar) - 0.5 * xp.einsum("swxq,swxq->w", xbar, xbar)
 
@@ -413,7 +516,7 @@ class PhaselessKptBase(ContinuousBase):
         self.propagate_walkers_one_body(walkers, hamiltonian)
 
         # 2.b Apply two-body
-        (cmf, cfb) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
+        cmf, cfb = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers, hamiltonian)
@@ -429,7 +532,9 @@ class PhaselessKptBase(ContinuousBase):
         synchronize()
         self.timer.tupdate += time.time() - start_time
 
-    def update_weight(self, walkers, sgn_ovlp, log_ovlp, sgn_ovlpnew, log_ovlpnew, cfb, cmf, eshift):
+    def update_weight(
+        self, walkers, sgn_ovlp, log_ovlp, sgn_ovlpnew, log_ovlpnew, cfb, cmf, eshift
+    ):
         ovlp_ratio = sgn_ovlpnew / sgn_ovlp * xp.exp(log_ovlpnew - log_ovlp)
         hybrid_energy = -(xp.log(ovlp_ratio) + cfb + cmf) / self.dt
         hybrid_energy = self.apply_bound_hybrid(hybrid_energy, eshift)
@@ -438,11 +543,8 @@ class PhaselessKptBase(ContinuousBase):
         )
         magn = xp.abs(importance_function)
         walkers.hybrid_energy = xp.where(
-            xp.isnan(hybrid_energy),       
-            walkers.hybrid_energy,        
-            hybrid_energy
+            xp.isnan(hybrid_energy), walkers.hybrid_energy, hybrid_energy
         )
-
 
         dtheta = (-self.dt * hybrid_energy - cfb).imag
         cosine_fac = xp.cos(dtheta)

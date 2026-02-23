@@ -17,6 +17,7 @@
 #
 
 """Helper Routines for setting up a calculation"""
+
 # todo : handle more gracefully.
 from ipie.addons.free_projection.estimators.energy import local_energy
 from ipie.addons.free_projection.propagation.free_propagation import FreePropagation

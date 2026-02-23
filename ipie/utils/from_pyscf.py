@@ -17,6 +17,7 @@
 #
 
 """Generate AFQMC data from PYSCF (molecular) simulation."""
+
 import math
 import time
 from dataclasses import dataclass
@@ -678,7 +679,7 @@ def freeze_core(h1e, chol, ecore, X, nfrozen, verbose=False):
     Gcore_b = gab(psi_b, psi_b)
     ecore = local_energy_generic_cholesky(system, ham, [Gcore_a, Gcore_b])[0]
 
-    (hc_a, hc_b) = core_contribution_cholesky(chol, [Gcore_a, Gcore_b])
+    hc_a, hc_b = core_contribution_cholesky(chol, [Gcore_a, Gcore_b])
     h1e = np.array([h1e, h1e])
     h1e[0] = h1e[0] + 2 * hc_a
     h1e[1] = h1e[1] + 2 * hc_b

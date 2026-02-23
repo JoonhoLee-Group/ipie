@@ -13,7 +13,12 @@ except:
 import plum
 
 from ipie.config import config
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol, GenericRealISDF, GenericComplexISDF
+from ipie.hamiltonians.generic import (
+    GenericComplexChol,
+    GenericRealChol,
+    GenericRealISDF,
+    GenericComplexISDF,
+)
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRealISDFChunked
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.propagation.operations import apply_exponential, apply_exponential_batch
@@ -27,11 +32,12 @@ from typing import Union
 from cuquantum.bindings import cutensornet
 from cuquantum.tensornet import NetworkOptions, contract
 
+
 class PhaselessGeneric(PhaselessBase):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
-        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
@@ -116,22 +122,30 @@ class PhaselessGeneric(PhaselessBase):
 
         return VHS
 
+
 class PhaselessISDF(PhaselessBase):
     """A class for performing phaseless propagation with generic ISDF hamiltonian."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
-        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
     def apply_VHS(
-        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray
+        self,
+        walkers: Union[UHFWalkers, GHFWalkers],
+        hamiltonian: Union[GenericRealISDF, GenericComplexISDF],
+        xshifted: xp.ndarray,
     ):
         if config.get_option("use_gpu"):
             nbsf = hamiltonian.nbasis
             nwalkers = walkers.nwalkers
-            occ_ratio = walkers.nup / walkers.nbasis if walkers.rhf else (walkers.nup + walkers.ndown) / (walkers.nbasis)
-            mem_vhs = 2* nwalkers * nbsf**2 * 16
+            occ_ratio = (
+                walkers.nup / walkers.nbasis
+                if walkers.rhf
+                else (walkers.nup + walkers.ndown) / (walkers.nbasis)
+            )
+            mem_vhs = 2 * nwalkers * nbsf**2 * 16
             if mem_vhs > 0.35 * xp.cuda.Device().mem_info[0] or occ_ratio < 0.2:
                 start_time = time.time()
                 assert walkers.nwalkers == xshifted.shape[-1]
@@ -139,13 +153,15 @@ class PhaselessISDF(PhaselessBase):
                 synchronize()
                 self.timer.tvhs += time.time() - start_time
                 assert len(VHS.shape) == 3
-                
+
                 start_time = time.time()
                 Temp = xp.zeros(walkers.phia.shape, dtype=walkers.phia.dtype)
                 xp.copyto(Temp, walkers.phia)
                 handle = cutensornet.create()
                 for n in range(1, self.exp_nmax + 1):
-                    Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n  # matmul use much less GPU memory than einsum
+                    Temp = (
+                        apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n
+                    )  # matmul use much less GPU memory than einsum
                     walkers.phia += Temp
                 del Temp
                 if walkers.ndown > 0 and not walkers.rhf:
@@ -153,7 +169,9 @@ class PhaselessISDF(PhaselessBase):
                     xp.copyto(Temp, walkers.phib)
                     handle = cutensornet.create()
                     for n in range(1, self.exp_nmax + 1):
-                        Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n  # matmul use much less GPU memory than einsum
+                        Temp = (
+                            apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n
+                        )  # matmul use much less GPU memory than einsum
                         walkers.phib += Temp
                     del Temp
                 synchronize()
@@ -196,15 +214,31 @@ class PhaselessISDF(PhaselessBase):
 
     # Any class inherited from PhaselessGeneric should override this method.
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray) -> xp.ndarray:
+    def construct_VHS(
+        self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray
+    ) -> xp.ndarray:
         if isinstance(hamiltonian, GenericRealISDF):
             Lx_real = hamiltonian.cholM @ xshifted.real
             Lx_imag = hamiltonian.cholM @ xshifted.imag
             nwalkers = xshifted.shape[-1]
             handle = cutensornet.create()
-            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-            VHS_real = contract('Pw, Pp, Pr -> wpr', Lx_real, hamiltonian.cgto, hamiltonian.cgto, options=network_opts)
-            VHS_imag = contract('Pw, Pp, Pr -> wpr', Lx_imag, hamiltonian.cgto, hamiltonian.cgto, options=network_opts)
+            network_opts = NetworkOptions(
+                handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0]
+            )
+            VHS_real = contract(
+                "Pw, Pp, Pr -> wpr",
+                Lx_real,
+                hamiltonian.cgto,
+                hamiltonian.cgto,
+                options=network_opts,
+            )
+            VHS_imag = contract(
+                "Pw, Pp, Pr -> wpr",
+                Lx_imag,
+                hamiltonian.cgto,
+                hamiltonian.cgto,
+                options=network_opts,
+            )
             VHS = xp.zeros((nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype=xp.complex128)
             VHS.real = VHS_real
             VHS.imag = VHS_imag
@@ -214,17 +248,22 @@ class PhaselessISDF(PhaselessBase):
         elif isinstance(hamiltonian, GenericComplexISDF):
             Lx = hamiltonian.cholM @ xshifted
             handle = cutensornet.create()
-            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-            VHS = contract('Pw, Pp, Pr -> wpr', Lx, hamiltonian.cgto, hamiltonian.cgto, options=network_opts)
+            network_opts = NetworkOptions(
+                handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0]
+            )
+            VHS = contract(
+                "Pw, Pp, Pr -> wpr", Lx, hamiltonian.cgto, hamiltonian.cgto, options=network_opts
+            )
             VHS = self.isqrt_dt * VHS
             synchronize()
             xp._default_memory_pool.free_all_blocks()
         else:
             raise ValueError("Invalid hamiltonian type")
         return VHS
-        
-    
-    def contract_cholM_xshifted(self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray) -> xp.ndarray:
+
+    def contract_cholM_xshifted(
+        self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray
+    ) -> xp.ndarray:
         if isinstance(hamiltonian, GenericRealISDF):
             Lx_real = hamiltonian.cholM @ xshifted.real
             Lx_imag = hamiltonian.cholM @ xshifted.imag
@@ -236,12 +275,13 @@ class PhaselessISDF(PhaselessBase):
         else:
             raise ValueError("Invalid hamiltonian type")
         return Lx
-    
+
+
 class PhaselessGenericChunked(PhaselessGeneric):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
-        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
@@ -312,17 +352,21 @@ class PhaselessGenericChunked(PhaselessGeneric):
         synchronize()
         return VHS
 
+
 def apply_VHS_to_phi_batch(cgto, Lx, phi, handle):
     network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-    outphi = contract('Pw, Pp, Pr, wri -> wpi', Lx, cgto, cgto, phi, handle=handle, options=network_opts)
+    outphi = contract(
+        "Pw, Pp, Pr, wri -> wpi", Lx, cgto, cgto, phi, handle=handle, options=network_opts
+    )
     xp._default_memory_pool.free_all_blocks()
     return outphi
+
 
 class PhaselessISDFChunked(PhaselessBase):
     """A class for performing phaseless propagation with generic ISDF hamiltonian."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, exp_nmax=6, verbose=False):
-        super().__init__(time_step, ebound_const = ebound_const, fbbound = fbbound, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
@@ -331,13 +375,20 @@ class PhaselessISDFChunked(PhaselessBase):
 
     @plum.dispatch
     def apply_VHS(
-        self, walkers: Union[UHFWalkers, GHFWalkers], hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray
+        self,
+        walkers: Union[UHFWalkers, GHFWalkers],
+        hamiltonian: GenericRealISDFChunked,
+        xshifted: xp.ndarray,
     ):
         if config.get_option("use_gpu"):
             nbsf = hamiltonian.nbasis
             nwalkers = walkers.nwalkers
-            occ_ratio = walkers.nup / walkers.nbasis if walkers.rhf else (walkers.nup + walkers.ndown) / (walkers.nbasis)
-            mem_vhs = 2* nwalkers * nbsf**2 * 16
+            occ_ratio = (
+                walkers.nup / walkers.nbasis
+                if walkers.rhf
+                else (walkers.nup + walkers.ndown) / (walkers.nbasis)
+            )
+            mem_vhs = 2 * nwalkers * nbsf**2 * 16
             if mem_vhs > 0.35 * xp.cuda.Device().mem_info[0] or occ_ratio < 0.2:
                 start_time = time.time()
                 assert walkers.nwalkers == xshifted.shape[-1]
@@ -345,13 +396,15 @@ class PhaselessISDFChunked(PhaselessBase):
                 synchronize()
                 self.timer.tvhs += time.time() - start_time
                 assert len(VHS.shape) == 3
-                
+
                 start_time = time.time()
                 Temp = xp.zeros(walkers.phia.shape, dtype=walkers.phia.dtype)
                 xp.copyto(Temp, walkers.phia)
                 handle = cutensornet.create()
                 for n in range(1, self.exp_nmax + 1):
-                    Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n  # matmul use much less GPU memory than einsum
+                    Temp = (
+                        apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n
+                    )  # matmul use much less GPU memory than einsum
                     walkers.phia += Temp
                 del Temp
                 if walkers.ndown > 0 and not walkers.rhf:
@@ -359,7 +412,9 @@ class PhaselessISDFChunked(PhaselessBase):
                     xp.copyto(Temp, walkers.phib)
                     handle = cutensornet.create()
                     for n in range(1, self.exp_nmax + 1):
-                        Temp = apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n  # matmul use much less GPU memory than einsum
+                        Temp = (
+                            apply_VHS_to_phi_batch(hamiltonian.cgto, Lx, Temp, handle) / n
+                        )  # matmul use much less GPU memory than einsum
                         walkers.phib += Temp
                     del Temp
                 synchronize()
@@ -402,7 +457,9 @@ class PhaselessISDFChunked(PhaselessBase):
 
     # Any class inherited from PhaselessGeneric should override this method.
     @plum.dispatch
-    def construct_VHS(self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray) -> xp.ndarray:
+    def construct_VHS(
+        self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray
+    ) -> xp.ndarray:
         if isinstance(hamiltonian, GenericRealISDFChunked):
             xshifted_send = xshifted.copy()
             xshifted_recv = xp.zeros_like(xshifted)
@@ -422,8 +479,12 @@ class PhaselessISDFChunked(PhaselessBase):
                 self.mpi_handler.scomm.Isend(
                     xshifted_send, dest=self.mpi_handler.receivers[srank], tag=1
                 )
-                self.mpi_handler.scomm.Isend(Lx_send_real, dest=self.mpi_handler.receivers[srank], tag=2)
-                self.mpi_handler.scomm.Isend(Lx_send_imag, dest=self.mpi_handler.receivers[srank], tag=3)
+                self.mpi_handler.scomm.Isend(
+                    Lx_send_real, dest=self.mpi_handler.receivers[srank], tag=2
+                )
+                self.mpi_handler.scomm.Isend(
+                    Lx_send_imag, dest=self.mpi_handler.receivers[srank], tag=3
+                )
 
                 req1 = self.mpi_handler.scomm.Irecv(xshifted_recv, source=sender, tag=1)
                 req2 = self.mpi_handler.scomm.Irecv(Lx_recv_real, source=sender, tag=2)
@@ -431,7 +492,6 @@ class PhaselessISDFChunked(PhaselessBase):
                 req1.wait()
                 req2.wait()
                 req3.wait()
-
 
                 self.mpi_handler.scomm.barrier()
 
@@ -443,8 +503,12 @@ class PhaselessISDFChunked(PhaselessBase):
                 xshifted_send = xshifted_recv.copy()
 
             synchronize()
-            self.mpi_handler.scomm.Isend(Lx_send_real, dest=self.mpi_handler.receivers[srank], tag=1)
-            self.mpi_handler.scomm.Isend(Lx_send_imag, dest=self.mpi_handler.receivers[srank], tag=2)
+            self.mpi_handler.scomm.Isend(
+                Lx_send_real, dest=self.mpi_handler.receivers[srank], tag=1
+            )
+            self.mpi_handler.scomm.Isend(
+                Lx_send_imag, dest=self.mpi_handler.receivers[srank], tag=2
+            )
             req1 = self.mpi_handler.scomm.Irecv(Lx_recv_real, source=sender, tag=1)
             req2 = self.mpi_handler.scomm.Irecv(Lx_recv_imag, source=sender, tag=2)
             req1.wait()
@@ -453,9 +517,23 @@ class PhaselessISDFChunked(PhaselessBase):
 
             nwalkers = xshifted.shape[-1]
             handle = cutensornet.create()
-            network_opts = NetworkOptions(handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0])
-            VHS_real = contract('Pw, Pp, Pr -> wpr', Lx_recv_real, hamiltonian.cgto, hamiltonian.cgto, options=network_opts)
-            VHS_imag = contract('Pw, Pp, Pr -> wpr', Lx_recv_imag, hamiltonian.cgto, hamiltonian.cgto, options=network_opts)
+            network_opts = NetworkOptions(
+                handle=handle, memory_limit=0.8 * xp.cuda.Device().mem_info[0]
+            )
+            VHS_real = contract(
+                "Pw, Pp, Pr -> wpr",
+                Lx_recv_real,
+                hamiltonian.cgto,
+                hamiltonian.cgto,
+                options=network_opts,
+            )
+            VHS_imag = contract(
+                "Pw, Pp, Pr -> wpr",
+                Lx_recv_imag,
+                hamiltonian.cgto,
+                hamiltonian.cgto,
+                options=network_opts,
+            )
             VHS = xp.zeros((nwalkers, hamiltonian.nbasis, hamiltonian.nbasis), dtype=xp.complex128)
             VHS.real = VHS_real
             VHS.imag = VHS_imag
@@ -465,9 +543,10 @@ class PhaselessISDFChunked(PhaselessBase):
         else:
             raise ValueError("Invalid hamiltonian type")
         return VHS
-        
-    
-    def contract_cholM_xshifted_chunked(self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray) -> xp.ndarray:
+
+    def contract_cholM_xshifted_chunked(
+        self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray
+    ) -> xp.ndarray:
         if isinstance(hamiltonian, GenericRealISDF):
             xshifted_send = xshifted.copy()
             xshifted_recv = xp.zeros_like(xshifted)
@@ -512,4 +591,10 @@ class PhaselessISDFChunked(PhaselessBase):
             raise ValueError("Invalid hamiltonian type")
         return Lx_recv
 
-Phaseless = {"generic": PhaselessGeneric, "chunked": PhaselessGenericChunked, "gisdf": PhaselessISDF, "isdfchunked" : PhaselessISDFChunked}
+
+Phaseless = {
+    "generic": PhaselessGeneric,
+    "chunked": PhaselessGenericChunked,
+    "gisdf": PhaselessISDF,
+    "isdfchunked": PhaselessISDFChunked,
+}

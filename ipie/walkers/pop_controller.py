@@ -125,9 +125,23 @@ class PopController:
                 stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter)
             else:
                 if self.reference_run:
-                    stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter, store_walkermap=True, walkermap_file=self.walkermap_filepath)
+                    stochastic_reconfiguration(
+                        walkers,
+                        comm,
+                        self.timer,
+                        self.pop_control_counter,
+                        store_walkermap=True,
+                        walkermap_file=self.walkermap_filepath,
+                    )
                 else:
-                    stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter, read_walkermap=True, walkermap_file=self.walkermap_filepath)
+                    stochastic_reconfiguration(
+                        walkers,
+                        comm,
+                        self.timer,
+                        self.pop_control_counter,
+                        read_walkermap=True,
+                        walkermap_file=self.walkermap_filepath,
+                    )
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
@@ -209,6 +223,7 @@ def set_buffer(walkers, iw, buff):
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
 
+
 def minimize_communication(new_idx):
     """
     Given new_idx, a 1D int array of length N (monotonic or not),
@@ -231,6 +246,7 @@ def minimize_communication(new_idx):
     out[holes] = leftovers[: holes.size]
 
     return out, counts_out
+
 
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
     """Apply the comb method of population control / branching.
@@ -464,10 +480,19 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
         r.wait()
     timer.add_communication()
 
-def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_control_counter=0, store_walkermap=False, read_walkermap=False, walkermap_file=None):
+
+def stochastic_reconfiguration(
+    walkers,
+    comm,
+    timer=PopControllerTimer(),
+    pop_control_counter=0,
+    store_walkermap=False,
+    read_walkermap=False,
+    walkermap_file=None,
+):
     timer.start_time()
     nwalkers = walkers.nwalkers
-    local_weight = walkers.weight.get() if hasattr(walkers.weight, 'get') else walkers.weight
+    local_weight = walkers.weight.get() if hasattr(walkers.weight, "get") else walkers.weight
     global_weight = None
     if comm.rank == 0:
         global_weight = numpy.zeros((comm.size, nwalkers), dtype=local_weight.dtype)
@@ -493,7 +518,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
             reordered_indices, _ = minimize_communication(new_indices)
             if store_walkermap:
                 assert walkermap_file is not None, "Must provide filename to store the walker map."
-                with h5py.File(walkermap_file, 'a') as f:
+                with h5py.File(walkermap_file, "a") as f:
                     name = f"walker_map_{pop_control_counter}"
                     if name in f:
                         f[name][...] = reordered_indices
@@ -501,7 +526,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
                         f.create_dataset(name, data=reordered_indices)
         else:
             assert walkermap_file is not None, "Must provide filename to read the walker map."
-            with h5py.File(walkermap_file, 'r') as f:
+            with h5py.File(walkermap_file, "r") as f:
                 reordered_indices = f[f"walker_map_{pop_control_counter}"][:]
     timer.add_non_communication()
 
@@ -509,7 +534,7 @@ def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer(), pop_co
     glob_inf = None
     if comm.rank == 0:
         glob_indices = numpy.arange(comm.size * nwalkers, dtype=numpy.int64)
-        mask = (reordered_indices != glob_indices)
+        mask = reordered_indices != glob_indices
         sendidx = reordered_indices[mask]
         destidx = glob_indices[mask]
         glob_inf = numpy.column_stack((sendidx, destidx))

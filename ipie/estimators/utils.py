@@ -141,8 +141,10 @@ def gab_spin(A, B, na, nb):
         GBH = numpy.zeros((0, GAH.shape[1]), dtype=GAH.dtype)
     return numpy.array([GA, GB]), [GAH, GBH]
 
+
 def gabk_mod(A, B):
     pass
+
 
 def gabk_spin(A, B, na, nb):
     assert A.shape[0] == B.shape[0]
@@ -158,6 +160,7 @@ def gabk_spin(A, B, na, nb):
         for ik in range(nk):
             GB[ik], GBH[ik] = gab_mod(A[ik, :, na:], B[ik, :, na:])
     return numpy.array([GA, GB]), [GAH, GBH]
+
 
 def gab_mod_nonuniform(A, B, na, noccas):
     r"""One-particle Green's function.
@@ -196,6 +199,7 @@ def gab_mod_nonuniform(A, B, na, noccas):
     G = numpy.dot(A.conj(), GHalf)
     return (G, GHalf)
 
+
 def gabk_spin_nonuniform(A, B, na, nb, noccas, noccbs):
     assert A.shape[0] == B.shape[0]
     nk = A.shape[0]
@@ -210,7 +214,3 @@ def gabk_spin_nonuniform(A, B, na, nb, noccas, noccbs):
         for ik in range(nk):
             GB[ik], GBH[ik] = gab_mod_nonuniform(A[ik, :, na:], B[ik, :, na:], nb, noccbs[ik])
     return numpy.array([GA, GB]), [GAH, GBH]
-
-
-
-

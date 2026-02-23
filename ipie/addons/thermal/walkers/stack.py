@@ -264,7 +264,7 @@ class PropagatorStack:
                 self.Qr[s][:, mR:] = 0.0
 
                 Ccr = numpy.einsum("ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR])  # N x mR
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
+                Qlcr, Rlcr, Plcr = scipy.linalg.qr(Ccr, pivoting=True, check_finite=False)
                 Dlcr = Rlcr[:mR, :mR].diagonal()  # mR
 
                 self.Dr[s][:mR] = Dlcr
@@ -285,7 +285,7 @@ class PropagatorStack:
                     numpy.einsum("ij,j->ij", Qlcr[:mL, :mR], Dlcr[:mR]),
                 )  # mL x mR
 
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
+                Qlcr, Rlcr, Plcr = scipy.linalg.qr(
                     Clcr, pivoting=True, check_finite=False
                 )  # mL x mL, min(mL,mR) x min(mL,mR), mR x mR
                 Dlcr = Rlcr.diagonal()[: min(mL, mR)]
@@ -350,7 +350,7 @@ class PropagatorStack:
                 Ccr = numpy.einsum("ij,j->ij", self.Qr[s][:, :mR], self.Dr[s][:mR])  # N x mR
                 Clcr = numpy.einsum("i,ij->ij", self.Dl[s][:mL], Ccr[:mL, :mR])  # mL x mR
 
-                (Qlcr, Rlcr, Plcr) = scipy.linalg.qr(
+                Qlcr, Rlcr, Plcr = scipy.linalg.qr(
                     Clcr, pivoting=True, check_finite=False
                 )  # mL x mL, min(mL,mR) x min(mL,mR), mR x mR
                 Dlcr = Rlcr.diagonal()[: min(mL, mR)]

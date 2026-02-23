@@ -40,11 +40,11 @@ def to_host_gpu(array):
     return _cp.asnumpy(array)
 
 
-def copy_array_gpu_chunk(host_array, chunk=128*1024**2):
+def copy_array_gpu_chunk(host_array, chunk=128 * 1024**2):
     dev = _cp.empty(host_array.shape, dtype=host_array.dtype)
     shape_arr = host_array.shape
     for i in range(0, host_array.size, chunk):
-        dev.ravel()[i:i+chunk] = _cp.asarray(host_array.ravel()[i:i+chunk])
+        dev.ravel()[i : i + chunk] = _cp.asarray(host_array.ravel()[i : i + chunk])
     dev = dev.reshape(shape_arr)
     _cp.cuda.Stream.null.synchronize()
     return dev
@@ -70,8 +70,10 @@ def synchronize_cpu():
 def synchronize_gpu():
     _cp.cuda.stream.get_current_stream().synchronize()
 
+
 def free_blocks_gpu():
     _cp._default_memory_pool.free_all_blocks()
+
 
 def free_blocks_cpu():
     pass

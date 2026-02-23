@@ -1,6 +1,7 @@
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import qr, qr_mode
 
+
 def batched_qr_nonzero(A, mode=qr_mode):
     """
     Perform a batched QR where zero-columns remain zero:

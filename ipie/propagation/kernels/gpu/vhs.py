@@ -6,7 +6,7 @@ BK = 8
 TM = 4
 TN = 4
 
-kernel_code_vhs1 = r'''
+kernel_code_vhs1 = r"""
 #define BM 32
 #define BN 32
 #define BK 8
@@ -132,9 +132,9 @@ void VHS_construction1(int nq, int nk, int naux, int nbasis, int nwalker, const 
     }
   }
 }
-'''
+"""
 
-kernel_code_vhs2 = r'''
+kernel_code_vhs2 = r"""
 #define BM 32
 #define BN 32
 #define BK 8
@@ -260,10 +260,11 @@ void VHS_construction2(int nq, int nk, int naux, int nbasis, int nwalker, const 
     }
   }
 }
-'''
+"""
 
 kernel_VHS1_cupy = cp.RawKernel(kernel_code_vhs1, "VHS_construction1")
 kernel_VHS2_cupy = cp.RawKernel(kernel_code_vhs2, "VHS_construction2")
+
 
 def call_kernel_VHS_construction1(chol, xshifted, naux, nk, nbasis, nwalker, ikpq_mat, VHS):
     ikpq_mat = cp.asarray(ikpq_mat, dtype=cp.int32)
@@ -279,6 +280,7 @@ def call_kernel_VHS_construction1(chol, xshifted, naux, nk, nbasis, nwalker, ikp
     args = (nq, nk, naux, nbasis, nwalker, ikpq_mat, xshifted, chol, VHS)
     kernel_VHS1_cupy(blockspergrid, threadsperblock, args)
     cp.cuda.stream.get_current_stream().synchronize()
+
 
 def call_kernel_VHS_construction2(chol, xshifted, naux, nk, nbasis, nwalker, ikpq_mat, VHS):
     ikpq_mat = cp.asarray(ikpq_mat, dtype=cp.int32)

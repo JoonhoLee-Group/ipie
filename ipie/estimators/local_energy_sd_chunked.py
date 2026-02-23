@@ -104,9 +104,7 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
             # prepare sending
             ecoul_send = ecoul_recv.copy()
             Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha * nbasis)
-            ecoul_send += ecoul_kernel_batch_real_rchol_uhf(
-                rchola_chunk, Ghalfa_recv
-            )
+            ecoul_send += ecoul_kernel_batch_real_rchol_uhf(rchola_chunk, Ghalfa_recv)
             Ghalfa_recv = Ghalfa_recv.reshape(nwalkers, nalpha, nbasis)
             exx_send = exx_recv.copy()
             exx_send += 2.0 * exx_kernel_batch_real_rchol(rchola_chunk, Ghalfa_recv)
@@ -242,6 +240,7 @@ def ecoul_kernel_batch_rchol_uhf_gpu(rchola_chunk, rcholb_chunk, Ghalfa, Ghalfb)
     ecoul *= 0.5
 
     return ecoul
+
 
 def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
     """Compute coulomb contribution for rchol with RHF trial.
@@ -550,13 +549,14 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
     return energy
 
+
 def ecoul_kernel_batch_real_isdf_chunk_rhf_gpu(cholM_chunk, halfrot_cgtoa, cgto, Ghalfa_batch):
     nwalkers = Ghalfa_batch.shape[0]
     nisdf = cholM_chunk.shape[0]
     ecoul = xp.zeros(nwalkers, dtype=numpy.complex128)
     intermediate_mem = nisdf * nisdf * 16
     mem_limit = 0.3 * xp.cuda.Device().mem_info[0]
-    num_chunks = max(1, ceil(sqrt(intermediate_mem/ mem_limit)))
+    num_chunks = max(1, ceil(sqrt(intermediate_mem / mem_limit)))
     chunk_size = ceil(nisdf / num_chunks)
     nisdfx_left = nisdf
     slices_x = []
@@ -568,7 +568,9 @@ def ecoul_kernel_batch_real_isdf_chunk_rhf_gpu(cholM_chunk, halfrot_cgtoa, cgto,
         slices_x.append(slice(i_chunk * chunk_size, i_chunk * chunk_size + nx_chunk))
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    v_wP = 2. * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch, options=network_opts)
+    v_wP = 2.0 * contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch, options=network_opts
+    )
     for slicex in slices_x:
         v_wP_chunkx = v_wP[:, slicex].copy()
         for slicey in slices_x:
@@ -576,15 +578,18 @@ def ecoul_kernel_batch_real_isdf_chunk_rhf_gpu(cholM_chunk, halfrot_cgtoa, cgto,
             MPQ = cholM_chunk[slicey] @ cholM_chunk[slicex].T
             ecoul += xp.sum((v_wP_chunky @ MPQ) * v_wP_chunkx, axis=1)
     cutensornet.destroy(handle)
-    return .5 * ecoul
+    return 0.5 * ecoul
 
-def ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_batch, Ghalfb_batch):
+
+def ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
+    cholM_chunk, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_batch, Ghalfb_batch
+):
     nwalkers = Ghalfa_batch.shape[0]
     nisdf = cholM_chunk.shape[0]
     ecoul = xp.zeros(nwalkers, dtype=numpy.complex128)
     intermediate_mem = nisdf * nisdf * 16
     mem_limit = 0.3 * xp.cuda.Device().mem_info[0]
-    num_chunks = max(1, ceil(sqrt(intermediate_mem/ mem_limit)))
+    num_chunks = max(1, ceil(sqrt(intermediate_mem / mem_limit)))
     chunk_size = ceil(nisdf / num_chunks)
     nisdfx_left = nisdf
     slices_x = []
@@ -596,8 +601,12 @@ def ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, halfr
         slices_x.append(slice(i_chunk * chunk_size, i_chunk * chunk_size + nx_chunk))
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
-    v_wP_real = contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts) + contract('Pi, Pp, wip -> wP', halfrot_cgtob, cgto, Ghalfb_batch.real, options=network_opts)
-    v_wP_imag = contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts) + contract('Pi, Pp, wip -> wP', halfrot_cgtob, cgto, Ghalfb_batch.imag, options=network_opts)
+    v_wP_real = contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts
+    ) + contract("Pi, Pp, wip -> wP", halfrot_cgtob, cgto, Ghalfb_batch.real, options=network_opts)
+    v_wP_imag = contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts
+    ) + contract("Pi, Pp, wip -> wP", halfrot_cgtob, cgto, Ghalfb_batch.imag, options=network_opts)
     v_wP = xp.zeros_like(v_wP_real, dtype=xp.complex128)
     v_wP.real = v_wP_real
     v_wP.imag = v_wP_imag
@@ -608,7 +617,8 @@ def ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, halfr
             MPQ = cholM_chunk[slicey] @ cholM_chunk[slicex].T
             ecoul += xp.sum((v_wP_chunky @ MPQ) * v_wP_chunkx, axis=1)
     cutensornet.destroy(handle)
-    return .5 * ecoul
+    return 0.5 * ecoul
+
 
 def exx_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, cgto, Ghalfa_batch):
     nwalkers = Ghalfa_batch.shape[0]
@@ -616,7 +626,7 @@ def exx_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, cgto, G
     nisdf = cholM_chunk.shape[0]
     intermediate_mem = nwalkers * nisdf * nisdf * 16 * 2
     mem_limit = 0.3 * xp.cuda.Device().mem_info[0]
-    num_chunks = max(1, ceil(sqrt(intermediate_mem/ mem_limit)))
+    num_chunks = max(1, ceil(sqrt(intermediate_mem / mem_limit)))
     chunk_size = ceil(nisdf / num_chunks)
     nisdfx_left = nisdf
     slices_x = []
@@ -647,11 +657,10 @@ def exx_kernel_batch_real_isdf_chunk_uhf_gpu(cholM_chunk, halfrot_cgtoa, cgto, G
             TQP_chunk = TQP_chunk.reshape(nwalkers, len_slicex * len_slicey)
             contrib = xp.sum(TPQ_chunk * TQP_chunk * MPQ_chunk[xp.newaxis, :], axis=1)
             exx += contrib
-    return .5 * exx
+    return 0.5 * exx
 
-def local_energy_single_det_uhf_batch_isdf_chunked_gpu(
-    system, hamiltonian, walker_batch, trial
-):
+
+def local_energy_single_det_uhf_batch_isdf_chunked_gpu(system, hamiltonian, walker_batch, trial):
     """Compute local energy for walker batch (all walkers at once).
 
     Single determinant case, GPU, chunked integrals.
@@ -697,15 +706,26 @@ def local_energy_single_det_uhf_batch_isdf_chunked_gpu(
 
         handler = walker_batch.mpi_handler
         receivers = handler.receivers
-    
+
         ecoul_send = ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunk, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_send, Ghalfb_send
+            hamiltonian.cholM_chunk,
+            trial._rcgtoa,
+            trial._rcgtob,
+            hamiltonian.cgto,
+            Ghalfa_send,
+            Ghalfb_send,
         )
         exx_send = exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunk, trial._rcgtoa, hamiltonian.cgto, Ghalfa_send,
+            hamiltonian.cholM_chunk,
+            trial._rcgtoa,
+            hamiltonian.cgto,
+            Ghalfa_send,
         )
         exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-            hamiltonian.cholM_chunk, trial._rcgtob, hamiltonian.cgto, Ghalfb_send,
+            hamiltonian.cholM_chunk,
+            trial._rcgtob,
+            hamiltonian.cgto,
+            Ghalfb_send,
         )
         exx_recv = exx_send.copy()
         ecoul_recv = ecoul_send.copy()
@@ -733,14 +753,25 @@ def local_energy_single_det_uhf_batch_isdf_chunked_gpu(
             # prepare sending
             ecoul_send = ecoul_recv.copy()
             ecoul_send += ecoul_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunk, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, Ghalfa_recv, Ghalfb_recv
+                hamiltonian.cholM_chunk,
+                trial._rcgtoa,
+                trial._rcgtob,
+                hamiltonian.cgto,
+                Ghalfa_recv,
+                Ghalfb_recv,
             )
             exx_send = exx_recv.copy()
             exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunk, trial._rcgtoa, hamiltonian.cgto, Ghalfa_recv,
+                hamiltonian.cholM_chunk,
+                trial._rcgtoa,
+                hamiltonian.cgto,
+                Ghalfa_recv,
             )
             exx_send += exx_kernel_batch_real_isdf_chunk_uhf_gpu(
-                hamiltonian.cholM_chunk, trial._rcgtob, hamiltonian.cgto, Ghalfb_recv,
+                hamiltonian.cholM_chunk,
+                trial._rcgtob,
+                hamiltonian.cgto,
+                Ghalfb_recv,
             )
             Ghalfa_send = Ghalfa_recv.copy()
             Ghalfb_send = Ghalfb_recv.copy()

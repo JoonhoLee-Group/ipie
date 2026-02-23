@@ -4,6 +4,7 @@
 By default data will be aggregated into a single output file with analysed_
 prefixed to input filename.
 """
+
 import argparse
 import json
 import os

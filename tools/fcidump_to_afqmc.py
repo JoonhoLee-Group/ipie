@@ -112,7 +112,7 @@ def main(args):
         command-line arguments.
     """
     options = parse_args(args)
-    (hcore, eri, ecore, nelec) = read_fcidump(
+    hcore, eri, ecore, nelec = read_fcidump(
         options.input_file, symmetry=options.symm, verbose=options.verbose
     )
     norb = hcore.shape[-1]

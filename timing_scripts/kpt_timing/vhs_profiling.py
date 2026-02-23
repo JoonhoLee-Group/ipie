@@ -23,6 +23,7 @@ from line_profiler import LineProfiler
 #     VHS = VHS.reshape(nwalkers, nk * nbasis, nk * nbasis)
 #     return VHS
 
+
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_symm(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset):
     VHS = numpy.zeros((nwalkers, nk, nk, nbasis * nbasis), dtype=numpy.complex128)
@@ -31,10 +32,10 @@ def construct_VHS_kernel_symm(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qs
         iq_real = Qset[iq]
         for ik in range(nk):
             ikpq = ikpq_mat[iq_real, ik]
-            x_iq = .5 * (1j * xshifted[0, :, :, iq] + xshifted[1, :, :, iq])
-            xconj_iq = .5 * (1j * xshifted[0, :, :, iq] - xshifted[1, :, :, iq])
-            cholkq = chol[iq, ik].reshape(-1, nbasis*nbasis)
-            cholkqT = chol[iq, ik].transpose(0, 2, 1).copy().reshape(-1, nbasis*nbasis)
+            x_iq = 0.5 * (1j * xshifted[0, :, :, iq] + xshifted[1, :, :, iq])
+            xconj_iq = 0.5 * (1j * xshifted[0, :, :, iq] - xshifted[1, :, :, iq])
+            cholkq = chol[iq, ik].reshape(-1, nbasis * nbasis)
+            cholkqT = chol[iq, ik].transpose(0, 2, 1).copy().reshape(-1, nbasis * nbasis)
             # VHS[iw, ik, ikpq] += numpy.einsum('wx, xpr -> wpr', x_iq[iw], chol[:, ik, :, iq, :])
             for iw in range(nwalkers):
                 VHS[iw, ik, ikpq] += x_iq[iw] @ cholkq
@@ -48,6 +49,7 @@ def construct_VHS_kernel_symm(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qs
     VHS = VHS.reshape(nwalkers, nk * nbasis, nk * nbasis)
     return VHS
 
+
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_joonho(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset):
     VHS = numpy.zeros((nk, nk, nwalkers, nbasis * nbasis), dtype=numpy.complex128)
@@ -56,9 +58,9 @@ def construct_VHS_kernel_joonho(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, 
         iq_real = Qset[iq]
         for ik in range(nk):
             ikpq = ikpq_mat[iq_real, ik]
-            x_iq = .5 * (1j * xshifted[0, :, :, iq] + xshifted[1, :, :, iq])
-            xconj_iq = .5 * (1j * xshifted[0, :, :, iq] - xshifted[1, :, :, iq])
-            cholkq = chol[iq, ik].reshape(-1, nbasis*nbasis)
+            x_iq = 0.5 * (1j * xshifted[0, :, :, iq] + xshifted[1, :, :, iq])
+            xconj_iq = 0.5 * (1j * xshifted[0, :, :, iq] - xshifted[1, :, :, iq])
+            cholkq = chol[iq, ik].reshape(-1, nbasis * nbasis)
             # cholkqT = chol[iq, ik].transpose(0, 2, 1).copy().reshape(-1, nbasis*nbasis)
             # VHS[iw, ik, ikpq] += numpy.einsum('wx, xpr -> wpr', x_iq[iw], chol[:, ik, :, iq, :])
             # for iw in range(nwalkers):
@@ -73,11 +75,14 @@ def construct_VHS_kernel_joonho(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, 
     VHS = VHS.reshape(nwalkers, nk * nbasis, nk * nbasis)
     return VHS
 
+
 def prof_const_VHS_kernel(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset):
     return construct_VHS_kernel_symm(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset)
 
+
 def prof_const_VHS_kernel_joonho(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset):
     return construct_VHS_kernel_joonho(chol, xshifted, nk, nbasis, nwalkers, ikpq_mat, Qset)
+
 
 nk = 27
 nchol = 210
@@ -89,8 +94,12 @@ Qset = numpy.arange(nq)
 
 kpq_mat = numpy.random.randint(0, nk, (nk, nk))
 # chol = numpy.random.rand(nchol, nk, nbsf, nq, nbsf) + 1j * numpy.random.rand(nchol, nk, nbsf, nq, nbsf)
-chol = numpy.random.rand(nq, nk, nchol, nbsf, nbsf) + 1j * numpy.random.rand(nq, nk, nchol, nbsf, nbsf)
-xshifted = numpy.random.rand(2, nwalkers, nchol, nq) + 1j * numpy.random.rand(2, nwalkers, nchol, nq)
+chol = numpy.random.rand(nq, nk, nchol, nbsf, nbsf) + 1j * numpy.random.rand(
+    nq, nk, nchol, nbsf, nbsf
+)
+xshifted = numpy.random.rand(2, nwalkers, nchol, nq) + 1j * numpy.random.rand(
+    2, nwalkers, nchol, nq
+)
 
 # Profile the function
 # lp = LineProfiler()

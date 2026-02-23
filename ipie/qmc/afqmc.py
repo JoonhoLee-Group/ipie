@@ -18,6 +18,7 @@
 #
 
 """Driver to perform AFQMC calculation"""
+
 import abc
 import json
 import time
@@ -297,7 +298,15 @@ class AFQMC(AFQMCBase):
         verbose: int = 0,
     ):
         super().__init__(
-            system, hamiltonian, trial, walkers, propagator, mpi_handler, params, eq_propagator, verbose
+            system,
+            hamiltonian,
+            trial,
+            walkers,
+            propagator,
+            mpi_handler,
+            params,
+            eq_propagator,
+            verbose,
         )
 
     @staticmethod
@@ -428,10 +437,14 @@ class AFQMC(AFQMCBase):
                 trial_wavefunction
             )  # any intermediates that require information from trial_wavefunction
         # TODO: this is a factory not a class
-        propagator = Propagator[type(hamiltonian)](params.timestep, params.ene_bound_const, params.fb_bound)
+        propagator = Propagator[type(hamiltonian)](
+            params.timestep, params.ene_bound_const, params.fb_bound
+        )
         propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
         if not math.isclose(params.timestep, params.eq_timestep, rel_tol=1e-8):
-            eq_propagator = Propagator[type(hamiltonian)](params.eq_timestep, params.ene_bound_const, params.fb_bound)
+            eq_propagator = Propagator[type(hamiltonian)](
+                params.eq_timestep, params.ene_bound_const, params.fb_bound
+            )
             eq_propagator.build(hamiltonian, trial_wavefunction, walkers, mpi_handler)
         else:
             eq_propagator = propagator
@@ -641,7 +654,9 @@ class AFQMC(AFQMCBase):
                     self.tortho += time.time() - start
             start = time.time()
             if step <= num_eqlb_steps:
-                self.eq_propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
+                self.eq_propagator.propagate_walkers(
+                    self.walkers, self.hamiltonian, self.trial, eshift
+                )
                 self.tprop_fbias = self.eq_propagator.timer.tfbias
                 self.tprop_ovlp = self.eq_propagator.timer.tovlp
                 self.tprop_update = self.eq_propagator.timer.tupdate
@@ -651,8 +666,10 @@ class AFQMC(AFQMCBase):
             else:
                 if discard_weights_aftereq:
                     if step == num_eqlb_steps + 1:
-                        self.walkers.weight.fill(1.)
-                self.propagator.propagate_walkers(self.walkers, self.hamiltonian, self.trial, eshift)
+                        self.walkers.weight.fill(1.0)
+                self.propagator.propagate_walkers(
+                    self.walkers, self.hamiltonian, self.trial, eshift
+                )
                 self.tprop_fbias = self.propagator.timer.tfbias
                 self.tprop_ovlp = self.propagator.timer.tovlp
                 self.tprop_update = self.propagator.timer.tupdate
@@ -717,7 +734,9 @@ class AFQMC(AFQMCBase):
                         self.system, self.hamiltonian, self.trial, self.walkers
                     )
                     self.estimators.print_block(
-                        comm, (step - num_eqlb_steps) // self.params.num_steps_per_block, self.accumulators
+                        comm,
+                        (step - num_eqlb_steps) // self.params.num_steps_per_block,
+                        self.accumulators,
                     )
                     self.accumulators.zero()
             else:

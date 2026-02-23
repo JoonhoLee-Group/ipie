@@ -56,6 +56,7 @@ def propagate_one_body(phi, bt2, H1diag=False):
 
     return phi
 
+
 def propagate_one_body_kpt(phi, bt2):
     r"""
     Propagate by the kinetic term by direct matrix multiplication for k-point calculations.
@@ -76,12 +77,14 @@ def propagate_one_body_kpt(phi, bt2):
     else:
         return propagate_one_body_kpt_cpu(phi, bt2)
 
+
 @jit(nopython=True, fastmath=True)
 def propagate_one_body_kpt_cpu(phi, bt2):
     for iw in range(phi.shape[0]):
         for ik1 in range(bt2.shape[0]):
             phi[iw][ik1] = xp.dot(bt2[ik1], phi[iw][ik1])
     return phi
+
 
 def apply_exponential(phi, VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation
@@ -108,6 +111,7 @@ def apply_exponential(phi, VHS, exp_nmax):
 
     synchronize()
     return phi
+
 
 def apply_exponential_batch(phi, VHS, exp_nmax):
     """Apply exponential propagator of the HS transformation

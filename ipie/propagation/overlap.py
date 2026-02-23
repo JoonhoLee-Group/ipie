@@ -72,7 +72,8 @@ def calc_overlap_single_det_ghf(walkers: "GHFWalkers", trial: "SingleDet"):
     ot = sign * xp.exp(log_ovlp - walkers.log_shift)
     return ot
 
-def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
+
+def calc_overlap_single_det_kpt(walkers: "UHFWalkers", trial: "KptSingleDet"):
     """Caculate overlap with single det k point trial wavefunction.
 
     Parameters
@@ -96,7 +97,7 @@ def calc_overlap_single_det_kpt(walkers:"UHFWalkers", trial: "KptSingleDet"):
     phia = walkers.phia.reshape(nwalkers, nk, nbsf, nk, nup)
     if ndown > 0 and not walkers.rhf:
         phib = walkers.phib.reshape(nwalkers, nk, nbsf, nk, ndown)
-    
+
     ovlpa = xp.einsum("wlpki, lpj->wkilj", phia, trial.psi0a.conj(), optimize=True)
     if trial.noccas is not None:
         mask = xp.arange(nup)[None, :] >= xp.array(trial.noccas)[:, None]

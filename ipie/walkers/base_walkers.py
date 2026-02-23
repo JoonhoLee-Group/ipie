@@ -180,7 +180,7 @@ class BaseWalkers(metaclass=ABCMeta):
         """
         detR = self.reortho()
         if free_projection:
-            (magn, dtheta) = cmath.polar(self.detR)
+            magn, dtheta = cmath.polar(self.detR)
             self.weight *= magn
             self.phase *= cmath.exp(1j * dtheta)
         return detR
@@ -227,10 +227,14 @@ class BaseWalkers(metaclass=ABCMeta):
             try:
                 num_slices = len(fh5.keys()) // 3 - 1
                 if fh5[f"walker_timeslice_{num_slices}"][()].ndim == 3:
-                    assert nup is not None and ndown is not None, "Need nup and ndown to read 2D walker data."
-                    assert fh5[f"walker_timeslice_{num_slices}"][()].shape[-1] == nup + ndown, "nup + ndown does not match walker data shape."
+                    assert (
+                        nup is not None and ndown is not None
+                    ), "Need nup and ndown to read 2D walker data."
+                    assert (
+                        fh5[f"walker_timeslice_{num_slices}"][()].shape[-1] == nup + ndown
+                    ), "nup + ndown does not match walker data shape."
                     phia = fh5[f"walker_timeslice_{num_slices}"][:][:, :, :nup]
-                    phib = fh5[f"walker_timeslice_{num_slices}"][:][:, :, nup:nup + ndown]
+                    phib = fh5[f"walker_timeslice_{num_slices}"][:][:, :, nup : nup + ndown]
                 else:
                     phia = fh5[f"walker_timeslice_{num_slices}"][0]
                     phib = fh5[f"walker_timeslice_{num_slices}"][1]

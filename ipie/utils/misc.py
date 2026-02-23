@@ -142,7 +142,7 @@ def serialise(obj, verbose=0):
             if verbose == 1:
                 obj_dict[k] = str(v)
         elif k == "estimates" or k == "global_estimates":
-            pass                                                
+            pass
         elif k == "walkers":
             obj_dict[k] = [str(x) for x in v][0]
         elif isinstance(v, numpy.ndarray):

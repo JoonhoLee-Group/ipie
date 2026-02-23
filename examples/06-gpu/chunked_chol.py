@@ -4,7 +4,6 @@ import h5py
 import numpy as np
 import gc
 
-
 mol = gto.M(
     atom=[("H", 1.6 * i, 0, 0) for i in range(0, 4)],
     basis="sto-6g",

@@ -9,11 +9,23 @@ from ipie.estimators.utils import gabk_spin, gabk_spin_nonuniform
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.walkers.uhf_walkers import UHFWalkers
-from ipie.propagation.force_bias import construct_force_bias_kpt_batch_single_det, construct_force_bias_kptsymm_batch_single_det, construct_force_bias_kptisdf_batch_single_det, construct_force_bias_kptsymm_batch_single_det_chunked
-from ipie.trial_wavefunction.half_rotate import half_rotate_generic, half_rotate_chunked, half_rotate_isdf
+from ipie.propagation.force_bias import (
+    construct_force_bias_kpt_batch_single_det,
+    construct_force_bias_kptsymm_batch_single_det,
+    construct_force_bias_kptisdf_batch_single_det,
+    construct_force_bias_kptsymm_batch_single_det_chunked,
+)
+from ipie.trial_wavefunction.half_rotate import (
+    half_rotate_generic,
+    half_rotate_chunked,
+    half_rotate_isdf,
+)
 from ipie.propagation.overlap import calc_overlap_single_det_kpt
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
-from ipie.estimators.greens_function_kpt_single_det import greens_function_kpt_single_det, greens_function_kpt_single_det_batch
+from ipie.estimators.greens_function_kpt_single_det import (
+    greens_function_kpt_single_det,
+    greens_function_kpt_single_det_batch,
+)
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
 from typing import Union
@@ -21,9 +33,19 @@ from typing import Union
 
 # class for Single Determinant trial wavefunction for k-point calculations
 class KptSingleDet(TrialWavefunctionBase):
-    def __init__(self, wavefunction, nkpts, num_elec, num_basis, handler=MPIHandler(), noccas=None, noccbs=None, verbose=False):
+    def __init__(
+        self,
+        wavefunction,
+        nkpts,
+        num_elec,
+        num_basis,
+        handler=MPIHandler(),
+        noccas=None,
+        noccbs=None,
+        verbose=False,
+    ):
         assert isinstance(wavefunction, numpy.ndarray)
-        assert len(wavefunction.shape) == 3 # nkpts, nbasis, nocc
+        assert len(wavefunction.shape) == 3  # nkpts, nbasis, nocc
         super().__init__(wavefunction, num_elec, num_basis, verbose=verbose)
         if verbose:
             print("# Parsing input options for trial_wavefunction.MultiSlater.")
@@ -37,16 +59,20 @@ class KptSingleDet(TrialWavefunctionBase):
             # print("# making trial wavefunction MO coefficient real")
             self.psi = numpy.array(self.psi.real, dtype=numpy.float64)
 
-        self.psi0a = self.psi[:, :, :self.nalpha]
-        self.psi0b = self.psi[:, :, self.nalpha:]
+        self.psi0a = self.psi[:, :, : self.nalpha]
+        self.psi0b = self.psi[:, :, self.nalpha :]
         if noccas is not None:
             self.noccas = noccas
             if noccbs is None:
                 self.noccbs = noccas
-                self.G, self.Ghalf = gabk_spin_nonuniform(self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccas)
+                self.G, self.Ghalf = gabk_spin_nonuniform(
+                    self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccas
+                )
             else:
                 self.noccbs = noccbs
-                self.G, self.Ghalf = gabk_spin_nonuniform(self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccbs)
+                self.G, self.Ghalf = gabk_spin_nonuniform(
+                    self.psi, self.psi, self.nalpha, self.nbeta, noccas, noccbs
+                )
         else:
             self.noccas = None
             self.noccbs = None
@@ -147,7 +173,7 @@ class KptSingleDet(TrialWavefunctionBase):
         # grab zeroth element.
         self._rH1a = rot_1body[0][0]
         self._rH1b = rot_1body[1][0] if self.nbeta > 0 else None
-        
+
         self._rchola_chunk = rot_chol[0][0]
         self._rcholb_chunk = rot_chol[1][0] if self.nbeta > 0 else None
         self._rcholbara_chunk = rot_chol[2][0]
@@ -209,7 +235,9 @@ class KptSingleDet(TrialWavefunctionBase):
         mpi_handler: MPIHandler,
     ) -> Tuple[xp.ndarray, xp.ndarray]:
         if hamiltonian.chunked:
-            return construct_force_bias_kptsymm_batch_single_det_chunked(hamiltonian, walkers, self, mpi_handler)
+            return construct_force_bias_kptsymm_batch_single_det_chunked(
+                hamiltonian, walkers, self, mpi_handler
+            )
         else:
             return construct_force_bias_kptsymm_batch_single_det(hamiltonian, walkers, self)
 

@@ -78,6 +78,7 @@ def main() -> None:
         install_requires=load_requirements("requirements.txt"),
         extras_require={
             "mpi": load_requirements("dev/mpi.txt"),
+            "kpt": load_requirements("dev/kpt.txt"),
             "dev": load_requirements("dev/dev.txt"),
             "torch": load_requirements("dev/torch.txt"),
         },

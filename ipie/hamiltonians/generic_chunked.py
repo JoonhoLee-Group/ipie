@@ -46,13 +46,14 @@ def construct_h1e_mod(chol, h1e, h1e_mod, handler):
     h1e_mod[0, :, :] = h1e[0] - v0
     h1e_mod[1, :, :] = h1e[1] - v0
 
+
 def construct_h1e_mod_isdf(cholM, cgto, h1e, h1e_mod, handler):
     # chunk cgto and MPQ
     nisdf = cgto.shape[0]
-    mem_intermediate = nisdf ** 2 * 2 * 8
+    mem_intermediate = nisdf**2 * 2 * 8
     used, total = get_device_memory()
     mem_limit = 0.4 * (total - used)
-    num_chunks = max(1, ceil(sqrt(mem_intermediate/ mem_limit)))
+    num_chunks = max(1, ceil(sqrt(mem_intermediate / mem_limit)))
     chunk_size = ceil(nisdf / num_chunks)
     nisdfx_left = nisdf
     slices_x = []
@@ -62,7 +63,7 @@ def construct_h1e_mod_isdf(cholM, cgto, h1e, h1e_mod, handler):
         nx_chunk = min(nisdfx_left, chunk_size)
         nisdfx_left -= nx_chunk
         slices_x.append(slice(i_chunk * chunk_size, i_chunk * chunk_size + nx_chunk))
-    
+
     v0 = numpy.zeros((h1e.shape[-1], h1e.shape[-1]), dtype=h1e.dtype)
 
     for slicex in slices_x:
@@ -72,11 +73,12 @@ def construct_h1e_mod_isdf(cholM, cgto, h1e, h1e_mod, handler):
             MPQ_chunk = cholM[slicey] @ cholM[slicex].T.conj()
             cgto_PQ = cgto_chunky @ cgto_chunkx.T.conj()
             cgto_M = MPQ_chunk * cgto_PQ
-            v0 += .5 * cgto_chunky.conj().T @ cgto_M @ cgto_chunkx
+            v0 += 0.5 * cgto_chunky.conj().T @ cgto_M @ cgto_chunkx
 
     v0 = handler.scomm.allreduce(v0, op=MPI.SUM)
     h1e_mod[0, :, :] = h1e[0] - v0
     h1e_mod[1, :, :] = h1e[1] - v0
+
 
 class GenericRealCholChunked(GenericBase):
     """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
@@ -163,13 +165,16 @@ class GenericRealCholChunked(GenericBase):
         jl = j * self.nbasis + l
         return numpy.dot(self.chol[ik], self.chol[jl])
 
+
 class GenericRealISDFChunked(GenericBase):
     """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
     Can be created by passing the one and two electron integrals directly.
     """
 
     def __init__(
-        self, h1e, cgto,
+        self,
+        h1e,
+        cgto,
         cholM=None,
         cholM_chunk=None,
         ecore=0.0,
@@ -214,7 +219,6 @@ class GenericRealISDFChunked(GenericBase):
             h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
             construct_h1e_mod_isdf(self.cholM_chunk, self.cgto, self.H1, h1e_mod, handler)
             self.h1e_mod = xp.array(h1e_mod)
-        
 
         split_size = make_splits_displacements(num_chol, handler.nmembers)[0]
         self.chunk_displacements = [0] + numpy.cumsum(split_size).tolist()

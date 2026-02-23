@@ -63,8 +63,8 @@ for file_path, names in files:
                     _email = e
                     string += f"{f:s} {l:s} {_email:s}\n# {'':9s}"
                 num_authors += 1
-            authors = f"""#
-# Author{('s' if num_authors > 1 else ''):s}: {string.strip()}
-"""
+            authors = """#
+# Author{:s}: {}
+""".format("s" if num_authors > 1 else "", string.strip())
         file.seek(0, 0)
         file.write(NOTICE + authors + "\n" + file_data)

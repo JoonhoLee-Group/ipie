@@ -18,6 +18,7 @@
 
 Play around with various thresholds to see how it affects the energy.
 """
+
 import sys
 from typing import List, Tuple, Union
 

@@ -13,7 +13,12 @@ from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
-from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol, GenericRealISDF, GenericComplexISDF
+from ipie.hamiltonians.generic import (
+    GenericRealChol,
+    GenericComplexChol,
+    GenericRealISDF,
+    GenericComplexISDF,
+)
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRealISDFChunked
 from typing import Union
 
@@ -26,7 +31,11 @@ from ipie.utils.mpi import make_splits_displacements
 
 @plum.dispatch
 def construct_one_body_propagator(
-    hamiltonian: Union[GenericRealChol, GenericRealCholChunked, GenericRealISDF, GenericRealISDFChunked], mf_shift: xp.ndarray, dt: float
+    hamiltonian: Union[
+        GenericRealChol, GenericRealCholChunked, GenericRealISDF, GenericRealISDFChunked
+    ],
+    mf_shift: xp.ndarray,
+    dt: float,
 ):
     r"""Construct mean-field shifted one-body propagator.
 
@@ -65,7 +74,12 @@ def construct_one_body_propagator(
             start_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank]
             end_n = hamiltonian.chunk_displacements[hamiltonian.handler.srank + 1]
             shift = 1j * xp.einsum(
-                "Pp, Pq, Pg, g -> pq", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, mf_shift[start_n:end_n], optimize=True
+                "Pp, Pq, Pg, g -> pq",
+                hamiltonian.cgto,
+                hamiltonian.cgto,
+                hamiltonian.cholM_chunk,
+                mf_shift[start_n:end_n],
+                optimize=True,
             )
             if MPI is None:
                 raise ImportError("mpi4py is not installed.")
@@ -77,7 +91,12 @@ def construct_one_body_propagator(
         shift = 1j * numpy.einsum("mx,x->m", hamiltonian.chol, mf_shift).reshape(nb, nb)
     elif hasattr(hamiltonian, "cholM"):
         shift = 1j * xp.einsum(
-            "Pp, Pq, Pg, g -> pq", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, mf_shift, optimize=True
+            "Pp, Pq, Pg, g -> pq",
+            hamiltonian.cgto,
+            hamiltonian.cgto,
+            hamiltonian.cholM,
+            mf_shift,
+            optimize=True,
         )
     shift = xp.array(shift)
     H1 = hamiltonian.h1e_mod - xp.array([shift, shift])
@@ -259,8 +278,11 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: SingleDet
     mf_shift[nchol:] = 1j * numpy.dot(hamiltonian.B.T, Gcharge.ravel())
     return mf_shift
 
+
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial: Union[SingleDet, ParticleHole, NOCI]):
+def construct_mean_field_shift(
+    hamiltonian: GenericRealISDF, trial: Union[SingleDet, ParticleHole, NOCI]
+):
     r"""Compute mean field shift.
 
     .. math::
@@ -269,14 +291,29 @@ def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial: Union[Single
 
     """
     # hamiltonian.chol [M^2, nchol]
-    Gcharge = (trial.G[0] + trial.G[1])
+    Gcharge = trial.G[0] + trial.G[1]
 
     # TODO: Use numpy to reduce GPU memory use at this point, otherwise will be
     # a problem of large chol cases.
-    tmp_real = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.real, optimize=True)
-    tmp_imag = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM, Gcharge.imag, optimize=True)
+    tmp_real = numpy.einsum(
+        "Pp, Pr, Pg, pr -> g",
+        hamiltonian.cgto,
+        hamiltonian.cgto,
+        hamiltonian.cholM,
+        Gcharge.real,
+        optimize=True,
+    )
+    tmp_imag = numpy.einsum(
+        "Pp, Pr, Pg, pr -> g",
+        hamiltonian.cgto,
+        hamiltonian.cgto,
+        hamiltonian.cholM,
+        Gcharge.imag,
+        optimize=True,
+    )
     mf_shift = 1.0j * tmp_real - tmp_imag
     return xp.array(mf_shift)
+
 
 @plum.dispatch
 def construct_mean_field_shift(hamiltonian: GenericRealISDFChunked, trial: TrialWavefunctionBase):
@@ -288,10 +325,24 @@ def construct_mean_field_shift(hamiltonian: GenericRealISDFChunked, trial: Trial
 
     """
     # hamiltonian.chol [M^2, nchol]
-    Gcharge = (trial.G[0] + trial.G[1])
+    Gcharge = trial.G[0] + trial.G[1]
 
-    tmp_real = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, Gcharge.real, optimize=True)
-    tmp_imag = numpy.einsum("Pp, Pr, Pg, pr -> g", hamiltonian.cgto, hamiltonian.cgto, hamiltonian.cholM_chunk, Gcharge.imag, optimize=True)
+    tmp_real = numpy.einsum(
+        "Pp, Pr, Pg, pr -> g",
+        hamiltonian.cgto,
+        hamiltonian.cgto,
+        hamiltonian.cholM_chunk,
+        Gcharge.real,
+        optimize=True,
+    )
+    tmp_imag = numpy.einsum(
+        "Pp, Pr, Pg, pr -> g",
+        hamiltonian.cgto,
+        hamiltonian.cgto,
+        hamiltonian.cholM_chunk,
+        Gcharge.imag,
+        optimize=True,
+    )
 
     split_sizes, displacements = make_splits_displacements(hamiltonian.nchol, trial.handler.ssize)
     split_sizes_np = numpy.array(split_sizes, dtype=int)
@@ -318,8 +369,11 @@ def construct_mean_field_shift(hamiltonian: GenericRealISDFChunked, trial: Trial
 
     return xp.array(mf_shift)
 
+
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericComplexISDF, trial:Union[SingleDet, ParticleHole, NOCI]):
+def construct_mean_field_shift(
+    hamiltonian: GenericComplexISDF, trial: Union[SingleDet, ParticleHole, NOCI]
+):
     r"""Compute mean field shift.
 
     .. math::
@@ -327,14 +381,13 @@ def construct_mean_field_shift(hamiltonian: GenericComplexISDF, trial:Union[Sing
         \bar{v}_n = \sum_{ik\sigma} v_{(ik),n} G_{ik\sigma}
 
     """
-    raise NotImplementedError(
-        "GenericComplexISDF does not have mean field shift yet."
-    )
+    raise NotImplementedError("GenericComplexISDF does not have mean field shift yet.")
+
 
 class PhaselessBase(ContinuousBase):
     """A base class for generic continuous HS transform AFQMC propagators."""
 
-    def __init__(self, time_step, ebound_const = 2.0, fbbound = 1.0, verbose=False):
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, verbose=False):
         super().__init__(time_step, verbose=verbose)
         self.sqrt_dt = self.dt**0.5
         self.isqrt_dt = 1j * self.sqrt_dt
@@ -415,7 +468,7 @@ class PhaselessBase(ContinuousBase):
         self.propagate_walkers_one_body(walkers)
 
         # 2.b Apply two-body
-        (cmf, cfb) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
+        cmf, cfb = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers)

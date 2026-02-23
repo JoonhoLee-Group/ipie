@@ -34,14 +34,20 @@ from ipie.utils.kpt_conv import (
     find_Qplus,
     find_self_inverse_set,
     find_translated_index_batched,
-    generate_MPmesh_3d
+    generate_MPmesh_3d,
 )
-from ipie.utils.testing import shaped_normal, _small_kpts_trivial_Sset, _nontrivial_Sset_kpts, expand_chol_symm_to_full
+from ipie.utils.testing import (
+    shaped_normal,
+    _small_kpts_trivial_Sset,
+    _nontrivial_Sset_kpts,
+    expand_chol_symm_to_full,
+)
 
 KPTS_CASES = [
     (_small_kpts_trivial_Sset, False),
     (_nontrivial_Sset_kpts, True),
 ]
+
 
 @pytest.mark.unit
 def test_construct_k_index_maps_match_kpt_conv_reference():

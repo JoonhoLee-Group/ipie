@@ -25,17 +25,18 @@ from ipie.hamiltonians.kpt_hamiltonian import construct_kpq, construct_kmq, cons
 
 from numba import jit
 
-
 try:
     from mpi4py import MPI
 except ImportError:
     MPI = None
+
 
 def construct_h1e_mod_symm(chol, h1e, ikmq_mat, Sset, Qplus, h1e_mod, handler):
     v0 = calc_v0(chol, ikmq_mat, Sset, Qplus)
     v0 = handler.scomm.allreduce(v0, op=MPI.SUM)
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
+
 
 @jit(nopython=True, fastmath=True)
 def calc_v0(chol, ikmq_mat, Sset, Qplus):
@@ -47,23 +48,25 @@ def calc_v0(chol, ikmq_mat, Sset, Qplus):
     for iq in range(len(Sset)):
         for ik in range(nk):
             chol_ik = chol[:, ik, :, iq, :]
-            chol_pgr = chol_ik.transpose(1, 0, 2).copy() # pgr
+            chol_pgr = chol_ik.transpose(1, 0, 2).copy()  # pgr
             chol_p_gr = chol_pgr.reshape(nbasis, nchol * nbasis)
             chol_gr_p = chol_p_gr.T.copy()
-            v0[ik] += .5 * numpy.dot(chol_p_gr, chol_gr_p.conj())
-    
+            v0[ik] += 0.5 * numpy.dot(chol_p_gr, chol_gr_p.conj())
+
     for iq in range(len(Sset), len(Sset) + len(Qplus)):
         for ik in range(nk):
             iq_real = Qplus[iq - len(Sset)]
             ikmq = ikmq_mat[iq_real, ik]
             chol_ik = chol[:, ik, :, iq, :]
-            chol_pgr = chol_ik.transpose(1, 0, 2).copy() # pgr
+            chol_pgr = chol_ik.transpose(1, 0, 2).copy()  # pgr
             chol_p_gr = chol_pgr.reshape(nbasis, nchol * nbasis)
             chol_gr_p = chol_p_gr.T.copy()
-            chol_ikmq = chol[:, ikmq, :, iq, :].copy() # grp
+            chol_ikmq = chol[:, ikmq, :, iq, :].copy()  # grp
             chol_gr_p_mq = chol_ikmq.reshape(nchol * nbasis, nbasis)
             chol_p_gr_mq = chol_gr_p_mq.T.copy()
-            v0[ik] += .5 * numpy.dot(chol_p_gr, chol_gr_p.conj()) + .5 * numpy.dot(chol_p_gr_mq.conj(), chol_gr_p_mq)
+            v0[ik] += 0.5 * numpy.dot(chol_p_gr, chol_gr_p.conj()) + 0.5 * numpy.dot(
+                chol_p_gr_mq.conj(), chol_gr_p_mq
+            )
     return v0
 
 
@@ -106,11 +109,12 @@ class KptComplexCholChunked(GenericBase):
             self.unique_nk = self.chol.shape[3]
             self.chol = self.chol.reshape(self.nchol, -1)
             self.chunk_kpt(handler)
-            self.chol_chunk = self.chol_chunk.reshape(-1, self.nk, self.nbasis, self.unique_nk, self.nbasis)
+            self.chol_chunk = self.chol_chunk.reshape(
+                -1, self.nk, self.nbasis, self.unique_nk, self.nbasis
+            )
         else:
             self.chol_chunk = chol_chunk  # [nchol, nk * M * unique_nk * M]
-        
-        
+
         chunked_chols = self.chol_chunk.shape[0]
         num_chol = handler.scomm.allreduce(chunked_chols, op=MPI.SUM)
         self.nchol = num_chol
@@ -121,13 +125,21 @@ class KptComplexCholChunked(GenericBase):
         assert self.chol_chunk.dtype == numpy.dtype("complex128")
 
         self.nchol_chunk = self.chol_chunk.shape[0]
-        assert self.chol_chunk.shape == (self.nchol_chunk, self.nk, self.nbasis, self.unique_nk, self.nbasis)
-        
+        assert self.chol_chunk.shape == (
+            self.nchol_chunk,
+            self.nk,
+            self.nbasis,
+            self.unique_nk,
+            self.nbasis,
+        )
+
         self.chunked = True
 
         # this is the one-body part that comes out of re-ordering the 2-body operators
         h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-        construct_h1e_mod_symm(self.chol_chunk, self.H1, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod, handler)
+        construct_h1e_mod_symm(
+            self.chol_chunk, self.H1, self.ikmq_mat, self.Sset, self.Qplus, h1e_mod, handler
+        )
         self.h1e_mod = xp.array(h1e_mod)
 
         split_size = make_splits_displacements(num_chol, handler.nmembers)[0]
@@ -140,4 +152,3 @@ class KptComplexCholChunked(GenericBase):
             print("# Number of Cholesky vectors: %d" % (self.nchol))
             print("# Number of fields: %d" % (self.nchol))
             print("# Finished setting up KptComplexChol object.")
-

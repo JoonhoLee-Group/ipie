@@ -65,27 +65,31 @@ class UHFWalkers(BaseWalkers):
         self.nbasis = nbasis
         self.mpi_handler = mpi_handler
 
-        super().__init__(nwalkers, write_filepath=write_filepath, write_restart=write_restart,
-                         write_freq=write_freq, write_time=write_time, verbose=verbose)
+        super().__init__(
+            nwalkers,
+            write_filepath=write_filepath,
+            write_restart=write_restart,
+            write_freq=write_freq,
+            write_time=write_time,
+            verbose=verbose,
+        )
 
         # should completely deprecate these
         self.field_configs = None
 
         self.phia = xp.array(
-            [initial_walker[:, :self.nup].copy() for iw in range(self.nwalkers)],
+            [initial_walker[:, : self.nup].copy() for iw in range(self.nwalkers)],
             dtype=xp.complex128,
         )
         if ndown > 0:
             self.phib = xp.array(
-                [initial_walker[:, self.nup:].copy() for iw in range(self.nwalkers)],
+                [initial_walker[:, self.nup :].copy() for iw in range(self.nwalkers)],
                 dtype=xp.complex128,
             )
         else:
             self.phib = None
         # will be built only on request
-        self.Ga = numpy.zeros(
-            shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128
-        )
+        self.Ga = numpy.zeros(shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128)
         if ndown > 0:
             self.Gb = numpy.zeros(
                 shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
@@ -115,7 +119,7 @@ class UHFWalkers(BaseWalkers):
             self.ovlp, self.sgn_ovlp, self.log_ovlp = ovlp
         else:
             self.ovlp = ovlp
-        if hasattr(trial, 'noccas') and trial.noccas is not None:
+        if hasattr(trial, "noccas") and trial.noccas is not None:
             if trial.noccas is not None:
                 self.padding = True
 
@@ -128,12 +132,12 @@ class UHFWalkers(BaseWalkers):
         if self.padding:
             return self.reortho_nonzero()
         else:
-            if config.get_option("use_gpu"):   
+            if config.get_option("use_gpu"):
                 return self.reortho_batched()
             ndown = self.ndown
             detR = []
             for iw in range(self.nwalkers):
-                (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
+                self.phia[iw], Rup = qr(self.phia[iw], mode=qr_mode)
                 # TODO: FDM This isn't really necessary, the absolute value of the
                 # weight is used for population control so this shouldn't matter.
                 # I think this is a legacy thing.
@@ -149,7 +153,7 @@ class UHFWalkers(BaseWalkers):
                 log_det = xp.sum(xp.log(xp.abs(Rup_diag)))
 
                 if ndown > 0:
-                    (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
+                    self.phib[iw], Rdn = qr(self.phib[iw], mode=qr_mode)
                     Rdn_diag = xp.diag(Rdn)
                     signs_dn = xp.sign(Rdn_diag)
                     self.phib[iw] = xp.dot(self.phib[iw], xp.diag(signs_dn))
@@ -160,21 +164,21 @@ class UHFWalkers(BaseWalkers):
                 self.detR[iw] = detR[iw]
                 self.ovlp[iw] = self.ovlp[iw] / detR[iw]
                 self.log_ovlp[iw] = self.log_ovlp[iw] - (log_det - self.detR_shift[iw])
-            
+
         synchronize()
         return detR
 
     def reortho_batched(self):
         """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
-        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
+        self.phia, Rup = qr(self.phia, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
         Rup_sign = xp.sign(Rup_diag)
         self.phia *= Rup_sign[:, None, :]
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
 
         if self.ndown > 0:
-            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
+            self.phib, Rdn = qr(self.phib, mode=qr_mode)
             Rdn_diag = xp.einsum("wii->wi", Rdn)
             Rdn_sign = xp.sign(Rdn_diag)
             self.phib *= Rdn_sign[:, None, :]
@@ -186,11 +190,11 @@ class UHFWalkers(BaseWalkers):
         synchronize()
 
         return self.detR
-    
+
     def reortho_nonzero(self):
-        (self.phia, log_det) = batched_qr_nonzero(self.phia, mode=qr_mode)
+        self.phia, log_det = batched_qr_nonzero(self.phia, mode=qr_mode)
         if self.ndown > 0:
-            (self.phib, log_det_dn) = batched_qr_nonzero(self.phib, mode=qr_mode)
+            self.phib, log_det_dn = batched_qr_nonzero(self.phib, mode=qr_mode)
             log_det += log_det_dn
         self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR
@@ -198,6 +202,7 @@ class UHFWalkers(BaseWalkers):
         synchronize()
 
         return self.detR
+
 
 class UHFWalkersParticleHole(UHFWalkers):
     """UHF style walker specialized for its use with ParticleHole trial.

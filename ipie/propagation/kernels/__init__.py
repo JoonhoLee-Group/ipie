@@ -24,4 +24,3 @@ if config.get_option("use_gpu"):
 else:
     call_kernel_VHS_construction1 = None
     call_kernel_VHS_construction2 = None
-

@@ -30,7 +30,7 @@ BK = 8
 TM = 4
 TN = 4
 
-kernel_code_t1 = r'''
+kernel_code_t1 = r"""
 #define BM 32
 #define BN 32
 #define BK 8
@@ -173,9 +173,9 @@ void get_T1(int naux, int nwalker, int nocc, int nbasis, int nk, int nkcube, con
     }
   }
 }
-'''
+"""
 
-kernel_code_t2 = r'''
+kernel_code_t2 = r"""
 #define BM 32
 #define BN 32
 #define BK 8
@@ -308,14 +308,14 @@ void get_T2(int naux, int nwalker, int nocc, int nbasis, int nk, int nkcube, con
     }
   }
 }
-'''
+"""
 
 get_T1_cupy = cp.RawKernel(kernel_code_t1, "get_T1")
 get_T2_cupy = cp.RawKernel(kernel_code_t2, "get_T2")
 
+
 def exx_kpt_kernel(rchol, rcholbar, Ghalf, kcubelist, kpq_mat):
-    """Calculate the exchange energy for each walker.
-    """
+    """Calculate the exchange energy for each walker."""
     nwalkers = Ghalf.shape[2]
     nocc = rchol.shape[2]
     naux = rchol.shape[3]
@@ -337,18 +337,41 @@ def exx_kpt_kernel(rchol, rcholbar, Ghalf, kcubelist, kpq_mat):
     kpq_mat_cupy = cp.ascontiguousarray(kpq_mat_cupy)
 
     blockspergrid = (blockspergrid_x, blockspergrid_y, blockspergrid_z)
-    args1 = (naux, nwalkers, nocc, nbasis, nk, len(kcubelist), kcubelist_cupy, kpq_mat_cupy, rchol, Ghalf, T1)
+    args1 = (
+        naux,
+        nwalkers,
+        nocc,
+        nbasis,
+        nk,
+        len(kcubelist),
+        kcubelist_cupy,
+        kpq_mat_cupy,
+        rchol,
+        Ghalf,
+        T1,
+    )
 
     blockspergrid_x2 = (M + BN - 1) // BN
     blockspergrid_y2 = (N + BM - 1) // BM
     blockspergrid2 = (blockspergrid_x2, blockspergrid_y2, blockspergrid_z)
-    args2 = (naux, nwalkers, nocc, nbasis, nk, len(kcubelist), kcubelist_cupy, kpq_mat_cupy, Ghalf, rcholbar, T2)
+    args2 = (
+        naux,
+        nwalkers,
+        nocc,
+        nbasis,
+        nk,
+        len(kcubelist),
+        kcubelist_cupy,
+        kpq_mat_cupy,
+        Ghalf,
+        rcholbar,
+        T2,
+    )
 
     get_T1_cupy(blockspergrid, threadsperblock, args1)
     get_T2_cupy(blockspergrid2, threadsperblock, args2)
 
     # exx_w = cp.sum(T1 * T2, axis=1)
-    exx_w = cp.einsum('wI, wI -> w', T1, T2, optimize=True)
+    exx_w = cp.einsum("wI, wI -> w", T1, T2, optimize=True)
     cp.cuda.stream.get_current_stream().synchronize()
     return exx_w
-

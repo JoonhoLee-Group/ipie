@@ -170,6 +170,7 @@ def UHFWalkersTrial(
 ):
     return UHFWalkersNOCI(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
 
+
 @plum.dispatch
 def UHFWalkersTrial(
     trial: KptSingleDet,
@@ -183,4 +184,6 @@ def UHFWalkersTrial(
     verbose: bool = False,
 ):
     # note that the initial walker should have shape (nk * nbasis, nk * (nup + ndown))
-    return UHFWalkers(initial_walker, nk * nup, nk * ndown, nk * nbasis, nwalkers, mpi_handler, verbose)
+    return UHFWalkers(
+        initial_walker, nk * nup, nk * ndown, nk * nbasis, nwalkers, mpi_handler, verbose
+    )

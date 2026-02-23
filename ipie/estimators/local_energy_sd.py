@@ -1119,20 +1119,28 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
     synchronize()
     return energy
 
-def ecoul_kernel_batch_real_isdf_uhf_gpu(MPQ, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_batch, Ghalfb_batch):
+
+def ecoul_kernel_batch_real_isdf_uhf_gpu(
+    MPQ, halfrot_cgtoa, halfrot_cgtob, cgto, Ghalfa_batch, Ghalfb_batch
+):
     nwalkers = Ghalfa_batch.shape[0]
     ecoul = xp.zeros(nwalkers, dtype=numpy.complex128)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
 
-    v_wP_real = contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts) + contract('Pi, Pp, wip -> wP', halfrot_cgtob, cgto, Ghalfb_batch.real, options=network_opts)
-    v_wP_imag = contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts) + contract('Pi, Pp, wip -> wP', halfrot_cgtob, cgto, Ghalfb_batch.imag, options=network_opts)
+    v_wP_real = contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts
+    ) + contract("Pi, Pp, wip -> wP", halfrot_cgtob, cgto, Ghalfb_batch.real, options=network_opts)
+    v_wP_imag = contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts
+    ) + contract("Pi, Pp, wip -> wP", halfrot_cgtob, cgto, Ghalfb_batch.imag, options=network_opts)
     v_wP = xp.zeros_like(v_wP_real, dtype=xp.complex128)
     v_wP.real = v_wP_real
     v_wP.imag = v_wP_imag
     ecoul += xp.sum((v_wP @ MPQ) * v_wP, axis=1)
     cutensornet.destroy(handle)
-    return .5 * ecoul
+    return 0.5 * ecoul
+
 
 def ecoul_kernel_batch_real_isdf_rhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch):
     nwalkers = Ghalfa_batch.shape[0]
@@ -1140,14 +1148,19 @@ def ecoul_kernel_batch_real_isdf_rhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch)
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
 
-    v_wP_real = 2.0 * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts)
-    v_wP_imag = 2.0 * contract('Pi, Pp, wip -> wP', halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts)
+    v_wP_real = 2.0 * contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.real, options=network_opts
+    )
+    v_wP_imag = 2.0 * contract(
+        "Pi, Pp, wip -> wP", halfrot_cgtoa, cgto, Ghalfa_batch.imag, options=network_opts
+    )
     v_wP = xp.zeros_like(v_wP_real, dtype=xp.complex128)
     v_wP.real = v_wP_real
     v_wP.imag = v_wP_imag
     ecoul += xp.sum((v_wP @ MPQ) * v_wP, axis=1)
     cutensornet.destroy(handle)
-    return .5 * ecoul
+    return 0.5 * ecoul
+
 
 def exx_kernel_batch_real_isdf_uhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch):
     nwalkers = Ghalfa_batch.shape[0]
@@ -1155,7 +1168,7 @@ def exx_kernel_batch_real_isdf_uhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch):
     nisdf = MPQ.shape[0]
     intermediate_mem = nwalkers * nisdf * nisdf * 16 * 2
     mem_limit = 0.3 * xp.cuda.Device().mem_info[0]
-    num_chunks = max(1, ceil(sqrt(intermediate_mem/ mem_limit)))
+    num_chunks = max(1, ceil(sqrt(intermediate_mem / mem_limit)))
     chunk_size = ceil(nisdf / num_chunks)
     nisdfx_left = nisdf
     slices_x = []
@@ -1188,7 +1201,8 @@ def exx_kernel_batch_real_isdf_uhf_gpu(MPQ, halfrot_cgtoa, cgto, Ghalfa_batch):
             TQP_chunk = TQP_chunk.reshape(nwalkers, len_slicex * len_slicey)
             contrib = xp.sum(TPQ_chunk * TQP_chunk * MPQ_chunk[xp.newaxis, :], axis=1)
             exx += contrib
-    return .5 * exx
+    return 0.5 * exx
+
 
 def local_energy_single_det_isdf_batch_gpu(system, hamiltonian, walkers, trial, max_mem=2.0):
     nwalkers = walkers.Ghalfa.shape[0]
@@ -1209,17 +1223,28 @@ def local_energy_single_det_isdf_batch_gpu(system, hamiltonian, walkers, trial, 
         ecoul = ecoul_kernel_batch_real_isdf_rhf_gpu(
             hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, walkers.Ghalfa
         )
-        exx = 2. * exx_kernel_batch_real_isdf_uhf_gpu(
+        exx = 2.0 * exx_kernel_batch_real_isdf_uhf_gpu(
             hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, walkers.Ghalfa
         )
     else:
         ecoul = ecoul_kernel_batch_real_isdf_uhf_gpu(
-            hamiltonian.MPQ, trial._rcgtoa, trial._rcgtob, hamiltonian.cgto, walkers.Ghalfa, walkers.Ghalfb
+            hamiltonian.MPQ,
+            trial._rcgtoa,
+            trial._rcgtob,
+            hamiltonian.cgto,
+            walkers.Ghalfa,
+            walkers.Ghalfb,
         )
         exx = exx_kernel_batch_real_isdf_uhf_gpu(
-            hamiltonian.MPQ, trial._rcgtoa, hamiltonian.cgto, walkers.Ghalfa,
+            hamiltonian.MPQ,
+            trial._rcgtoa,
+            hamiltonian.cgto,
+            walkers.Ghalfa,
         ) + exx_kernel_batch_real_isdf_uhf_gpu(
-            hamiltonian.MPQ, trial._rcgtob, hamiltonian.cgto, walkers.Ghalfb,
+            hamiltonian.MPQ,
+            trial._rcgtob,
+            hamiltonian.cgto,
+            walkers.Ghalfb,
         )
     e2b = ecoul - exx
 

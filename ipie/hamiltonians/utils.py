@@ -98,6 +98,7 @@ def get_hamiltonian(filename, scomm, verbose=False, pack_chol=True):
 
     return ham
 
+
 def get_kpt_hamiltonian(filename, scomm, verbose=False):
     """Wrapper to select hamiltonian class with integrals in shared memory.
 
@@ -193,11 +194,14 @@ def get_complex_hamiltonian(filename, scomm, verbose=False):
         print(f"# Time to pack Cholesky vectors: {time.time() - start:.6f}")
 
     if shmem:
-        ham = GenericComplexChol(h1e=hcore, chol=chol, ecore=enuc, shmem=True, A=A, B=B, verbose=verbose)
+        ham = GenericComplexChol(
+            h1e=hcore, chol=chol, ecore=enuc, shmem=True, A=A, B=B, verbose=verbose
+        )
     else:
         ham = Generic(h1e=hcore, chol=chol, ecore=enuc, verbose=verbose)
 
     return ham
+
 
 def get_generic_integrals(filename, comm=None, verbose=False):
     """Read generic integrals, potentially into shared memory.
@@ -261,6 +265,7 @@ def get_generic_integrals(filename, comm=None, verbose=False):
         h1e_mod = numpy.zeros(h1.shape, dtype=h1.dtype)
         construct_h1e_mod(chol, h1, h1e_mod)
         return h1, chol, h1e_mod, enuc
+
 
 def get_kpt_integrals(filename, comm=None, verbose=False):
     """Read kpt integrals, potentially into shared memory.

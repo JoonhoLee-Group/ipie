@@ -37,6 +37,7 @@ def split_cholesky(ham_filename: str, nmembers: int, verbose=True):
     if verbose:
         print("# Splitting complete.")
 
+
 def split_cholesky_kpt(ham_filename: str, nmembers: int, verbose=True):
     """
     This function calculates the splits and displacements needed to distribute the
