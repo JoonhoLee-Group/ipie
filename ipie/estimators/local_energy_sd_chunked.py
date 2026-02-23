@@ -274,6 +274,38 @@ def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
 
     return ecoul
 
+def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
+    """Compute coulomb contribution for rchol with RHF trial.
+
+    Parameters
+    ----------
+    rchola_chunk : :class:`numpy.ndarray`
+        Half-rotated cholesky (alpha).
+    rcholb_chunk : :class:`numpy.ndarray`
+        Half-rotated cholesky (beta).
+    Ghalfa : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nalpha  x nbasis.
+    Ghalfb : :class:`numpy.ndarray`
+        Walker's half-rotated "green's function" shape is nbeta x nbasis.
+
+    Returns
+    -------
+    ecoul : :class:`numpy.ndarray`
+        coulomb contribution for all walkers.
+    """
+    if xp.isrealobj(rchola_chunk):
+        Xa = rchola_chunk.dot(Ghalfa.real.T) + 1.0j * rchola_chunk.dot(
+            Ghalfa.imag.T
+        )  # naux x nwalkers
+    else:
+        Xa = rchola_chunk.dot(Ghalfa.T)
+
+    ecoul = 4.0 * xp.einsum("xw,xw->w", Xa, Xa, optimize=True)
+    ecoul *= 0.5
+
+    return ecoul
+
+
 def exx_kernel_batch_rchol_gpu(rchola_chunk, Ghalfa):
     """Compute exchange contribution for complex rchol.
 

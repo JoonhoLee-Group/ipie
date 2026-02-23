@@ -31,12 +31,13 @@ mf.chkfile = "scf.chk"
 mf.kernel()
 
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
+
 gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 
 shared_comm = get_shared_comm(comm, verbose=True)
-ham = get_hamiltonian(dir+"hamiltonian.h5", shared_comm, verbose=True, pack_chol=True)
+ham = get_hamiltonian(dir + "hamiltonian.h5", shared_comm, verbose=True, pack_chol=True)
 
-with h5py.File(dir+"wavefunction.h5") as fa:
+with h5py.File(dir + "wavefunction.h5") as fa:
     phi0a = fa["phi0_alpha"][()]
     psiT = fa["psi_T_alpha"][()]
 
@@ -50,7 +51,15 @@ trial.half_rotate(ham)
 
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.utils.mpi import MPIHandler
-walkers = UHFWalkers(numpy.hstack([phi0a, phi0a]), system.nup, system.ndown, ham.nbasis, num_walkers, mpi_handler=MPIHandler())
+
+walkers = UHFWalkers(
+    numpy.hstack([phi0a, phi0a]),
+    system.nup,
+    system.ndown,
+    ham.nbasis,
+    num_walkers,
+    mpi_handler=MPIHandler(),
+)
 
 num_walkers = 1224 // comm.size
 nsteps = 25
@@ -59,15 +68,8 @@ timestep = 0.005
 rng_seed = None
 
 afqmc = AFQMC.build(
-    mol_nelec,
-    ham,
-    trial,
-    walkers,
-    num_walkers,
-    rng_seed,
-    nsteps,
-    nblocks,
-    timestep)
+    mol_nelec, ham, trial, walkers, num_walkers, rng_seed, nsteps, nblocks, timestep
+)
 
 afqmc.run()
 afqmc.finalise(verbose=True)

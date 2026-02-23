@@ -5,7 +5,10 @@ from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
 
 comm = MPI.COMM_WORLD
 mol = gto.M(
-    atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)], basis="sto-6g", verbose=4, unit="Bohr",
+    atom=[("H", 1.6 * i, 0, 0) for i in range(0, 10)],
+    basis="sto-6g",
+    verbose=4,
+    unit="Bohr",
 )
 if comm.rank == 0:
     mf = scf.UHF(mol)
@@ -13,7 +16,7 @@ if comm.rank == 0:
     mf.kernel()
     mycc = cc.UCCSD(mf).run()
     et = mycc.ccsd_t()
-    print("UCCSD(T) energy {}".format(mf.e_tot + mycc.e_corr + et))
+    print(f"UCCSD(T) energy {mf.e_tot + mycc.e_corr + et}")
 
     gen_ipie_input_from_pyscf_chk(mf.chkfile, verbose=0)
 comm.barrier()
@@ -27,7 +30,12 @@ qmc_options = {
     "num_walkers": 10,
     "dt": 0.05,
 }
-afqmc = build_fpafqmc_driver(comm, nelec=mol.nelec, seed=41100801, qmc_options=qmc_options,)
+afqmc = build_fpafqmc_driver(
+    comm,
+    nelec=mol.nelec,
+    seed=41100801,
+    qmc_options=qmc_options,
+)
 if comm.rank == 0:
     print(afqmc.params)  # Inspect the default qmc options
 afqmc.run()

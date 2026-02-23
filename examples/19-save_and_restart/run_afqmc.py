@@ -15,6 +15,7 @@ from ipie.utils.from_pyscf import generate_hamiltonian, generate_wavefunction_fr
 #     comm = MPI.COMM_WORLD
 # except ImportError:
 from ipie.qmc.comm import FakeComm
+
 comm = FakeComm()
 
 mol = gto.M(
@@ -30,7 +31,7 @@ mf.kernel()
 
 class EnergyEstimatorDumpWalkers(EnergyEstimator):
     """Energy estimator that also dumps walker configurations periodically."""
-    
+
     def __init__(
         self,
         comm=None,
@@ -52,15 +53,17 @@ class EnergyEstimatorDumpWalkers(EnergyEstimator):
         dump_freq = 10
         dump_block_init = 10
         dump_block_end = 10
-        
+
         trial.calc_greens_function(walkers)
-        
+
         # the dumping condition can be adjusted as needed
-        if (self.nblocks % dump_freq == 0 and 
-            self.nblocks >= dump_block_init and 
-            self.nblocks <= dump_block_end):
+        if (
+            self.nblocks % dump_freq == 0
+            and self.nblocks >= dump_block_init
+            and self.nblocks <= dump_block_end
+        ):
             walkers.write_walkers_batch(comm)
-            
+
         energy = local_energy_batch(system, hamiltonian, walkers, trial)
         self._data["ENumer"] = np.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = np.sum(walkers.weight)
@@ -123,5 +126,7 @@ etotal_last = qmc_data["ETotal"][num_blocks]
 
 # read walkers
 afqmc.walkers.read_walkers_batch(trial, comm)
-enum, edeom = afqmc.estimators["energy"].compute_estimator(afqmc.system, afqmc.walkers, ham, trial)[:2]
+enum, edeom = afqmc.estimators["energy"].compute_estimator(afqmc.system, afqmc.walkers, ham, trial)[
+    :2
+]
 assert np.allclose(enum / edeom, etotal_last)

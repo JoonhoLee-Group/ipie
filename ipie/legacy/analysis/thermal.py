@@ -92,14 +92,14 @@ def find_chem_pot(data, target, vol, order=3, plot=False):
             delta,
             yerr=nav_error,
             fmt="o",
-            label=r"$\beta = {}$".format(beta),
+            label=rf"$\beta = {beta}$",
             color="C0",
         )
         xs = numpy.linspace(a, b, 101)
         ys = nav_mu(xs, fit)
         pl.plot(xs, ys, ":", color="C0")
         if mu is not None and r.converged:
-            pl.axvline(mu, linestyle=":", label=r"$\mu^* = {}$".format(mu), color="C3")
+            pl.axvline(mu, linestyle=":", label=rf"$\mu^* = {mu}$", color="C3")
         pl.xlabel(r"$\mu$")
         pl.ylabel(r"$n-n_{\mathrm{av}}$")
         pl.legend(numpoints=1)

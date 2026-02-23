@@ -108,10 +108,10 @@ for iw in range(nwalkers):
         local_energy_generic_cholesky_opt(Ghalfa_batch[iw], Ghalfb_batch[iw], rchola, rcholb)
     ]
 energies = numpy.complex128(energies)
-print("Current algorithm = {}".format(time.time() - start))
+print(f"Current algorithm = {time.time() - start}")
 
 start = time.time()
 energies_batch = local_energy_generic_batch(Ghalfa_batch, Ghalfb_batch, rchola, rcholb)
-print("batch algorithm = {}".format(time.time() - start))
+print(f"batch algorithm = {time.time() - start}")
 
 assert numpy.allclose(energies, energies_batch)

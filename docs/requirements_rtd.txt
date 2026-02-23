@@ -2,4 +2,4 @@ sphinx
 sphinx_rtd_theme
 mock
 matplotlib
-urllib3>=1.24.2,<2.0.0
+urllib3>=1.24.2,<3.0.0

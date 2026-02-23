@@ -292,7 +292,7 @@ with cupy.cuda.Device(rank):
     start = time.time()
     for i in range(nblocks):
         energies_batch3 = local_energy_generic_numba(Ghalfa_batch, Ghalfb_batch, rchola, rcholb)
-    print("new einsum algorithm = {}".format(time.time() - start))
+    print(f"new einsum algorithm = {time.time() - start}")
 
     assert cupy.allclose(energies_batch, energies_batch2)
     assert cupy.allclose(energies_batch3, energies_batch2)

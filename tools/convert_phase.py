@@ -31,7 +31,7 @@ for ndet in ndets:
         phase = (-1) ** count
         coeff[i] *= phase
 
-    print("ordered coeff = {}".format(coeff))
+    print(f"ordered coeff = {coeff}")
 
     na = len(occa[0])
     nb = len(occb[0])
