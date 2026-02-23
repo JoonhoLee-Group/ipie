@@ -263,6 +263,52 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
     return wfn, init_wfn
 
 
+def random_occupations(nocc: int, nk: int, *, alpha: float = 0.3, seed: int | None = None) -> np.ndarray:
+    """
+    Return integer occupations occ[k] with mean nocc across nk k-points.
+    
+    Uses: p ~ Dirichlet(alpha), occ ~ Multinomial(total=nocc*nk, p).
+    
+    Parameters
+    ----------
+    nocc : int
+        Target average occupation per k-point (integer).
+    nk : int
+        Number of k-points.
+    alpha : float
+        Dirichlet concentration. alpha < 1 -> spiky/uneven, alpha ~ 1 moderate, alpha > 1 more even.
+    seed : int | None
+        RNG seed.
+
+    Returns
+    -------
+    occ : (nk,) int array
+        Nonnegative integer occupations summing to nocc*nk.
+    """
+    if nk <= 0:
+        raise ValueError("nk must be positive")
+    if nocc < 0:
+        raise ValueError("nocc must be nonnegative")
+    if alpha <= 0:
+        raise ValueError("alpha must be > 0")
+
+    total = nocc * nk
+    rng = np.random.default_rng(seed)
+    p = rng.dirichlet(alpha * np.ones(nk))
+    occ = rng.multinomial(total, p).astype(int)
+
+    assert occ.sum() == total
+    assert np.isclose(occ.mean(), nocc)
+    return occ
+
+
+def get_random_kpt_sd(nk, nup, ndown, nbasis, seed=0):
+    rng = numpy.random.default_rng(seed)
+    psia = rng.standard_normal((nk, nbasis, nup)) + 1j * rng.standard_normal((nk, nbasis, nup))
+    psib = rng.standard_normal((nk, nbasis, ndown)) + 1j * rng.standard_normal((nk, nbasis, ndown))
+    return psia, psib
+
+
 def get_random_wavefunction(nelec, nbasis):
     na = nelec[0]
     nb = nelec[1]
@@ -281,17 +327,58 @@ def generate_hamiltonian_low_mem(nmo, nelec, cplx=False):
     return h1e, chol, enuc
 
 
-def shaped_normal(shape, cmplx=False):
-    size = numpy.prod(shape)
+def shaped_normal(shape, cmplx=False, seed=0):
+    rng = numpy.random.default_rng(seed) 
     if cmplx:
-        arr_r = numpy.random.normal(size=size)
-        arr_i = numpy.random.normal(size=size)
+        arr_r = rng.standard_normal(shape)
+        arr_i = rng.standard_normal(shape)
         arr = arr_r + 1j * arr_i
         arr = numpy.array(arr, dtype=numpy.complex128)
     else:
-        arr = numpy.random.normal(size=size)
+        arr = rng.standard_normal(shape)
         arr = numpy.array(arr, dtype=numpy.float64)
-    return arr.reshape(shape)
+    return arr
+
+def _small_kpts_trivial_Sset(): 
+    # 9 k-points in fractional coords with trivial Sset (only Gamma point).
+    kmesh = generate_MPmesh_3d((3, 3, 1)) 
+    return kmesh 
+    
+
+def _nontrivial_Sset_kpts():
+    # 12 k-points in fractional coords with nontrivial Sset.
+    kmesh = generate_MPmesh_3d((3, 2, 2)) 
+    return kmesh
+
+
+def expand_chol_symm_to_full(chol_packed, kpts, Sset, Qplus, ikpq_mat, imq_vec):
+    """
+    Expand packed chol (nchol, nk, nbasis, unique_nk, nbasis) into full chol
+    (nchol, nk, nbasis, nk, nbasis) using:
+        L(k, q) = L(k+q, -q)^*  with (p,r) transpose in orbital indices.
+
+    Here the packed q-axis is ordered as [Sset..., Qplus...].
+    """
+    nchol, nk, nbasis, unique_nk, _ = chol_packed.shape
+    chol_full = numpy.zeros((nchol, nk, nbasis, nk, nbasis), dtype=numpy.complex128)
+
+    for iu, iq_real in enumerate(Sset):
+        iq_real = int(iq_real)
+        chol_full[:, :, :, iq_real, :] = chol_packed[:, :, :, iu, :]
+
+    offset = len(Sset)
+    for j, iq_real in enumerate(Qplus):
+        iq_real = int(iq_real)
+        iu = offset + j
+        chol_full[:, :, :, iq_real, :] = chol_packed[:, :, :, iu, :]
+
+        imq = int(imq_vec[iq_real])  # index of -q
+        for ik in range(nk):
+            ikpq = int(ikpq_mat[iq_real, ik])  # k+q
+            # L(ikpq, -q) = L(ik, q)^* with p<->r transpose
+            chol_full[:, ikpq, :, imq, :] = chol_full[:, ik, :, iq_real, :].conj().transpose(0, 2, 1)
+
+    return chol_full
 
 
 def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
@@ -302,18 +389,6 @@ def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
         h1e=numpy.array([h1e, h1e]),
         chol=chol.reshape((naux, nmo * nmo)).T.copy(),
         # h1e_mod=h1e.copy(),
-        ecore=0,
-        verbose=False,
-    )
-    return sys, ham
-
-def get_random_sys_ham_kpt(nalpha, nbeta, nmo, naux, nk, cmplx=False):
-    sys = Generic(nelec=(nalpha, nbeta))
-    chol = shaped_normal((naux, nk, nmo, nk, nmo), cmplx=cmplx)
-    h1e = shaped_normal((nk, nmo, nmo), cmplx=cmplx)
-    ham = HamGeneric(
-        h1e=numpy.array([h1e, h1e]),
-        chol=chol,
         ecore=0,
         verbose=False,
     )
@@ -365,7 +440,7 @@ def gen_random_test_input_kpt(kmesh, nmo, nelec, naux, seed=7, ndets=1):
     nk = kmesh[0] * kmesh[1] * kmesh[2]
     numpy.random.seed(seed)
     nup, ndown = nelec
-    _, wfn = get_random_kpt_trial(nk, nup, ndown, nmo, ndet=ndets)
+    psia, psib = get_random_kpt_sd(nk, nup, ndown, nmo, seed=seed)
     h1e = shaped_normal((nk, nmo, nmo), cmplx=True)
     h1e = h1e + h1e.transpose(0, 2, 1).conj()
 
@@ -375,13 +450,14 @@ def gen_random_test_input_kpt(kmesh, nmo, nelec, naux, seed=7, ndets=1):
     nq = len(Sset) + len(Qplus)
 
     chol = shaped_normal((naux, nk, nmo, nq, nmo), cmplx=True)
-    
+    wfn = numpy.concatenate([psia, psib], axis=2)
     return h1e, chol, wfn, kpts
 
 def gen_random_test_instances_kpt_chunked(nk, nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     assert ndets == 1
     numpy.random.seed(seed)
-    wfn = get_random_kpt_trial(nk, nocc, nocc, nmo, ndet=ndets)
+    psia, psib = get_random_kpt_sd(nk, nocc, nocc, nmo, seed=seed)
+    wfn = numpy.concatenate([psia, psib], axis=2)
     h1e = shaped_normal((nk, nmo, nmo))
 
     system = Generic(nelec=(nocc, nocc))
@@ -540,6 +616,33 @@ def build_random_trial(
         )
     else:
         raise ValueError(f"Unkown trial type: {trial_type}")
+
+
+def build_random_kpt_trial(
+    kmesh: Tuple[int, int, int],
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    trial_type="single_det",
+    rhf_trial: bool = False,
+    uneven_occupation: bool = False,
+    seed: int = 0,
+):
+    nk = kmesh[0] * kmesh[1] * kmesh[2]
+    assert trial_type == "single_det", "Only single determinant trial is implemented for kpt tests"
+    psia, psib = get_random_kpt_sd(nk, num_elec[0], num_elec[1], num_basis, seed=seed)
+    if rhf_trial:
+        psib = psia.copy()
+    wfn = numpy.concatenate([psia, psib], axis=2)
+    if uneven_occupation:
+        # generate noccs
+        occas = random_occupations(num_elec[0], nk, alpha=0.3, seed=seed)
+        occbs = random_occupations(num_elec[1], nk, alpha=0.3, seed=seed + 1)
+        trial = KptSingleDet(wfn, nk, num_elec, num_basis, occas=occas, occbs=occbs)
+    else:
+        trial = KptSingleDet(wfn, nk, num_elec, num_basis)
+    return trial
+
+
 
 
 @dataclass(frozen=True)
@@ -731,6 +834,73 @@ def build_test_case_handlers_ghf(
 
     nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
     walkers = GHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
+    walkers.build(trial)  # any intermediates that require information from trial
+
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
+
+    trial.calc_greens_function(walkers)
+    for _ in range(options.num_steps):
+        if two_body_only:
+            prop.propagate_walkers_two_body(walkers, ham, trial)
+        else:
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        if reortho:
+            walkers.reortho()
+        trial.calc_greens_function(walkers)
+
+    return TestData(trial, walkers, ham, prop)
+
+def build_kpt_test_case_handlers(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    kmesh: Tuple[int, int, int],
+    num_dets=1,
+    trial_type="kptsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    choltol: float = 1e-3,
+    reortho: bool = True,
+    options: Union[dict, None] = None,
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    sym = 8
+    if complex_integrals:
+        sym = 4
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+    )
+    ham.eri = eri.copy()
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(ham)
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    walkers = UHFWalkersTrial(
         trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers.build(trial)  # any intermediates that require information from trial

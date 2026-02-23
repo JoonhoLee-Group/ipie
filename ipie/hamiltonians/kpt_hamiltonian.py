@@ -61,7 +61,7 @@ def construct_h1e_mod(chol, h1e, ikpq_mat, imq_vec, h1e_mod):
         for iq in range(nk):
             ikpq = ikpq_mat[ik, iq]
             imq = imq_vec[iq]
-            v0[ik] += .5 * numpy.einsum('gpr, grq -> pq', chol[:, ik, :, iq, :], chol[:, ikpq, :, imq, :])
+            v0[ik] += .5 * numpy.einsum('gpr, gqr -> pq', chol[:, ik, :, iq, :], chol[:, ik, :, iq, :].conj())
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
 
@@ -170,7 +170,7 @@ class KptComplexChol(GenericBase):
         self.imq_vec = construct_mq(self.kpts)
         self.igamma = find_gamma_pt(self.kpts)
         self.nk = self.kpts.shape[0]
-        self.unique_nk = self.nk # for compatibility with KptComplexCholSymm in propagation
+        self.unique_nk = self.nk  # for compatibility with KptComplexCholSymm in propagation
         self.nchol = self.chol.shape[0]
 
         self.chunked = False

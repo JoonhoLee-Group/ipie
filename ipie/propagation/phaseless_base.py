@@ -260,7 +260,7 @@ def construct_mean_field_shift(hamiltonian: GenericComplexChol, trial: SingleDet
     return mf_shift
 
 @plum.dispatch
-def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial:Union[SingleDet, ParticleHole, NOCI]):
+def construct_mean_field_shift(hamiltonian: GenericRealISDF, trial: Union[SingleDet, ParticleHole, NOCI]):
     r"""Compute mean field shift.
 
     .. math::
