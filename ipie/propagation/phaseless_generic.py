@@ -139,7 +139,8 @@ class PhaselessGenericChunked(PhaselessGeneric):
         VHS_recv = xp.zeros_like(VHS_send)
 
         srank = self.mpi_handler.scomm.rank
-        sender = numpy.where(self.mpi_handler.receivers == srank)[0]
+        idx = numpy.where(self.mpi_handler.receivers == srank)[0]
+        sender = int(idx.item())
 
         for _ in range(self.mpi_handler.ssize - 1):
             synchronize()
