@@ -183,7 +183,7 @@ class BackPropagation(object):
             else:
                 energies = numpy.zeros(3)
 
-            if self.calc_two_rdm is not None and self.calc_two_rdm is not "structure_factor":
+            if self.calc_two_rdm is not None and self.calc_two_rdm != "structure_factor":
                 # <p^+ q^+ s r> = G(p, r, q, s) also spin-summed
                 self.two_rdm = numpy.einsum(
                     "pr,qs->prqs", self.G[0], self.G[0], optimize=True
