@@ -16,6 +16,7 @@
 #          Joonho Lee
 #
 """Driver to perform Thermal AFQMC calculation"""
+
 import json
 import time
 from typing import Dict, Optional, Tuple

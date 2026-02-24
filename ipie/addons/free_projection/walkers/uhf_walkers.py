@@ -57,12 +57,12 @@ class UHFWalkersFP(UHFWalkers):
 
     def reortho_batched(self):
         assert config.get_option("use_gpu")
-        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
+        self.phia, Rup = qr(self.phia, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
         det = xp.prod(Rup_diag, axis=1)
 
         if self.ndown > 0:
-            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
+            self.phib, Rdn = qr(self.phib, mode=qr_mode)
             Rdn_diag = xp.einsum("wii->wi", Rdn)
             det *= xp.prod(Rdn_diag, axis=1)
         self.detR = det
@@ -82,11 +82,11 @@ class UHFWalkersFP(UHFWalkers):
             ndown = self.ndown
             detR = []
             for iw in range(self.nwalkers):
-                (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
+                self.phia[iw], Rup = qr(self.phia[iw], mode=qr_mode)
                 det_i = xp.prod(xp.diag(Rup))
 
                 if ndown > 0:
-                    (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
+                    self.phib[iw], Rdn = qr(self.phib[iw], mode=qr_mode)
                     det_i *= xp.prod(xp.diag(Rdn))
 
                 detR += [det_i]

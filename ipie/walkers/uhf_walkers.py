@@ -112,7 +112,7 @@ class UHFWalkers(BaseWalkers):
         ndown = self.ndown
         detR = []
         for iw in range(self.nwalkers):
-            (self.phia[iw], Rup) = qr(self.phia[iw], mode=qr_mode)
+            self.phia[iw], Rup = qr(self.phia[iw], mode=qr_mode)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
@@ -128,7 +128,7 @@ class UHFWalkers(BaseWalkers):
             log_det = xp.sum(xp.log(xp.abs(Rup_diag)))
 
             if ndown > 0:
-                (self.phib[iw], Rdn) = qr(self.phib[iw], mode=qr_mode)
+                self.phib[iw], Rdn = qr(self.phib[iw], mode=qr_mode)
                 Rdn_diag = xp.diag(Rdn)
                 signs_dn = xp.sign(Rdn_diag)
                 self.phib[iw] = xp.dot(self.phib[iw], xp.diag(signs_dn))
@@ -145,12 +145,12 @@ class UHFWalkers(BaseWalkers):
     def reortho_batched(self):
         """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
-        (self.phia, Rup) = qr(self.phia, mode=qr_mode)
+        self.phia, Rup = qr(self.phia, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
 
         if self.ndown > 0:
-            (self.phib, Rdn) = qr(self.phib, mode=qr_mode)
+            self.phib, Rdn = qr(self.phib, mode=qr_mode)
             Rdn_diag = xp.einsum("wii->wi", Rdn)
             log_det += xp.einsum("wi->w", xp.log(abs(Rdn_diag)))
         self.detR = xp.exp(log_det - self.detR_shift)

@@ -144,7 +144,7 @@ class GHFWalkers(BaseWalkers):
             return self.reortho_batched()
         detR = []
         for iw in range(self.nwalkers):
-            (self.phi[iw], R) = qr(self.phi[iw], mode=qr_mode)
+            self.phi[iw], R = qr(self.phi[iw], mode=qr_mode)
             # TODO: FDM This isn't really necessary, the absolute value of the
             # weight is used for population control so this shouldn't matter.
             # I think this is a legacy thing.
@@ -170,7 +170,7 @@ class GHFWalkers(BaseWalkers):
     def reortho_batched(self):
         """reorthogonalise walkers."""
         assert config.get_option("use_gpu")
-        (self.phi, Rup) = qr(self.phi, mode=qr_mode)
+        self.phi, Rup = qr(self.phi, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
         self.detR = xp.exp(log_det - self.detR_shift)

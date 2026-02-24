@@ -172,7 +172,7 @@ class BaseWalkers(metaclass=ABCMeta):
         """
         detR = self.reortho()
         if free_projection:
-            (magn, dtheta) = cmath.polar(self.detR)
+            magn, dtheta = cmath.polar(self.detR)
             self.weight *= magn
             self.phase *= cmath.exp(1j * dtheta)
         return detR

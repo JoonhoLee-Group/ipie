@@ -665,7 +665,7 @@ def write_qmcpack_sparse(
         # Number of integral blocks used for chunked HDF5 storage.
         # Currently hardcoded for simplicity.
         nint_block = 1
-        (nalpha, nbeta) = nelec
+        nalpha, nbeta = nelec
         unused = 0
         fh5["Hamiltonian/dims"] = numpy.array(
             [unused, nnz, nint_block, nmo, nalpha, nbeta, unused, nchol_vecs]
