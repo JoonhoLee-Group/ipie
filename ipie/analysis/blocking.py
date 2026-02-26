@@ -152,7 +152,7 @@ def reblock_mixed(groupby, columns, verbose=False):
             short = short.drop(columns + ["index"], axis=1)
 
         assert _have_pyblock, "pyblock not installed. Please install"
-        (data_len, blocked_data, _) = pyblock.pd_utils.reblock(short)
+        data_len, blocked_data, _ = pyblock.pd_utils.reblock(short)
         reblocked = pd.DataFrame({"ETotal": [0.0]})
         for c in short.columns:
             try:
@@ -183,7 +183,7 @@ def reblock_free_projection(frame):
     short = frame.drop(["Time", "Weight", "ETotal"], axis=1)
     analysed = []
     assert _have_pyblock, "pyblock not installed. Please install"
-    (data_len, blocked_data, covariance) = pyblock.pd_utils.reblock(short)
+    data_len, blocked_data, covariance = pyblock.pd_utils.reblock(short)
     reblocked = pd.DataFrame()
     denom = blocked_data.loc[:, "EDenom"]
     for c in short.columns:

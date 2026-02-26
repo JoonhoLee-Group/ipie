@@ -102,7 +102,7 @@ def diagonalise_sorted(H):
         Sorted eigenvectors (same sorting as eigenvalues).
     """
 
-    (eigs, eigv) = scipy.linalg.eigh(H)
+    eigs, eigv = scipy.linalg.eigh(H)
     idx = eigs.argsort()
     eigs = eigs[idx]
     eigv = eigv[:, idx]
@@ -128,7 +128,7 @@ def regularise_matrix_inverse(A, cutoff=1e-10):
     B : class:`numpy.array`
         Regularised matrix inverse (pseudo-inverse).
     """
-    (U, D, V) = scipy.linalg.svd(A)
+    U, D, V = scipy.linalg.svd(A)
     D = D / (cutoff**2.0 + D**2.0)
     return (V.conj().T).dot(numpy.diag(D)).dot(U.conj().T)
 
@@ -152,7 +152,7 @@ def reortho(A):
     detR : float
         Determinant of upper triangular matrix (R) from QR decomposition.
     """
-    (Q, R) = scipy.linalg.qr(A, mode="economic")
+    Q, R = scipy.linalg.qr(A, mode="economic")
     signs = numpy.diag(numpy.sign(numpy.diag(R)))
     Q = Q.dot(signs)
     detR = scipy.linalg.det(signs.dot(R))
@@ -236,9 +236,9 @@ def molecular_orbitals_uhf(fock, AORot):
     mo_energies = numpy.zeros((2, fock.shape[-1]))
     mo_orbs = numpy.zeros((2, fock.shape[-1], fock.shape[-1]))
     fock_ortho = numpy.dot(AORot.conj().T, numpy.dot(fock[0], AORot))
-    (mo_energies[0], mo_orbs[0]) = scipy.linalg.eigh(fock_ortho)
+    mo_energies[0], mo_orbs[0] = scipy.linalg.eigh(fock_ortho)
     fock_ortho = numpy.dot(AORot.conj().T, numpy.dot(fock[1], AORot))
-    (mo_energies[1], mo_orbs[1]) = scipy.linalg.eigh(fock_ortho)
+    mo_energies[1], mo_orbs[1] = scipy.linalg.eigh(fock_ortho)
     return (mo_energies, mo_orbs)
 
 

@@ -77,7 +77,7 @@ class FreePropagation(PhaselessGeneric):
         self.propagate_walkers_one_body(walkers)
 
         # 2.b Apply two-body
-        (cmf, ceshift) = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
+        cmf, ceshift = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
 
         # 2.c Apply one-body
         self.propagate_walkers_one_body(walkers)

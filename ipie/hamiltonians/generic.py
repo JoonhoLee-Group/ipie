@@ -159,18 +159,18 @@ def Generic(h1e, chol, ecore=0.0, shmem=False, chol_packed=None, verbose=False):
 
 def read_integrals(integral_file):
     try:
-        (h1e, schol_vecs, ecore, _, _, _) = from_qmcpack_sparse(integral_file)
+        h1e, schol_vecs, ecore, _, _, _ = from_qmcpack_sparse(integral_file)
         chol_vecs = schol_vecs.toarray()
         return h1e, chol_vecs, ecore
     except KeyError:
         pass
     try:
-        (h1e, chol_vecs, ecore, _, _, _) = from_qmcpack_dense(integral_file)
+        h1e, chol_vecs, ecore, _, _, _ = from_qmcpack_dense(integral_file)
         return h1e, chol_vecs, ecore
     except KeyError:
         pass
     try:
-        (h1e, chol_vecs, ecore) = read_hamiltonian(integral_file)
+        h1e, chol_vecs, ecore = read_hamiltonian(integral_file)
         naux = chol_vecs.shape[0]
         nbsf = chol_vecs.shape[-1]
         return h1e, chol_vecs.T.reshape((nbsf, nbsf, naux)), ecore

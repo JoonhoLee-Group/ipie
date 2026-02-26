@@ -17,6 +17,7 @@
 #
 
 """Driver to perform AFQMC calculation"""
+
 import abc
 import json
 import time

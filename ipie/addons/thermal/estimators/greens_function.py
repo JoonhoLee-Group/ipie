@@ -40,9 +40,9 @@ def greens_function(A):
         Thermal Green's function.
     """
     G = numpy.zeros(A.shape, dtype=A.dtype)
-    (U1, S1, V1) = scipy.linalg.svd(A)
+    U1, S1, V1 = scipy.linalg.svd(A)
     T = numpy.dot(U1.conj().T, V1.conj().T) + numpy.diag(S1)
-    (U2, S2, V2) = scipy.linalg.svd(T)
+    U2, S2, V2 = scipy.linalg.svd(T)
     U3 = numpy.dot(U1, U2)
     D3 = numpy.diag(1.0 / S2)
     V3 = numpy.dot(V2, V1)
@@ -76,7 +76,7 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
         # (A = QDT) starting from the rightmost (product of) propagator(s).
         B = stack_iw.get((bin_ix + 1) % stack_iw.nstack)
 
-        (Q1, R1, P1) = scipy.linalg.qr(B[spin], pivoting=True, check_finite=False)
+        Q1, R1, P1 = scipy.linalg.qr(B[spin], pivoting=True, check_finite=False)
         # Form D matrices
         D1 = numpy.diag(R1.diagonal())
         D1inv = numpy.diag(1.0 / R1.diagonal())
@@ -88,7 +88,7 @@ def greens_function_qr_strat(walkers, iw, slice_ix=None, inplace=True):
             ix = (bin_ix + i) % stack_iw.nstack
             B = stack_iw.get(ix)
             C2 = numpy.dot(numpy.dot(B[spin], Q1), D1)
-            (Q1, R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
+            Q1, R1, P1 = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
             # Compute D matrices
             D1inv = numpy.diag(1.0 / R1.diagonal())
             D1 = numpy.diag(R1.diagonal())

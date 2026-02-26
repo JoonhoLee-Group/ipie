@@ -47,7 +47,7 @@ def one_rdm_stable(BT, num_slices):
         # Need to construct the product A(l) = B_l B_{l-1}..B_L...B_{l+1} in
         # stable way. Iteratively construct column pivoted QR decompositions
         # (A = QDT) starting from the rightmost (product of) propagator(s).
-        (Q1, R1, P1) = scipy.linalg.qr(BT[spin], pivoting=True, check_finite=False)
+        Q1, R1, P1 = scipy.linalg.qr(BT[spin], pivoting=True, check_finite=False)
         # Form D matrices
         D1 = numpy.diag(R1.diagonal())
         D1inv = numpy.diag(1.0 / R1.diagonal())
@@ -57,7 +57,7 @@ def one_rdm_stable(BT, num_slices):
 
         for i in range(0, num_slices - 1):
             C2 = numpy.dot(numpy.dot(BT[spin], Q1), D1)
-            (Q1, R1, P1) = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
+            Q1, R1, P1 = scipy.linalg.qr(C2, pivoting=True, check_finite=False)
             # Compute D matrices
             D1inv = numpy.diag(1.0 / R1.diagonal())
             D1 = numpy.diag(R1.diagonal())

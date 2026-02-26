@@ -93,7 +93,8 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
                     handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=2)
                     handler.scomm.Send(exx_send, dest=receivers[isend], tag=3)
                 elif handler.srank == receivers[isend]:
-                    sender = numpy.where(receivers == handler.srank)[0]
+                    idx = numpy.where(receivers == handler.srank)[0]
+                    sender = int(idx.item())
                     handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
                     handler.scomm.Recv(ecoul_recv, source=sender, tag=2)
                     handler.scomm.Recv(exx_recv, source=sender, tag=3)
@@ -114,7 +115,8 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
                     handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=1)
                     handler.scomm.Send(exx_send, dest=receivers[isend], tag=2)
                 elif handler.srank == receivers[isend]:
-                    sender = numpy.where(receivers == handler.srank)[0]
+                    idx = numpy.where(receivers == handler.srank)[0]
+                    sender = int(idx.item())
                     handler.scomm.Recv(ecoul_recv, source=sender, tag=1)
                     handler.scomm.Recv(exx_recv, source=sender, tag=2)
 
@@ -159,7 +161,8 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
                     handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=3)
                     handler.scomm.Send(exx_send, dest=receivers[isend], tag=4)
                 elif handler.srank == receivers[isend]:
-                    sender = numpy.where(receivers == handler.srank)[0]
+                    idx = numpy.where(receivers == handler.srank)[0]
+                    sender = int(idx.item())
                     handler.scomm.Recv(Ghalfa_recv, source=sender, tag=1)
                     handler.scomm.Recv(Ghalfb_recv, source=sender, tag=2)
                     handler.scomm.Recv(ecoul_recv, source=sender, tag=3)
@@ -187,7 +190,8 @@ def local_energy_single_det_uhf_batch_chunked(system, hamiltonian, walker_batch,
                     handler.scomm.Send(ecoul_send, dest=receivers[isend], tag=1)
                     handler.scomm.Send(exx_send, dest=receivers[isend], tag=2)
                 elif handler.srank == receivers[isend]:
-                    sender = numpy.where(receivers == handler.srank)[0]
+                    idx = numpy.where(receivers == handler.srank)[0]
+                    sender = int(idx.item())
                     handler.scomm.Recv(ecoul_recv, source=sender, tag=1)
                     handler.scomm.Recv(exx_recv, source=sender, tag=2)
 
@@ -387,7 +391,8 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
         srank = handler.srank
 
-        sender = numpy.where(receivers == handler.srank)[0]
+        idx = numpy.where(receivers == handler.srank)[0]
+        sender = int(idx.item())
         scomm = handler.scomm
         for _ in range(handler.ssize - 1):
             synchronize()
@@ -463,7 +468,8 @@ def local_energy_single_det_uhf_batch_chunked_gpu(
 
         srank = handler.srank
 
-        sender = numpy.where(receivers == handler.srank)[0]
+        idx = numpy.where(receivers == handler.srank)[0]
+        sender = int(idx.item())
         scomm = handler.scomm
         for _ in range(handler.ssize - 1):
             synchronize()
