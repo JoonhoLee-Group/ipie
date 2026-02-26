@@ -226,7 +226,7 @@ def construct_mean_field_shift(hamiltonian: KptComplexCholSymm, trial: KptSingle
     mf_shiftL = numpy.dot(diagchol, Gcharge)
     mf_shiftLconj = numpy.dot(diagcholdagger, Gcharge)
 
-    mf_shift = xp.concatenate((mf_shiftL, mf_shiftLconj))
+    mf_shift = numpy.concatenate((mf_shiftL, mf_shiftLconj))
     return xp.array(mf_shift)
 
 

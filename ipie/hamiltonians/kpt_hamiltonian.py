@@ -207,7 +207,7 @@ class KptComplexChol(GenericBase):
         self.h1e_mod = xp.array(h1e_mod)
 
         if verbose:
-            mem = self.A.nbytes / (1024.0**3) * 3
+            mem = self.chol.nbytes / (1024.0**3) * 3
             print("# Number of orbitals: %d" % self.nbasis)
             print(f"# Approximate memory required by Cholesky + A&B vectors {mem:f} GB")
             print("# Number of Cholesky vectors: %d" % (self.nchol))

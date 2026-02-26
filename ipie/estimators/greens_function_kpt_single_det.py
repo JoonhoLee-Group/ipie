@@ -41,7 +41,8 @@ def greens_function_kpt_single_det(walker_batch, trial, build_full=False):
     nk = trial.nk
 
     phia = walker_batch.phia.reshape(walker_batch.nwalkers, nk, nbsf, nk, nup).copy()
-    phib = walker_batch.phib.reshape(walker_batch.nwalkers, nk, nbsf, nk, ndown).copy()
+    if ndown > 0:
+        phib = walker_batch.phib.reshape(walker_batch.nwalkers, nk, nbsf, nk, ndown).copy()
     det = []
     signovlp = []
     logovlp = []

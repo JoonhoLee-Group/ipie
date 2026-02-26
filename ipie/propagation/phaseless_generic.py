@@ -109,13 +109,9 @@ class PhaselessGeneric(PhaselessBase):
         nwalkers = xshifted.shape[-1]
 
         nchol = hamiltonian.nchol
-        nk = 27
-
-        xplus = xshifted[:nchol].reshape(nk, -1, nwalkers)
-        xminus = xshifted[nchol:].reshape(nk, -1, nwalkers)
 
         VHS = self.isqrt_dt * (
-            hamiltonian.A.dot(xshifted[:nchol]) - hamiltonian.B.dot(xshifted[nchol:])
+            hamiltonian.A.dot(xshifted[:nchol]) + hamiltonian.B.dot(xshifted[nchol:])
         )
         VHS = VHS.T.copy()
         VHS = VHS.reshape(nwalkers, hamiltonian.nbasis, hamiltonian.nbasis)
