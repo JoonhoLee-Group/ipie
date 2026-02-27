@@ -273,6 +273,7 @@ def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
 
     return ecoul
 
+
 def ecoul_kernel_batch_rchol_rhf_gpu(rchola_chunk, Ghalfa):
     """Compute coulomb contribution for rchol with RHF trial.
 
