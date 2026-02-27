@@ -285,7 +285,7 @@ class Walkers(object):
                 print(f"# Warning: Total weight is {total_weight:13.8e}: ")
                 print("# Something is seriously wrong.")
             sys.exit()
-        self.set_total_weight(total_weight)
+        self.set_total_weight(self.target_weight)
         # Todo: Just standardise information we want to send between routines.
         for w in self.walkers:
             w.unscaled_weight = w.weight

@@ -1948,7 +1948,8 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
         handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=3)
         handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=4)
 
-        sender = numpy.where(receivers == srank)[0]
+        idx = numpy.where(receivers == srank)[0]
+        sender = int(idx.item())
         req1 = handler.scomm.Irecv(Ghalfa_recv, source=sender, tag=1)
         req2 = handler.scomm.Irecv(Ghalfb_recv, source=sender, tag=2)
         req3 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=3)
@@ -1976,7 +1977,8 @@ def construct_force_bias_batch_single_det_chunked(hamiltonian, walkers, trial, h
     handler.scomm.Isend(vbias_batch_real_send, dest=receivers[srank], tag=1)
     handler.scomm.Isend(vbias_batch_imag_send, dest=receivers[srank], tag=2)
 
-    sender = numpy.where(receivers == srank)[0]
+    idx = numpy.where(receivers == srank)[0]
+    sender = int(idx.item())
     req1 = handler.scomm.Irecv(vbias_batch_real_recv, source=sender, tag=1)
     req2 = handler.scomm.Irecv(vbias_batch_imag_recv, source=sender, tag=2)
     req1.wait()

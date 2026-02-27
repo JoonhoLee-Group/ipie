@@ -173,9 +173,9 @@ def test_hubbard_complex():
         numer = afqmc.estimators.estimators["mixed"].estimates[enum.enumer]
         denom = afqmc.estimators.estimators["mixed"].estimates[enum.edenom]
         weight = afqmc.estimators.estimators["mixed"].estimates[enum.weight]
-        assert numer == pytest.approx(-152.91937839611)
+        assert numer == pytest.approx(-151.6230036299)
         data = extract_mixed_estimates(tmpf.name)
-        assert numpy.mean(data.ETotal.values[:-1].real) == pytest.approx(-15.14323385684513)
+        assert numpy.mean(data.ETotal.values[:-1].real) == pytest.approx(-15.154835285913755)
 
 
 @pytest.mark.driver
