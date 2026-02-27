@@ -23,7 +23,6 @@ from ipie.utils.cuquantum_backend import (
 )
 
 
-
 @jit(nopython=True, fastmath=True)
 def construct_VHS_kernel_symm(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_mat, Sset, Qplus):
 

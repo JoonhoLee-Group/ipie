@@ -4,7 +4,6 @@ from ipie.utils.cuquantum_backend import (
 )
 
 
-
 def slice_gf_kpq_k_given_q(gf, iq, kpq_mat):
     """
     slice the Green's function G^{w}_{pk+q, rk} to g^{w}_{kpr} for a given q

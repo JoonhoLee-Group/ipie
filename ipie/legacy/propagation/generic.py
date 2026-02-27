@@ -86,7 +86,7 @@ class GenericContinuous(object):
             print("# Finished setting up propagation.GenericContinuous.")
 
     def construct_mean_field_shift(self, hamiltonian, trial):
-        """Compute mean field shift.
+        r"""Compute mean field shift.
 
         .. math::
 
@@ -121,7 +121,7 @@ class GenericContinuous(object):
         return mf_shift
 
     def construct_one_body_propagator(self, hamiltonian, dt):
-        """Construct mean-field shifted one-body propagator.
+        r"""Construct mean-field shifted one-body propagator.
 
         .. math::
 

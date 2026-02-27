@@ -35,7 +35,6 @@ from ipie.walkers.ghf_walkers import GHFWalkers
 from typing import Union
 
 
-
 class PhaselessGeneric(PhaselessBase):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
