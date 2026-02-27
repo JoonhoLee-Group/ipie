@@ -89,10 +89,10 @@ class UHFWalkers(BaseWalkers):
         else:
             self.phib = None
         # will be built only on request
-        self.Ga = numpy.zeros(shape=(self.nwalkers, self.nup, self.nbasis), dtype=numpy.complex128)
+        self.Ga = numpy.zeros(shape=(self.nwalkers, self.nbasis, self.nbasis), dtype=numpy.complex128)
         if ndown > 0:
             self.Gb = numpy.zeros(
-                shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
+                shape=(self.nwalkers, self.nbasis, self.ndown), dtype=numpy.complex128
             )
         else:
             self.Gb = None
