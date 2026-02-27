@@ -16,9 +16,7 @@
 #
 
 from numba import jit
-import math
 import numpy as np
-from itertools import product
 
 
 def cart2frac(reciprocal_vectors, kpts):

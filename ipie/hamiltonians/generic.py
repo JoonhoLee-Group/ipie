@@ -164,7 +164,7 @@ class GenericComplexChol(GenericBase):
 
 def Generic(h1e, chol, ecore=0.0, shmem=False, chol_packed=None, verbose=False):
     if chol.dtype == numpy.dtype("complex128"):
-        return GenericComplexChol(h1e, chol, ecore, verbose)
+        return GenericComplexChol(h1e=h1e, chol=chol, ecore=ecore, verbose=verbose)
     elif chol.dtype == numpy.dtype("float64"):
         return GenericRealChol(h1e, chol, ecore, shmem, chol_packed, verbose)
 
@@ -182,7 +182,9 @@ def read_integrals(integral_file):
     except KeyError:
         pass
     try:
-        h1e, chol_vecs, ecore, transposed = read_hamiltonian(integral_file)
+        h1e, chol_vecs, ecore, transposed = read_hamiltonian(
+            integral_file, return_transposed=True
+        )
         if transposed:
             return h1e, chol_vecs, ecore
         else:

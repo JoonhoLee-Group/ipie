@@ -187,6 +187,7 @@ class ThermalAFQMC(AFQMCBase):
         walkers=None,
         estimator_filename=None,
         verbose: bool = True,
+        discard_weights_aftereq=False,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
         print_time_slice: bool = False,
     ):

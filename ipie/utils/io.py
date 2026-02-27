@@ -43,7 +43,9 @@ def write_hamiltonian(
         fh5["e0"] = e0
 
 
-def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float]:
+def read_hamiltonian(
+    filename: str, return_transposed: bool = False
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray, float], Tuple[numpy.ndarray, numpy.ndarray, float, bool]]:
     with h5py.File(filename, "r") as fh5:
         hcore = numpy.array(fh5["hcore"])
         try:
@@ -67,7 +69,9 @@ def read_hamiltonian(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray, float
             transposed = True
         else:
             raise AssertionError(message)
-    return hcore, LXmn, e0, transposed
+    if return_transposed:
+        return hcore, LXmn, e0, transposed
+    return hcore, LXmn, e0
 
 
 def read_kpt_hamiltonian(
