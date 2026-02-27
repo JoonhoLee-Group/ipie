@@ -4,4 +4,3 @@ pytest-xdist
 flynt
 -r mpi.txt
 -r torch.txt
--r gpu.txt
