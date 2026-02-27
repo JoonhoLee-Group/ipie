@@ -29,8 +29,11 @@ from ipie.estimators.kernels import exchange_reduction
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_optional as NetworkOptions,
+    contract_optional as contract,
+    cutensornet_optional as cutensornet,
+)
 
 # Local energy routies for chunked (distributed) integrals. Distributed here
 # means over MPI processes with information typically residing on different

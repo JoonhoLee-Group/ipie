@@ -12,9 +12,12 @@ import plum
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
 from typing import Union
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_required as NetworkOptions,
+    contract_required as contract,
+    cutensornet_required as cutensornet,
+)
 
 try:
     from mpi4py import MPI

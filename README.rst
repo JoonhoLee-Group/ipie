@@ -83,6 +83,12 @@ Refer to the `mpi4py` `documentation <https://mpi4py.readthedocs.io/en/stable/in
 
 For GPU support, `cupy` is required and can be installed as outlined on the `Cupy website <https://cupy.dev/>`_. For CUDA-aware MPI, consider `conda-forge`.
 
+For GPU cuTensorNet/cuQuantum support, install the GPU extra:
+
+::
+
+    $ pip install -e .[gpu]
+
 Running the Test Suite
 ----------------------
 

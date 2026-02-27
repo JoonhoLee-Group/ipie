@@ -20,14 +20,15 @@ from math import ceil, sqrt
 
 import numpy
 from numba import jit
-
-from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.config import config
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_required as NetworkOptions,
+    contract_required as contract,
+    cutensornet_required as cutensornet,
+)
 from ipie.utils.contract_gf_cgto import (
     contract_gf_cgto12_kpq_k,
     contract_gf_cgto12_k_kpq,

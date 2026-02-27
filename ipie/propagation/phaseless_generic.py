@@ -25,12 +25,15 @@ from ipie.propagation.operations import apply_exponential, apply_exponential_bat
 from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_optional as NetworkOptions,
+    contract_optional as contract,
+    cutensornet_optional as cutensornet,
+)
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
 from typing import Union
 
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
 
 
 class PhaselessGeneric(PhaselessBase):

@@ -19,8 +19,11 @@
 import numpy
 from numba import jit
 from math import ceil, sqrt
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_optional as NetworkOptions,
+    contract_optional as contract,
+    cutensornet_optional as cutensornet,
+)
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction

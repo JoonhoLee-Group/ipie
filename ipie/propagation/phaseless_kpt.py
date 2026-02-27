@@ -17,8 +17,12 @@ from ipie.walkers.uhf_walkers import UHFWalkers
 from numba import jit
 from ipie.utils.backend import get_device_memory
 from ipie.propagation.kernels import call_kernel_VHS_construction1, call_kernel_VHS_construction2
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_required as NetworkOptions,
+    contract_required as contract,
+    cutensornet_required as cutensornet,
+)
+
 
 
 @jit(nopython=True, fastmath=True)

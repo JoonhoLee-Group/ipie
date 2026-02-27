@@ -1,6 +1,10 @@
-from cuquantum.bindings import cutensornet
-from cuquantum.tensornet import NetworkOptions, contract
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.cuquantum_backend import (
+    NetworkOptions_required as NetworkOptions,
+    contract_required as contract,
+    cutensornet_required as cutensornet,
+)
+
 
 
 def slice_gf_kpq_k_given_q(gf, iq, kpq_mat):
