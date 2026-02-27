@@ -94,7 +94,7 @@ class UHFWalkers(BaseWalkers):
         )
         if ndown > 0:
             self.Gb = numpy.zeros(
-                shape=(self.nwalkers, self.nbasis, self.ndown), dtype=numpy.complex128
+                shape=(self.nwalkers, self.nbasis, self.nbasis), dtype=numpy.complex128
             )
         else:
             self.Gb = None

@@ -1,2 +1,0 @@
-setuptools
-cuquantum-python >= 26.1.0
