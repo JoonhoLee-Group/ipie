@@ -82,6 +82,7 @@ class AFQMCBase(metaclass=abc.ABCMeta):
         walkers=None,
         estimator_filename=None,
         verbose=True,
+        discard_weights_aftereq=False,
         additional_estimators: Optional[Dict[str, EstimatorBase]] = None,
     ):
         """Code to run the AFQMC calculation."""
@@ -327,7 +328,7 @@ class AFQMC(AFQMCBase):
         eq_pop_control_freq=2,
         eq_timestep=None,
         eq_num_steps_per_block=None,
-        num_eq_blocks: int = 50,
+        num_eq_blocks: int = 0,
         ene_bound_const: float = 2.0,
         fb_bound: float = 1.0,
         correlated_samp: bool = False,

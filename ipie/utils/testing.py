@@ -338,17 +338,28 @@ def generate_hamiltonian_low_mem(nmo, nelec, cplx=False):
     return h1e, chol, enuc
 
 
-def shaped_normal(shape, cmplx=False, seed=0):
-    rng = numpy.random.default_rng(seed)
-    if cmplx:
-        arr_r = rng.standard_normal(shape)
-        arr_i = rng.standard_normal(shape)
-        arr = arr_r + 1j * arr_i
-        arr = numpy.array(arr, dtype=numpy.complex128)
+def shaped_normal(shape, cmplx=False, seed=None):
+    size = numpy.prod(shape)
+    if seed is None:
+        if cmplx:
+            arr_r = numpy.random.normal(size=size)
+            arr_i = numpy.random.normal(size=size)
+            arr = arr_r + 1j * arr_i
+            arr = numpy.array(arr, dtype=numpy.complex128)
+        else:
+            arr = numpy.random.normal(size=size)
+            arr = numpy.array(arr, dtype=numpy.float64)
     else:
-        arr = rng.standard_normal(shape)
-        arr = numpy.array(arr, dtype=numpy.float64)
-    return arr
+        rng = numpy.random.default_rng(seed)
+        if cmplx:
+            arr_r = rng.standard_normal(size)
+            arr_i = rng.standard_normal(size)
+            arr = arr_r + 1j * arr_i
+            arr = numpy.array(arr, dtype=numpy.complex128)
+        else:
+            arr = rng.standard_normal(size)
+            arr = numpy.array(arr, dtype=numpy.float64)
+    return arr.reshape(shape)
 
 
 def _small_kpts_trivial_Sset():
@@ -738,7 +749,6 @@ def build_test_case_handlers_mpi(
     pop_control = get_input_value(
         options, "population_control", default="pair_branch", alias=["pop_control"]
     )
-    _ = get_input_value(options, "reconfiguration_freq", default=50)
 
     walkers = UHFWalkersTrial(
         trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()

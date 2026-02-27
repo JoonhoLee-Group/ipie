@@ -226,18 +226,19 @@ class BaseWalkers(metaclass=ABCMeta):
         with h5py.File(read_file, "r") as fh5:
             try:
                 num_slices = len(fh5.keys()) // 3 - 1
-                if fh5[f"walker_timeslice_{num_slices}"][()].ndim == 3:
+                timeslice_data = numpy.asarray(fh5[f"walker_timeslice_{num_slices}"][()])
+                if timeslice_data.ndim == 3:
                     assert (
                         nup is not None and ndown is not None
                     ), "Need nup and ndown to read 2D walker data."
                     assert (
-                        fh5[f"walker_timeslice_{num_slices}"][()].shape[-1] == nup + ndown
+                        timeslice_data.shape[-1] == nup + ndown
                     ), "nup + ndown does not match walker data shape."
-                    phia = fh5[f"walker_timeslice_{num_slices}"][:][:, :, :nup]
-                    phib = fh5[f"walker_timeslice_{num_slices}"][:][:, :, nup : nup + ndown]
+                    phia = timeslice_data[:, :, :nup]
+                    phib = timeslice_data[:, :, nup : nup + ndown]
                 else:
-                    phia = fh5[f"walker_timeslice_{num_slices}"][0]
-                    phib = fh5[f"walker_timeslice_{num_slices}"][1]
+                    phia = timeslice_data[0]
+                    phib = timeslice_data[1]
                 self.phia = xp.array(phia)
                 self.phib = xp.array(phib)
                 weight = fh5[f"walker_weight_{num_slices}"][:]

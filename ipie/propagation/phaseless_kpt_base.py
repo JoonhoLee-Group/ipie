@@ -422,6 +422,8 @@ class PhaselessKptBase(ContinuousBase):
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         # dt/2 one-body propagator
         start = time.time()
+        self.nk = hamiltonian.nk
+        self.nbasis = hamiltonian.nbasis
         self.mf_shift = construct_mean_field_shift(hamiltonian, trial)
 
         if verbose:
@@ -436,19 +438,15 @@ class PhaselessKptBase(ContinuousBase):
         # # Allocate force bias (we don't need to do this here - it will be allocated when it is needed)
         self.vbias = None
 
-    def propagate_walkers_one_body(self, walkers, hamiltonian):
+    def propagate_walkers_one_body(self, walkers):
         start_time = time.time()
-        phia_reshaped = walkers.phia.reshape(
-            walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1
-        )
+        phia_reshaped = walkers.phia.reshape(walkers.nwalkers, self.nk, self.nbasis, -1)
         phia = propagate_one_body_kpt(phia_reshaped, self.expH1[0])
-        walkers.phia = phia.reshape(walkers.nwalkers, hamiltonian.nk * hamiltonian.nbasis, -1)
+        walkers.phia = phia.reshape(walkers.nwalkers, self.nk * self.nbasis, -1)
         if walkers.ndown > 0 and not walkers.rhf:
-            phib_reshaped = walkers.phib.reshape(
-                walkers.nwalkers, hamiltonian.nk, hamiltonian.nbasis, -1
-            )
+            phib_reshaped = walkers.phib.reshape(walkers.nwalkers, self.nk, self.nbasis, -1)
             phib = propagate_one_body_kpt(phib_reshaped, self.expH1[1])
-            walkers.phib = phib.reshape(walkers.nwalkers, hamiltonian.nk * hamiltonian.nbasis, -1)
+            walkers.phib = phib.reshape(walkers.nwalkers, self.nk * self.nbasis, -1)
         synchronize()
         self.timer.tgemm += time.time() - start_time
 
@@ -515,13 +513,13 @@ class PhaselessKptBase(ContinuousBase):
 
         # 2. Update Slater matrix
         # 2.a Apply one-body
-        self.propagate_walkers_one_body(walkers, hamiltonian)
+        self.propagate_walkers_one_body(walkers)
 
         # 2.b Apply two-body
         cmf, cfb = self.propagate_walkers_two_body(walkers, hamiltonian, trial)
 
         # 2.c Apply one-body
-        self.propagate_walkers_one_body(walkers, hamiltonian)
+        self.propagate_walkers_one_body(walkers)
 
         # Now apply phaseless approximation
         start_time = time.time()

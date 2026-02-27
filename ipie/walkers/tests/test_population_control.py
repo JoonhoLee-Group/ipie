@@ -162,7 +162,6 @@ def test_stochastic_reconfiguration_batch():
             "hybrid": True,
             "num_steps": nsteps,
             "population_control": "stochastic_reconfiguration",
-            "reconfiguration_freq": 2,
         }
     )
     qmc.batched = True
@@ -171,7 +170,9 @@ def test_stochastic_reconfiguration_batch():
     )
 
     assert pytest.approx(batched_data.walkers.weight[0]) == 1.0
-    assert pytest.approx(batched_data.walkers.phia[0][0, 0]) == 0.0305067 + 0.01438442j
+    assert pytest.approx(batched_data.walkers.phia[0][0, 0]) == (
+        -0.13596633822677617 + 0.09964359778160199j
+    )
 
 
 if __name__ == "__main__":

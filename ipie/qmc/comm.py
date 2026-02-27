@@ -91,13 +91,32 @@ class FakeComm:
         assert sendbuf.shape[0] == 1, "Incorrect array shape in FakeComm.scatter"
         return sendbuf[0]
 
+    def Issend(self, sendbuf, dest=None, tag=None):
+        # For size=1, just store by tag
+        self.buffer[tag] = sendbuf.copy() if hasattr(sendbuf, "copy") else sendbuf
+        return FakeReq()
+
+    def Irecv(self, recvbuf, source=None, tag=None):
+        def _do_copy():
+            if tag in self.buffer:
+                recvbuf[:] = self.buffer[tag].copy()
+        return FakeReq(action=_do_copy)
+
+
+class FakeStatus:
+    pass
+
 
 class FakeReq:
-    def __init__(self):
-        pass
+    def __init__(self, action=None):
+        self._action = action
 
     def wait(self):
-        pass
+        if self._action is not None:
+            self._action()
+
+    def Wait(self, status=None):
+        self.wait()
 
 
 @dataclass
@@ -110,3 +129,14 @@ class MPI:
     INT64_T = None
     Win = None
     IntraComm = TypeVar("IntraComm")
+
+    Status = FakeStatus
+
+    class Request:
+        @staticmethod
+        def Waitall(reqs):
+            for r in reqs:
+                if hasattr(r, "Wait"):
+                    r.Wait()
+                elif hasattr(r, "wait"):
+                    r.wait()
