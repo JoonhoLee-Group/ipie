@@ -182,9 +182,7 @@ def read_integrals(integral_file):
     except KeyError:
         pass
     try:
-        h1e, chol_vecs, ecore, transposed = read_hamiltonian(
-            integral_file, return_transposed=True
-        )
+        h1e, chol_vecs, ecore, transposed = read_hamiltonian(integral_file, return_transposed=True)
         if transposed:
             return h1e, chol_vecs, ecore
         else:

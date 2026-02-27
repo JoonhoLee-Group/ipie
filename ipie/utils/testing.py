@@ -1022,6 +1022,7 @@ def build_driver_test_instance(
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
         stabilize_freq=qmc.nstblz,
+        pop_control_method=qmc.pop_control_method,
         pop_control_freq=qmc.npop_control,
     )
     return afqmc

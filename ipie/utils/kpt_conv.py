@@ -217,5 +217,3 @@ def generate_MPmesh_3d(meshsize):
         kpts -= kpts[0]
         kpts = BZ_to_1BZ(kpts)
     return kpts
-
-

@@ -90,7 +90,15 @@ def UHFWalkersTrial(
     mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
-    return UHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
+    return UHFWalkers(
+        initial_walker,
+        nup,
+        ndown,
+        nbasis,
+        nwalkers,
+        mpi_handler,
+        verbose=verbose,
+    )
 
 
 @plum.dispatch
@@ -185,5 +193,11 @@ def UHFWalkersTrial(
 ):
     # note that the initial walker should have shape (nk * nbasis, nk * (nup + ndown))
     return UHFWalkers(
-        initial_walker, nk * nup, nk * ndown, nk * nbasis, nwalkers, mpi_handler, verbose
+        initial_walker,
+        nk * nup,
+        nk * ndown,
+        nk * nbasis,
+        nwalkers,
+        mpi_handler,
+        verbose=verbose,
     )

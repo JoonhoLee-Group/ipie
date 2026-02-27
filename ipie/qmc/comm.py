@@ -100,6 +100,7 @@ class FakeComm:
         def _do_copy():
             if tag in self.buffer:
                 recvbuf[:] = self.buffer[tag].copy()
+
         return FakeReq(action=_do_copy)
 
 

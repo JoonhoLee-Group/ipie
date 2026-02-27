@@ -19,6 +19,7 @@
 #
 
 import cmath
+import os
 from abc import ABCMeta, abstractmethod
 
 import h5py
@@ -203,7 +204,8 @@ class BaseWalkers(metaclass=ABCMeta):
         self.phi = buff[self.nwalkers * 3 :].reshape(self.phi.shape)
 
     def write_walkers_batch(self, comm):
-        write_file = self.write_filepath + f"walkers_{comm.rank}.h5"
+        write_dir = self.write_filepath if self.write_filepath is not None else ""
+        write_file = os.path.join(write_dir, f"walkers_{comm.rank}.h5")
         with h5py.File(write_file, "a") as fh5:
             num_slices = len(fh5.keys()) // 3
             phia = self.phia
@@ -221,13 +223,16 @@ class BaseWalkers(metaclass=ABCMeta):
                 fh5[f"walker_weight_{num_slices}"] = xp.asnumpy(weight)
                 fh5[f"walker_hybrid_energy_{num_slices}"] = xp.asnumpy(hybrid_energy)
 
-    def read_walkers_batch(self, trial, comm, nup=None, ndown=None):
-        read_file = self.write_filepath + f"walkers_{comm.rank}.h5"
+    def read_walkers_batch(self, trial, comm):
+        read_dir = self.read_filepath if self.read_filepath is not None else ""
+        read_file = os.path.join(read_dir, f"walkers_{comm.rank}.h5")
         with h5py.File(read_file, "r") as fh5:
             try:
                 num_slices = len(fh5.keys()) // 3 - 1
                 timeslice_data = numpy.asarray(fh5[f"walker_timeslice_{num_slices}"][()])
                 if timeslice_data.ndim == 3:
+                    nup = getattr(self, "nup", None)
+                    ndown = getattr(self, "ndown", None)
                     assert (
                         nup is not None and ndown is not None
                     ), "Need nup and ndown to read 2D walker data."

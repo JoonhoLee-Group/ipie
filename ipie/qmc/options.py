@@ -180,8 +180,9 @@ class QMCParams:
     num_blocks: int
     eq_timestep: Optional[float] = None
     eq_num_steps_per_block: Optional[int] = None
-    num_eq_blocks: int = 50
+    num_eq_blocks: int = 0
     num_stblz: int = 5
+    pop_control_method: str = "pair_branch"
     num_eq_stblz: int = 2
     pop_control_freq: int = 5
     eq_pop_control_freq: int = 2

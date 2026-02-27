@@ -45,7 +45,9 @@ def write_hamiltonian(
 
 def read_hamiltonian(
     filename: str, return_transposed: bool = False
-) -> Union[Tuple[numpy.ndarray, numpy.ndarray, float], Tuple[numpy.ndarray, numpy.ndarray, float, bool]]:
+) -> Union[
+    Tuple[numpy.ndarray, numpy.ndarray, float], Tuple[numpy.ndarray, numpy.ndarray, float, bool]
+]:
     with h5py.File(filename, "r") as fh5:
         hcore = numpy.array(fh5["hcore"])
         try:

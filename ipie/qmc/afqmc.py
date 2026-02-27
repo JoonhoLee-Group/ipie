@@ -324,6 +324,7 @@ class AFQMC(AFQMCBase):
         timestep: float = 0.005,
         stabilize_freq=5,
         eq_stabilize_freq=2,
+        pop_control_method="pair_branch",
         pop_control_freq=5,
         eq_pop_control_freq=2,
         eq_timestep=None,
@@ -401,6 +402,7 @@ class AFQMC(AFQMCBase):
             num_steps_per_block=num_steps_per_block,
             timestep=timestep,
             num_stblz=stabilize_freq,
+            pop_control_method=pop_control_method,
             num_eq_stblz=eq_stabilize_freq,
             pop_control_freq=pop_control_freq,
             eq_pop_control_freq=eq_pop_control_freq,
@@ -606,7 +608,7 @@ class AFQMC(AFQMCBase):
             self.params.num_walkers,
             self.params.num_steps_per_block,
             self.mpi_handler,
-            pop_control_method="stochastic_reconfiguration",
+            pop_control_method=self.params.pop_control_method,
             verbose=self.verbose,
         )
 
@@ -614,7 +616,7 @@ class AFQMC(AFQMCBase):
             self.params.num_walkers,
             self.params.num_steps_per_block,
             self.mpi_handler,
-            pop_control_method="stochastic_reconfiguration",
+            pop_control_method=self.params.pop_control_method,
             verbose=self.verbose,
             correlated_samp=self.params.correlated_samp,
             reference_run=self.params.reference_run,
