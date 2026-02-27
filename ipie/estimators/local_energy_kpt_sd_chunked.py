@@ -16,17 +16,13 @@
 #
 #
 
-from math import ceil, sqrt
+from math import ceil
 
 import numpy
-from numba import jit
 
-from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exx_kpt_kernel
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 from ipie.config import config
-from ipie.utils.backend import get_device_memory
 
 from ipie.systems.generic import Generic
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
@@ -36,8 +32,6 @@ from ipie.estimators.local_energy_kpt_sd import (
     kpt_symmchol_ecoul_kernel_uhf,
     kpt_symmchol_exx_kernel,
 )
-
-import time
 
 # from line_profiler import profile
 
@@ -292,8 +286,6 @@ def kpt_symmchol_ecoul_kernel_batch_uhf_gpu(
     # shape of rchola: (nq, nk, nocc, naux, nbsf) (q, k, gamma, i, p)
     # shape of Ghalf: (nk, nk, nw, nocc, nbsf)
     unique_nq = len(Sset) + len(Qplus)
-    nbsf = rchola.shape[4]
-    nocc = rchola.shape[2]
     naux = rchola.shape[3]
     nk = rchola.shape[1]
     ecoul = xp.zeros((nwalkers), dtype=numpy.complex128)
@@ -372,8 +364,6 @@ def kpt_symmchol_ecoul_kernel_batch_rhf_gpu(rchola, rcholbara, Ghalfa, kpq_mat, 
     # shape of rchola: (nq, nk, nocc, naux, nbsf) (q, k, gamma, i, p)
     # shape of Ghalf: (nk, nk, nw, nocc, nbsf)
     unique_nq = len(Sset) + len(Qplus)
-    nbsf = rchola.shape[4]
-    nocc = rchola.shape[2]
     naux = rchola.shape[3]
     nk = rchola.shape[1]
     ecoul = xp.zeros((nwalkers), dtype=numpy.complex128)

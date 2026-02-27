@@ -20,9 +20,7 @@ from math import ceil, sqrt
 
 import numpy
 from numba import jit
-from ipie.estimators.kernels import exchange_reduction
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import synchronize
 from ipie.config import config
 from ipie.utils.cuquantum_backend import (
     NetworkOptions_required as NetworkOptions,
@@ -224,7 +222,6 @@ def kpt_symmchol_ecoul_kernel_rhf(rchola, rcholbara, Ghalfa, GhalfaT, kpq_mat, S
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
-    multiply = numpy.multiply
     nwalkers = Ghalfa.shape[2]
 
     # shape of rchola: (nq, nk, nocc, naux, nbsf) (q, k, gamma, i, p)
@@ -437,7 +434,6 @@ def kpt_symmchol_ecoul_kernel_uhf(
     # sort out cupy later
     zeros = numpy.zeros
     dot = numpy.dot
-    multiply = numpy.multiply
     nwalkers = Ghalfa.shape[2]
 
     # shape of rchola: (nq, nk, nocc, naux, nbsf) (q, k, gamma, i, p)
@@ -626,11 +622,11 @@ def X_contract_cupy_lowk(
     nk = cgto.shape[0]
     exx = xp.zeros((nw,), dtype=xp.complex128)
 
-    for ia, P in enumerate(slices_isdf):  # ia is the chunk index
+    for P in slices_isdf:
         psi_iP_k = halfrot_cgtoa[:, P, :].transpose(0, 2, 1).conj()  # k, i, P
         phip_kpq_P = phikr_kpq[:, P, :].transpose(0, 2, 1)  # k+q, p, P
         nP = P.stop - P.start
-        for ib, Q in enumerate(slices_isdf):
+        for Q in slices_isdf:
             nQ = Q.stop - Q.start
             psi_iQ_kp = cgto[:, Q, :].transpose(0, 2, 1)  # k', q, Q
             phij_kpq_Q = phiki_kpq[:, Q, :].transpose(0, 2, 1).conj()  # k'+q, j, Q

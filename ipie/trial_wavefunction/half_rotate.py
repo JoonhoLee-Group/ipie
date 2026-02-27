@@ -532,9 +532,6 @@ def half_rotate_isdf(
         assert len(orbsb.shape) == 3
         assert orbsa.shape[0] == ndets
         assert orbsb.shape[0] == ndets
-        M = hamiltonian.nbasis
-        na = orbsa.shape[-1]
-        nb = orbsb.shape[-1]
 
         rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
         rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
@@ -549,10 +546,6 @@ def half_rotate_isdf(
         assert len(orbsb.shape) == 4
         assert orbsa.shape[0] == ndets
         assert orbsb.shape[0] == ndets
-        M = hamiltonian.nbasis
-        nk = orbsa.shape[1]
-        na = orbsa.shape[-1]
-        nb = orbsb.shape[-1]
         assert isinstance(hamiltonian, KptISDF)
 
         # ctype = hamiltonian.cholM.dtype

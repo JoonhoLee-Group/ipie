@@ -3,10 +3,9 @@ import numpy
 import scipy.linalg
 from abc import abstractmethod
 from ipie.propagation.continuous_base import ContinuousBase
-from ipie.propagation.operations import propagate_one_body, propagate_one_body_kpt
+from ipie.propagation.operations import propagate_one_body_kpt
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, cast_to_device, free_blocks
-import h5py
 
 import plum
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet

@@ -125,11 +125,6 @@ def get_kpt_hamiltonian(filename, scomm, verbose=False):
 
     start = time.time()
 
-    nbsf = hcore.shape[-1]
-    nchol = chol.shape[0]
-
-    shmem = have_shared_mem(scomm)
-
     ham = KptComplexCholSymm(h1e=hcore, chol=chol, kpts=kpts, ecore=enuc, verbose=verbose)
 
     return ham
@@ -163,7 +158,6 @@ def get_complex_hamiltonian(filename, scomm, verbose=False):
 
     nbsf = hcore.shape[-1]
     nchol = chol.shape[-1]
-    idx = numpy.triu_indices(nbsf)
 
     chol = chol.reshape((nbsf, nbsf, nchol))
     assert chol.dtype == numpy.complex128
@@ -173,7 +167,6 @@ def get_complex_hamiltonian(filename, scomm, verbose=False):
         if scomm.rank == 0:
             dtype = chol.dtype
         else:
-            cp_shape = None
             dtype = None
 
         dtype = scomm.bcast(dtype, root=0)

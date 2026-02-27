@@ -3,6 +3,7 @@ import scipy.linalg
 from numba import jit
 
 from ipie.config import config
+from ipie.legacy.estimators.greens_function import gab_mod
 from ipie.propagation.overlap import (
     compute_determinants_batched,
     get_overlap_one_det_wicks,
@@ -10,15 +11,12 @@ from ipie.propagation.overlap import (
 )
 from ipie.utils.linalg import minor_mask
 from ipie.propagation.overlap import get_det_matrix_batched, reduce_to_CI_tensor
+from ipie.utils.backend import arraylib as xp
 
 if config.get_option("use_gpu"):
     from ipie.estimators.kernels.gpu import wicks_gpu as wk
 else:
     from ipie.estimators.kernels.cpu import wicks as wk
-
-from ipie.legacy.estimators.greens_function import gab_mod
-
-from ipie.utils.backend import arraylib as xp
 
 
 def greens_function_multi_det(walker_batch, trial, build_full=False):
@@ -1286,10 +1284,8 @@ def greens_function_multi_det_wicks_opt_gpu(walker_batch, trial, build_full=Fals
     logdets_a = xp.zeros_like(ovlps0)
     logdets_b = xp.zeros_like(ovlps0)
 
-    trial_psi0a_conj = xp.zeros_like(trial.psi0a.conj())
-    trial_psi0a_conj.set(trial.psi0a.conj())
-    trial_psi0b_conj = xp.zeros_like(trial.psi0b.conj())
-    trial_psi0b_conj.set(trial.psi0b.conj())
+    trial_psi0a_conj = xp.array(trial.psi0a.conj(), copy=True)
+    trial_psi0b_conj = xp.array(trial.psi0b.conj(), copy=True)
 
     ovlp = xp.einsum("wex,xE->weE", walker_batch.phia.transpose(0, 2, 1), trial_psi0a_conj)
     ovlp_inv = xp.linalg.inv(ovlp)

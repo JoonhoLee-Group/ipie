@@ -42,7 +42,6 @@ def construct_h1e_mod_symm(chol, h1e, ikmq_mat, Sset, Qplus, h1e_mod, handler):
 def calc_v0(chol, ikmq_mat, Sset, Qplus):
     nk, nbasis = chol.shape[1], chol.shape[2]
     nchol = chol.shape[0]
-    unique_nk = len(Sset) + len(Qplus)
     # chol = chol.reshape((nchol, nk, nbasis, unique_nk, nbasis))
     v0 = numpy.zeros((nk, nbasis, nbasis), dtype=numpy.complex128)
     for iq in range(len(Sset)):

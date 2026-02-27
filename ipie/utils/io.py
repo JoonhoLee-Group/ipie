@@ -81,8 +81,6 @@ def read_kpt_hamiltonian(
         kpts = numpy.array(fh5["kpoints"][()])
         e0 = float(fh5["e0"][()])
     assert len(hcore.shape) == 3, "Incorrect shape for hcore, expected 3-dimensional array"
-    nmo = hcore.shape[-1]
-    naux = LXmn.shape[0]  # gamma, k, mu, q, nu
     assert len(LXmn.shape) == 5, "Incorrect shape for LXmn, expected 5-dimensional array"
     assert len(kpts.shape) == 2, "Incorrect shape for kpts, expected 2-dimensional array"
     return hcore, LXmn, kpts, e0

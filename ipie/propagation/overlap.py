@@ -21,7 +21,6 @@ import itertools
 
 import numpy
 import scipy.linalg
-from numba import jit
 
 from ipie.config import config
 
@@ -106,9 +105,6 @@ def calc_overlap_single_det_kpt(walkers: "UHFWalkers", trial: "KptSingleDet"):
 
     ovlpa_reshape = ovlpa.reshape((nwalkers, nk * nup, nk * nup))
     sign_a, log_ovlp_a = xp.linalg.slogdet(ovlpa_reshape)
-    # detect 0.+0.js in sign_a (array)
-    mask = xp.isclose(sign_a, 0.0, atol=1e-8)
-    zero_indices = xp.where(mask)[0]
 
     if ndown > 0 and not walkers.rhf:
         ovlpb = xp.einsum("wlpki, lpj->wkilj", phib, trial.psi0b.conj(), optimize=True)
@@ -118,8 +114,6 @@ def calc_overlap_single_det_kpt(walkers: "UHFWalkers", trial: "KptSingleDet"):
             ovlpb[:, ik_idx, diag_idx, ik_idx, diag_idx] = 1.0
         ovlpb_reshape = ovlpb.reshape((nwalkers, nk * ndown, nk * ndown))
         sign_b, log_ovlp_b = xp.linalg.slogdet(ovlpb_reshape)
-        mask = xp.isclose(sign_b, 0.0, atol=1e-8)
-        zero_indices = xp.where(mask)[0]
         ot = sign_a * sign_b * xp.exp(log_ovlp_a + log_ovlp_b - walkers.log_shift)
         sgnot = sign_a * sign_b
         logot = log_ovlp_a + log_ovlp_b - walkers.log_shift

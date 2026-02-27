@@ -157,7 +157,6 @@ def find_Qplus(kpts):
     Find the set of k-points that are not self-inverse mod inversion
     """
     mq_vec = find_inverted_index_batched(kpts)
-    nk = kpts.shape[0]
     unique_indices = find_idx_k_mod_neg(mq_vec)
     Sset = find_self_inverse_set(kpts)
     Qplus = np.setdiff1d(unique_indices, Sset)
@@ -184,7 +183,7 @@ def get_ni_from_idx(idx, meshsize):
     """
     Get the i-th index of the k point from the index, n3 is the fastest changing index
     """
-    N1, N2, N3 = meshsize
+    _, N2, N3 = meshsize
     n1 = idx // (N2 * N3)
     n2 = (idx - n1 * N2 * N3) // N3
     n3 = idx - n1 * N2 * N3 - n2 * N3
@@ -237,7 +236,6 @@ def get_k_from_G_MPmesh(iq, G, meshsize):
     ni = get_ni_from_idx(iq, meshsize)
     # ni[i] should be an integer between 0 and N_i - 1
     assert np.all(np.array(ni) < np.array(meshsize)) and np.all(np.array(ni) >= 0)
-    N1, N2, N3 = meshsize
     nk = []
 
     for i in range(3):

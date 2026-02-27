@@ -18,8 +18,6 @@
 try:
     # pylint: disable=import-error
     import cupy as cp
-    import numba
-    from numba import cuda, complex128
 except ModuleNotFoundError:
     pass
 

@@ -6,7 +6,7 @@ import numpy
 import plum
 
 from ipie.config import config
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.propagation.operations import apply_exponential, apply_exponential_batch
@@ -15,7 +15,6 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.walkers.uhf_walkers import UHFWalkers
 from numba import jit
-from ipie.utils.backend import get_device_memory
 from ipie.propagation.kernels import call_kernel_VHS_construction1, call_kernel_VHS_construction2
 from ipie.utils.cuquantum_backend import (
     NetworkOptions_required as NetworkOptions,
@@ -92,7 +91,6 @@ def construct_VHS_cuquantum(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_
     x = 0.5 * (1j * xshifted[0] + xshifted[1])
     xconj = 0.5 * (1j * xshifted[0] - xshifted[1])
     unique_qs = xp.concatenate((Sset, Qplus))
-    unique_nq = len(unique_qs)
     idx_lenS = xp.arange(len(Sset))
     idx_lenQ = xp.arange(len(Qplus)) + len(Sset)
 
@@ -103,8 +101,6 @@ def construct_VHS_cuquantum(chol, sqrt_dt, xshifted, nk, nbasis, nwalkers, ikpq_
 
     xtot = xp.concatenate((xS, xQ), axis=-1)
     xconjtot = xp.concatenate((xconjS, xconjQ), axis=-1)
-
-    naux = chol.shape[0]
 
     handle = cutensornet.create()
     network_opts = NetworkOptions(handle=handle)
@@ -446,7 +442,6 @@ class PhaselessKptISDF(PhaselessKptBase):
         cholM = hamiltonian.cholM  # q, P, gamma
         x = 0.5 * (1j * xshifted[0] + xshifted[1])  # w, gamma, q
         xconj = 0.5 * (1j * xshifted[0] - xshifted[1])  # w, gamma, q
-        unique_qs = xp.concatenate((hamiltonian.Sset, hamiltonian.Qplus))
         # print("ikpq_S", ikpq_S)
         idx_lenS = xp.arange(len(hamiltonian.Sset))
         idx_lenQ = xp.arange(len(hamiltonian.Qplus)) + len(hamiltonian.Sset)

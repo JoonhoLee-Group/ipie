@@ -18,10 +18,8 @@
 #
 
 import numpy
-import math
 import plum
 
-from numba import jit
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 from ipie.utils.cuquantum_backend import (
@@ -350,7 +348,7 @@ def construct_force_bias_kpt_batch_single_det(
             (walkers.nwalkers, hamiltonian.nchol, hamiltonian.nk), dtype=numpy.complex128
         )
         # ghalf shape: nwalkers, nk, nup, nk, nbsf
-        Ghalf_reshape = walkers.Ghalfa.reshape(
+        Ghalfa_reshape = walkers.Ghalfa.reshape(
             walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis
         )
         for iq in range(hamiltonian.nk):
@@ -359,7 +357,7 @@ def construct_force_bias_kpt_batch_single_det(
                 vbias[:, :, iq] += 2.0 * xp.einsum(
                     "gip, aip -> ga",
                     trial._rchola[:, ik, :, iq, :],
-                    Ghalf_reshape[:, ik, :, ikpq, :],
+                    Ghalfa_reshape[:, ik, :, ikpq, :],
                     optimize=True,
                 )
         synchronize()
@@ -433,7 +431,7 @@ def construct_force_bias_kptsymm_batch_single_det(
             (walkers.nwalkers, hamiltonian.nchol, hamiltonian.unique_nk), dtype=numpy.complex128
         )
         # ghalf shape: nwalkers, nk, nup, nk, nbsf
-        Ghalf_reshape = walkers.Ghalfa.reshape(
+        Ghalfa_reshape = walkers.Ghalfa.reshape(
             walkers.nwalkers, hamiltonian.nk, trial.nalpha, hamiltonian.nk, hamiltonian.nbasis
         )
         for iq in range(len(hamiltonian.Sset)):
@@ -738,7 +736,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -778,7 +775,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -889,7 +885,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -947,7 +942,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -1580,7 +1574,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -1611,7 +1604,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -1723,7 +1715,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r
@@ -1766,7 +1757,6 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    kpq_slice = hamiltonian.ikpq_mat[q_sls]
                     ga_kmq = slice_gf_kpq_k_qlis(
                         Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
                     )  # q, k, w, p, r

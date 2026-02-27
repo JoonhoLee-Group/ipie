@@ -25,18 +25,8 @@ from ipie.utils.kpt_conv import (
     find_gamma_pt,
     find_inverted_index_batched,
     find_translated_index_batched,
-    get_possible_Gs,
-    get_k_from_G_MPmesh,
     find_self_inverse_set,
     find_Qplus,
-)
-
-import h5py
-
-from ipie.utils.io import (
-    from_qmcpack_dense,
-    from_qmcpack_sparse,
-    read_hamiltonian,
 )
 
 
@@ -71,8 +61,6 @@ def construct_h1e_mod(chol, h1e, ikpq_mat, imq_vec, h1e_mod):
     v0 = numpy.zeros((nk, nbasis, nbasis), dtype=numpy.complex128)
     for ik in range(nk):
         for iq in range(nk):
-            ikpq = ikpq_mat[ik, iq]
-            imq = imq_vec[iq]
             v0[ik] += 0.5 * numpy.einsum(
                 "gpr, gqr -> pq", chol[:, ik, :, iq, :], chol[:, ik, :, iq, :].conj()
             )

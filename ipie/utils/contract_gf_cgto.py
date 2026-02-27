@@ -1,8 +1,6 @@
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.cuquantum_backend import (
-    NetworkOptions_required as NetworkOptions,
     contract_required as contract,
-    cutensornet_required as cutensornet,
 )
 
 
@@ -55,7 +53,6 @@ def slice_gf_kpq_k_qlis(gf, iq_lis, kpq_mat):
 
 
 def slice_cgto_kpq(cgto, kpq_mat, iq_lis):
-    nq = len(iq_lis)
     nk = cgto.shape[0]
     q_id = iq_lis[:, None]
     k_id = xp.arange(nk)[None, :]

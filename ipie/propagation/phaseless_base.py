@@ -430,7 +430,6 @@ class PhaselessBase(ContinuousBase):
 
         start_time = time.time()
         self.vbias = trial.calc_force_bias(hamiltonian, walkers, walkers.mpi_handler)
-        nchol = hamiltonian.nchol
         xbar = -self.sqrt_dt * (1j * self.vbias - self.mf_shift)
         synchronize()
         self.timer.tfbias += time.time() - start_time

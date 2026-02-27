@@ -23,7 +23,6 @@ from typing import Tuple, Union
 import numpy
 
 from ipie.hamiltonians import Generic as HamGeneric
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.utils.kpt_conv import generate_MPmesh_3d, find_Qplus, find_self_inverse_set
@@ -372,7 +371,7 @@ def expand_chol_symm_to_full(chol_packed, kpts, Sset, Qplus, ikpq_mat, imq_vec):
 
     Here the packed q-axis is ordered as [Sset..., Qplus...].
     """
-    nchol, nk, nbasis, unique_nk, _ = chol_packed.shape
+    nchol, nk, nbasis, _, _ = chol_packed.shape
     chol_full = numpy.zeros((nchol, nk, nbasis, nk, nbasis), dtype=numpy.complex128)
 
     for iu, iq_real in enumerate(Sset):

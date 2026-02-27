@@ -20,8 +20,6 @@ import numpy
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.mpi import get_shared_array, have_shared_mem
-import h5py
 from ipie.utils.io import (
     from_qmcpack_dense,
     from_qmcpack_sparse,
