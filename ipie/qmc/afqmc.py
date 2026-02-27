@@ -687,7 +687,7 @@ class AFQMC(AFQMCBase):
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
-            elif step > num_eqlb_steps:
+            elif step > num_eqlb_steps and step > 1:
                 wbound = self.pcontrol.total_weight * 0.10
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
