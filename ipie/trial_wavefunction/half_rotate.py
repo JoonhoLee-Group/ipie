@@ -3,7 +3,8 @@ from typing import Tuple
 import numpy as np
 
 from ipie.hamiltonians.generic import Generic, GenericComplexChol, GenericRealChol
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
+from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase

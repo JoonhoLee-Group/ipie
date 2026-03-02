@@ -13,13 +13,10 @@ from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
-from ipie.hamiltonians.generic import (
-    GenericRealChol,
-    GenericComplexChol,
-    GenericRealISDF,
-    GenericComplexISDF,
-)
-from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRealISDFChunked
+from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
+from ipie.hamiltonians.generic_isdf import GenericRealISDF, GenericComplexISDF
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from ipie.hamiltonians.generic_chunked_isdf import GenericRealISDFChunked
 from typing import Union
 
 try:

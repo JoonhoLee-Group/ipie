@@ -47,39 +47,6 @@ def construct_h1e_mod(chol, h1e, h1e_mod, handler):
     h1e_mod[1, :, :] = h1e[1] - v0
 
 
-def construct_h1e_mod_isdf(cholM, cgto, h1e, h1e_mod, handler):
-    # chunk cgto and MPQ
-    nisdf = cgto.shape[0]
-    mem_intermediate = nisdf**2 * 2 * 8
-    used, total = get_device_memory()
-    mem_limit = 0.4 * (total - used)
-    num_chunks = max(1, ceil(sqrt(mem_intermediate / mem_limit)))
-    chunk_size = ceil(nisdf / num_chunks)
-    nisdfx_left = nisdf
-    slices_x = []
-    for i_chunk in range(num_chunks):
-        if nisdfx_left == 0:
-            break
-        nx_chunk = min(nisdfx_left, chunk_size)
-        nisdfx_left -= nx_chunk
-        slices_x.append(slice(i_chunk * chunk_size, i_chunk * chunk_size + nx_chunk))
-
-    v0 = numpy.zeros((h1e.shape[-1], h1e.shape[-1]), dtype=h1e.dtype)
-
-    for slicex in slices_x:
-        cgto_chunkx = cgto[slicex]
-        for slicey in slices_x:
-            cgto_chunky = cgto[slicey]
-            MPQ_chunk = cholM[slicey] @ cholM[slicex].T.conj()
-            cgto_PQ = cgto_chunky @ cgto_chunkx.T.conj()
-            cgto_M = MPQ_chunk * cgto_PQ
-            v0 += 0.5 * cgto_chunky.conj().T @ cgto_M @ cgto_chunkx
-
-    v0 = handler.scomm.allreduce(v0, op=MPI.SUM)
-    h1e_mod[0, :, :] = h1e[0] - v0
-    h1e_mod[1, :, :] = h1e[1] - v0
-
-
 class GenericRealCholChunked(GenericBase):
     """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
     Can be created by passing the one and two electron integrals directly.
@@ -165,68 +132,3 @@ class GenericRealCholChunked(GenericBase):
         jl = j * self.nbasis + l
         return numpy.dot(self.chol[ik], self.chol[jl])
 
-
-class GenericRealISDFChunked(GenericBase):
-    """Class for ab-initio Hamiltonian with 8-fold real symmetric integrals.
-    Can be created by passing the one and two electron integrals directly.
-    """
-
-    def __init__(
-        self,
-        h1e,
-        cgto,
-        cholM=None,
-        cholM_chunk=None,
-        ecore=0.0,
-        h1e_mod=None,
-        handler=None,
-        verbose=False,
-    ):
-        super().__init__(h1e, ecore, verbose)
-        self.handler = handler
-        assert (
-            h1e.shape[0] == 2
-        )  # assuming each spin component is given. this should be fixed for GHF...?
-        self.cgto = numpy.array(cgto, dtype=numpy.float64)
-        self.nisdf = self.cgto.shape[0]
-        self.nfields = self.nchol
-
-        if cholM is not None:
-            self.cholM = cholM  # [P, nchol]
-            self.nchol = self.cholM.shape[-1]
-            self.chunk_cholM(handler)
-        else:
-            self.cholM_chunk = cholM_chunk  # [M^2, nchol]
-
-        chunked_chols = self.cholM_chunk.shape[-1]
-        num_chol = handler.scomm.allreduce(chunked_chols, op=MPI.SUM)
-        self.nchol = num_chol
-
-        chol_idxs = [i for i in range(self.nchol)]
-        self.chol_idxs_chunk = handler.scatter_group(chol_idxs)
-
-        assert self.cholM_chunk.dtype == numpy.dtype("float64")
-
-        self.nchol_chunk = self.cholM_chunk.shape[-1]
-        self.nfields = self.nchol
-
-        self.chunked = True
-
-        # this is the one-body part that comes out of re-ordering the 2-body operators
-        if h1e_mod is not None:
-            self.h1e_mod = xp.array(h1e_mod)
-        else:
-            h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-            construct_h1e_mod_isdf(self.cholM_chunk, self.cgto, self.H1, h1e_mod, handler)
-            self.h1e_mod = xp.array(h1e_mod)
-
-        split_size = make_splits_displacements(num_chol, handler.nmembers)[0]
-        self.chunk_displacements = [0] + numpy.cumsum(split_size).tolist()
-
-        if verbose:
-            mem = self.cholM_chunk.nbytes / (1024.0**3)
-            print("# Number of orbitals: %d" % self.nbasis)
-            print(f"# Approximate memory required by Cholesky vectors {mem:f} GB")
-            print("# Number of Cholesky vectors: %d" % (self.nchol))
-            print("# Number of fields: %d" % (self.nchol))
-            print("# Finished setting up GenericRealChol object.")

@@ -2,7 +2,8 @@ import numpy
 import pytest
 
 from ipie.config import MPI
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexCholSymm, KptISDF
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexCholSymm
+from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.utils.testing import (
     _blockdiag_k_orbitals,

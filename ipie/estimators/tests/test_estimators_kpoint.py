@@ -7,7 +7,8 @@ from ipie.estimators.local_energy_kpt_sd import (
     kpt_symmchol_exx_kernel,
     local_energy_kpt_single_det_uhf,
 )
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm, KptISDF
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
+from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.utils.backend import to_host

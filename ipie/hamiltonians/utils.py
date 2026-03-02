@@ -20,9 +20,9 @@ import time
 
 import numpy
 
-from ipie.hamiltonians.generic import construct_h1e_mod, Generic, read_integrals, read_kpt_integrals
+from ipie.hamiltonians.generic import construct_h1e_mod, Generic, read_integrals
 from ipie.hamiltonians.generic import GenericComplexChol
-from ipie.hamiltonians.kpt_hamiltonian import KptComplexCholSymm
+from ipie.hamiltonians.kpt_hamiltonian import KptComplexCholSymm, read_kpt_integrals
 from ipie.utils.mpi import get_shared_array, have_shared_mem
 from ipie.utils.pack_numba import pack_cholesky
 

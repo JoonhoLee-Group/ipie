@@ -21,14 +21,13 @@ import pytest
 from ipie.hamiltonians.kpt_hamiltonian import (
     KptComplexChol,
     KptComplexCholSymm,
-    KptISDF,
     construct_h1e_mod,
-    construct_h1e_mod_isdf,
     construct_h1e_mod_symm,
     construct_kmq,
     construct_kpq,
     construct_mq,
 )
+from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF, construct_h1e_mod_isdf
 from ipie.utils.kpt_conv import (
     find_inverted_index_batched,
     find_Qplus,

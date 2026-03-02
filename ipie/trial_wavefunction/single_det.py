@@ -12,11 +12,16 @@ from ipie.estimators.greens_function_single_det import (
     greens_function_single_det_batch,
 )
 from ipie.estimators.utils import gab_spin
-from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol, GenericRealISDF
-from ipie.hamiltonians.generic_chunked import GenericRealCholChunked, GenericRealISDFChunked
+from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.generic_isdf import GenericRealISDF
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+from ipie.hamiltonians.generic_chunked_isdf import GenericRealISDFChunked
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
+)
+from ipie.propagation.force_bias_isdf import (
+    construct_force_bias_batch_single_det_isdf,
     construct_force_bias_batch_single_det_isdf_chunked,
 )
 from ipie.propagation.overlap import calc_overlap_single_det_uhf
@@ -241,7 +246,7 @@ class SingleDet(TrialWavefunctionBase):
         walkers: UHFWalkers,
         mpi_handler: MPIHandler,
     ) -> xp.ndarray:
-        return construct_force_bias_batch_single_det(
+        return construct_force_bias_batch_single_det_isdf(
             hamiltonian, walkers, self._rcgtoa, self._rcgtob
         )
 

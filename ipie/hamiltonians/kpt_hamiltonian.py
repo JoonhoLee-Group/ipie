@@ -28,6 +28,7 @@ from ipie.utils.kpt_conv import (
     find_self_inverse_set,
     find_Qplus,
 )
+from ipie.utils.io import read_kpt_hamiltonian
 
 
 @jit(nopython=True, fastmath=True)
@@ -86,40 +87,6 @@ def construct_h1e_mod_symm(chol, h1e, ikmq_mat, Sset, Qplus, h1e_mod):
             ) + 0.5 * numpy.einsum(
                 "grp, grq -> pq", chol[:, ikmq, :, iq, :].conj(), chol[:, ikmq, :, iq, :]
             )
-
-    h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
-    h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
-
-
-@jit(nopython=True, fastmath=True)
-def construct_h1e_mod_isdf(MPQ, cgto, h1e, ikpq_mat, ikmq_mat, Sset, Qplus, h1e_mod):
-    nk, nbasis = h1e.shape[1], h1e.shape[2]
-    v0 = numpy.zeros((nk, nbasis, nbasis), dtype=numpy.complex128)
-    for iq in range(len(Sset)):
-        iq_real = Sset[iq]
-        MPQ_iq = MPQ[iq]
-        for ik in range(nk):
-            ikpq = ikpq_mat[iq_real, ik]
-            cgto_ikpq = cgto[ikpq]
-            cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
-            cgtoM = MPQ_iq * cgto_PQ
-            v0[ik] += 0.5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
-
-    for iq in range(len(Sset), len(Sset) + len(Qplus)):
-        iq_real = Qplus[iq - len(Sset)]
-        MPQ_iq = MPQ[iq]
-        for ik in range(nk):
-            ikpq = ikpq_mat[iq_real, ik]
-            cgto_ikpq = cgto[ikpq]
-            ikmq = ikmq_mat[iq_real, ik]
-            cgto_ikmq = cgto[ikmq]
-            cgto_PQ = cgto_ikpq @ cgto_ikpq.T.conj()
-            cgtoM = MPQ_iq * cgto_PQ
-            v0[ik] += 0.5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
-            cgto_PQ = cgto_ikmq @ cgto_ikmq.T.conj()
-            cgtoM = MPQ_iq.conj() * cgto_PQ
-            v0[ik] += 0.5 * cgto[ik].conj().T @ cgtoM @ cgto[ik]
-        print(f"Finished constructing h1e_mod for iq = {iq}")
 
     h1e_mod[0, :, :, :] = h1e[0, :, :, :] - v0
     h1e_mod[1, :, :, :] = h1e[1, :, :, :] - v0
@@ -184,7 +151,7 @@ class KptComplexChol(GenericBase):
         self.imq_vec = construct_mq(self.kpts)
         self.igamma = find_gamma_pt(self.kpts)
         self.nk = self.kpts.shape[0]
-        self.unique_nk = self.nk  # for compatibility with KptComplexCholSymm in propagation
+        self.unique_nk = self.nk
         self.nchol = self.chol.shape[0]
 
         self.chunked = False
@@ -202,83 +169,10 @@ class KptComplexChol(GenericBase):
             print("# Finished setting up KptComplexChol object.")
 
 
-class KptISDF(GenericBase):
-    """Class for ab-initio k-point Hamiltonian with 4-fold complex symmetric integrals.
-    The electron repulsion integrals are approximated by Interpolative Separable Density Fitting (ISDF).
-    """
+def read_kpt_integrals(integral_file):
+    try:
+        h1e, chol_vecs, kpts, ecore = read_kpt_hamiltonian(integral_file)
+        return h1e, chol_vecs, kpts, ecore
+    except KeyError:
+        return None
 
-    def __init__(
-        self,
-        h1e,
-        MPQ,
-        cholM,
-        cgto,
-        kpts,
-        ecore=0.0,
-        verbose=False,
-        halfrot_cgto=None,
-        halfrot_M=None,
-        h1e_mod=None,
-    ):
-        assert h1e.shape[0] == 2
-        assert len(h1e.shape) == 4  # shape = nspin, nk, nbasis, nbasis
-        super().__init__(h1e, ecore, verbose)
-
-        self.MPQ = numpy.asarray(MPQ, dtype=numpy.complex128)
-        self.cholM = numpy.asarray(cholM, dtype=numpy.complex128)  # [q, P, gamma], M = LL^\dagger
-        self.nchol = self.cholM.shape[-1]
-        # here we don't have spin indices for cgto because we use OAO basis for UHF cases to avoid extra storage
-        self.cgto = numpy.asarray(cgto, dtype=numpy.complex128)  # [k, P, p]
-        if halfrot_cgto is not None:
-            self.halfrot_cgtoa, self.halfrot_cgtob, self.halfrot_cgto = (
-                halfrot_cgto  # [k, \tilde{P}, i(a)], [k, \tilde{P}, i(b)], [k, \tilde{P}, p]
-            )
-        else:
-            self.halfrot_cgtoa = None
-            self.halfrot_cgtob = None
-            self.halfrot_cgto = self.cgto
-        if halfrot_M is not None:
-            self.halfrot_M = halfrot_M
-        else:
-            self.halfrot_M = None
-
-        self.kpts = kpts
-        self.Sset = find_self_inverse_set(self.kpts)
-        self.Qplus = find_Qplus(self.kpts)
-        self.unique_k = numpy.concatenate((self.Sset, self.Qplus))
-        self.unique_nk = self.unique_k.shape[0]
-        self.ikpq_mat = construct_kpq(self.kpts)
-        self.ikmq_mat = construct_kmq(self.kpts)
-        self.imq_vec = construct_mq(self.kpts)
-        self.igamma = find_gamma_pt(self.kpts[self.unique_k])
-        self.nk = self.kpts.shape[0]
-        self.nisdf = self.cgto.shape[1]
-        self.nisdf_halfrot = self.halfrot_cgto.shape[1]
-
-        self.chunked = False
-
-        # this is the one-body part that comes out of re-ordering the 2-body operators
-        if h1e_mod is not None:
-            self.h1e_mod = h1e_mod
-            print("# Using provided h1e_mod...")
-        else:
-            print("# Constructing h1e_mod...")
-            h1e_mod = numpy.zeros(self.H1.shape, dtype=self.H1.dtype)
-            construct_h1e_mod_isdf(
-                self.MPQ,
-                self.cgto,
-                self.H1,
-                self.ikpq_mat,
-                self.ikmq_mat,
-                self.Sset,
-                self.Qplus,
-                h1e_mod,
-            )
-            self.h1e_mod = xp.array(h1e_mod)
-
-        if verbose:
-            mem = 2 * self.cholM.nbytes / (1024.0**3) + 2 * self.cgto.nbytes / (1024.0**3)
-            print("# Number of orbitals: %d" % self.nbasis)
-            print(f"# Approximate memory required by ISDF vectors {mem:f} GB")
-            print("# Number of Cholesky vectors: %d" % (self.nchol))
-            print("# Finished setting up KptISDF object.")
