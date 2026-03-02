@@ -1,9 +1,9 @@
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from ipie.hamiltonians.generic_isdf import GenericRealISDF
+from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
-from ipie.hamiltonians.generic_chunked_isdf import GenericRealISDFChunked
+from ipie.hamiltonians.chunked_isdf import GenericRealISDFChunked
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.propagation.phaseless_generic import (
     PhaselessGeneric,

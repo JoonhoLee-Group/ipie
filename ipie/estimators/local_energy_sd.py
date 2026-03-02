@@ -18,7 +18,7 @@
 
 import numpy
 from numba import jit
-from math import ceil, sqrt
+from math import ceil
 
 from ipie.estimators.local_energy import local_energy_G
 from ipie.estimators.kernels import exchange_reduction
@@ -1116,5 +1116,3 @@ def local_energy_single_det_batch_gpu(system, hamiltonian, walkers, trial, max_m
 
     synchronize()
     return energy
-
-

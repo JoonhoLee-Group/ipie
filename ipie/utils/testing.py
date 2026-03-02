@@ -23,6 +23,8 @@ from typing import Tuple, Union
 import numpy
 
 from ipie.hamiltonians import Generic as HamGeneric
+from ipie.hamiltonians.generic import GenericRealChol
+from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
 from ipie.utils.kpt_conv import generate_MPmesh_3d, find_Qplus, find_self_inverse_set
@@ -459,6 +461,24 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     trial._rH1a = shaped_normal((nocc, nmo))
     trial._rH1b = shaped_normal((nocc, nmo))
     return system, ham, walkers, trial
+
+
+def _build_equivalent_molecular_chol_and_isdf(nmo, nchol, nisdf, seed):
+    rng = numpy.random.default_rng(seed)
+    h1e = rng.standard_normal((nmo, nmo))
+    h1e = 0.5 * (h1e + h1e.T)
+    h1e = numpy.array([h1e, h1e], dtype=numpy.float64)
+
+    cgto = rng.standard_normal((nisdf, nmo))
+    cholM = rng.standard_normal((nisdf, nchol))
+    MPQ = cholM @ cholM.T
+
+    chol_3d = numpy.einsum("Pp, Pr, Pg -> gpr", cgto, cgto, cholM, optimize=True)
+    chol = chol_3d.reshape((nchol, nmo * nmo)).T.copy()
+
+    ham_chol = GenericRealChol(h1e=h1e, chol=chol, ecore=0.0)
+    ham_isdf = GenericRealISDF(h1e=h1e, MPQ=MPQ, cholM=cholM, cgto=cgto, ecore=0.0)
+    return ham_chol, ham_isdf, cgto, MPQ, chol
 
 
 def gen_random_test_input_kpt(kmesh, nmo, nelec, naux, seed=7, ndets=1):

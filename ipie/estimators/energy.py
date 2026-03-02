@@ -42,9 +42,9 @@ from ipie.estimators.local_energy_kpt_sd import local_energy_kpt_single_det_uhf
 from ipie.estimators.local_energy_kpt_sd_isdf import local_energy_kpt_single_det_uhf_isdf_gpu
 from ipie.estimators.local_energy_kpt_sd_chunked import local_energy_kpt_single_det_uhf_chunked
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.hamiltonians.generic_isdf import GenericRealISDF
+from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
-from ipie.hamiltonians.generic_chunked_isdf import GenericRealISDFChunked
+from ipie.hamiltonians.chunked_isdf import GenericRealISDFChunked
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import (

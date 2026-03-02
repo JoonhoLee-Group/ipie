@@ -139,9 +139,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    ga_kmq = slice_gf_kpq_k_qlis(
-                        Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
-                    )
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat)
                     rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
                     X_wPa = cutensornet.contract(
                         "qkPp, kPr, qkwpr -> qwP",
@@ -169,9 +167,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    ga_kmq = slice_gf_kpq_k_qlis(
-                        Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
-                    )
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat)
                     rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
                     ga_kpq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikpq_mat)
                     rcgtoa_kpq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikpq_mat, q_sls)
@@ -206,7 +202,9 @@ def construct_force_bias_kptisdf_batch_single_det(
                         + len(hamiltonian.Sset) : i * nq_chunk_Qplus_size
                         + nq_chunk
                         + len(hamiltonian.Sset),
-                    ] += 1j * xp.sqrt(2) * (v1 + v2)
+                    ] += (
+                        1j * xp.sqrt(2) * (v1 + v2)
+                    )
                     vbias_minus[
                         :,
                         :,
@@ -214,7 +212,9 @@ def construct_force_bias_kptisdf_batch_single_det(
                         + len(hamiltonian.Sset) : i * nq_chunk_Qplus_size
                         + nq_chunk
                         + len(hamiltonian.Sset),
-                    ] += 1.0 * xp.sqrt(2) * (v1 - v2)
+                    ] += (
+                        1.0 * xp.sqrt(2) * (v1 - v2)
+                    )
             cutensornet.destroy(handle)
             synchronize()
             return vbias_plus, vbias_minus
@@ -274,9 +274,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Sset[
                         i * nq_chunk_Sset_size : i * nq_chunk_Sset_size + nq_chunk
                     ]
-                    ga_kmq = slice_gf_kpq_k_qlis(
-                        Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
-                    )
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat)
                     gb_kmq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikmq_mat)
                     rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
                     rcgtob_kmq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikmq_mat, q_sls)
@@ -316,9 +314,7 @@ def construct_force_bias_kptisdf_batch_single_det(
                     q_sls = hamiltonian.Qplus[
                         i * nq_chunk_Qplus_size : i * nq_chunk_Qplus_size + nq_chunk
                     ]
-                    ga_kmq = slice_gf_kpq_k_qlis(
-                        Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat
-                    )
+                    ga_kmq = slice_gf_kpq_k_qlis(Ghalfa_reshape, q_sls, hamiltonian.ikmq_mat)
                     gb_kmq = slice_gf_kpq_k_qlis(Ghalfb_reshape, q_sls, hamiltonian.ikmq_mat)
                     rcgtoa_kmq = slice_cgto_kpq(trial._rcgtoa, hamiltonian.ikmq_mat, q_sls)
                     rcgtob_kmq = slice_cgto_kpq(trial._rcgtob, hamiltonian.ikmq_mat, q_sls)
@@ -376,7 +372,9 @@ def construct_force_bias_kptisdf_batch_single_det(
                         + len(hamiltonian.Sset) : i * nq_chunk_Qplus_size
                         + nq_chunk
                         + len(hamiltonian.Sset),
-                    ] += 0.5j * xp.sqrt(2) * (v1 + v2)
+                    ] += (
+                        0.5j * xp.sqrt(2) * (v1 + v2)
+                    )
                     vbias_minus[
                         :,
                         :,
@@ -384,7 +382,9 @@ def construct_force_bias_kptisdf_batch_single_det(
                         + len(hamiltonian.Sset) : i * nq_chunk_Qplus_size
                         + nq_chunk
                         + len(hamiltonian.Sset),
-                    ] += 0.5 * xp.sqrt(2) * (v1 - v2)
+                    ] += (
+                        0.5 * xp.sqrt(2) * (v1 - v2)
+                    )
             cutensornet.destroy(handle)
             synchronize()
             return vbias_plus, vbias_minus

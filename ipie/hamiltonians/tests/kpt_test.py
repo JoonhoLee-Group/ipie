@@ -299,3 +299,54 @@ def test_kptisdf_uses_provided_h1e_mod():
     assert ham.nbasis == nbasis
     assert ham.nisdf == nisdf
     assert ham.nchol == nchol
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("kpts_fn, expect_nontrivial_sset", KPTS_CASES)
+def test_kptisdf_h1e_mod_matches_reconstructed_kpt_chol(kpts_fn, expect_nontrivial_sset):
+    kpts = kpts_fn()
+    nk = kpts.shape[0]
+    nbasis = 4
+    naux = 7
+    nisdf = 19
+
+    h1e = shaped_normal((2, nk, nbasis, nbasis), cmplx=True, seed=83)
+    cgto = shaped_normal((nk, nisdf, nbasis), cmplx=True, seed=87)
+
+    Sset = find_self_inverse_set(kpts)
+    Qplus = find_Qplus(kpts)
+    if expect_nontrivial_sset:
+        assert len(Sset) > 1
+
+    unique_nk = len(Sset) + len(Qplus)
+    cholM = shaped_normal((unique_nk, nisdf, naux), cmplx=True, seed=89)
+    MPQ = np.einsum("qPg,qQg->qPQ", cholM, cholM.conj(), optimize=True)
+
+    ham_isdf = KptISDF(
+        h1e=np.array(h1e, dtype=np.complex128),
+        MPQ=np.array(MPQ, dtype=np.complex128),
+        cholM=np.array(cholM, dtype=np.complex128),
+        cgto=np.array(cgto, dtype=np.complex128),
+        kpts=kpts,
+    )
+
+    chol = np.zeros((naux, nk, nbasis, unique_nk, nbasis), dtype=np.complex128)
+    unique_qs = np.concatenate((ham_isdf.Sset, ham_isdf.Qplus))
+    for iq, iq_real in enumerate(unique_qs):
+        for ik in range(nk):
+            ikpq = ham_isdf.ikpq_mat[iq_real, ik]
+            chol[:, ik, :, iq, :] = np.einsum(
+                "Pp,Pr,Pg->gpr",
+                cgto[ik].conj(),
+                cgto[ikpq],
+                cholM[iq],
+                optimize=True,
+            )
+
+    ham_chol = KptComplexCholSymm(
+        h1e=np.array(h1e, dtype=np.complex128),
+        chol=chol,
+        kpts=kpts,
+    )
+
+    np.testing.assert_allclose(ham_isdf.h1e_mod, ham_chol.h1e_mod, atol=1e-10)

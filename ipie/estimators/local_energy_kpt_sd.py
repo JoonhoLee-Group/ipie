@@ -16,7 +16,7 @@
 #
 #
 
-from math import ceil, sqrt
+from math import sqrt
 
 import numpy
 from numba import jit
@@ -689,5 +689,3 @@ def local_energy_kpt_single_det_uhf(
         energy[:, 2] = e2b
 
     return energy
-
-

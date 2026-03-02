@@ -22,12 +22,6 @@ import plum
 
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
-from ipie.utils.cuquantum_backend import (
-    NetworkOptions_optional as NetworkOptions,
-    cutensornet_optional as cutensornet,
-)
-from ipie.utils.contract_gf_cgto import slice_gf_kpq_k_qlis, slice_cgto_kpq
-from math import ceil
 
 from ipie.config import config
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol

@@ -182,4 +182,3 @@ def read_integrals(integral_file):
             return h1e, chol_vecs.transpose(1, 2, 0).reshape((nbsf, nbsf, naux)), ecore
     except KeyError:
         return None
-

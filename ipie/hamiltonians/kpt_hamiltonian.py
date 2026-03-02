@@ -175,4 +175,3 @@ def read_kpt_integrals(integral_file):
         return h1e, chol_vecs, kpts, ecore
     except KeyError:
         return None
-

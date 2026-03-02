@@ -17,13 +17,11 @@
 #
 
 import numpy
-from math import ceil, sqrt
 
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import make_splits_displacements
-from ipie.utils.backend import get_device_memory
 
 try:
     from mpi4py import MPI
@@ -131,4 +129,3 @@ class GenericRealCholChunked(GenericBase):
         ik = i * self.nbasis + k
         jl = j * self.nbasis + l
         return numpy.dot(self.chol[ik], self.chol[jl])
-
