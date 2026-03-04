@@ -45,6 +45,14 @@ with h5py.File(FILENAME, "r") as fa:
     cgto = np.asarray(fa["cgto"][()])
     mpq = np.asarray(fa["MPQ"][()])
 
+# The integral h5 file provided should contain the following fields (all in MO/OAO basis):
+# hcore: the one-body Hamiltonian, shape (nk, nbasis, nbasis)
+# MPQ: the ISDF vectors, shape (nunique_k, nisdf, nisdf)
+# cgto: Bloch orbitals on the ISDF grid, shape (nk, nisdf, nbasis)
+# e0: the constant term in the Hamiltonian, shape ()
+# kpoints: the k-points in fractional coordinates, shape (nk, 3)
+# unique k is the set of k-points that are unique under inversion symmetry, and the internal order is (Sset, Qplus), where Sset is the set of k-points that are invariant under inversion symmetry, and Qplus is the set of k-points that are not invariant under inversion symmetry but can be paired with another k-point in a set that has no intersection with Qplus to form a pair (k, -k). It should be obtained with the find_self_inverse_set and find_Qplus functions in ipie.utils.kpt_conv.
+
 if RANK == 0:
     print("finished reading hcore")
 

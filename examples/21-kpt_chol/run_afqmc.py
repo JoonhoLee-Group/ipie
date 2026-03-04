@@ -1,12 +1,11 @@
 """Run a k-point Cholesky AFQMC calculation."""
-
+import sys
 import numpy as np
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
 except ImportError:
-    from ipie.qmc.comm import FakeComm
-    comm = FakeComm()
+    sys.exit(0)
 
 from ipie.hamiltonians.utils import get_kpt_hamiltonian
 from ipie.qmc.afqmc import AFQMC
@@ -28,6 +27,12 @@ scomm = get_shared_comm(comm, verbose=True)
 handler = MPIHandler()
 
 ham = get_kpt_hamiltonian("./afqmc_C_311_dz_chol.h5", scomm, verbose=True)
+# The integral h5 file provided should contain the following fields (all in MO/OAO basis):
+# hcore: the one-body Hamiltonian, shape (nk, nbasis, nbasis)
+# chol: the Cholesky vectors, shape (nchol, nk, nbasis, nunique_k, nbasis)
+# e0: the constant term in the Hamiltonian, shape ()
+# kpoints: the k-points in fractional coordinates, shape (nk, 3)
+# unique k is the set of k-points that are unique under inversion symmetry, and the internal order is (Sset, Qplus), where Sset is the set of k-points that are invariant under inversion symmetry, and Qplus is the set of k-points that are not invariant under inversion symmetry but can be paired with another k-point in a set that has no intersection with Qplus to form a pair (k, -k). It should be obtained with the find_self_inverse_set and find_Qplus functions in ipie.utils.kpt_conv.
 
 num_basis = ham.nbasis
 nk = ham.nk
