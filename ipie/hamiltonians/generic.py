@@ -20,7 +20,6 @@ import numpy
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
-
 from ipie.utils.io import (
     from_qmcpack_dense,
     from_qmcpack_sparse,
@@ -103,10 +102,9 @@ class GenericComplexChol(GenericBase):
     Can be created by passing the one and two electron integrals directly.
     """
 
-    def __init__(self, h1e, chol, ecore=0.0, verbose=False):
+    def __init__(self, h1e, chol, A=None, B=None, ecore=0.0, shmem=False, verbose=False):
         assert h1e.shape[0] == 2
         super().__init__(h1e, ecore, verbose)
-
         self.chol = numpy.array(chol, dtype=numpy.complex128)  # [M^2, nchol]
         self.nchol = self.chol.shape[-1]
         self.nfields = 2 * self.nchol
@@ -119,20 +117,25 @@ class GenericComplexChol(GenericBase):
         construct_h1e_mod(self.chol, self.H1, h1e_mod)
         self.h1e_mod = xp.array(h1e_mod)
 
-        # We need to store A and B integrals
-        self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
-        self.A = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
-        self.B = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
+        if shmem:
+            self.A = A
+            self.B = B
+            self.chol = chol
+        else:
+            # We need to store A and B integrals
+            self.chol = self.chol.reshape((self.nbasis, self.nbasis, self.nchol))
+            self.A = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
+            self.B = numpy.zeros(self.chol.shape, dtype=self.chol.dtype)
 
-        for x in range(self.nchol):
-            self.A[:, :, x] = self.chol[:, :, x] + self.chol[:, :, x].T.conj()
-            self.B[:, :, x] = 1.0j * (self.chol[:, :, x] - self.chol[:, :, x].T.conj())
-        self.A /= 2.0
-        self.B /= 2.0
+            for x in range(self.nchol):
+                self.A[:, :, x] = self.chol[:, :, x] + self.chol[:, :, x].T.conj()
+                self.B[:, :, x] = 1.0j * (self.chol[:, :, x] - self.chol[:, :, x].T.conj())
+            self.A /= 2.0
+            self.B /= 2.0
 
-        self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))
-        self.A = self.A.reshape((self.nbasis * self.nbasis, self.nchol))
-        self.B = self.B.reshape((self.nbasis * self.nbasis, self.nchol))
+            self.chol = self.chol.reshape((self.nbasis * self.nbasis, self.nchol))
+            self.A = self.A.reshape((self.nbasis * self.nbasis, self.nchol))
+            self.B = self.B.reshape((self.nbasis * self.nbasis, self.nchol))
 
         if verbose:
             mem = self.A.nbytes / (1024.0**3) * 3
@@ -152,7 +155,7 @@ class GenericComplexChol(GenericBase):
 
 def Generic(h1e, chol, ecore=0.0, shmem=False, chol_packed=None, verbose=False):
     if chol.dtype == numpy.dtype("complex128"):
-        return GenericComplexChol(h1e, chol, ecore, verbose)
+        return GenericComplexChol(h1e=h1e, chol=chol, ecore=ecore, verbose=verbose)
     elif chol.dtype == numpy.dtype("float64"):
         return GenericRealChol(h1e, chol, ecore, shmem, chol_packed, verbose)
 
@@ -170,9 +173,12 @@ def read_integrals(integral_file):
     except KeyError:
         pass
     try:
-        h1e, chol_vecs, ecore = read_hamiltonian(integral_file)
-        naux = chol_vecs.shape[0]
-        nbsf = chol_vecs.shape[-1]
-        return h1e, chol_vecs.T.reshape((nbsf, nbsf, naux)), ecore
+        h1e, chol_vecs, ecore, transposed = read_hamiltonian(integral_file, return_transposed=True)
+        if transposed:
+            return h1e, chol_vecs, ecore
+        else:
+            naux = chol_vecs.shape[0]
+            nbsf = chol_vecs.shape[-1]
+            return h1e, chol_vecs.transpose(1, 2, 0).reshape((nbsf, nbsf, naux)), ecore
     except KeyError:
         return None

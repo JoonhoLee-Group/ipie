@@ -1,5 +1,5 @@
 import time
-
+import h5py
 import numpy
 
 from ipie.config import MPI
@@ -39,8 +39,10 @@ class PopController:
         pop_control_method="pair_branch",
         min_weight=0.1,
         max_weight=4,
-        reconfiguration_freq=50,
         verbose=False,
+        correlated_samp=False,
+        reference_run=False,
+        walkermap_filepath=None,
     ):
         self.verbose = verbose
 
@@ -54,8 +56,7 @@ class PopController:
 
         self.min_weight = min_weight
         self.max_weight = max_weight
-        self.reconfiguration_counter = 0
-        self.reconfiguration_freq = reconfiguration_freq
+        self.pop_control_counter = 0
 
         self.mpi_handler = mpi_handler
 
@@ -68,6 +69,9 @@ class PopController:
 
         self.target_weight = self.ntot_walkers
         self.total_weight = self.ntot_walkers
+        self.correlated_samp = correlated_samp
+        self.reference_run = reference_run
+        self.walkermap_filepath = walkermap_filepath
 
         if verbose:
             print(f"# target weight is {self.target_weight}")
@@ -104,7 +108,7 @@ class PopController:
             if comm.rank == 0:
                 print(f"# Warning: Total weight is {total_weight:13.8e}")
                 print("# Something is seriously wrong.")
-            raise ValueError
+            # raise ValueError
         self.total_weight = total_weight
         # Todo: Just standardise information we want to send between routines.
         walkers.unscaled_weight = walkers.weight
@@ -117,13 +121,31 @@ class PopController:
         elif self.method == "pair_branch":
             pair_branch(walkers, comm, self.max_weight, self.min_weight, self.timer)
         elif self.method == "stochastic_reconfiguration":
-            self.reconfiguration_counter += 1
-            if self.reconfiguration_counter % self.reconfiguration_freq == 0:
-                stochastic_reconfiguration(walkers, comm, self.timer)
-                self.reconfiguration_counter = 0
+            if not self.correlated_samp:
+                stochastic_reconfiguration(walkers, comm, self.timer, self.pop_control_counter)
+            else:
+                if self.reference_run:
+                    stochastic_reconfiguration(
+                        walkers,
+                        comm,
+                        self.timer,
+                        self.pop_control_counter,
+                        store_walkermap=True,
+                        walkermap_file=self.walkermap_filepath,
+                    )
+                else:
+                    stochastic_reconfiguration(
+                        walkers,
+                        comm,
+                        self.timer,
+                        self.pop_control_counter,
+                        read_walkermap=True,
+                        walkermap_file=self.walkermap_filepath,
+                    )
         else:
             if comm.rank == 0:
                 print("Unknown population control method.")
+        self.pop_control_counter += 1
 
 
 def get_buffer(walkers, iw):
@@ -173,9 +195,14 @@ def set_buffer(walkers, iw, buff):
             continue
         assert data.size % walkers.nwalkers == 0  # Only walker-specific data is being communicated
         if isinstance(data[iw], xp.ndarray):
-            walkers.__dict__[d][iw] = xp.array(
-                buff[s : s + data[iw].size].reshape(data[iw].shape).copy()
-            )
+            if walkers.__dict__[d][iw].dtype == numpy.float64:
+                walkers.__dict__[d][iw] = xp.array(
+                    buff[s : s + data[iw].size].reshape(data[iw].shape).real.copy(),
+                )
+            elif walkers.__dict__[d][iw].dtype == numpy.complex128:
+                walkers.__dict__[d][iw] = xp.array(
+                    buff[s : s + data[iw].size].reshape(data[iw].shape).copy(),
+                )
             s += data[iw].size
         elif isinstance(data[iw], list):
             for ix, l in enumerate(data[iw]):
@@ -195,6 +222,30 @@ def set_buffer(walkers, iw, buff):
             else:
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
+
+
+def minimize_communication(new_idx):
+    """
+    Given new_idx, a 1D int array of length N (monotonic or not),
+    returns a permutation out of the same multiset that maximizes
+    the count of i where out[i] == i.
+    """
+    N = new_idx.size
+    counts = numpy.bincount(new_idx, minlength=N)
+    counts_out = counts.copy()
+
+    out = -numpy.ones(N, dtype=int)
+
+    for i in range(N):
+        if counts[i] > 0:
+            out[i] = i
+            counts[i] -= 1
+
+    leftovers = numpy.repeat(numpy.arange(N), counts)
+    holes = numpy.where(out < 0)[0]
+    out[holes] = leftovers[: holes.size]
+
+    return out, counts_out
 
 
 def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
@@ -430,47 +481,120 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
     timer.add_communication()
 
 
-def stochastic_reconfiguration(walkers, comm, timer=PopControllerTimer()):
-    # gather all walker information on the root
+def stochastic_reconfiguration(
+    walkers,
+    comm,
+    timer=PopControllerTimer(),
+    pop_control_counter=0,
+    store_walkermap=False,
+    read_walkermap=False,
+    walkermap_file=None,
+):
     timer.start_time()
     nwalkers = walkers.nwalkers
-    local_buffer = xp.array([get_buffer(walkers, i) for i in range(nwalkers)])
-    walker_len = local_buffer[0].shape[0]
-    global_buffer = None
+    local_weight = walkers.weight.get() if hasattr(walkers.weight, "get") else walkers.weight
+    global_weight = None
     if comm.rank == 0:
-        global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
+        global_weight = numpy.zeros((comm.size, nwalkers), dtype=local_weight.dtype)
     timer.add_non_communication()
 
     timer.start_time()
-    comm.Gather(local_buffer, global_buffer, root=0)
+    comm.Gather(local_weight, global_weight, root=0)
     timer.add_communication()
 
     # perform sr on the root
-    new_global_buffer = None
     timer.start_time()
+    new_average_weight = None
     if comm.rank == 0:
-        new_global_buffer = numpy.zeros((comm.size, nwalkers, walker_len), dtype=numpy.complex128)
-        cumulative_weights = numpy.cumsum(abs(global_buffer[:, :, 0]))
+        cumulative_weights = numpy.cumsum(abs(global_weight))
         total_weight = cumulative_weights[-1]
         new_average_weight = total_weight / nwalkers / comm.size
-        zeta = numpy.random.rand()
-        for i in range(comm.size * nwalkers):
-            z = (i + zeta) / nwalkers / comm.size
-            new_i = numpy.searchsorted(cumulative_weights, z * total_weight)
-            new_global_buffer[i // nwalkers, i % nwalkers] = global_buffer[
-                new_i // nwalkers, new_i % nwalkers
-            ]
-            new_global_buffer[i // nwalkers, i % nwalkers, 0] = new_average_weight
-
+        if not read_walkermap:
+            zeta = numpy.random.rand()
+            new_indices = numpy.zeros(comm.size * nwalkers, dtype=numpy.int64)
+            for i in range(comm.size * nwalkers):
+                z = (i + zeta) / nwalkers / comm.size
+                new_indices[i] = numpy.searchsorted(cumulative_weights, z * total_weight)
+            reordered_indices, _ = minimize_communication(new_indices)
+            if store_walkermap:
+                assert walkermap_file is not None, "Must provide filename to store the walker map."
+                with h5py.File(walkermap_file, "a") as f:
+                    name = f"walker_map_{pop_control_counter}"
+                    if name in f:
+                        f[name][...] = reordered_indices
+                    else:
+                        f.create_dataset(name, data=reordered_indices)
+        else:
+            assert walkermap_file is not None, "Must provide filename to read the walker map."
+            with h5py.File(walkermap_file, "r") as f:
+                reordered_indices = f[f"walker_map_{pop_control_counter}"][:]
     timer.add_non_communication()
 
-    # distribute information of newly selected walkers
     timer.start_time()
-    comm.Scatter(new_global_buffer, local_buffer, root=0)
+    glob_inf = None
+    if comm.rank == 0:
+        glob_indices = numpy.arange(comm.size * nwalkers, dtype=numpy.int64)
+        mask = reordered_indices != glob_indices
+        sendidx = reordered_indices[mask]
+        destidx = glob_indices[mask]
+        glob_inf = numpy.column_stack((sendidx, destidx))
+
+    timer.add_non_communication()
+    timer.start_time()
+    glob_inf = comm.bcast(glob_inf, root=0)
+    new_average_weight = comm.bcast(new_average_weight, root=0)
     timer.add_communication()
 
-    # set walkers using distributed information
     timer.start_time()
+    local_sends = [glob_inf[(glob_inf[:, 0] // nwalkers == i)] for i in range(comm.size)]
+    local_recvs = [glob_inf[(glob_inf[:, 1] // nwalkers == i)] for i in range(comm.size)]
+    num_local_sends = numpy.array([len(s) for s in local_sends])
+    cumsum_local_sends = numpy.cumsum(num_local_sends) - num_local_sends
+    num_local_recvs = numpy.array([len(r) for r in local_recvs])
+    cumsum_local_recvs = numpy.cumsum(num_local_recvs) - num_local_recvs
+
+    buflis = {}
+    local_send = local_sends[comm.rank]
+    local_send_loc_idx = local_send[:, 0] % nwalkers
+    local_recv = local_recvs[comm.rank]
     for i in range(nwalkers):
-        set_buffer(walkers, i, local_buffer[i])
+        if i in local_send_loc_idx:
+            buflis[i] = get_buffer(walkers, i)
+    timer.add_non_communication()
+    comm.barrier()
+    send_reqs = []
+    for isend, (src_idx, dest_idx) in enumerate(local_send):
+        src_loc = src_idx % nwalkers
+        dest_rk = dest_idx // nwalkers
+        tag = isend + cumsum_local_sends[comm.rank]
+
+        buf = buflis[src_loc]
+        req = comm.Issend(buf, dest=int(dest_rk), tag=int(tag))
+        send_reqs.append(req)
+
+    # Post all nonblocking recvs, saving a Status for each to inspect later
+    walker_len = get_buffer(walkers, 0).shape[0]
+    recv_reqs = []
+    for irecv, (src_idx, dest_idx) in enumerate(local_recv):
+        iw = dest_idx % nwalkers
+        src_rank = src_idx // nwalkers
+        tag_recv = irecv + cumsum_local_recvs[comm.rank]
+
+        recv_buf = numpy.empty(walker_len, dtype=numpy.complex128)
+        status = MPI.Status()
+        req = comm.Irecv(recv_buf, source=int(src_rank), tag=int(tag_recv))
+        recv_reqs.append((iw, recv_buf, status, req))
+
+    # Wait on recvs and inspect their Status
+    for iw, buf, status, req in recv_reqs:
+        req.Wait(status)
+        set_buffer(walkers, iw, buf)
+
+    # 4) Wait on sends
+    MPI.Request.Waitall(send_reqs)
+
+    comm.Barrier()
+
+    timer.start_time()
+    walkers.weight[:] = new_average_weight
     timer.add_non_communication()

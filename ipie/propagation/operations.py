@@ -14,6 +14,7 @@
 #
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
+#          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp

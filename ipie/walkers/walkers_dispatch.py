@@ -27,6 +27,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import MPIHandler
@@ -89,7 +90,15 @@ def UHFWalkersTrial(
     mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
-    return UHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
+    return UHFWalkers(
+        initial_walker,
+        nup,
+        ndown,
+        nbasis,
+        nwalkers,
+        mpi_handler,
+        verbose=verbose,
+    )
 
 
 @plum.dispatch
@@ -168,3 +177,27 @@ def UHFWalkersTrial(
     verbose: bool = False,
 ):
     return UHFWalkersNOCI(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
+
+
+@plum.dispatch
+def UHFWalkersTrial(
+    trial: KptSingleDet,
+    initial_walker: numpy.ndarray,
+    nup: int,
+    ndown: int,
+    nbasis: int,
+    nk: int,
+    nwalkers: int,
+    mpi_handler: MPIHandler,
+    verbose: bool = False,
+):
+    # note that the initial walker should have shape (nk * nbasis, nk * (nup + ndown))
+    return UHFWalkers(
+        initial_walker,
+        nk * nup,
+        nk * ndown,
+        nk * nbasis,
+        nwalkers,
+        mpi_handler,
+        verbose=verbose,
+    )

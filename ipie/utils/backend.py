@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 # Author: Fionn Malone <fmalone@google.com>
+#         Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
 import os
@@ -39,6 +40,16 @@ def to_host_gpu(array):
     return _cp.asnumpy(array)
 
 
+def copy_array_gpu_chunk(host_array, chunk=128 * 1024**2):
+    dev = _cp.empty(host_array.shape, dtype=host_array.dtype)
+    shape_arr = host_array.shape
+    for i in range(0, host_array.size, chunk):
+        dev.ravel()[i : i + chunk] = _cp.asarray(host_array.ravel()[i : i + chunk])
+    dev = dev.reshape(shape_arr)
+    _cp.cuda.Stream.null.synchronize()
+    return dev
+
+
 def get_cpu_free_memory():
     try:
         return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") / 1024**3.0
@@ -60,6 +71,14 @@ def synchronize_gpu():
     _cp.cuda.stream.get_current_stream().synchronize()
 
 
+def free_blocks_gpu():
+    _cp._default_memory_pool.free_all_blocks()
+
+
+def free_blocks_cpu():
+    pass
+
+
 if _use_gpu and _have_cupy:
     arraylib = _cp
     to_host = to_host_gpu
@@ -68,6 +87,7 @@ if _use_gpu and _have_cupy:
     qr = _cp.linalg.qr
     get_device_memory = get_gpu_free_memory
     get_host_memory = get_cpu_free_memory
+    free_blocks = free_blocks_gpu
 else:
     arraylib = _np
     to_host = to_host_cpu
@@ -78,6 +98,7 @@ else:
     qr = scipy.linalg.qr
     get_device_memory = get_cpu_free_memory
     get_host_memory = get_cpu_free_memory
+    free_blocks = free_blocks_cpu
 
 
 def cast_to_device(self, verbose=False):
@@ -97,9 +118,9 @@ def cast_to_device(self, verbose=False):
         if k in ["Ga", "Gb"]:
             continue  # reduce mem usage, Ga/Gb not used, use Ghalf instead
         if isinstance(v, _np.ndarray):
-            self.__dict__[k] = arraylib.array(v)
+            self.__dict__[k] = copy_array_gpu_chunk(v)
         elif isinstance(v, list) and isinstance(v[0], _np.ndarray):
-            self.__dict__[k] = [arraylib.array(vi) for vi in v]
+            self.__dict__[k] = [copy_array_gpu_chunk(vi) for vi in v]
 
     used_bytes, total_bytes = get_device_memory()
     used_gb, total_gb = used_bytes / 1024**3.0, total_bytes / 1024**3.0

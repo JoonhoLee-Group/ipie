@@ -23,7 +23,11 @@ from typing import Tuple, Union
 import numpy
 
 from ipie.hamiltonians import Generic as HamGeneric
+from ipie.hamiltonians.generic import GenericRealChol
+from ipie.hamiltonians.isdf import GenericRealISDF
+from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.propagation.phaseless_generic import PhaselessBase, PhaselessGeneric
+from ipie.utils.kpt_conv import generate_MPmesh_3d, find_Qplus, find_self_inverse_set
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.options import QMCOpts
 from ipie.systems import Generic
@@ -35,6 +39,7 @@ from ipie.trial_wavefunction.particle_hole import (
     ParticleHoleSlow,
 )
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_kpt import KptSingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.io import get_input_value
@@ -43,6 +48,8 @@ from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.pop_controller import PopController
 from ipie.walkers.walkers_dispatch import UHFWalkersTrial, GHFWalkersTrial
+
+from ipie.utils.kpt_conv import get_walker_from_trial
 
 
 def generate_hamiltonian(nmo, nelec, cplx=False, sym=8, tol=1e-3):
@@ -257,6 +264,64 @@ def get_random_phmsd_opt(nup, ndown, nbasis, ndet=10, init=False, dist=None, cmp
     return wfn, init_wfn
 
 
+def random_occupations(
+    nocc: int, nk: int, *, alpha: float = 0.3, seed: int | None = None
+) -> numpy.ndarray:
+    """
+    Return integer occupations occ[k] with mean nocc across nk k-points.
+
+    Uses: p ~ Dirichlet(alpha), occ ~ Multinomial(total=nocc*nk, p).
+
+    Parameters
+    ----------
+    nocc : int
+        Target average occupation per k-point (integer).
+    nk : int
+        Number of k-points.
+    alpha : float
+        Dirichlet concentration. alpha < 1 -> spiky/uneven, alpha ~ 1 moderate, alpha > 1 more even.
+    seed : int | None
+        RNG seed.
+
+    Returns
+    -------
+    occ : (nk,) int array
+        Nonnegative integer occupations summing to nocc*nk.
+    """
+    if nk <= 0:
+        raise ValueError("nk must be positive")
+    if nocc < 0:
+        raise ValueError("nocc must be nonnegative")
+    if alpha <= 0:
+        raise ValueError("alpha must be > 0")
+
+    total = nocc * nk
+    rng = numpy.random.default_rng(seed)
+    p = rng.dirichlet(alpha * numpy.ones(nk))
+    occ = rng.multinomial(total, p).astype(int)
+
+    assert occ.sum() == total
+    assert numpy.isclose(occ.mean(), nocc)
+    return occ
+
+
+def get_random_kpt_sd(nk, nup, ndown, nbasis, seed=0):
+    rng = numpy.random.default_rng(seed)
+    psia = rng.standard_normal((nk, nbasis, nup)) + 1j * rng.standard_normal((nk, nbasis, nup))
+    psib = rng.standard_normal((nk, nbasis, ndown)) + 1j * rng.standard_normal((nk, nbasis, ndown))
+    return psia, psib
+
+
+def _blockdiag_k_orbitals(psi_k):
+    nk, nbasis, nocc = psi_k.shape
+    psi_mol = numpy.zeros((nk * nbasis, nk * nocc), dtype=numpy.complex128)
+    for ik in range(nk):
+        r0, r1 = ik * nbasis, (ik + 1) * nbasis
+        c0, c1 = ik * nocc, (ik + 1) * nocc
+        psi_mol[r0:r1, c0:c1] = psi_k[ik]
+    return psi_mol
+
+
 def get_random_wavefunction(nelec, nbasis):
     na = nelec[0]
     nb = nelec[1]
@@ -275,17 +340,72 @@ def generate_hamiltonian_low_mem(nmo, nelec, cplx=False):
     return h1e, chol, enuc
 
 
-def shaped_normal(shape, cmplx=False):
+def shaped_normal(shape, cmplx=False, seed=None):
     size = numpy.prod(shape)
-    if cmplx:
-        arr_r = numpy.random.normal(size=size)
-        arr_i = numpy.random.normal(size=size)
-        arr = arr_r + 1j * arr_i
-        arr = numpy.array(arr, dtype=numpy.complex128)
+    if seed is None:
+        if cmplx:
+            arr_r = numpy.random.normal(size=size)
+            arr_i = numpy.random.normal(size=size)
+            arr = arr_r + 1j * arr_i
+            arr = numpy.array(arr, dtype=numpy.complex128)
+        else:
+            arr = numpy.random.normal(size=size)
+            arr = numpy.array(arr, dtype=numpy.float64)
     else:
-        arr = numpy.random.normal(size=size)
-        arr = numpy.array(arr, dtype=numpy.float64)
+        rng = numpy.random.default_rng(seed)
+        if cmplx:
+            arr_r = rng.standard_normal(size)
+            arr_i = rng.standard_normal(size)
+            arr = arr_r + 1j * arr_i
+            arr = numpy.array(arr, dtype=numpy.complex128)
+        else:
+            arr = rng.standard_normal(size)
+            arr = numpy.array(arr, dtype=numpy.float64)
     return arr.reshape(shape)
+
+
+def _small_kpts_trivial_Sset():
+    # 9 k-points in fractional coords with trivial Sset (only Gamma point).
+    kmesh = generate_MPmesh_3d((3, 3, 1))
+    return kmesh
+
+
+def _nontrivial_Sset_kpts():
+    # 12 k-points in fractional coords with nontrivial Sset.
+    kmesh = generate_MPmesh_3d((3, 2, 2))
+    return kmesh
+
+
+def expand_chol_symm_to_full(chol_packed, kpts, Sset, Qplus, ikpq_mat, imq_vec):
+    """
+    Expand packed chol (nchol, nk, nbasis, unique_nk, nbasis) into full chol
+    (nchol, nk, nbasis, nk, nbasis) using:
+        L(k, q) = L(k+q, -q)^*  with (p,r) transpose in orbital indices.
+
+    Here the packed q-axis is ordered as [Sset..., Qplus...].
+    """
+    nchol, nk, nbasis, _, _ = chol_packed.shape
+    chol_full = numpy.zeros((nchol, nk, nbasis, nk, nbasis), dtype=numpy.complex128)
+
+    for iu, iq_real in enumerate(Sset):
+        iq_real = int(iq_real)
+        chol_full[:, :, :, iq_real, :] = chol_packed[:, :, :, iu, :]
+
+    offset = len(Sset)
+    for j, iq_real in enumerate(Qplus):
+        iq_real = int(iq_real)
+        iu = offset + j
+        chol_full[:, :, :, iq_real, :] = chol_packed[:, :, :, iu, :]
+
+        imq = int(imq_vec[iq_real])  # index of -q
+        for ik in range(nk):
+            ikpq = int(ikpq_mat[iq_real, ik])  # k+q
+            # L(ikpq, -q) = L(ik, q)^* with p<->r transpose
+            chol_full[:, ikpq, :, imq, :] = (
+                chol_full[:, ik, :, iq_real, :].conj().transpose(0, 2, 1)
+            )
+
+    return chol_full
 
 
 def get_random_sys_ham(nalpha, nbeta, nmo, naux, cmplx=False):
@@ -340,6 +460,122 @@ def gen_random_test_instances(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     trial._rcholb = shaped_normal((naux, nocc * nmo))
     trial._rH1a = shaped_normal((nocc, nmo))
     trial._rH1b = shaped_normal((nocc, nmo))
+    return system, ham, walkers, trial
+
+
+def _build_equivalent_molecular_chol_and_isdf(nmo, nchol, nisdf, seed):
+    rng = numpy.random.default_rng(seed)
+    h1e = rng.standard_normal((nmo, nmo))
+    h1e = 0.5 * (h1e + h1e.T)
+    h1e = numpy.array([h1e, h1e], dtype=numpy.float64)
+
+    cgto = rng.standard_normal((nisdf, nmo))
+    cholM = rng.standard_normal((nisdf, nchol))
+    MPQ = cholM @ cholM.T
+
+    chol_3d = numpy.einsum("Pp, Pr, Pg -> gpr", cgto, cgto, cholM, optimize=True)
+    chol = chol_3d.reshape((nchol, nmo * nmo)).T.copy()
+
+    ham_chol = GenericRealChol(h1e=h1e, chol=chol, ecore=0.0)
+    ham_isdf = GenericRealISDF(h1e=h1e, MPQ=MPQ, cholM=cholM, cgto=cgto, ecore=0.0)
+    return ham_chol, ham_isdf, cgto, MPQ, chol
+
+
+def gen_random_test_input_kpt(kmesh, nmo, nelec, naux, seed=7, ndets=1):
+    assert ndets == 1
+    nk = kmesh[0] * kmesh[1] * kmesh[2]
+    numpy.random.seed(seed)
+    nup, ndown = nelec
+    psia, psib = get_random_kpt_sd(nk, nup, ndown, nmo, seed=seed)
+    h1e = shaped_normal((nk, nmo, nmo), cmplx=True)
+    h1e = h1e + h1e.transpose(0, 2, 1).conj()
+
+    kpts = generate_MPmesh_3d(kmesh)
+    Sset = find_self_inverse_set(kpts)
+    Qplus = find_Qplus(kpts)
+    nq = len(Sset) + len(Qplus)
+
+    chol = shaped_normal((naux, nk, nmo, nq, nmo), cmplx=True)
+    wfn = numpy.concatenate([psia, psib], axis=2)
+    return h1e, chol, wfn, kpts
+
+
+def gen_random_test_input_kpt_isdf(kmesh, nmo, nelec, naux, seed=7, ndets=1):
+    assert ndets == 1
+    nk = kmesh[0] * kmesh[1] * kmesh[2]
+    numpy.random.seed(seed)
+    nup, ndown = nelec
+    psia, psib = get_random_kpt_sd(nk, nup, ndown, nmo, seed=seed)
+    h1e = shaped_normal((nk, nmo, nmo), cmplx=True)
+    h1e = h1e + h1e.transpose(0, 2, 1).conj()
+
+    kpts = generate_MPmesh_3d(kmesh)
+    Sset = find_self_inverse_set(kpts)
+    Qplus = find_Qplus(kpts)
+    nq = len(Sset) + len(Qplus)
+    nisdf = 15 * nmo
+
+    MPQ = shaped_normal((nq, nisdf, nisdf), cmplx=True)
+    cgto = shaped_normal((nk, nisdf, nmo), cmplx=True)
+    wfn = numpy.concatenate([psia, psib], axis=2)
+    return h1e, MPQ, cgto, wfn, kpts
+
+
+def gen_random_test_instances_kpt_chunked(nk, nmo, nocc, naux, nwalkers, seed=7, ndets=1):
+    assert ndets == 1
+    numpy.random.seed(seed)
+    psia, psib = get_random_kpt_sd(nk, nocc, nocc, nmo, seed=seed)
+    wfn = numpy.concatenate([psia, psib], axis=2)
+    h1e = shaped_normal((nk, nmo, nmo))
+
+    system = Generic(nelec=(nocc, nocc))
+    chol = shaped_normal((naux, nk, nmo, nk, nmo))
+    kpts = numpy.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.0],
+            [0.0, 0.0, 0.5],
+            [0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.0],
+            [0.5, 0.0, 0.5],
+            [0.5, 0.5, 0.0],
+            [0.5, 0.5, 0.5],
+        ]
+    )
+    ham = KptComplexCholChunked(
+        h1e=numpy.array([h1e, h1e]),
+        kpts=kpts,
+        chol=chol,
+        chol_chunk=None,
+        ecore=0,
+        verbose=False,
+    )
+
+    if ndets == 1:
+        trial = KptSingleDet(wfn[1][0], nk, (nocc, nocc), nmo)
+    else:
+        raise NotImplementedError
+    initial_walker = get_walker_from_trial(wfn[1][0])
+    walkers = UHFWalkersTrial(
+        trial,
+        initial_walker,
+        system.nup,
+        system.ndown,
+        nk,
+        ham.nbasis,
+        nwalkers,
+        MPIHandler(),
+    )
+    walkers.build(trial)
+
+    Ghalfa = shaped_normal((nwalkers, nk, nocc, nk, nmo), cmplx=True)
+    Ghalfb = shaped_normal((nwalkers, nk, nocc, nk, nmo), cmplx=True)
+    walkers.Ghalfa = Ghalfa
+    walkers.Ghalfb = Ghalfb
+    trial._rchola = shaped_normal((naux, nk, nocc, nk, nmo))
+    trial._rcholb = shaped_normal((naux, nk, nocc, nk, nmo))
+    trial._rH1a = shaped_normal((nk, nocc, nmo))
+    trial._rH1b = shaped_normal((nk, nocc, nmo))
     return system, ham, walkers, trial
 
 
@@ -454,6 +690,31 @@ def build_random_trial(
         raise ValueError(f"Unkown trial type: {trial_type}")
 
 
+def build_random_kpt_trial(
+    kmesh: Tuple[int, int, int],
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    trial_type="single_det",
+    rhf_trial: bool = False,
+    uneven_occupation: bool = False,
+    seed: int = 0,
+):
+    nk = kmesh[0] * kmesh[1] * kmesh[2]
+    assert trial_type == "single_det", "Only single determinant trial is implemented for kpt tests"
+    psia, psib = get_random_kpt_sd(nk, num_elec[0], num_elec[1], num_basis, seed=seed)
+    if rhf_trial:
+        psib = psia.copy()
+    wfn = numpy.concatenate([psia, psib], axis=2)
+    if uneven_occupation:
+        # generate noccs
+        occas = random_occupations(num_elec[0], nk, alpha=0.3, seed=seed)
+        occbs = random_occupations(num_elec[1], nk, alpha=0.3, seed=seed + 1)
+        trial = KptSingleDet(wfn, nk, num_elec, num_basis, noccas=occas, noccbs=occbs)
+    else:
+        trial = KptSingleDet(wfn, nk, num_elec, num_basis)
+    return trial
+
+
 @dataclass(frozen=True)
 class TestData:
     trial: TrialWavefunctionBase
@@ -508,15 +769,12 @@ def build_test_case_handlers_mpi(
     pop_control = get_input_value(
         options, "population_control", default="pair_branch", alias=["pop_control"]
     )
-    reconf_freq = get_input_value(options, "reconfiguration_freq", default=50)
 
     walkers = UHFWalkersTrial(
         trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
     )
     walkers.build(trial)
-    pcontrol = PopController(
-        nwalkers, nsteps, mpi_handler, pop_control, reconfiguration_freq=reconf_freq
-    )
+    pcontrol = PopController(nwalkers, nsteps, mpi_handler, pop_control)
     trial.calc_greens_function(walkers)
     for _ in range(options.num_steps):
         if two_body_only:
@@ -663,6 +921,74 @@ def build_test_case_handlers_ghf(
     return TestData(trial, walkers, ham, prop)
 
 
+def build_kpt_test_case_handlers(
+    num_elec: Tuple[int, int],
+    num_basis: int,
+    kmesh: Tuple[int, int, int],
+    num_dets=1,
+    trial_type="kptsd",
+    wfn_type="opt",
+    complex_integrals: bool = False,
+    complex_trial: bool = False,
+    seed: Union[int, None] = None,
+    rhf_trial: bool = False,
+    two_body_only: bool = False,
+    choltol: float = 1e-3,
+    reortho: bool = True,
+    options: Union[dict, None] = None,
+):
+    if seed is not None:
+        numpy.random.seed(seed)
+    sym = 8
+    if complex_integrals:
+        sym = 4
+    h1e, chol, _, eri = generate_hamiltonian(
+        num_basis, num_elec, cplx=complex_integrals, sym=sym, tol=choltol
+    )
+    system = Generic(nelec=num_elec)
+    ham = HamGeneric(
+        h1e=numpy.array([h1e, h1e]),
+        chol=chol.reshape((-1, num_basis**2)).T.copy(),
+        ecore=0,
+    )
+    ham.eri = eri.copy()
+    trial, init = build_random_trial(
+        num_elec,
+        num_basis,
+        num_dets=num_dets,
+        wfn_type=wfn_type,
+        trial_type=trial_type,
+        complex_trial=complex_trial,
+        rhf_trial=rhf_trial,
+    )
+    trial.half_rotate(ham)
+    trial.calculate_energy(system, ham)
+    # necessary for backwards compatabilty with tests
+    if seed is not None:
+        numpy.random.seed(seed)
+
+    nwalkers = get_input_value(options, "nwalkers", default=10, alias=["num_walkers"])
+    walkers = UHFWalkersTrial(
+        trial, init, system.nup, system.ndown, ham.nbasis, nwalkers, MPIHandler()
+    )
+    walkers.build(trial)  # any intermediates that require information from trial
+
+    prop = PhaselessGeneric(time_step=options["dt"])
+    prop.build(ham, trial)
+
+    trial.calc_greens_function(walkers)
+    for _ in range(options.num_steps):
+        if two_body_only:
+            prop.propagate_walkers_two_body(walkers, ham, trial)
+        else:
+            prop.propagate_walkers(walkers, ham, trial, trial.energy)
+        if reortho:
+            walkers.reortho()
+        trial.calc_greens_function(walkers)
+
+    return TestData(trial, walkers, ham, prop)
+
+
 def build_driver_test_instance(
     num_elec: Tuple[int, int],
     num_basis: int,
@@ -716,6 +1042,7 @@ def build_driver_test_instance(
         num_blocks=qmc.nblocks,
         timestep=qmc.dt,
         stabilize_freq=qmc.nstblz,
+        pop_control_method=qmc.pop_control_method,
         pop_control_freq=qmc.npop_control,
     )
     return afqmc

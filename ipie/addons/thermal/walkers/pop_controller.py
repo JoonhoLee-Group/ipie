@@ -36,15 +36,16 @@ class ThermalPopController(PopController):
         verbose=False,
     ):
         super().__init__(
-            num_walkers_local,
-            num_steps,
-            mpi_handler,
-            pop_control_method,
-            min_weight,
-            max_weight,
-            reconfiguration_freq,
-            verbose,
+            num_walkers_local=num_walkers_local,
+            num_steps=num_steps,
+            mpi_handler=mpi_handler,
+            pop_control_method=pop_control_method,
+            min_weight=min_weight,
+            max_weight=max_weight,
+            verbose=verbose,
         )
+        self.reconfiguration_freq = reconfiguration_freq
+        self.reconfiguration_counter = 0
 
     def pop_control(self, walkers, comm):
         self.timer.start_time()

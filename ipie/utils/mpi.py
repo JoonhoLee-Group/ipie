@@ -75,11 +75,19 @@ class MPIHandler(object):
                 tmp = np.array(array)
                 self.scomm.Scatterv([tmp, split_sizes, displacements, MPI.INT64_T], my_array, root)
         elif isinstance(array, np.ndarray):
-            if len(array.shape) == 2:
+            if len(array.shape) == 2 and array.dtype == np.float64:
                 ncols = array.shape[1]
                 my_array = np.zeros((split_sizes[self.srank], ncols), dtype=np.float64)
                 self.scomm.Scatterv(
                     [array, split_sizes * ncols, displacements * ncols, MPI.DOUBLE],
+                    my_array,
+                    root,
+                )
+            elif len(array.shape) == 2 and array.dtype == np.complex128:
+                ncols = array.shape[1]
+                my_array = np.zeros((split_sizes[self.srank], array.shape[1]), dtype=np.complex128)
+                self.scomm.Scatterv(
+                    [array, split_sizes * ncols, displacements * ncols, MPI.COMPLEX],
                     my_array,
                     root,
                 )

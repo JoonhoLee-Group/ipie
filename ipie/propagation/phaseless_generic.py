@@ -28,8 +28,8 @@ from typing import Union
 class PhaselessGeneric(PhaselessBase):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
-    def __init__(self, time_step, exp_nmax=6, verbose=False):
-        super().__init__(time_step, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
         self.exp_nmax = exp_nmax
 
     @plum.dispatch
@@ -114,8 +114,8 @@ class PhaselessGeneric(PhaselessBase):
 class PhaselessGenericChunked(PhaselessGeneric):
     """A class for performing phaseless propagation with real, generic, hamiltonian."""
 
-    def __init__(self, time_step, exp_nmax=6, verbose=False):
-        super().__init__(time_step, exp_nmax=exp_nmax, verbose=verbose)
+    def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, exp_nmax=6, verbose=False):
+        super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         super().build(hamiltonian, trial, walkers, mpi_handler, verbose)
@@ -188,4 +188,7 @@ class PhaselessGenericChunked(PhaselessGeneric):
         return VHS
 
 
-Phaseless = {"generic": PhaselessGeneric, "chunked": PhaselessGenericChunked}
+Phaseless = {
+    "generic": PhaselessGeneric,
+    "chunked": PhaselessGenericChunked,
+}

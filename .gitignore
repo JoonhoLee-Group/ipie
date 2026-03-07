@@ -93,7 +93,6 @@ ENV/
 # no .dat files
 *.dat
 
-timing_scripts/*
 examples/*/*/*h5
 examples/*/*/*.chk
 ipie/qmc/tests/reference_data/**/*.h5

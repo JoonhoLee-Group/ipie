@@ -140,3 +140,77 @@ def gab_spin(A, B, na, nb):
         GB = numpy.zeros(GA.shape, dtype=GA.dtype)
         GBH = numpy.zeros((0, GAH.shape[1]), dtype=GAH.dtype)
     return numpy.array([GA, GB]), [GAH, GBH]
+
+
+def gabk_mod(A, B):
+    pass
+
+
+def gabk_spin(A, B, na, nb):
+    assert A.shape[0] == B.shape[0]
+    nk = A.shape[0]
+    nbasis = A.shape[1]
+    GA = numpy.zeros((nk, nbasis, nbasis), dtype=A.dtype)
+    GB = numpy.zeros((nk, nbasis, nbasis), dtype=A.dtype)
+    GAH = numpy.zeros((nk, na, nbasis), dtype=A.dtype)
+    GBH = numpy.zeros((nk, nb, nbasis), dtype=A.dtype)
+    for ik in range(nk):
+        GA[ik], GAH[ik] = gab_mod(A[ik, :, :na], B[ik, :, :na])
+    if nb > 0:
+        for ik in range(nk):
+            GB[ik], GBH[ik] = gab_mod(A[ik, :, na:], B[ik, :, na:])
+    return numpy.array([GA, GB]), [GAH, GBH]
+
+
+def gab_mod_nonuniform(A, B, na, noccas):
+    r"""One-particle Green's function.
+
+    This actually returns 1-G since it's more useful, i.e.,
+
+    .. math::
+        \langle \phi_A|c_i^{\dagger}c_j|\phi_B\rangle =
+        [B(A^{\dagger}B)^{-1}A^{\dagger}]_{ji}
+
+    where :math:`A,B` are the matrices representing the Slater determinants
+    :math:`|\psi_{A,B}\rangle`.
+
+    For example, usually A would represent (an element of) the trial wavefunction.
+
+    .. warning::
+        Assumes A and B are not orthogonal.
+
+    Parameters
+    ----------
+    A : :class:`numpy.ndarray`
+        Matrix representation of the bra used to construct G.
+    B : :class:`numpy.ndarray`
+        Matrix representation of the ket used to construct G.
+
+    Returns
+    -------
+    GAB : :class:`numpy.ndarray`
+        (One minus) the green's function.
+    """
+    O = numpy.dot(B.T, A.conj())
+    mask = numpy.arange(na) >= numpy.array(noccas)
+    diag_idx = numpy.nonzero(mask)
+    O[diag_idx, diag_idx] = 1.0
+    GHalf = numpy.dot(scipy.linalg.inv(O), B.T)
+    G = numpy.dot(A.conj(), GHalf)
+    return (G, GHalf)
+
+
+def gabk_spin_nonuniform(A, B, na, nb, noccas, noccbs):
+    assert A.shape[0] == B.shape[0]
+    nk = A.shape[0]
+    nbasis = A.shape[1]
+    GA = numpy.zeros((nk, nbasis, nbasis), dtype=A.dtype)
+    GB = numpy.zeros((nk, nbasis, nbasis), dtype=A.dtype)
+    GAH = numpy.zeros((nk, na, nbasis), dtype=A.dtype)
+    GBH = numpy.zeros((nk, nb, nbasis), dtype=A.dtype)
+    for ik in range(nk):
+        GA[ik], GAH[ik] = gab_mod_nonuniform(A[ik, :, :na], B[ik, :, :na], na, noccas[ik])
+    if nb > 0:
+        for ik in range(nk):
+            GB[ik], GBH[ik] = gab_mod_nonuniform(A[ik, :, na:], B[ik, :, na:], nb, noccbs[ik])
+    return numpy.array([GA, GB]), [GAH, GBH]

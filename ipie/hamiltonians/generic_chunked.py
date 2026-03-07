@@ -17,6 +17,7 @@
 #
 
 import numpy
+
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.pack_numba import pack_cholesky
 from ipie.utils.backend import arraylib as xp
