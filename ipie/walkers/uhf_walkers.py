@@ -105,6 +105,8 @@ class UHFWalkers(BaseWalkers):
         self.Ghalfb = numpy.zeros(
             shape=(self.nwalkers, self.ndown, self.nbasis), dtype=numpy.complex128
         )
+        self.inv_ovlp_a = None
+        self.inv_ovlp_b = None
 
         self.buff_names += ["phia", "phib"]
 
@@ -121,9 +123,19 @@ class UHFWalkers(BaseWalkers):
             self.ovlp, self.sgn_ovlp, self.log_ovlp = ovlp
         else:
             self.ovlp = ovlp
+        self.inverse_overlap(trial)
         if hasattr(trial, "noccas") and trial.noccas is not None:
             if trial.noccas is not None:
                 self.padding = True
+
+    def inverse_overlap(self, trial):
+        ovlp_a = xp.einsum("mi,wmj->wij", trial.psi0a.conj(), self.phia)
+        self.inv_ovlp_a = xp.linalg.inv(ovlp_a)
+        if self.ndown > 0:
+            ovlp_b = xp.einsum("mi,wmj->wij", trial.psi0b.conj(), self.phib)
+            self.inv_ovlp_b = xp.linalg.inv(ovlp_b)
+        else:
+            self.inv_ovlp_b = None
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):

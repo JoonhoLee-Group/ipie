@@ -230,7 +230,6 @@ class EstimatorHandler(object):
                     output_string += est_string
         if comm.rank == 0:
             shift = self.global_estimates[walker_factors.get_index("HybridEnergy")]
-
         else:
             shift = None
         walker_factors.eshift = comm.bcast(shift)

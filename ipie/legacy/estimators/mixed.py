@@ -7,6 +7,7 @@ try:
     mpi_sum = MPI.SUM
 except ImportError:
     mpi_sum = None
+import os
 import time
 
 import scipy.linalg
@@ -70,6 +71,9 @@ class Mixed(object):
         if self.energy_eval_freq is None:
             self.energy_eval_freq = qmc.nsteps
         self.verbose = mixed_opts.get("verbose", True)
+        self.debug_estimator = os.environ.get("IPIE_DEBUG_ESTIMATOR", "0") == "1"
+        self.debug_walker = int(os.environ.get("IPIE_DEBUG_ESTIMATOR_WALKER", "0"))
+        self.debug_max_walkers = int(os.environ.get("IPIE_DEBUG_ESTIMATOR_MAX_WALKERS", "1"))
         # number of steps per block
         self.nsteps = qmc.nsteps
         self.header = [
@@ -307,6 +311,22 @@ class Mixed(object):
                         else:
                             E, T, V = 0, 0, 0
 
+                        if self.debug_estimator and i < self.debug_max_walkers and i == self.debug_walker:
+                            numer_contrib = w.weight * w.le_oratio * E.real
+                            denom_contrib = w.weight * w.le_oratio
+                            print(
+                                "[legacy:estimator] "
+                                f"iw={i} "
+                                f"weight={w.weight} "
+                                f"le_oratio={w.le_oratio} "
+                                f"ot={w.ot} "
+                                f"hybrid={w.hybrid_energy} "
+                                f"eloc={E} "
+                                f"e1b={T} "
+                                f"e2b={V} "
+                                f"numer_contrib={numer_contrib} "
+                                f"denom_contrib={denom_contrib}"
+                            )
                         self.estimates[self.names.enumer] += w.weight * w.le_oratio * E.real
                         self.estimates[self.names.e1b : self.names.e2b + 1] += (
                             w.weight * w.le_oratio * numpy.array([T, V]).real
@@ -364,6 +384,14 @@ class Mixed(object):
         es[ns.ehyb : ns.time + 1] /= nsteps
         comm.Reduce(es, self.global_estimates, op=mpi_sum)
         gs = self.global_estimates
+        if self.debug_estimator and comm.rank == 0:
+            print(
+                "[legacy:estimator_block] "
+                f"enumer={gs[ns.enumer]} "
+                f"edenom={gs[ns.edenom]} "
+                f"e1b={gs[ns.e1b]} "
+                f"e2b={gs[ns.e2b]}"
+            )
         if comm.rank == 0:
             gs[ns.eproj] = gs[ns.enumer]
             gs[ns.eproj : ns.e2b + 1] = gs[ns.eproj : ns.e2b + 1] / gs[ns.edenom]

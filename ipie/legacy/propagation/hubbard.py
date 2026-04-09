@@ -1,6 +1,7 @@
 import cmath
 import copy
 import math
+import os
 
 import numpy
 import scipy.linalg
@@ -116,6 +117,32 @@ class Hirsch(object):
         if verbose:
             print("# Finished setting up propagator.")
 
+        self.debug_hubbard = os.environ.get("IPIE_DEBUG_HUBBARD", "0") == "1"
+        self.debug_max_sites = int(os.environ.get("IPIE_DEBUG_MAX_SITES", "8"))
+        self.debug_walker = int(os.environ.get("IPIE_DEBUG_WALKER", "0"))
+        self._debug_walker_id = None
+        self._current_debug_walker = None
+
+    def _debug(self, tag, **kwargs):
+        if not self.debug_hubbard:
+            return
+        details = " ".join(f"{key}={value}" for key, value in kwargs.items())
+        print(f"[legacy:{tag}] {details}")
+
+    def _debug_iw(self):
+        if self._current_debug_walker is not None:
+            return self._current_debug_walker
+        return 0
+
+    def _is_debug_walker(self, walker):
+        if not self.debug_hubbard:
+            return False
+        if self._current_debug_walker is not None:
+            return self._current_debug_walker == self.debug_walker
+        if self._debug_walker_id is None:
+            self._debug_walker_id = id(walker)
+        return id(walker) == self._debug_walker_id
+
     def update_greens_function_uhf(self, walker, trial, i, nup):
         """Fast update of walker's Green's function for RHF/UHF walker.
 
@@ -178,6 +205,16 @@ class Hirsch(object):
         ot_new = walker.calc_otrial(trial)
         ratio = ot_new / walker.ot
         phase = cmath.phase(ratio)
+        if self._is_debug_walker(walker):
+            self._debug(
+                "kinetic",
+                iw=self._debug_iw(),
+                weight=walker.weight,
+                ot_old=walker.ot,
+                ot_new=ot_new,
+                ratio=ratio,
+                phase=phase,
+            )
         if abs(phase) < 0.5 * math.pi:
             walker.weight = walker.weight * ratio.real
             walker.ot = ot_new
@@ -216,6 +253,20 @@ class Hirsch(object):
             phaseless_ratio = numpy.maximum(probs.real, [0, 0])
             norm = sum(phaseless_ratio)
             r = numpy.random.random()
+            if self._is_debug_walker(walker) and i < self.debug_max_sites:
+                self._debug(
+                    "site_pre",
+                    iw=self._debug_iw(),
+                    site=i,
+                    gii_up=walker.G[0][i, i],
+                    gii_dn=walker.G[1][i, i],
+                    probs=probs,
+                    phaseless_ratio=phaseless_ratio,
+                    norm=norm,
+                    rand=r,
+                    weight=walker.weight,
+                    ot=walker.ot,
+                )
             # Is this necessary?
             if norm > 0:
                 walker.weight = walker.weight * norm
@@ -231,6 +282,17 @@ class Hirsch(object):
                 if walker.field_configs is not None:
                     walker.field_configs.push(xi)
                 walker.update_inverse_overlap(trial, vtup, vtdown, i)
+                if self._is_debug_walker(walker) and i < self.debug_max_sites:
+                    self._debug(
+                        "site_post",
+                        iw=self._debug_iw(),
+                        site=i,
+                        xi=xi,
+                        weight=walker.weight,
+                        ot=walker.ot,
+                        vtup=vtup,
+                        vtdown=vtdown,
+                    )
             else:
                 walker.weight = 0
                 return

@@ -1,6 +1,7 @@
 import cmath
 import copy
 import math
+import os
 import sys
 import time
 
@@ -206,6 +207,8 @@ class Walkers(object):
         self.target_weight = qmc.ntot_walkers
         self.nw = qmc.nwalkers
         self.set_total_weight(qmc.ntot_walkers)
+        self.debug_pop = os.environ.get("IPIE_DEBUG_POP", "0") == "1"
+        self.debug_walker = int(os.environ.get("IPIE_DEBUG_POP_WALKER", "0"))
 
         if verbose:
             print("# Finish setting up walkers.handler.Walkers.")
@@ -272,6 +275,18 @@ class Walkers(object):
     def pop_control(self, comm):
         if self.ntot_walkers == 1:
             return
+        if self.debug_pop:
+            iw = self.debug_walker
+            w = self.walkers[iw]
+            all_weights = [abs(wx.weight) for wx in self.walkers]
+            print(
+                "[legacy:pop_pre] "
+                f"iw={iw} "
+                f"weight={w.weight} "
+                f"unscaled={w.unscaled_weight} "
+                f"ovlp={w.ot} "
+                f"all_weights={all_weights}"
+            )
         if self.use_log_shift:
             self.update_log_ovlp(comm)
         weights = numpy.array([abs(w.weight) for w in self.walkers])
@@ -290,6 +305,18 @@ class Walkers(object):
         for w in self.walkers:
             w.unscaled_weight = w.weight
             w.weight = w.weight / scale
+        if self.debug_pop:
+            iw = self.debug_walker
+            w = self.walkers[iw]
+            print(
+                "[legacy:pop_scale] "
+                f"total_weight={total_weight} "
+                f"target_weight={self.target_weight} "
+                f"scale={scale} "
+                f"iw={iw} "
+                f"rescaled_weight={w.weight} "
+                f"unscaled={w.unscaled_weight}"
+            )
         if self.pcont_method == "comb":
             global_weights = global_weights / scale
             self.comb(comm, global_weights)
@@ -433,6 +460,16 @@ class Walkers(object):
                     break
             nw = self.nwalkers
             glob_inf = glob_inf[isort].reshape((comm.size, nw, 4))
+            if self.debug_pop:
+                info = glob_inf[0, self.debug_walker]
+                print(
+                    "[legacy:pair_branch_root] "
+                    f"iw={self.debug_walker} "
+                    f"weight={info[0]} "
+                    f"status={info[1]} "
+                    f"src={info[2]} "
+                    f"dest={info[3]}"
+                )
         else:
             data = None
             total_weight = 0
@@ -453,6 +490,16 @@ class Walkers(object):
                 self.walkers[iw].set_buffer(self.walker_buffer)
         for r in reqs:
             r.wait()
+        if self.debug_pop:
+            iw = self.debug_walker
+            w = self.walkers[iw]
+            print(
+                "[legacy:pop_post] "
+                f"iw={iw} "
+                f"weight={w.weight} "
+                f"unscaled={w.unscaled_weight} "
+                f"ovlp={w.ot}"
+            )
 
     def recompute_greens_function(self, trial, time_slice=None):
         for w in self.walkers:
