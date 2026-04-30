@@ -32,6 +32,7 @@ from ipie.config import config
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.handler import EstimatorHandler
 from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.propagation.hirsch_base import HirschBase
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCParams
 from ipie.qmc.utils import set_rng_seed
@@ -562,6 +563,7 @@ class AFQMC(AFQMCBase):
             walker_state=self.accumulators,
             verbose=(comm.rank == 0 and self.verbose),
             filename=filename,
+            shift_source="ETotal" if isinstance(self.propagator, HirschBase) else "HybridEnergy",
         )
         if additional_estimators is not None:
             for k, v in additional_estimators.items():
@@ -687,13 +689,13 @@ class AFQMC(AFQMCBase):
 
             start_clip = time.time()
             if step > 1 and step <= num_eqlb_steps:
-                wbound = self.pcontrol_eq.total_weight * 0.10
+                wbound = max(100.0, self.pcontrol_eq.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
             elif step > num_eqlb_steps and step > 1:
-                wbound = self.pcontrol.total_weight * 0.10
+                wbound = max(100.0, self.pcontrol.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
