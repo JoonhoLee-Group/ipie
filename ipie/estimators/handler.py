@@ -75,6 +75,7 @@ class EstimatorHandler(object):
         overwrite=True,
         observables: Tuple[str] = ("energy",),  # TODO: Use factory method!
         index: int = 0,
+        shift_source: str = "HybridEnergy",
     ):
         if verbose:
             print("# Setting up estimator object.")
@@ -103,6 +104,7 @@ class EstimatorHandler(object):
         self._shapes = []
         self._offsets = {}
         self.json_string = "{}"
+        self.shift_source = shift_source
         # TODO: Replace this, should be built outside
         for obs in observables:
             try:
@@ -229,7 +231,13 @@ class EstimatorHandler(object):
                 if e.print_to_stdout:
                     output_string += est_string
         if comm.rank == 0:
-            shift = self.global_estimates[walker_factors.get_index("HybridEnergy")]
+            if self.shift_source in walker_factors.names:
+                shift = self.global_estimates[walker_factors.get_index(self.shift_source)]
+            elif self.shift_source == "ETotal":
+                start = offset + self.get_offset("energy")
+                shift = self.global_estimates[start + self["energy"].get_index("ETotal")]
+            else:
+                raise RuntimeError(f"Unknown shift source {self.shift_source}")
         else:
             shift = None
         walker_factors.eshift = comm.bcast(shift)
