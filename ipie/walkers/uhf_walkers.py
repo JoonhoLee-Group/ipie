@@ -124,6 +124,11 @@ class UHFWalkers(BaseWalkers):
         else:
             self.ovlp = ovlp
         self.inverse_overlap(trial)
+        for name in ("inv_ovlp_a", "inv_ovlp_b"):
+            if name not in self.buff_names:
+                self.buff_names.append(name)
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
         if hasattr(trial, "noccas") and trial.noccas is not None:
             if trial.noccas is not None:
                 self.padding = True

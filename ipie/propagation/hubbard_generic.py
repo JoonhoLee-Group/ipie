@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 
 import numpy
 
@@ -6,25 +7,129 @@ from ipie.propagation.hirsch_base import HirschBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, to_host
 
+try:
+    from numba import njit
+except ImportError:  # pragma: no cover - optional acceleration
+    njit = None
+
+
+_NUMBA_CPU_KERNEL = None
+_HUBBARD_GPU_MEMORY_FRACTION = 0.70
+
+
+def _make_numba_cpu_kernel():
+    if njit is None:
+        return None
+
+    @njit(cache=True)
+    def _kernel(phia, phib, inva, invb, weight, ovlp, psi0a, psi0b, delta, aux_wfac, random_fields, rhf):
+        nwalkers = phia.shape[0]
+        nbasis = phia.shape[1]
+        nup = phia.shape[2]
+        ndown = phib.shape[2]
+        for iw in range(nwalkers):
+            if abs(weight[iw]) == 0.0:
+                continue
+            for site in range(nbasis):
+                gup = 0.0 + 0.0j
+                for j in range(nup):
+                    q = 0.0 + 0.0j
+                    for k in range(nup):
+                        q += inva[iw, k, j] * phia[iw, site, k]
+                    gup += numpy.conjugate(psi0a[site, j]) * q
+
+                gdown = 0.0 + 0.0j
+                if ndown > 0 and not rhf:
+                    for j in range(ndown):
+                        q = 0.0 + 0.0j
+                        for k in range(ndown):
+                            q += invb[iw, k, j] * phib[iw, site, k]
+                        gdown += numpy.conjugate(psi0b[site, j]) * q
+                elif ndown > 0 and rhf:
+                    gdown = gup
+
+                prob0 = 0.5 * (1.0 + delta[0, 0] * gup) * (1.0 + delta[0, 1] * gdown) * aux_wfac[0]
+                prob1 = 0.5 * (1.0 + delta[1, 0] * gup) * (1.0 + delta[1, 1] * gdown) * aux_wfac[1]
+                p0_real = prob0.real if prob0.real > 0.0 else 0.0
+                p1_real = prob1.real if prob1.real > 0.0 else 0.0
+                norm = p0_real + p1_real
+                if norm <= 0.0:
+                    weight[iw] = 0.0
+                    break
+
+                p0 = p0_real / norm
+                xi = 0 if random_fields[site, iw] < p0 else 1
+                selected = prob0 if xi == 0 else prob1
+                weight[iw] *= norm
+                ovlp[iw] = 2.0 * ovlp[iw] * selected
+
+                vtup = numpy.empty(nup, dtype=numpy.complex128)
+                for j in range(nup):
+                    vtup[j] = phia[iw, site, j] * delta[xi, 0]
+                    phia[iw, site, j] += vtup[j]
+                _numba_sherman_morrison(inva[iw], numpy.conjugate(psi0a[site]), vtup)
+
+                if ndown > 0 and not rhf:
+                    vtdown = numpy.empty(ndown, dtype=numpy.complex128)
+                    for j in range(ndown):
+                        vtdown[j] = phib[iw, site, j] * delta[xi, 1]
+                        phib[iw, site, j] += vtdown[j]
+                    _numba_sherman_morrison(invb[iw], numpy.conjugate(psi0b[site]), vtdown)
+
+    @njit(cache=True)
+    def _numba_sherman_morrison(ainv, u, vt):
+        nocc = ainv.shape[0]
+        au = numpy.empty(nocc, dtype=numpy.complex128)
+        vta = numpy.empty(nocc, dtype=numpy.complex128)
+        for i in range(nocc):
+            val = 0.0 + 0.0j
+            for k in range(nocc):
+                val += ainv[i, k] * u[k]
+            au[i] = val
+        for j in range(nocc):
+            val = 0.0 + 0.0j
+            for k in range(nocc):
+                val += vt[k] * ainv[k, j]
+            vta[j] = val
+        denom = 1.0 + 0.0j
+        for k in range(nocc):
+            denom += vta[k] * u[k]
+        for i in range(nocc):
+            for j in range(nocc):
+                ainv[i, j] -= au[i] * vta[j] / denom
+
+    return _kernel
+
+
+def _numba_cpu_kernel():
+    global _NUMBA_CPU_KERNEL
+    if _NUMBA_CPU_KERNEL is None:
+        _NUMBA_CPU_KERNEL = _make_numba_cpu_kernel()
+    return _NUMBA_CPU_KERNEL
+
 
 class HubbardSingleSite(HirschBase):
-    """Discrete Hubbard propagator using legacy site-by-site updates."""
+    """Discrete Hubbard propagator with adaptive CPU, einsum, and CUDA paths."""
 
-    def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
-        start_time = time.time()
+    def _batched_sherman_morrison(self, ainv, u, vt):
+        au = xp.einsum("wij,j->wi", ainv, u, optimize=True)
+        vta = xp.einsum("wi,wij->wj", vt, ainv, optimize=True)
+        denom = 1.0 + xp.einsum("wi,i->w", vta, u, optimize=True)
+        update = xp.einsum("wi,wj->wij", au, vta, optimize=True) / denom[:, None, None]
+        return ainv - update
 
-        # Follow the legacy discrete single-site update order exactly:
-        # walker-by-walker, site-by-site, with inverse-overlap updates after
-        # each chosen auxiliary field.
+    def _site_greens_diagonal(self, inv_ovlp, phi, psi0_site, site):
+        q = xp.einsum("wij,wi->wj", inv_ovlp, phi[:, site, :], optimize=True)
+        return xp.einsum("j,wj->w", psi0_site.conj(), q, optimize=True)
+
+    def _legacy_two_body(self, walkers, hamiltonian, trial, random_fields=None):
         for iw in range(walkers.nwalkers):
             if abs(to_host(walkers.weight[iw])) == 0:
                 continue
-
             for i in range(hamiltonian.nbasis):
                 uup = walkers.phia[iw, i, :]
                 q_up = xp.dot(walkers.inv_ovlp_a[iw].T, uup)
                 gup = xp.dot(trial.psi0a[i, :].conj(), q_up)
-
                 gdown = 0.0
                 if walkers.ndown > 0 and not walkers.rhf:
                     udown = walkers.phib[iw, i, :]
@@ -36,29 +141,17 @@ class HubbardSingleSite(HirschBase):
                 r1 = (1.0 + self.delta[0, 0] * gup) * (1.0 + self.delta[0, 1] * gdown)
                 r2 = (1.0 + self.delta[1, 0] * gup) * (1.0 + self.delta[1, 1] * gdown)
                 probs = 0.5 * xp.array([r1, r2], dtype=xp.complex128) * self.aux_wfac
-
                 phaseless_ratio = xp.maximum(probs.real, xp.array([0.0, 0.0]))
                 norm = phaseless_ratio[0] + phaseless_ratio[1]
                 norm_scalar = float(to_host(norm))
-                rnd = float(to_host(xp.random.random()))
-                if self.debug_hubbard and iw == self.debug_iw and i < self.debug_max_sites:
-                    self._debug(
-                        "site_pre",
-                        iw=iw,
-                        site=i,
-                        gii_up=to_host(gup),
-                        gii_dn=to_host(gdown),
-                        probs=to_host(probs),
-                        phaseless_ratio=to_host(phaseless_ratio),
-                        norm=norm_scalar,
-                        rand=rnd,
-                        weight=to_host(walkers.weight[iw]),
-                        ot=to_host(walkers.ovlp[iw]),
-                    )
+                rnd = (
+                    float(to_host(random_fields[i, iw]))
+                    if random_fields is not None
+                    else float(to_host(xp.random.random()))
+                )
                 if norm_scalar <= 0.0:
                     walkers.weight[iw] = 0.0
                     break
-
                 walkers.weight[iw] *= norm
                 p0 = float(to_host(phaseless_ratio[0] / norm))
                 xi = 0 if rnd < p0 else 1
@@ -70,7 +163,6 @@ class HubbardSingleSite(HirschBase):
                     walkers.phib[iw, i, :] = walkers.phib[iw, i, :] + vtdown
                 else:
                     vtdown = None
-
                 walkers.ovlp[iw] = 2.0 * walkers.ovlp[iw] * probs[xi]
                 walkers.inv_ovlp_a[iw] = self._sherman_morrison(
                     walkers.inv_ovlp_a[iw], trial.psi0a[i, :].conj(), vtup
@@ -79,17 +171,299 @@ class HubbardSingleSite(HirschBase):
                     walkers.inv_ovlp_b[iw] = self._sherman_morrison(
                         walkers.inv_ovlp_b[iw], trial.psi0b[i, :].conj(), vtdown
                     )
-                if self.debug_hubbard and iw == self.debug_iw and i < self.debug_max_sites:
-                    self._debug(
-                        "site_post",
-                        iw=iw,
-                        site=i,
-                        xi=xi,
-                        weight=to_host(walkers.weight[iw]),
-                        ot=to_host(walkers.ovlp[iw]),
-                        vtup=to_host(vtup),
-                        vtdown=None if vtdown is None else to_host(vtdown),
-                    )
+
+    def _cpu_numba_two_body(self, walkers, hamiltonian, trial, random_fields):
+        kernel = _numba_cpu_kernel()
+        if kernel is None:
+            self._legacy_two_body(walkers, hamiltonian, trial, random_fields=random_fields)
+            return
+        kernel(
+            walkers.phia,
+            walkers.phib,
+            walkers.inv_ovlp_a,
+            walkers.inv_ovlp_b,
+            walkers.weight,
+            walkers.ovlp,
+            numpy.asarray(trial.psi0a, dtype=numpy.complex128),
+            numpy.asarray(trial.psi0b, dtype=numpy.complex128),
+            numpy.asarray(self.delta, dtype=numpy.complex128),
+            numpy.asarray(self.aux_wfac, dtype=numpy.complex128),
+            numpy.asarray(random_fields, dtype=numpy.float64),
+            bool(walkers.rhf),
+        )
+
+    def _einsum_two_body(self, walkers, hamiltonian, trial, random_fields):
+        zero = xp.asarray(0.0)
+        for i in range(hamiltonian.nbasis):
+            gup = self._site_greens_diagonal(walkers.inv_ovlp_a, walkers.phia, trial.psi0a[i], i)
+            if walkers.ndown > 0 and not walkers.rhf:
+                gdown = self._site_greens_diagonal(
+                    walkers.inv_ovlp_b, walkers.phib, trial.psi0b[i], i
+                )
+            elif walkers.ndown > 0 and walkers.rhf:
+                gdown = gup
+            else:
+                gdown = zero
+
+            r1 = (1.0 + self.delta[0, 0] * gup) * (1.0 + self.delta[0, 1] * gdown)
+            r2 = (1.0 + self.delta[1, 0] * gup) * (1.0 + self.delta[1, 1] * gdown)
+            probs = 0.5 * xp.stack([r1, r2], axis=1) * self.aux_wfac[None, :]
+            phaseless_ratio = xp.maximum(probs.real, 0.0)
+            norm = xp.sum(phaseless_ratio, axis=1)
+            live = (norm > 0.0) & (xp.abs(walkers.weight) > 0.0)
+
+            norm_safe = xp.where(live, norm, 1.0)
+            p0 = xp.where(live, phaseless_ratio[:, 0] / norm_safe, 1.0)
+            xi = (random_fields[i] >= p0).astype(numpy.int32)
+            selected = probs[xp.arange(walkers.nwalkers), xi]
+
+            walkers.weight *= xp.where(live, norm, 0.0)
+            walkers.ovlp[...] = xp.where(live, 2.0 * walkers.ovlp * selected, walkers.ovlp)
+
+            vtup = walkers.phia[:, i, :] * self.delta[xi, 0][:, None]
+            vtup = xp.where(live[:, None], vtup, 0.0)
+            walkers.phia[:, i, :] += vtup
+            walkers.inv_ovlp_a[...] = self._batched_sherman_morrison(
+                walkers.inv_ovlp_a, trial.psi0a[i, :].conj(), vtup
+            )
+
+            if walkers.ndown > 0 and not walkers.rhf:
+                vtdown = walkers.phib[:, i, :] * self.delta[xi, 1][:, None]
+                vtdown = xp.where(live[:, None], vtdown, 0.0)
+                walkers.phib[:, i, :] += vtdown
+                walkers.inv_ovlp_b[...] = self._batched_sherman_morrison(
+                    walkers.inv_ovlp_b, trial.psi0b[i, :].conj(), vtdown
+                )
+
+    def _ensure_buffers(self, walkers):
+        shape = (walkers.nwalkers, walkers.nup, walkers.ndown)
+        if getattr(self, "_buffer_shape", None) == shape:
+            return
+        self._buffer_shape = shape
+        self._vtup = xp.empty((walkers.nwalkers, walkers.nup), dtype=xp.complex128)
+        self._vtdown = xp.empty((walkers.nwalkers, walkers.ndown), dtype=xp.complex128)
+        self._xi = xp.empty(walkers.nwalkers, dtype=numpy.int32)
+        self._live = xp.empty(walkers.nwalkers, dtype=numpy.int8)
+        max_occ = max(walkers.nup, walkers.ndown)
+        self._large_sm_au = xp.empty((walkers.nwalkers, max_occ), dtype=xp.complex128)
+        self._large_sm_vta = xp.empty((walkers.nwalkers, max_occ), dtype=xp.complex128)
+        self._large_sm_denom = xp.empty(walkers.nwalkers, dtype=xp.complex128)
+
+    def _complex_trial_orbitals(self, trial):
+        key = (id(trial.psi0a), id(trial.psi0b), trial.psi0a.shape, trial.psi0b.shape)
+        if getattr(self, "_trial_buffer_key", None) != key:
+            self._trial_buffer_key = key
+            self._psi0a_complex = xp.ascontiguousarray(
+                xp.asarray(trial.psi0a, dtype=xp.complex128)
+            )
+            self._psi0b_complex = xp.ascontiguousarray(
+                xp.asarray(trial.psi0b, dtype=xp.complex128)
+            )
+        return self._psi0a_complex, self._psi0b_complex
+
+    def _ensure_cuda_arrays_contiguous(self, walkers):
+        walkers.phia = xp.ascontiguousarray(walkers.phia)
+        if walkers.phib is not None:
+            walkers.phib = xp.ascontiguousarray(walkers.phib)
+        walkers.inv_ovlp_a = xp.ascontiguousarray(walkers.inv_ovlp_a)
+        if walkers.inv_ovlp_b is not None:
+            walkers.inv_ovlp_b = xp.ascontiguousarray(walkers.inv_ovlp_b)
+        walkers.weight = xp.ascontiguousarray(walkers.weight)
+        walkers.ovlp = xp.ascontiguousarray(walkers.ovlp)
+
+    def _sm_thread_count(self, nocc):
+        threads = 1
+        while threads < nocc:
+            threads *= 2
+        return min(max(threads, 32), 256)
+
+    def _site_thread_count(self, nocc):
+        if nocc >= 48:
+            return 256
+        if nocc >= 16:
+            return 128
+        return 0
+
+    def _large_apply_kernel(self, kernels):
+        block = (16, 16)
+        shared_mem = (block[0] + block[1] + 1) * numpy.dtype(numpy.complex128).itemsize
+        return kernels["sherman_morrison_apply_large"], shared_mem
+
+    def _launch_sherman_morrison(self, kernel, inv, psi_site, vt, nwalkers, nocc):
+        threads = self._sm_thread_count(nocc)
+        shared_mem = (2 * nocc + 1) * numpy.dtype(numpy.complex128).itemsize
+        kernel((nwalkers,), (threads,), (inv, psi_site, vt, nwalkers, nocc), shared_mem=shared_mem)
+
+    def _launch_sherman_morrison_cublas_large(self, apply_kernel, inv, psi_site, vt, nwalkers, nocc):
+        u = xp.conj(psi_site)
+        self._large_sm_au[:, :nocc] = xp.matmul(inv, u)
+        self._large_sm_vta[:, :nocc] = xp.matmul(vt[:, None, :], inv)[:, 0, :]
+        self._large_sm_denom[:nwalkers] = 1.0 + xp.einsum(
+            "wi,i->w", self._large_sm_vta[:, :nocc], u, optimize=True
+        )
+        block = (16, 16)
+        grid = ((nocc + block[0] - 1) // block[0], (nocc + block[1] - 1) // block[1], nwalkers)
+        apply_kernel(
+            grid,
+            block,
+            (inv, self._large_sm_au, self._large_sm_vta, self._large_sm_denom, nwalkers, nocc),
+            shared_mem=getattr(self, "_large_apply_shared_mem", 0),
+        )
+
+    def _launch_sherman_morrison_auto(self, kernels, inv, psi_site, vt, nwalkers, nocc):
+        shared_mem = (2 * nocc + 1) * numpy.dtype(numpy.complex128).itemsize
+        if shared_mem <= 48 * 1024:
+            self._launch_sherman_morrison(kernels["sherman_morrison"], inv, psi_site, vt, nwalkers, nocc)
+        else:
+            apply_kernel, apply_shared_mem = self._large_apply_kernel(kernels)
+            self._large_apply_shared_mem = apply_shared_mem
+            self._launch_sherman_morrison_cublas_large(apply_kernel, inv, psi_site, vt, nwalkers, nocc)
+
+    def _cuda_two_body(self, walkers, hamiltonian, trial, random_fields):
+        from ipie.propagation.kernels.gpu.hubbard import get_hubbard_single_site_kernels
+
+        self._ensure_buffers(walkers)
+        psi0a, psi0b = self._complex_trial_orbitals(trial)
+        kernels = get_hubbard_single_site_kernels()
+        site_kernel = kernels["site_update"]
+        site_kernel_parallel = kernels["site_update_parallel"]
+        threads = 128
+        blocks = ((walkers.nwalkers + threads - 1) // threads,)
+        parallel_site_threads = self._site_thread_count(walkers.nup)
+        use_parallel_site = parallel_site_threads > 0
+
+        for i in range(hamiltonian.nbasis):
+            site_args = (
+                walkers.phia, walkers.phib, walkers.inv_ovlp_a, walkers.inv_ovlp_b,
+                psi0a, psi0b, self.delta, self.aux_wfac, random_fields[i], walkers.weight,
+                walkers.ovlp, self._vtup, self._vtdown, self._xi, self._live, i,
+                walkers.nwalkers, hamiltonian.nbasis, walkers.nup, walkers.ndown, int(walkers.rhf),
+            )
+            if use_parallel_site:
+                site_kernel_parallel(
+                    (walkers.nwalkers,),
+                    (parallel_site_threads,),
+                    site_args,
+                    shared_mem=4 * parallel_site_threads * numpy.dtype(numpy.float64).itemsize,
+                )
+            else:
+                site_kernel(blocks, (threads,), site_args)
+            self._launch_sherman_morrison_auto(kernels, walkers.inv_ovlp_a, psi0a[i, :], self._vtup, walkers.nwalkers, walkers.nup)
+            self._launch_sherman_morrison_auto(kernels, walkers.inv_ovlp_b, psi0b[i, :], self._vtdown, walkers.nwalkers, walkers.ndown)
+
+    def _is_nvidia_gpu(self):
+        if not hasattr(xp, "RawKernel"):
+            return False
+        try:
+            props = xp.cuda.runtime.getDeviceProperties(xp.cuda.Device().id)
+            name = props.get("name", b"")
+            if isinstance(name, bytes):
+                name = name.decode("utf-8", errors="ignore")
+            return "NVIDIA" in name.upper() or "CUDA" in name.upper()
+        except Exception:
+            return True
+
+    def _estimate_path_bytes(self, walkers, hamiltonian, path):
+        complex_bytes = numpy.dtype(numpy.complex128).itemsize
+        float_bytes = numpy.dtype(numpy.float64).itemsize
+        int_bytes = numpy.dtype(numpy.int32).itemsize
+        nbasis = hamiltonian.nbasis
+        nocc = max(walkers.nup, walkers.ndown)
+        per_walker = (
+            2 * nbasis * nocc * complex_bytes
+            + 2 * nocc * nocc * complex_bytes
+            + 2 * nocc * complex_bytes
+            + 2 * complex_bytes
+            + float_bytes
+            + int_bytes
+        )
+        if path == "einsum":
+            per_walker += 2 * nocc * nocc * complex_bytes
+        static = 2 * nbasis * nocc * complex_bytes + nbasis * walkers.nwalkers * float_bytes
+        return static, per_walker
+
+    def _safe_chunk_size(self, walkers, hamiltonian, path):
+        if not hasattr(xp, "cuda"):
+            return walkers.nwalkers
+        try:
+            free_bytes, _ = xp.cuda.Device().mem_info
+        except Exception:
+            return walkers.nwalkers
+        static, per_walker = self._estimate_path_bytes(walkers, hamiltonian, path)
+        available = int(free_bytes * _HUBBARD_GPU_MEMORY_FRACTION) - static
+        if available <= per_walker:
+            return 1
+        return max(1, min(walkers.nwalkers, available // per_walker))
+
+    def _choose_path(self, walkers, hamiltonian):
+        if not hasattr(xp, "RawKernel"):
+            return "cpu_numba"
+        if not self._is_nvidia_gpu() or walkers.rhf or walkers.ndown == 0:
+            return "einsum"
+        einsum_chunk = self._safe_chunk_size(walkers, hamiltonian, "einsum")
+        cuda_chunk = self._safe_chunk_size(walkers, hamiltonian, "cuda")
+        if einsum_chunk < walkers.nwalkers and cuda_chunk >= walkers.nwalkers:
+            return "cuda"
+        if hamiltonian.nbasis <= 484:
+            return "cuda"
+        return "einsum"
+
+    def _walker_view(self, walkers, start, stop):
+        return SimpleNamespace(
+            nwalkers=stop - start,
+            nup=walkers.nup,
+            ndown=walkers.ndown,
+            nbasis=walkers.nbasis,
+            rhf=walkers.rhf,
+            weight=walkers.weight[start:stop],
+            ovlp=walkers.ovlp[start:stop],
+            phia=walkers.phia[start:stop],
+            phib=walkers.phib[start:stop],
+            inv_ovlp_a=walkers.inv_ovlp_a[start:stop],
+            inv_ovlp_b=walkers.inv_ovlp_b[start:stop],
+        )
+
+    def _run_gpu_path_chunked(self, path, walkers, hamiltonian, trial, random_fields):
+        if path == "cuda":
+            self._ensure_cuda_arrays_contiguous(walkers)
+        chunk_size = self._safe_chunk_size(walkers, hamiltonian, path)
+        start = 0
+        while start < walkers.nwalkers:
+            stop = min(walkers.nwalkers, start + chunk_size)
+            chunk = self._walker_view(walkers, start, stop)
+            chunk_fields = random_fields[:, start:stop]
+            if path == "cuda":
+                self._cuda_two_body(chunk, hamiltonian, trial, chunk_fields)
+            else:
+                self._einsum_two_body(chunk, hamiltonian, trial, chunk_fields)
+            start = stop
+
+    def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
+        start_time = time.time()
+        path = self._choose_path(walkers, hamiltonian)
+        if not hasattr(xp, "RawKernel"):
+            random_fields = numpy.random.random((hamiltonian.nbasis, walkers.nwalkers))
+        else:
+            random_fields = xp.random.random((hamiltonian.nbasis, walkers.nwalkers), dtype=xp.float64)
+
+        try:
+            if path == "cpu_legacy":
+                self._legacy_two_body(walkers, hamiltonian, trial, random_fields=random_fields)
+            elif path == "cpu_numba":
+                self._cpu_numba_two_body(walkers, hamiltonian, trial, random_fields)
+            elif path == "cuda":
+                self._run_gpu_path_chunked("cuda", walkers, hamiltonian, trial, random_fields)
+            elif path == "einsum":
+                self._run_gpu_path_chunked("einsum", walkers, hamiltonian, trial, random_fields)
+            else:
+                raise ValueError(f"Unknown Hubbard propagation path {path}")
+        except Exception as exc:
+            is_oom = hasattr(xp, "cuda") and isinstance(exc, xp.cuda.memory.OutOfMemoryError)
+            if not is_oom or path not in ("cuda", "einsum"):
+                raise
+            xp.get_default_memory_pool().free_all_blocks()
+            fallback = "einsum" if path == "cuda" else "cuda"
+            self._run_gpu_path_chunked(fallback, walkers, hamiltonian, trial, random_fields)
 
         synchronize()
         self.timer.tgf += time.time() - start_time

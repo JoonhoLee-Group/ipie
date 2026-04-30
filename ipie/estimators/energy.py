@@ -76,11 +76,13 @@ def local_energy(
     trial: SingleDet,
 ):
     e1b = (
-        xp.einsum("ij,wji->w", hamiltonian.T[0], walkers.Ga)
-        + xp.einsum("ij,wji->w", hamiltonian.T[1], walkers.Gb)
+        xp.einsum("ij,wji->w", hamiltonian.T[0], walkers.Ga, optimize=True)
+        + xp.einsum("ij,wji->w", hamiltonian.T[1], walkers.Gb, optimize=True)
         + hamiltonian.ecore
     )
-    e2b = hamiltonian.U * xp.einsum("wii,wii->w", walkers.Ga, walkers.Gb)
+    nia = xp.diagonal(walkers.Ga, axis1=1, axis2=2)
+    nib = xp.diagonal(walkers.Gb, axis1=1, axis2=2)
+    e2b = hamiltonian.U * xp.sum(nia * nib, axis=1)
     etot = e1b + e2b
     return xp.stack([etot, e1b, e2b], axis=1)
 

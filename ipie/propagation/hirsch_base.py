@@ -178,10 +178,13 @@ class HirschBase(ContinuousBase):
         synchronize()
         if walkers.ovlp is None or len(walkers.ovlp) != walkers.nwalkers:
             walkers.ovlp = trial.calc_overlap(walkers)
+        ovlp = walkers.ovlp.copy()
 
         self.kinetic_importance_sampling(walkers, trial)
         self.propagate_walkers_two_body(walkers, hamiltonian, trial)
         self.kinetic_importance_sampling(walkers, trial)
+        ovlp_ratio = walkers.ovlp / ovlp
+        walkers.hybrid_energy = (-(xp.log(ovlp_ratio)) / self.dt).real
 
         walkers.weight *= numpy.exp(self.dt * eshift)
 
