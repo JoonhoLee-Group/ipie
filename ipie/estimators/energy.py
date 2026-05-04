@@ -63,6 +63,9 @@ from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.backend import arraylib as xp
 from ipie.walkers.ghf_walkers import GHFWalkers
 
+##### Extended energy estimator
+from ipie.hamiltonians.generic_ithc import *
+from ipie.estimators.local_energy_ithc import *
 
 @plum.dispatch
 def local_energy(
@@ -181,6 +184,15 @@ def local_energy(
     system: Generic, hamiltonian: GenericRealISDFChunked, walkers: UHFWalkers, trial: SingleDet
 ):
     return local_energy_single_det_uhf_batch_isdf_chunked_gpu(system, hamiltonian, walkers, trial)
+
+@plum.dispatch
+def local_energy(
+    system: Generic,
+    hamiltonian: GenericITHC, 
+    walkers: UHFWalkers, 
+    trial: SingleDet, 
+):  
+    return local_energy_single_det_uhf_ithc(system, hamiltonian, walkers, trial)
 
 
 class EnergyEstimator(EstimatorBase):
