@@ -5,13 +5,13 @@ from ipie.utils.backend import cast_to_device
 from ipie.hamiltonians.generic_base import GenericBase
 
 
-def conjmat(M): #conjugates a matrix
+def conjmat(M): #conjugates and transposes a matrix
     return np.conjugate(M.T)
 
 
 
 def import_Hamiltonian(path_to_hamiltonian,path_to_isometry):
-    """Imports the one-electron, two-electron parts and an Isometry U to transform
+    """Imports the one-electron, two-electron parts and an Isometry to transform
      into an extended basis"""
 
     with h5py.File(path_to_hamiltonian, "r") as f:
@@ -27,6 +27,7 @@ def import_Hamiltonian(path_to_hamiltonian,path_to_isometry):
     return V_nuc, V_e, kin_e, kin_nuc, isometry
 
 def eri_diag(isometry,eri, tol=1e-13):
+    """Transform the two-electron part into the extended basis set via an Isometry"""
         no,m = isometry.shape #shape 2x3
         rcond = tol
         MV = eri.reshape(no*no,no*no) #reshape of eri 4x4
@@ -44,7 +45,7 @@ def eri_diag(isometry,eri, tol=1e-13):
 def mat_decomp(A, tol=None):
     """
     For real symmetric A, returns C (possibly complex) such that:
-        A ≈ C.T @ C     (NOTE: transpose, not conjugate-transpose)
+        A ≈ C.T @ C  
     If truncate_zeros=True, drops (near-)zero eigenvalues/columns.
     """
     A = np.asarray(A)
@@ -67,8 +68,8 @@ class GenericITHC(GenericBase):
     T: one body terms
     W: two body terms in the extended basis
     Isometry: Transformation into extended basis set
-    n_old: Size of original space
-    n_new:Size of extended space
+    nbasis: Size of original space
+    nbasis_extended: Size of extended space
     """
 
     def __init__(self, h1e, isometry,W, ecore=0.0,verbose = False ): #needs the one body and eri as an input
@@ -101,6 +102,7 @@ class GenericITHC(GenericBase):
         return 
     
     def isometry_test(self):
+        """Tests wether the input is an isometry"""
         test_matrix_l= self.isometry @ conjmat(self.isometry)
         test_matrix_r= conjmat(self.isometry) @ self.isometry 
         epsilon_l= np.linalg.norm(test_matrix_l - np.eye(self.nbasis))
