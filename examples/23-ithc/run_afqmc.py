@@ -1,4 +1,4 @@
-"""Run an ithc AFQMC calculation."""
+"""Run an ithc AFQMC calculation for a H10 chain."""
 
 import numpy as np
 np.set_printoptions(suppress = True)
@@ -76,10 +76,10 @@ def construct_trial(hamilpath):
     return trial, mol.nelec
 
 hamil = construct_hamil("hamiltonian.h5")
-trial, nelec = construct_trial("hamiltonian.h5")
-print(nelec)
-print(f"Shape of trial.psi0a: {np.shape(trial.psi0a)}")
-print(f"Shape of isometry: {np.shape(hamil.isometry)}")
+trial, nelec = construct_trial("hamiltonian.h5") #contains isometry and hamiltonian data
+#print(nelec)
+#print(f"Shape of trial.psi0a: {np.shape(trial.psi0a)}")
+#print(f"Shape of isometry: {np.shape(hamil.isometry)}")
 num_walkers = 100
 num_steps_per_block = 25
 num_blocks = 10 # Adjust this in practice
