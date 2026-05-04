@@ -7,6 +7,9 @@ from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
 from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
+
+from ipie.hamiltonians.generic_ithc import GenericITHC
+
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.mpi import get_shared_array
 
@@ -565,3 +568,46 @@ def half_rotate_isdf(
         rot_cgtob = np.einsum("Jkpi, kPp -> JkPi", orbsb, cgto, optimize=True)
 
     return (rH1a, rH1b), (rot_cgtoa, rot_cgtob)
+
+
+def half_rotate_ithc(
+    trial: TrialWavefunctionBase,
+    hamiltonian: GenericITHC,
+    comm,
+    orbsa: np.ndarray, #needs to be an array (norbitals,nelec)
+    orbsb: np.ndarray,
+    ndets: int = 1, #only for single determinants
+    verbose: bool = False,
+):
+    if verbose:
+        print("# Constructing half rotated trial.")
+    assert len(orbsa.shape) == 3
+    assert len(orbsb.shape) == 3
+    #assert orbsa.shape[0] == ndets
+    #assert orbsb.shape[0] == ndets
+
+    M = hamiltonian.nbasis
+    na = orbsa.shape[-1] #nelec
+    nb = orbsb.shape[-1]
+    isometry= hamiltonian.isometry
+    # start = i*M*(na+nb)
+    start_a = 0  # determinant loops
+    start_b = 0
+    compute = True
+
+    print(orbsa.shape)
+
+    rH1a = np.einsum("Jpi,pq->Jiq", orbsa.conj(), hamiltonian.H1[0], optimize=True)
+    rH1b = np.einsum("Jpi,pq->Jiq", orbsb.conj(), hamiltonian.H1[1], optimize=True)
+
+    # orbsa_rotated= np.einsum("ja,ai,ik->ajk",U,np.transpose(U),orbsa)
+    # orbsb_rotated= np.einsum("ja,ai,ik->ajk",U,np.transpose(U),orbsb)
+
+    rpsia = np.einsum("ap,Jpi-> Jai", hamiltonian.isometry.T , orbsa)
+    rpsib = np.einsum("ap,Jpi-> Jai", hamiltonian.isometry.T , orbsb)
+
+    if comm is not None:
+        comm.barrier()
+
+    # storing rotated trial
+    return (rH1a,rH1b), (rpsia, rpsib)

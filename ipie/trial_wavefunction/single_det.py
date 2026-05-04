@@ -16,6 +16,10 @@ from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
 from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.chunked_isdf import GenericRealISDFChunked
+
+from ipie.hamiltonians.generic_ithc import GenericITHC
+
+
 from ipie.propagation.force_bias import (
     construct_force_bias_batch_single_det,
     construct_force_bias_batch_single_det_chunked,
@@ -29,6 +33,7 @@ from ipie.trial_wavefunction.half_rotate import (
     half_rotate_generic,
     half_rotate_chunked,
     half_rotate_isdf,
+    half_rotate_ithc,
 )
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
@@ -204,6 +209,44 @@ class SingleDet(TrialWavefunctionBase):
         self._rcgtoa = rot_cgto[0][0]
         self._rcgtob = rot_cgto[1][0]
         self.half_rotated = True
+
+
+
+    @plum.dispatch
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: GenericITHC,
+        comm: Optional[CommType] = MPIHandler().scomm,
+    ):
+        num_dets = 1
+        orbsa = self.psi0a.reshape((num_dets, self.nbasis, self.nalpha))
+        orbsb = self.psi0b.reshape((num_dets, self.nbasis, self.nbeta))
+        rot_1body, rot_psi = half_rotate_ithc(
+            self,
+            hamiltonian,
+            comm,
+            orbsa,
+            orbsb,
+            ndets=num_dets,
+            verbose=self.verbose,
+        )
+        
+        self._rH1a = rot_1body[0][0]
+        self._rH1b = rot_1body[1][0]
+        # self._rchola = orbsa_rotated
+        # self._rcholb = orbsb_rotated
+
+        # print(self.psi0a.shape)
+        # print(type(hamiltonian.U))
+        # print(type(self.psi0a))
+        self._psi0a_transformed =  rot_psi[0][0]
+        self._psi0b_transformed =  rot_psi[1][0]
+
+        print(type(self._psi0a_transformed))
+
+        self.half_rotated = True
+        return 
+
 
     def calc_overlap(self, walkers) -> numpy.ndarray:
         return calc_overlap_single_det_uhf(walkers, self)
