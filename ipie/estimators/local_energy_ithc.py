@@ -14,24 +14,26 @@ from ipie.utils.misc import is_cupy
 import plum
 
 
-def greens_function_ithc(psi0_extended, GHalf_ori, U):
+def greens_function_ithc(psi0_extended, GHalf_ori, isometry):
+    """Calculates the single particle greens function in an extended basis set """
     
-    nori, nextend = U.shape
+    nori, nextend = Isometry.shape
     nwalkers, nelecs, nori = GHalf_ori.shape
     
     if is_cupy(psi0_extended):
-        GHalf_extended = xp.einsum("wip,pa->wia",GHalf_ori, U)
+        GHalf_extended = xp.einsum("wip,pa->wia",GHalf_ori, isometry)
         G_extended = xp.einsum("ai,wib->wab", psi0_extended.conj(), GHalf_extended)
         
     else:
         G_extended = xp.zeros(shape=(nwalkers, nextend, nextend), dtype=xp.complex128)
         for iw in range(nwalkers):
-            GHalf_extended = GHalf_ori[iw] @ U
+            GHalf_extended = GHalf_ori[iw] @ isometry
             G_extended[iw] = psi0_extended.conj() @ GHalf_extended
 
     return G_extended
 
-def compute_pe_batched(trial, walkers, U, W, batch_size=32):
+def compute_pe_batched(trial, walkers, isometry, W, batch_size=32):
+    """Pre computes the two-body energy """
     nwalkers = walkers.Ghalfa.shape[0]
     e2 = xp.empty(nwalkers, dtype=walkers.Ghalfa.dtype)
 
@@ -41,12 +43,12 @@ def compute_pe_batched(trial, walkers, U, W, batch_size=32):
         Ga = greens_function_ithc(
             trial._psi0a_transformed,
             walkers.Ghalfa[start:end],
-            U
+            isometry
         )
         Gb = greens_function_ithc(
             trial._psi0b_transformed,
             walkers.Ghalfb[start:end],
-            U
+            isometry
         )
 
         na = xp.einsum("wii->wi", Ga, optimize=True)
@@ -68,7 +70,7 @@ def compute_pe_batched(trial, walkers, U, W, batch_size=32):
 
 @plum.dispatch
 def local_energy_single_det_uhf_ithc(system: Generic, hamiltonian: GenericITHC, walkers: UHFWalkers, trial: SingleDet):
-
+"""Computes the local energy of a single SD for ithc """
     isometry= hamiltonian.isometry
     W= hamiltonian.W
 
