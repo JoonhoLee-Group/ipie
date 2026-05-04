@@ -44,6 +44,7 @@ def construct_mean_field_shift(hamiltonian: GenericITHC, trial: SingleDet):
     return mf_shift #dimension (n_fields,)
 
 def calc_noper_extended(psi0, psi0_extended, phi_batch, phi_extended_batch):
+    """Applies operators in the extended basis set"""
     assert psi0.shape == phi_batch.shape[1:], "dimenstion dismatch!"
     nwalkers, nbasis, nelecs = phi_extended_batch.shape
 
@@ -69,7 +70,7 @@ def apply_diag_oper(phi, BV):
 
 
 class PhaselessITHC(PhaselessBase):
-    """A class for continuous HS transform with extended basis set AFQMC propagators."""
+    """A class for continuous HS transform with extended basis set ithc-AFQMC propagators."""
 
     def __init__(self, time_step, ebound_const=2.0, fbbound=1.0, verbose=False):
         super().__init__(time_step, ebound_const=ebound_const, fbbound=fbbound, verbose=verbose)
@@ -135,12 +136,12 @@ class PhaselessITHC(PhaselessBase):
         # force bias
         
         start_time = time.time()
-        phia_transformed = apply_isometry(walkers.phia, self.isometry,reverse=True)
+        phia_transformed = apply_isometry(walkers.phia, self.isometry,reverse=True) #first transform into extended basis set 
         phib_transformed = apply_isometry(walkers.phib, self.isometry,reverse=True)
         self.timer.tgemm += time.time() - start_time
 
         start_time = time.time()
-        na = calc_noper_extended(trial.psi0a, trial._psi0a_transformed, walkers.phia, phia_transformed)
+        na = calc_noper_extended(trial.psi0a, trial._psi0a_transformed, walkers.phia, phia_transformed) #calculate greens function in extended basis
         nb = calc_noper_extended(trial.psi0b, trial._psi0b_transformed, walkers.phib, phib_transformed)
         na = self.apply_bound_force_bias(na, 1.0)
         nb = self.apply_bound_force_bias(nb, 1.0)
@@ -160,10 +161,10 @@ class PhaselessITHC(PhaselessBase):
         propagator_a = xp.exp(Ta)
         propagator_b = xp.exp(Tb)
 
-        apply_diag_oper(phia_transformed, propagator_a)
+        apply_diag_oper(phia_transformed, propagator_a) #apply diagonal propagator in extended space
         apply_diag_oper(phib_transformed, propagator_b)
 
-        walkers.phia=apply_isometry(phia_transformed, self.isometry,reverse=False)
+        walkers.phia=apply_isometry(phia_transformed, self.isometry,reverse=False) #rotate back to original space
         walkers.phib=apply_isometry(phib_transformed, self.isometry,reverse=False)
 
         synchronize()
