@@ -116,3 +116,43 @@ def apply_exponential_batch(phi, VHS, exp_nmax):
     synchronize()
 
     return phi
+
+def conjmat(M): #conjugates a matrix
+    return xp.conjugate(M.T)
+
+def apply_isometry(phi, Isometry,reverse=False):
+    r"""Propagate by the unitary transfrom by direct matrix multiplication.
+
+    Parameters
+    ----------
+    walker : :class:`pie.walker.Walker`
+        Walker object to be updated. on output we have acted on
+        :math:`|\phi_i\rangle` by :math:`B_{T/2}` and updated the weight
+        appropriately.  updates inplace.
+    state : :class:`pie.state.State`
+        Simulation state.
+    """
+    # Assuming that our walker is in UHF form.
+    n_walkers= phi.shape[0]
+    n_electrons= phi.shape[2]
+    
+ 
+    if reverse:
+        Ueff = conjmat(Isometry)
+
+    else:
+        Ueff = Isometry
+    n_old=xp.shape(Ueff)[1]
+    n_new=xp.shape(Ueff)[0]
+
+
+    if is_cupy(Ueff):
+        # GPU-efficient batched matrix multiply
+        phi_trans = xp.einsum("ik,wkj->wij", Ueff, phi, optimize=True)
+    else:
+        # CPU: explicit loop is much faster
+        phi_trans = xp.zeros((n_walkers ,n_new, n_electrons), dtype=phi.dtype)
+        for iw in range(n_walkers):
+            phi_trans[iw] = Ueff@ phi[iw] #replace with tensor operation?
+
+    return phi_trans

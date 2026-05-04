@@ -18,6 +18,9 @@ from ipie.propagation.phaseless_kpt import (
     PhaselessKptCholChunked,
     PhaselessKptISDF,
 )
+from ipie.hamiltonians.generic_ithc import GenericITHC
+from ipie.propagation.phaseless_ithc import PhaselessITHC
+
 
 # Propagator = {GenericRealChol: PhaselessGeneric, GenericComplexChol: PhaselessGeneric}
 Propagator = {
@@ -30,4 +33,6 @@ Propagator = {
     KptComplexCholSymm: PhaselessKptChol,
     KptComplexCholChunked: PhaselessKptCholChunked,
     KptISDF: PhaselessKptISDF,
+
+    GenericITHC: PhaselessITHC,
 }
