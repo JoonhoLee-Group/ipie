@@ -70,7 +70,7 @@ def compute_pe_batched(trial, walkers, isometry, W, batch_size=32):
 
 @plum.dispatch
 def local_energy_single_det_uhf_ithc(system: Generic, hamiltonian: GenericITHC, walkers: UHFWalkers, trial: SingleDet):
-"""Computes the local energy of a single SD for ithc """
+    """Computes the local energy of a single SD for ithc """
     isometry= hamiltonian.isometry
     W= hamiltonian.W
 
