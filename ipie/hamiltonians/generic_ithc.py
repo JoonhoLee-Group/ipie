@@ -28,18 +28,18 @@ def import_Hamiltonian(path_to_hamiltonian,path_to_isometry):
 
 def eri_diag(isometry,eri, tol=1e-13):
     """Transform the two-electron part into the extended basis set via an Isometry"""
-        no,m = isometry.shape #shape 2x3
-        rcond = tol
-        MV = eri.reshape(no*no,no*no) #reshape of eri 4x4
-        B = np.einsum('ix,jx->ijx', isometry, isometry) 
-        MB = B.reshape(no**2,m) #4x3
-        Binv = np.linalg.pinv(MB,rcond=rcond) #inverse of B 3x4
-        W = Binv@MV@conjmat(Binv) #diagonal eri 3x3
-        #T = Binv@(kin_e.flatten()) #kinetic terms 
-        #P = Binv@(kin_nuc.flatten()) 
-        errV = np.linalg.norm(MB @ W @ conjmat(MB) - MV)/np.linalg.norm(MV)
-        #print("Error eri=",errV)
-        return W #,T,P #change this to input
+    no,m = isometry.shape #shape 2x3
+    rcond = tol
+    MV = eri.reshape(no*no,no*no) #reshape of eri 4x4
+    B = np.einsum('ix,jx->ijx', isometry, isometry) 
+    MB = B.reshape(no**2,m) #4x3
+    Binv = np.linalg.pinv(MB,rcond=rcond) #inverse of B 3x4
+    W = Binv@MV@conjmat(Binv) #diagonal eri 3x3
+    #T = Binv@(kin_e.flatten()) #kinetic terms 
+    #P = Binv@(kin_nuc.flatten()) 
+    errV = np.linalg.norm(MB @ W @ conjmat(MB) - MV)/np.linalg.norm(MV)
+    #print("Error eri=",errV)
+    return W #,T,P #change this to input
 
 
 def mat_decomp(A, tol=None):
