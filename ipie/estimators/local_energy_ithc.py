@@ -17,7 +17,7 @@ import plum
 def greens_function_ithc(psi0_extended, GHalf_ori, isometry):
     """Calculates the single particle greens function in an extended basis set """
     
-    nori, nextend = Isometry.shape
+    nori, nextend = isometry.shape
     nwalkers, nelecs, nori = GHalf_ori.shape
     
     if is_cupy(psi0_extended):
