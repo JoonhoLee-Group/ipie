@@ -152,8 +152,8 @@ def test_single_det_complex_ghf():
     numpy.testing.assert_almost_equal(energy_ref, trial.energy, decimal=10)
 
 
-#@pytest.mark.unit
-#def test_single_det_ghf_from_uhf():
+# @pytest.mark.unit
+# def test_single_det_ghf_from_uhf():
 #    nbasis = 10
 #    naux = 5 * nbasis
 #    nalpha, nbeta = (5, 7)
