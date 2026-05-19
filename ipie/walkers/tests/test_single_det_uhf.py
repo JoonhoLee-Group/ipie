@@ -99,6 +99,40 @@ def test_overlap_batch():
 
 
 @pytest.mark.unit
+def test_inverse_overlap_matches_einsum_reference():
+    nelec = (5, 5)
+    nwalkers = 10
+    nmo = 10
+    qmc = dotdict(
+        {
+            "dt": 0.005,
+            "nstblz": 5,
+            "nwalkers": nwalkers,
+            "batched": True,
+            "hybrid": True,
+            "num_steps": 5,
+        }
+    )
+    batched_data = build_test_case_handlers(
+        nelec,
+        nmo,
+        num_dets=1,
+        complex_trial=True,
+        options=qmc,
+        seed=11,
+    )
+    walkers = batched_data.walkers
+    trial = batched_data.trial
+    ovlp_a_ref = numpy.einsum("mi,wmj->wij", trial.psi0a.conj(), walkers.phia)
+    ovlp_b_ref = numpy.einsum("mi,wmj->wij", trial.psi0b.conj(), walkers.phib)
+
+    walkers.inverse_overlap(trial)
+
+    numpy.testing.assert_allclose(walkers.inv_ovlp_a, numpy.linalg.inv(ovlp_a_ref), atol=1e-12)
+    numpy.testing.assert_allclose(walkers.inv_ovlp_b, numpy.linalg.inv(ovlp_b_ref), atol=1e-12)
+
+
+@pytest.mark.unit
 def test_reortho_batch():
     nelec = (5, 5)
     nwalkers = 10

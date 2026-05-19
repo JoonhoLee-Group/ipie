@@ -18,12 +18,20 @@
 #
 
 import numpy
+import scipy.linalg
 
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.reortho_nonzero import batched_qr_nonzero
+
+
+def invert_batched_overlap_cpu(overlap):
+    inv_overlap = numpy.empty_like(overlap)
+    for iw in range(overlap.shape[0]):
+        inv_overlap[iw] = scipy.linalg.inv(overlap[iw], check_finite=False)
+    return inv_overlap
 
 
 class UHFWalkers(BaseWalkers):
@@ -134,11 +142,19 @@ class UHFWalkers(BaseWalkers):
                 self.padding = True
 
     def inverse_overlap(self, trial):
-        ovlp_a = xp.einsum("mi,wmj->wij", trial.psi0a.conj(), self.phia)
-        self.inv_ovlp_a = xp.linalg.inv(ovlp_a)
+        ovlp_a = xp.matmul(trial.psi0a.conj().T[None, :, :], self.phia)
+        self.inv_ovlp_a = (
+            xp.linalg.inv(ovlp_a)
+            if config.get_option("use_gpu")
+            else invert_batched_overlap_cpu(ovlp_a)
+        )
         if self.ndown > 0:
-            ovlp_b = xp.einsum("mi,wmj->wij", trial.psi0b.conj(), self.phib)
-            self.inv_ovlp_b = xp.linalg.inv(ovlp_b)
+            ovlp_b = xp.matmul(trial.psi0b.conj().T[None, :, :], self.phib)
+            self.inv_ovlp_b = (
+                xp.linalg.inv(ovlp_b)
+                if config.get_option("use_gpu")
+                else invert_batched_overlap_cpu(ovlp_b)
+            )
         else:
             self.inv_ovlp_b = None
 

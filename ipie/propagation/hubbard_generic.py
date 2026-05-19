@@ -30,12 +30,17 @@ def _make_numba_cpu_kernel():
         for iw in range(nwalkers):
             if abs(weight[iw]) == 0.0:
                 continue
+            q_up = numpy.empty(nup, dtype=numpy.complex128)
+            au_up = numpy.empty(nup, dtype=numpy.complex128)
+            q_down = numpy.empty(ndown, dtype=numpy.complex128)
+            au_down = numpy.empty(ndown, dtype=numpy.complex128)
             for site in range(nbasis):
                 gup = 0.0 + 0.0j
                 for j in range(nup):
                     q = 0.0 + 0.0j
                     for k in range(nup):
                         q += inva[iw, k, j] * phia[iw, site, k]
+                    q_up[j] = q
                     gup += numpy.conjugate(psi0a[site, j]) * q
 
                 gdown = 0.0 + 0.0j
@@ -44,6 +49,7 @@ def _make_numba_cpu_kernel():
                         q = 0.0 + 0.0j
                         for k in range(ndown):
                             q += invb[iw, k, j] * phib[iw, site, k]
+                        q_down[j] = q
                         gdown += numpy.conjugate(psi0b[site, j]) * q
                 elif ndown > 0 and rhf:
                     gdown = gup
@@ -63,40 +69,43 @@ def _make_numba_cpu_kernel():
                 weight[iw] *= norm
                 ovlp[iw] = 2.0 * ovlp[iw] * selected
 
-                vtup = numpy.empty(nup, dtype=numpy.complex128)
+                delta_up = delta[xi, 0]
                 for j in range(nup):
-                    vtup[j] = phia[iw, site, j] * delta[xi, 0]
-                    phia[iw, site, j] += vtup[j]
-                _numba_sherman_morrison(inva[iw], numpy.conjugate(psi0a[site]), vtup)
+                    phia[iw, site, j] += phia[iw, site, j] * delta_up
+                _numba_sherman_morrison_from_q(
+                    inva[iw],
+                    numpy.conjugate(psi0a[site]),
+                    q_up,
+                    delta_up,
+                    gup,
+                    au_up,
+                )
 
                 if ndown > 0 and not rhf:
-                    vtdown = numpy.empty(ndown, dtype=numpy.complex128)
+                    delta_down = delta[xi, 1]
                     for j in range(ndown):
-                        vtdown[j] = phib[iw, site, j] * delta[xi, 1]
-                        phib[iw, site, j] += vtdown[j]
-                    _numba_sherman_morrison(invb[iw], numpy.conjugate(psi0b[site]), vtdown)
+                        phib[iw, site, j] += phib[iw, site, j] * delta_down
+                    _numba_sherman_morrison_from_q(
+                        invb[iw],
+                        numpy.conjugate(psi0b[site]),
+                        q_down,
+                        delta_down,
+                        gdown,
+                        au_down,
+                    )
 
     @njit(cache=True)
-    def _numba_sherman_morrison(ainv, u, vt):
+    def _numba_sherman_morrison_from_q(ainv, u, q, delta_xi, g, au):
         nocc = ainv.shape[0]
-        au = numpy.empty(nocc, dtype=numpy.complex128)
-        vta = numpy.empty(nocc, dtype=numpy.complex128)
         for i in range(nocc):
             val = 0.0 + 0.0j
             for k in range(nocc):
                 val += ainv[i, k] * u[k]
             au[i] = val
-        for j in range(nocc):
-            val = 0.0 + 0.0j
-            for k in range(nocc):
-                val += vt[k] * ainv[k, j]
-            vta[j] = val
-        denom = 1.0 + 0.0j
-        for k in range(nocc):
-            denom += vta[k] * u[k]
+        scale = delta_xi / (1.0 + delta_xi * g)
         for i in range(nocc):
             for j in range(nocc):
-                ainv[i, j] -= au[i] * vta[j] / denom
+                ainv[i, j] -= au[i] * q[j] * scale
 
     return _kernel
 

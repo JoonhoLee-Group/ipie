@@ -49,9 +49,10 @@ def propagate_one_body(phi, bt2, H1diag=False):
         if is_cupy(bt2):
             phi = xp.einsum("ik,wkj->wij", bt2, phi, optimize=True)
         else:
-            # Loop is O(10x) times faster on CPU for FeP benchmark
-            for iw in range(phi.shape[0]):
-                phi[iw] = xp.dot(bt2, phi[iw])
+            if phi.shape[0] > 1:
+                phi = xp.matmul(bt2[None, :, :], phi)
+            else:
+                phi[0] = xp.dot(bt2, phi[0])
 
     return phi
 
