@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Fionn Malone <fmalone@google.com>
+# Author: Fionn Malone <fmalone@google.com> , Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
 #
 
 from typing import Union
