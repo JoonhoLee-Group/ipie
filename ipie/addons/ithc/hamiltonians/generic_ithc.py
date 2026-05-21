@@ -1,3 +1,6 @@
+# Author: Maxine Luo <man.luo@mpq.mpg.de>
+#         Victor Chen <victor.chen@tum.de>
+#
 import numpy as np
 import h5py
 from ipie.utils.backend import cast_to_device
