@@ -15,6 +15,8 @@
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
 #          Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#          Maxine Luo <man.luo@mpq.mpg.de>
+#          Victor Chen <victor.chen@tum.de>
 #
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
