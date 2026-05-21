@@ -1,4 +1,6 @@
-# from ipie.propagation.continuous_base import ContinuousBase
+# Author: Maxine Luo <man.luo@mpq.mpg.de>,
+#         Victor Chen <victor.chen@tum.de>
+#
 from ipie.propagation.phaseless_base import PhaselessBase
 from ipie.propagation.phaseless_base import construct_mean_field_shift
 from ipie.addons.ithc.propagation.operations import apply_isometry
