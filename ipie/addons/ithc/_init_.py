@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
-#          Maxine Luo     <man.luo@mpq.mpg.de>
-#          Victor Chen    <victor.chen@tum.de>
-
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>, Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
