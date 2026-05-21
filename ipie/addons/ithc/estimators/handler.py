@@ -14,6 +14,8 @@
 #
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee
+#          Maxine Luo <man.luo@mpq.mpg.de>
+#          Victor Chen <victor.chen@tum.de>
 #
 
 """Routines and classes for estimation of observables."""
