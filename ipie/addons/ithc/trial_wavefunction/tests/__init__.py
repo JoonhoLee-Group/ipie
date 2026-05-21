@@ -14,6 +14,6 @@
 #
 # Authors: Fionn Malone <fionn.malone@gmail.com>
 #          Joonho Lee
-#          Maxine Luo <man.luo@mpq.mpg.de>,
+#          Maxine Luo <man.luo@mpq.mpg.de>
 #          Victor Chen <victor.chen@tum.de>
 #
