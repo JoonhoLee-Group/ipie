@@ -1,4 +1,5 @@
-# Author: Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
+# Author: Maxine Luo <man.luo@mpq.mpg.de>,
+#         Victor Chen <victor.chen@tum.de>
 #
 import plum
 from ipie.utils.backend import arraylib as xp
