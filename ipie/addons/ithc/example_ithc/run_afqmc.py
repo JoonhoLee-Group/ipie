@@ -1,4 +1,5 @@
-# Author: Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
+# Author: Maxine Luo <man.luo@mpq.mpg.de>
+#         Victor Chen <victor.chen@tum.de>
 #
 
 """Run an ithc AFQMC calculation for a H10 chain."""
