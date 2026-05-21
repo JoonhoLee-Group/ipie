@@ -1,3 +1,6 @@
+# Author: Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
+#
+
 """Benchmark GPU of ithc AFQMC calculation."""
 
 import sys
