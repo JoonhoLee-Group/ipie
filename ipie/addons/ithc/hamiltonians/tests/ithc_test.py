@@ -1,3 +1,5 @@
+# Author: Maxine Luo <man.luo@mpq.mpg.de>, Victor Chen <victor.chen@tum.de>
+#
 import pytest
 import numpy
 from ipie.utils.linalg import modified_cholesky
