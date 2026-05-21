@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # Author: Fionn Malone <fmalone@google.com>
-#         Maxine Luo <man.luo@mpq.mpg.de>,
+#         Maxine Luo <man.luo@mpq.mpg.de>
 #         Victor Chen <victor.chen@tum.de>
 #
 import tempfile
