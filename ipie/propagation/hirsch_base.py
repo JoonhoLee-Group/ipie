@@ -13,6 +13,7 @@ from ipie.propagation.continuous_base import ContinuousBase
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, synchronize, to_host
+from ipie.walkers.ghf_walkers import GHFWalkers
 
 
 @plum.dispatch
@@ -100,6 +101,11 @@ class HirschBase(ContinuousBase):
         return ainv - (ainv @ xp.outer(u, vt) @ ainv) / (1.0 + vt @ ainv @ u)
 
     def _calc_overlap_from_inverse(self, walkers):
+        if isinstance(walkers, GHFWalkers):
+            sign, logdet = xp.linalg.slogdet(walkers.inv_ovlp)
+            det = sign * xp.exp(logdet - walkers.log_shift)
+            return 1.0 / det
+
         sign_a, logdet_a = xp.linalg.slogdet(walkers.inv_ovlp_a)
         sign_b = xp.ones(walkers.nwalkers, dtype=xp.complex128)
         logdet_b = xp.zeros(walkers.nwalkers, dtype=xp.float64)
@@ -110,9 +116,18 @@ class HirschBase(ContinuousBase):
 
     def propagate_walkers_one_body(self, walkers):
         start_time = time.time()
-        walkers.phia = propagate_one_body(walkers.phia, self.expH1[0])
-        if walkers.ndown > 0 and not walkers.rhf:
-            walkers.phib = propagate_one_body(walkers.phib, self.expH1[1])
+        if isinstance(walkers, GHFWalkers):
+            nbasis = walkers.nbasis
+            walkers.phi[:, :nbasis, :] = propagate_one_body(
+                walkers.phi[:, :nbasis, :], self.expH1[0]
+            )
+            walkers.phi[:, nbasis:, :] = propagate_one_body(
+                walkers.phi[:, nbasis:, :], self.expH1[1]
+            )
+        else:
+            walkers.phia = propagate_one_body(walkers.phia, self.expH1[0])
+            if walkers.ndown > 0 and not walkers.rhf:
+                walkers.phib = propagate_one_body(walkers.phib, self.expH1[1])
         synchronize()
         self.timer.tgemm += time.time() - start_time
 

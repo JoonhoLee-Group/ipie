@@ -128,7 +128,9 @@ def determine_wavefunction_type(filename: str):
     with h5py.File(filename, "r") as fh5:
         keys = list(fh5.keys())
 
-    if "occ_alpha" in keys:
+    if "psi_T_ghf" in keys:
+        return "single_determinant_ghf"
+    elif "occ_alpha" in keys:
         return "particle_hole"
     elif "ci_coeffs" in keys:
         return "noci"
@@ -222,6 +224,24 @@ def read_single_det_wavefunction(filename: str) -> Tuple[List[numpy.ndarray], Li
         except KeyError:
             wfn = [psia, psia]
             phi0 = [phi0a, phi0a]
+    return wfn, phi0
+
+
+def write_single_det_ghf_wavefunction(
+    wfn: numpy.ndarray, filename: str = "wavefunction.h5", phi0: Optional[numpy.ndarray] = None
+) -> None:
+    with h5py.File(filename, "w") as fh5:
+        fh5["psi_T_ghf"] = wfn
+        if phi0 is None:
+            fh5["phi0_ghf"] = wfn
+        else:
+            fh5["phi0_ghf"] = phi0
+
+
+def read_single_det_ghf_wavefunction(filename: str) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    with h5py.File(filename, "r") as fh5:
+        wfn = numpy.array(fh5["psi_T_ghf"][:])
+        phi0 = numpy.array(fh5["phi0_ghf"][:])
     return wfn, phi0
 
 

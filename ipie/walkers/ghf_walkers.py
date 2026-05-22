@@ -23,7 +23,7 @@ from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
-from ipie.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers, invert_batched_overlap_cpu
 
 
 class GHFWalkers(BaseWalkers):
@@ -69,6 +69,7 @@ class GHFWalkers(BaseWalkers):
         self.G[:, : self.nbasis, : self.nbasis] = walkers.Ga.copy()
         self.G[:, self.nbasis :, self.nbasis :] = walkers.Gb.copy()
         self.Ghalf = None
+        self.inv_ovlp = None
 
         self.rhf = None
 
@@ -124,6 +125,7 @@ class GHFWalkers(BaseWalkers):
             shape=(self.nwalkers, 2 * self.nbasis, 2 * self.nbasis),
             dtype=numpy.complex128,
         )
+        self.inv_ovlp = None
 
         self.rhf = None
 
@@ -133,6 +135,19 @@ class GHFWalkers(BaseWalkers):
 
     def build(self, trial):
         self.ovlp = trial.calc_greens_function(self)
+        self.inverse_overlap(trial)
+        if "inv_ovlp" not in self.buff_names:
+            self.buff_names.append("inv_ovlp")
+        self.buff_size = round(self.set_buff_size_single_walker() / float(self.nwalkers))
+        self.walker_buffer = numpy.zeros(self.buff_size, dtype=numpy.complex128)
+
+    def inverse_overlap(self, trial):
+        ovlp = xp.matmul(trial.psi0.conj().T[None, :, :], self.phi)
+        self.inv_ovlp = (
+            xp.linalg.inv(ovlp)
+            if config.get_option("use_gpu")
+            else invert_batched_overlap_cpu(ovlp)
+        )
 
     # This function casts relevant member variables into cupy arrays
     def cast_to_cupy(self, verbose=False):

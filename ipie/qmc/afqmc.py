@@ -38,6 +38,7 @@ from ipie.qmc.options import QMCParams
 from ipie.qmc.utils import set_rng_seed
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
 from ipie.utils.io import to_json
@@ -45,7 +46,7 @@ from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import get_initial_walker, GHFWalkersTrial, UHFWalkersTrial
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 
 
@@ -429,7 +430,12 @@ class AFQMC(AFQMCBase):
         if walkers is None:
             _, initial_walker = get_initial_walker(trial_wavefunction)
             # TODO this is a factory method not a class
-            walkers = UHFWalkersTrial(
+            walker_factory = (
+                GHFWalkersTrial
+                if isinstance(trial_wavefunction, SingleDetGHF)
+                else UHFWalkersTrial
+            )
+            walkers = walker_factory(
                 trial_wavefunction,
                 initial_walker,
                 system.nup,

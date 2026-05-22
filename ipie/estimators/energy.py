@@ -90,6 +90,33 @@ def local_energy(
 @plum.dispatch
 def local_energy(
     system: Generic,
+    hamiltonian: Hubbard,
+    walkers: GHFWalkers,
+    trial: SingleDetGHF,
+):
+    nbasis = hamiltonian.nbasis
+    gaa = walkers.G[:, :nbasis, :nbasis]
+    gbb = walkers.G[:, nbasis:, nbasis:]
+    gab = walkers.G[:, :nbasis, nbasis:]
+    gba = walkers.G[:, nbasis:, :nbasis]
+
+    e1b = (
+        xp.einsum("ij,wji->w", hamiltonian.T[0], gaa, optimize=True)
+        + xp.einsum("ij,wji->w", hamiltonian.T[1], gbb, optimize=True)
+        + hamiltonian.ecore
+    )
+    nia = xp.diagonal(gaa, axis1=1, axis2=2)
+    nib = xp.diagonal(gbb, axis1=1, axis2=2)
+    n_ab = xp.diagonal(gab, axis1=1, axis2=2)
+    n_ba = xp.diagonal(gba, axis1=1, axis2=2)
+    e2b = hamiltonian.U * xp.sum(nia * nib - n_ab * n_ba, axis=1)
+    etot = e1b + e2b
+    return xp.stack([etot, e1b, e2b], axis=1)
+
+
+@plum.dispatch
+def local_energy(
+    system: Generic,
     hamiltonian: Union[GenericRealChol, GenericRealCholChunked],
     walkers: UHFWalkers,
     trial: SingleDet,

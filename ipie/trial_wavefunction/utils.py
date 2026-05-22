@@ -23,11 +23,13 @@ import numpy as np
 from ipie.trial_wavefunction.noci import NOCI
 from ipie.trial_wavefunction.particle_hole import ParticleHole, ParticleHoleNonChunked
 from ipie.trial_wavefunction.single_det import SingleDet
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.io import (
     determine_wavefunction_type,
     read_noci_wavefunction,
     read_particle_hole_wavefunction,
+    read_single_det_ghf_wavefunction,
     read_qmcpack_wfn_hdf,
     read_single_det_wavefunction,
 )
@@ -98,6 +100,12 @@ def get_trial_wavefunction(
         _nbasis = wfn[0].shape[0]
         assert nbasis == _nbasis
         trial = SingleDet(np.hstack(wfn), (na, nb), nbasis)
+    elif wfn_type == "single_determinant_ghf":
+        wfn, _ = read_single_det_ghf_wavefunction(wfn_file)
+        assert len(wfn.shape) == 2
+        assert wfn.shape[0] == 2 * nbasis
+        assert wfn.shape[1] >= sum(num_elec)
+        trial = SingleDetGHF(wfn, num_elec, nbasis)
     elif wfn_type == "qmcpack":
         trial = setup_qmcpack_wavefunction(wfn_file, ndets, ndets_props, ndet_chunks)
     else:

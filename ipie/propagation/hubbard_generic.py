@@ -6,6 +6,7 @@ import numpy
 from ipie.propagation.hirsch_base import HirschBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize, to_host
+from ipie.walkers.ghf_walkers import GHFWalkers
 
 try:
     from numba import njit
@@ -131,6 +132,23 @@ class HubbardSingleSite(HirschBase):
         q = xp.einsum("wij,wi->wj", inv_ovlp, phi[:, site, :], optimize=True)
         return xp.einsum("j,wj->w", psi0_site.conj(), q, optimize=True)
 
+    def _ghf_site_greens_block(self, walkers, trial, site):
+        nbasis = walkers.nbasis
+        up = site
+        down = site + nbasis
+        phi_up = walkers.phi[:, up, :]
+        phi_down = walkers.phi[:, down, :]
+        psi_up = trial.psi0[up, :].conj()
+        psi_down = trial.psi0[down, :].conj()
+
+        ghalf_up = xp.einsum("wi,wij->wj", phi_up, walkers.inv_ovlp, optimize=True)
+        ghalf_down = xp.einsum("wi,wij->wj", phi_down, walkers.inv_ovlp, optimize=True)
+        guu = xp.einsum("wi,i->w", ghalf_up, psi_up, optimize=True)
+        gud = xp.einsum("wi,i->w", ghalf_up, psi_down, optimize=True)
+        gdu = xp.einsum("wi,i->w", ghalf_down, psi_up, optimize=True)
+        gdd = xp.einsum("wi,i->w", ghalf_down, psi_down, optimize=True)
+        return guu, gud, gdu, gdd
+
     def _legacy_two_body(self, walkers, hamiltonian, trial, random_fields=None):
         for iw in range(walkers.nwalkers):
             if abs(to_host(walkers.weight[iw])) == 0:
@@ -243,6 +261,49 @@ class HubbardSingleSite(HirschBase):
                 walkers.inv_ovlp_b[...] = self._batched_sherman_morrison(
                     walkers.inv_ovlp_b, trial.psi0b[i, :].conj(), vtdown
                 )
+
+    def _ghf_two_body(self, walkers, hamiltonian, trial, random_fields):
+        for i in range(hamiltonian.nbasis):
+            guu, gud, gdu, gdd = self._ghf_site_greens_block(walkers, trial, i)
+
+            r1 = (
+                (1.0 + self.delta[0, 0] * guu) * (1.0 + self.delta[0, 1] * gdd)
+                - self.delta[0, 0] * self.delta[0, 1] * gud * gdu
+            )
+            r2 = (
+                (1.0 + self.delta[1, 0] * guu) * (1.0 + self.delta[1, 1] * gdd)
+                - self.delta[1, 0] * self.delta[1, 1] * gud * gdu
+            )
+            probs = 0.5 * xp.stack([r1, r2], axis=1) * self.aux_wfac[None, :]
+            phaseless_ratio = xp.maximum(probs.real, 0.0)
+            norm = xp.sum(phaseless_ratio, axis=1)
+            live = (norm > 0.0) & (xp.abs(walkers.weight) > 0.0)
+
+            norm_safe = xp.where(live, norm, 1.0)
+            p0 = xp.where(live, phaseless_ratio[:, 0] / norm_safe, 1.0)
+            xi = (random_fields[i] >= p0).astype(numpy.int32)
+            selected = probs[xp.arange(walkers.nwalkers), xi]
+
+            walkers.weight *= xp.where(live, norm, 0.0)
+            walkers.ovlp[...] = xp.where(live, 2.0 * walkers.ovlp * selected, walkers.ovlp)
+
+            up = i
+            down = i + walkers.nbasis
+            delta_up = self.delta[xi, 0]
+            delta_down = self.delta[xi, 1]
+            vtup = walkers.phi[:, up, :] * delta_up[:, None]
+            vtdown = walkers.phi[:, down, :] * delta_down[:, None]
+            vtup = xp.where(live[:, None], vtup, 0.0)
+            vtdown = xp.where(live[:, None], vtdown, 0.0)
+
+            walkers.phi[:, up, :] += vtup
+            walkers.inv_ovlp[...] = self._batched_sherman_morrison(
+                walkers.inv_ovlp, trial.psi0[up, :].conj(), vtup
+            )
+            walkers.phi[:, down, :] += vtdown
+            walkers.inv_ovlp[...] = self._batched_sherman_morrison(
+                walkers.inv_ovlp, trial.psi0[down, :].conj(), vtdown
+            )
 
     def _ensure_buffers(self, walkers):
         shape = (walkers.nwalkers, walkers.nup, walkers.ndown)
@@ -405,6 +466,8 @@ class HubbardSingleSite(HirschBase):
         return max(1, min(walkers.nwalkers, available // per_walker))
 
     def _choose_path(self, walkers, hamiltonian):
+        if isinstance(walkers, GHFWalkers):
+            return "ghf_einsum"
         if not hasattr(xp, "RawKernel"):
             return "cpu_numba"
         if not self._is_nvidia_gpu() or walkers.rhf or walkers.ndown == 0:
@@ -464,6 +527,8 @@ class HubbardSingleSite(HirschBase):
                 self._run_gpu_path_chunked("cuda", walkers, hamiltonian, trial, random_fields)
             elif path == "einsum":
                 self._run_gpu_path_chunked("einsum", walkers, hamiltonian, trial, random_fields)
+            elif path == "ghf_einsum":
+                self._ghf_two_body(walkers, hamiltonian, trial, random_fields)
             else:
                 raise ValueError(f"Unknown Hubbard propagation path {path}")
         except Exception as exc:

@@ -21,16 +21,20 @@
 # todo : handle more gracefully.
 import json
 
+import numpy
+
 from ipie.config import MPI
+from ipie.hamiltonians.hubbard import Hubbard
 from ipie.hamiltonians.utils import get_hamiltonian
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.afqmc import AFQMC
 from ipie.qmc.options import QMCParams
 from ipie.systems.utils import get_system
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
 from ipie.utils.io import get_input_value
 from ipie.utils.mpi import MPIHandler
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import get_initial_walker, GHFWalkersTrial, UHFWalkersTrial
 
 
 def init_communicator():
@@ -85,15 +89,48 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
         system = get_system(
             sys_opts, verbose=verbosity, comm=comm
         )  # Have to deal with shared comm in the future. I think we will remove this...
-        ham_file = get_input_value(ham_opts, "integrals", None, verbose=verbosity)
-        if ham_file is None:
-            raise ValueError("Hamiltonian filename not specified.")
-        pack_chol = get_input_value(
-            ham_opts, "symmetry", True, alias=["pack_chol", "pack_cholesky"], verbose=verbosity
-        )
-        hamiltonian = get_hamiltonian(
-            ham_file, mpi_handler.scomm, pack_chol=pack_chol, verbose=verbosity
-        )
+        ham_name = ham_opts.get("name", ham_opts.get("type", "Generic"))
+        if str(ham_name).lower() == "hubbard":
+            h1e_file = get_input_value(
+                ham_opts,
+                "h1e_file",
+                default=None,
+                alias=["h1_file", "hopping_file"],
+                verbose=verbosity,
+            )
+            h1e = get_input_value(
+                ham_opts,
+                "h1e",
+                default=None,
+                alias=["h1", "hopping"],
+                verbose=verbosity,
+            )
+            if h1e_file is not None:
+                h1e = numpy.load(h1e_file)
+            if h1e is None:
+                raise ValueError("Hubbard h1e or h1e_file not specified.")
+            h1e = numpy.asarray(h1e)
+            if h1e.ndim == 2:
+                h1e = numpy.array([h1e, h1e])
+            if h1e.ndim != 3 or h1e.shape[0] != 2:
+                raise ValueError(
+                    "Hubbard h1e must have shape (nbasis, nbasis) or (2, nbasis, nbasis)."
+                )
+            u = get_input_value(ham_opts, "U", None, alias=["u"], verbose=verbosity)
+            if u is None:
+                raise ValueError("Hubbard U not specified.")
+            ecore = get_input_value(ham_opts, "ecore", 0.0, alias=["e0"], verbose=verbosity)
+            hamiltonian = Hubbard(h1e, u, ecore=ecore, verbose=verbosity)
+        else:
+            ham_file = get_input_value(ham_opts, "integrals", None, verbose=verbosity)
+            if ham_file is None:
+                raise ValueError("Hamiltonian filename not specified.")
+            pack_chol = get_input_value(
+                ham_opts, "symmetry", True, alias=["pack_chol", "pack_cholesky"], verbose=verbosity
+            )
+            hamiltonian = get_hamiltonian(
+                ham_file, mpi_handler.scomm, pack_chol=pack_chol, verbose=verbosity
+            )
         wfn_file = get_input_value(twf_opt, "filename", default="", alias=["wfn_file"])
         num_elec = (system.nup, system.ndown)
         trial = get_trial_wavefunction(
@@ -116,7 +153,10 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             trial.e2b = comm.bcast(trial.e2b, root=0)
         comm.barrier()
         _, initial_walker = get_initial_walker(trial)
-        walkers = UHFWalkersTrial(
+        walker_factory = (
+            GHFWalkersTrial if isinstance(trial, SingleDetGHF) else UHFWalkersTrial
+        )
+        walkers = walker_factory(
             trial,
             initial_walker,
             system.nup,
