@@ -8,7 +8,7 @@ from ipie.addons.ithc.propagation.operations import apply_isometry
 # from ipie.propagation.operations import propagate_one_body
 
 # from ipie.estimators.energy import *
-from ipie.addons.ithc.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.walkers.ghf_walkers import GHFWalkers
 from ipie.addons.ithc.trial_wavefunction.single_det import SingleDet
 from typing import Union

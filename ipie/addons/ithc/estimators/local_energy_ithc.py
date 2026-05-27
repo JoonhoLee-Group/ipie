@@ -8,7 +8,7 @@ from ipie.utils.misc import is_cupy
 from ipie.systems.generic import Generic
 from ipie.addons.ithc.hamiltonians.generic_ithc import GenericITHC
 from ipie.addons.ithc.trial_wavefunction.single_det import SingleDet
-from ipie.addons.ithc.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 
 
 def greens_function_ithc(psi0_extended, GHalf_ori, isometry):

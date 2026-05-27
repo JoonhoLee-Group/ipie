@@ -38,7 +38,7 @@ from ipie.addons.ithc.trial_wavefunction.half_rotate import (
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.mpi import MPIHandler
-from ipie.addons.ithc.walkers.uhf_walkers import UHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 
 
 # class for UHF trial
