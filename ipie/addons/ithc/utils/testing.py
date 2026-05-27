@@ -14,9 +14,7 @@ def gen_random_test_instances_ithc(nmo, nocc, naux, nwalkers, seed=7, ndets=1):
     numpy.random.seed(seed)
     wfn = get_random_nomsd(nocc, nocc, nmo, ndet=ndets)
     h1e, _, _, eri = generate_hamiltonian(nmo, nocc, cplx=True, sym=4)
-    isometry = 0.005 * (
-        numpy.random.randn(nmo, naux) + 1.0j * numpy.random.randn(nmo, naux)
-    )
+    isometry = 0.005 * (numpy.random.randn(nmo, naux) + 1.0j * numpy.random.randn(nmo, naux))
     W = eri_diag(isometry, eri, tol=1e-13)
 
     system = Generic(nelec=(nocc, nocc))

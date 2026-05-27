@@ -26,9 +26,7 @@ def GHFWalkersTrial(
     mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
-    return GHFWalkers(
-        initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose=verbose
-    )
+    return GHFWalkers(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose=verbose)
 
 
 def UHFWalkersTrial(
