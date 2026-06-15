@@ -23,7 +23,20 @@ def _make_numba_cpu_kernel():
         return None
 
     @njit(cache=True)
-    def _kernel(phia, phib, inva, invb, weight, ovlp, psi0a, psi0b, delta, aux_wfac, random_fields, rhf):
+    def _kernel(
+        phia,
+        phib,
+        inva,
+        invb,
+        weight,
+        ovlp,
+        psi0a_conj,
+        psi0b_conj,
+        delta,
+        aux_wfac,
+        random_fields,
+        rhf,
+    ):
         nwalkers = phia.shape[0]
         nbasis = phia.shape[1]
         nup = phia.shape[2]
@@ -32,26 +45,28 @@ def _make_numba_cpu_kernel():
             if abs(weight[iw]) == 0.0:
                 continue
             q_up = numpy.empty(nup, dtype=numpy.complex128)
-            au_up = numpy.empty(nup, dtype=numpy.complex128)
             q_down = numpy.empty(ndown, dtype=numpy.complex128)
-            au_down = numpy.empty(ndown, dtype=numpy.complex128)
             for site in range(nbasis):
+                for j in range(nup):
+                    q_up[j] = 0.0 + 0.0j
+                for k in range(nup):
+                    phi_k = phia[iw, site, k]
+                    for j in range(nup):
+                        q_up[j] += inva[iw, k, j] * phi_k
                 gup = 0.0 + 0.0j
                 for j in range(nup):
-                    q = 0.0 + 0.0j
-                    for k in range(nup):
-                        q += inva[iw, k, j] * phia[iw, site, k]
-                    q_up[j] = q
-                    gup += numpy.conjugate(psi0a[site, j]) * q
+                    gup += psi0a_conj[site, j] * q_up[j]
 
                 gdown = 0.0 + 0.0j
                 if ndown > 0 and not rhf:
                     for j in range(ndown):
-                        q = 0.0 + 0.0j
-                        for k in range(ndown):
-                            q += invb[iw, k, j] * phib[iw, site, k]
-                        q_down[j] = q
-                        gdown += numpy.conjugate(psi0b[site, j]) * q
+                        q_down[j] = 0.0 + 0.0j
+                    for k in range(ndown):
+                        phi_k = phib[iw, site, k]
+                        for j in range(ndown):
+                            q_down[j] += invb[iw, k, j] * phi_k
+                    for j in range(ndown):
+                        gdown += psi0b_conj[site, j] * q_down[j]
                 elif ndown > 0 and rhf:
                     gdown = gup
 
@@ -71,42 +86,41 @@ def _make_numba_cpu_kernel():
                 ovlp[iw] = 2.0 * ovlp[iw] * selected
 
                 delta_up = delta[xi, 0]
+                scale_up = 1.0 + delta_up
                 for j in range(nup):
-                    phia[iw, site, j] += phia[iw, site, j] * delta_up
+                    phia[iw, site, j] *= scale_up
                 _numba_sherman_morrison_from_q(
                     inva[iw],
-                    numpy.conjugate(psi0a[site]),
+                    psi0a_conj[site],
                     q_up,
                     delta_up,
                     gup,
-                    au_up,
                 )
 
                 if ndown > 0 and not rhf:
                     delta_down = delta[xi, 1]
+                    scale_down = 1.0 + delta_down
                     for j in range(ndown):
-                        phib[iw, site, j] += phib[iw, site, j] * delta_down
+                        phib[iw, site, j] *= scale_down
                     _numba_sherman_morrison_from_q(
                         invb[iw],
-                        numpy.conjugate(psi0b[site]),
+                        psi0b_conj[site],
                         q_down,
                         delta_down,
                         gdown,
-                        au_down,
                     )
 
-    @njit(cache=True)
-    def _numba_sherman_morrison_from_q(ainv, u, q, delta_xi, g, au):
+    @njit(cache=True, inline="always")
+    def _numba_sherman_morrison_from_q(ainv, u, q, delta_xi, g):
         nocc = ainv.shape[0]
+        scale = delta_xi / (1.0 + delta_xi * g)
         for i in range(nocc):
             val = 0.0 + 0.0j
             for k in range(nocc):
                 val += ainv[i, k] * u[k]
-            au[i] = val
-        scale = delta_xi / (1.0 + delta_xi * g)
-        for i in range(nocc):
+            scaled_val = val * scale
             for j in range(nocc):
-                ainv[i, j] -= au[i] * q[j] * scale
+                ainv[i, j] -= scaled_val * q[j]
 
     return _kernel
 
@@ -211,8 +225,12 @@ class HubbardSingleSite(HirschBase):
             walkers.inv_ovlp_b,
             walkers.weight,
             walkers.ovlp,
-            numpy.asarray(trial.psi0a, dtype=numpy.complex128),
-            numpy.asarray(trial.psi0b, dtype=numpy.complex128),
+            numpy.ascontiguousarray(
+                numpy.conjugate(trial.psi0a), dtype=numpy.complex128
+            ),
+            numpy.ascontiguousarray(
+                numpy.conjugate(trial.psi0b), dtype=numpy.complex128
+            ),
             numpy.asarray(self.delta, dtype=numpy.complex128),
             numpy.asarray(self.aux_wfac, dtype=numpy.complex128),
             numpy.asarray(random_fields, dtype=numpy.float64),
