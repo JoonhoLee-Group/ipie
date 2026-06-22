@@ -1,3 +1,4 @@
+import math
 import time
 from types import SimpleNamespace
 
@@ -134,6 +135,25 @@ def _numba_cpu_kernel():
 
 class HubbardSingleSite(HirschBase):
     """Discrete Hubbard propagator with adaptive CPU, einsum, and CUDA paths."""
+
+    def kinetic_importance_sampling(self, walkers, trial):
+        # For a multi-determinant (NOCI) GHF trial the constraint overlap ratio
+        # must use the full trial overlap, not the reference-determinant inverse
+        # overlap that _calc_overlap_from_inverse would give.
+        from ipie.trial_wavefunction.noci_ghf import NOCIGHF
+
+        if not isinstance(trial, NOCIGHF):
+            return super().kinetic_importance_sampling(walkers, trial)
+        start_time = time.time()
+        self.propagate_walkers_one_body(walkers)
+        ovlp_new = trial.calc_overlap(walkers)
+        ratio = ovlp_new / walkers.ovlp
+        phase = xp.angle(ratio)
+        weight_factor = xp.where(xp.abs(phase) < 0.5 * math.pi, ratio.real, 0.0)
+        walkers.weight *= weight_factor
+        walkers.ovlp = xp.where(weight_factor > 0.0, ovlp_new, walkers.ovlp)
+        synchronize()
+        self.timer.tovlp += time.time() - start_time
 
     def _batched_sherman_morrison(self, ainv, u, vt):
         au = xp.einsum("wij,j->wi", ainv, u, optimize=True)
@@ -322,6 +342,89 @@ class HubbardSingleSite(HirschBase):
             walkers.inv_ovlp[...] = self._batched_sherman_morrison(
                 walkers.inv_ovlp, trial.psi0[down, :].conj(), vtdown
             )
+
+    def _noci_ghf_two_body(self, walkers, hamiltonian, trial, random_fields):
+        """Discrete-Hirsch two body for a multi-determinant (NOCI) GHF trial.
+
+        Per walker we keep K transient inverse overlaps inv_ovlp[k] = (Phi_k^dag phi)^{-1}
+        and relative overlaps relO[k] ∝ <Phi_k|phi>.  The single-site importance
+        ratio becomes the overlap-weighted average over determinants
+            ratio(xi) = sum_k P_k R_k(xi),   P_k = c_k^* O_k / sum_k c_k^* O_k,
+        where R_k(xi) is the usual single-determinant GHF site ratio for Phi_k.
+        With K=1 this reduces exactly to ``_ghf_two_body``.
+        """
+        nb = walkers.nbasis
+        nw = walkers.nwalkers
+        K = trial._num_dets
+        detsc = xp.asarray(trial.dets_conj)                     # (K, 2nb, nocc)
+        cstar = xp.asarray(trial.coeffs).conj()                 # (K,)
+
+        # recompute transient per-det inverse overlaps and relative overlaps,
+        # fully batched over the determinant axis k.
+        omat = xp.einsum("kji,wjm->kwim", detsc, walkers.phi, optimize=True)  # (K,w,nocc,nocc)
+        signs, logdet = xp.linalg.slogdet(omat)                 # (K,w)
+        inv_ovlp = xp.linalg.inv(omat)                          # (K,w,nocc,nocc)
+        ref = xp.max(logdet.real, axis=0)                       # (w,)
+        relO = signs * xp.exp(logdet - ref[None, :])            # (K, w)
+
+        def _ksm(inv, u, vt):
+            # batched Sherman-Morrison over (k, w): inv (K,w,n,n), u (K,n), vt (w,n)
+            au = xp.einsum("kwij,kj->kwi", inv, u, optimize=True)
+            vta = xp.einsum("wi,kwij->kwj", vt, inv, optimize=True)
+            denom = 1.0 + xp.einsum("kwi,ki->kw", vta, u, optimize=True)
+            upd = xp.einsum("kwi,kwj->kwij", au, vta, optimize=True) / denom[:, :, None, None]
+            return inv - upd
+
+        for i in range(nb):
+            up = i
+            down = i + nb
+            psi_up = detsc[:, up, :]                             # (K, nocc)
+            psi_down = detsc[:, down, :]
+            ghalf_up = xp.einsum("wi,kwij->kwj", walkers.phi[:, up, :], inv_ovlp, optimize=True)
+            ghalf_down = xp.einsum("wi,kwij->kwj", walkers.phi[:, down, :], inv_ovlp, optimize=True)
+            guu = xp.einsum("kwj,kj->kw", ghalf_up, psi_up, optimize=True)
+            gud = xp.einsum("kwj,kj->kw", ghalf_up, psi_down, optimize=True)
+            gdu = xp.einsum("kwj,kj->kw", ghalf_down, psi_up, optimize=True)
+            gdd = xp.einsum("kwj,kj->kw", ghalf_down, psi_down, optimize=True)
+
+            # per-det single-site ratios for the two HS fields
+            R = xp.stack([
+                (1.0 + self.delta[xi, 0] * guu) * (1.0 + self.delta[xi, 1] * gdd)
+                - self.delta[xi, 0] * self.delta[xi, 1] * gud * gdu
+                for xi in range(2)
+            ], axis=0)                                          # (2, K, w)
+
+            # determinant weights P_k = c_k^* O_k / sum_k c_k^* O_k
+            pk = cstar[:, None] * relO                          # (K, w)
+            Psum = xp.sum(pk, axis=0)                            # (w,)
+            ratio = xp.einsum("kw,xkw->xw", pk, R, optimize=True) / Psum[None, :]  # (2, w)
+
+            probs = 0.5 * xp.transpose(ratio, (1, 0)) * self.aux_wfac[None, :]     # (w, 2)
+            phaseless_ratio = xp.maximum(probs.real, 0.0)
+            norm = xp.sum(phaseless_ratio, axis=1)
+            live = (norm > 0.0) & (xp.abs(walkers.weight) > 0.0)
+
+            norm_safe = xp.where(live, norm, 1.0)
+            p0 = xp.where(live, phaseless_ratio[:, 0] / norm_safe, 1.0)
+            xi = (random_fields[i] >= p0).astype(numpy.int32)
+            selected = probs[xp.arange(nw), xi]
+
+            walkers.weight *= xp.where(live, norm, 0.0)
+            walkers.ovlp[...] = xp.where(live, 2.0 * walkers.ovlp * selected, walkers.ovlp)
+
+            # update relative overlaps: O_k -> O_k * R_k(xi)
+            Rsel = R[xi, :, xp.arange(nw)].T                    # (K, w)
+            relO = xp.where(live[None, :], relO * Rsel, relO)
+
+            # update walker orbitals (shared) and all dets' inverse overlaps
+            delta_up = self.delta[xi, 0]
+            delta_down = self.delta[xi, 1]
+            vtup = xp.where(live[:, None], walkers.phi[:, up, :] * delta_up[:, None], 0.0)
+            vtdown = xp.where(live[:, None], walkers.phi[:, down, :] * delta_down[:, None], 0.0)
+            walkers.phi[:, up, :] += vtup
+            inv_ovlp = _ksm(inv_ovlp, psi_up, vtup)
+            walkers.phi[:, down, :] += vtdown
+            inv_ovlp = _ksm(inv_ovlp, psi_down, vtdown)
 
     def _ensure_buffers(self, walkers):
         shape = (walkers.nwalkers, walkers.nup, walkers.ndown)
@@ -530,7 +633,11 @@ class HubbardSingleSite(HirschBase):
 
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         start_time = time.time()
+        from ipie.trial_wavefunction.noci_ghf import NOCIGHF
+
         path = self._choose_path(walkers, hamiltonian)
+        if isinstance(trial, NOCIGHF):
+            path = "noci_ghf"
         if not hasattr(xp, "RawKernel"):
             random_fields = numpy.random.random((hamiltonian.nbasis, walkers.nwalkers))
         else:
@@ -547,6 +654,8 @@ class HubbardSingleSite(HirschBase):
                 self._run_gpu_path_chunked("einsum", walkers, hamiltonian, trial, random_fields)
             elif path == "ghf_einsum":
                 self._ghf_two_body(walkers, hamiltonian, trial, random_fields)
+            elif path == "noci_ghf":
+                self._noci_ghf_two_body(walkers, hamiltonian, trial, random_fields)
             else:
                 raise ValueError(f"Unknown Hubbard propagation path {path}")
         except Exception as exc:

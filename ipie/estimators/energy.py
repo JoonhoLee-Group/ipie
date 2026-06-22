@@ -63,6 +63,7 @@ from ipie.hamiltonians.kpt_chunked import KptComplexCholChunked
 from ipie.walkers.uhf_walkers import UHFWalkers
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
+from ipie.trial_wavefunction.noci_ghf import NOCIGHF
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import to_host
 from ipie.walkers.ghf_walkers import GHFWalkers
@@ -75,14 +76,53 @@ def local_energy(
     walkers: UHFWalkers,
     trial: SingleDet,
 ):
+    # G[i, j] = <c^dag_i c_j>, so the one-body energy is sum_ij T_ij G_ij.
+    # (The "ij,ji" contraction is only valid for symmetric T; complex/Hofstadter
+    #  hopping requires "ij,ij".)
     e1b = (
-        xp.einsum("ij,wji->w", hamiltonian.T[0], walkers.Ga, optimize=True)
-        + xp.einsum("ij,wji->w", hamiltonian.T[1], walkers.Gb, optimize=True)
+        xp.einsum("ij,wij->w", hamiltonian.T[0], walkers.Ga, optimize=True)
+        + xp.einsum("ij,wij->w", hamiltonian.T[1], walkers.Gb, optimize=True)
         + hamiltonian.ecore
     )
     nia = xp.diagonal(walkers.Ga, axis1=1, axis2=2)
     nib = xp.diagonal(walkers.Gb, axis1=1, axis2=2)
     e2b = hamiltonian.U * xp.sum(nia * nib, axis=1)
+    etot = e1b + e2b
+    return xp.stack([etot, e1b, e2b], axis=1)
+
+
+@plum.dispatch
+def local_energy(
+    system: Generic,
+    hamiltonian: Hubbard,
+    walkers: GHFWalkers,
+    trial: NOCIGHF,
+):
+    # Multi-determinant mixed estimator.  The one-body term is linear in the
+    # Green's function so it equals e1[G_mixed]; the Hubbard U term is quadratic
+    # in G, so it must be the overlap-weighted average of the per-determinant
+    # two-body energies, NOT eU evaluated on the mixed G.
+    nbasis = hamiltonian.nbasis
+    S, Gmix, O, G = trial._mixed(walkers)
+    gaa = Gmix[:, :nbasis, :nbasis]
+    gbb = Gmix[:, nbasis:, nbasis:]
+    e1b = (
+        xp.einsum("ij,wij->w", hamiltonian.T[0], gaa, optimize=True)
+        + xp.einsum("ij,wij->w", hamiltonian.T[1], gbb, optimize=True)
+        + hamiltonian.ecore
+    )
+    # per-determinant two-body energy eU[G_k]
+    Gaa = G[:, :, :nbasis, :nbasis]
+    Gbb = G[:, :, nbasis:, nbasis:]
+    Gab = G[:, :, :nbasis, nbasis:]
+    Gba = G[:, :, nbasis:, :nbasis]
+    nia = xp.diagonal(Gaa, axis1=2, axis2=3)
+    nib = xp.diagonal(Gbb, axis1=2, axis2=3)
+    n_ab = xp.diagonal(Gab, axis1=2, axis2=3)
+    n_ba = xp.diagonal(Gba, axis1=2, axis2=3)
+    eU_k = hamiltonian.U * xp.sum(nia * nib - n_ab * n_ba, axis=2)  # (K, w)
+    wts = trial.coeffs.conj()[:, None] * O                          # (K, w)
+    e2b = xp.sum(wts * eU_k, axis=0) / S
     etot = e1b + e2b
     return xp.stack([etot, e1b, e2b], axis=1)
 
@@ -100,9 +140,11 @@ def local_energy(
     gab = walkers.G[:, :nbasis, nbasis:]
     gba = walkers.G[:, nbasis:, :nbasis]
 
+    # G[i, j] = <c^dag_i c_j>; one-body energy is sum_ij T_ij G_ij. The "ij,ji"
+    # contraction is only valid for symmetric T (complex hopping needs "ij,ij").
     e1b = (
-        xp.einsum("ij,wji->w", hamiltonian.T[0], gaa, optimize=True)
-        + xp.einsum("ij,wji->w", hamiltonian.T[1], gbb, optimize=True)
+        xp.einsum("ij,wij->w", hamiltonian.T[0], gaa, optimize=True)
+        + xp.einsum("ij,wij->w", hamiltonian.T[1], gbb, optimize=True)
         + hamiltonian.ecore
     )
     nia = xp.diagonal(gaa, axis1=1, axis2=2)

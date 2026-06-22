@@ -124,9 +124,11 @@ class SingleDetGHF(TrialWavefunctionBase):
         Gab = self.G[:nbasis, nbasis:]
         Gba = self.G[nbasis:, :nbasis]
 
+        # G[i, j] = <c^dag_i c_j>, so the one-body energy is sum_ij T_ij G_ij.
+        # ("ij,ji" only agrees for symmetric T; complex hopping needs "ij,ij".)
         self.e1b = (
-            numpy.einsum("ij,ji", hamiltonian.T[0], Gaa, optimize=True)
-            + numpy.einsum("ij,ji", hamiltonian.T[1], Gbb, optimize=True)
+            numpy.einsum("ij,ij", hamiltonian.T[0], Gaa, optimize=True)
+            + numpy.einsum("ij,ij", hamiltonian.T[1], Gbb, optimize=True)
             + hamiltonian.ecore
         )
         nia = numpy.diagonal(Gaa)
