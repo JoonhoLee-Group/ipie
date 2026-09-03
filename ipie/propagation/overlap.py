@@ -32,7 +32,9 @@ from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
-def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
+def calc_overlap_single_det_uhf(
+    walkers: "UHFWalkers", trial: "ipie.trial_wavefunction.single_det.SingleDet"
+):
     """Caculate overlap with single det trial wavefunction.
 
     Parameters
@@ -65,7 +67,9 @@ def calc_overlap_single_det_uhf(walkers: "UHFWalkers", trial: "SingleDet"):
     return ot
 
 
-def calc_overlap_single_det_ghf(walkers: "GHFWalkers", trial: "SingleDet"):
+def calc_overlap_single_det_ghf(
+    walkers: "GHFWalkers", trial: "ipie.trial_wavefunction.single_det.SingleDet"
+):
     ovlp = xp.einsum("wmi,mj->wij", walkers.phi, trial.psi0.conj(), optimize=True)
     sign, log_ovlp = xp.linalg.slogdet(ovlp)
     ot = sign * xp.exp(log_ovlp - walkers.log_shift)

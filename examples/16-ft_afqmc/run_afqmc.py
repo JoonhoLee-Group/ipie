@@ -29,13 +29,13 @@ options = {
     },
     "walkers": {
         "lowrank": False,
+        "stack_size": 10,
     },
     "qmc": {
         "mu": 0.133579,
         "beta": 10.0,
         "timestep": 0.5,
         "nwalkers": 12 // comm.size,
-        "stack_size": 10,
         "seed": 7,
         "nblocks": 20,
     },

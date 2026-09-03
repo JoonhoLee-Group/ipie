@@ -1,0 +1,11 @@
+# GPU extra (`pip install -e .[gpu]`): cuTensorNet/cuQuantum backend used by the
+# k-point and ISDF code paths (ipie/utils/cuquantum_backend.py).
+#
+# Pinned to the explicit CUDA 12 wheel rather than the `cuquantum-python`
+# metapackage: the metapackage aborts at install time if it cannot detect a CUDA
+# toolkit (e.g. on CI runners or login nodes). For CUDA 13 use
+# `cuquantum-python-cu13` instead. Requires Python >= 3.11.
+#
+# Do NOT include this file from dev/dev.txt: CI installs dev.txt on CPU-only
+# runners.
+cuquantum-python-cu12>=26.1.0

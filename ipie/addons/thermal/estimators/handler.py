@@ -40,9 +40,9 @@ class ThermalEstimatorHandler(EstimatorHandler):
     ----------
     comm : MPI.COMM_WORLD
         MPI Communicator.
-    hamiltonian : :class:`ipie.hamiltonian.X' object
+    hamiltonian : :class:`ipie.hamiltonian.X` object
         Hamiltonian describing the system.
-    trial : :class:`ipie.trial_wavefunction.X' object
+    trial : :class:`ipie.trial_wavefunction.X` object
         Trial wavefunction class.
     walker_state : :class:`WalkerAccumulator` object
         WalkerAccumulator class.
@@ -117,11 +117,11 @@ class ThermalEstimatorHandler(EstimatorHandler):
 
         Parameters
         ----------
-        hamiltonian : :class:`ipie.hamiltonian.X' object
+        hamiltonian : :class:`ipie.hamiltonian.X` object
             Hamiltonian describing the system.
-        trial : :class:`ipie.trial_wavefunction.X' object
+        trial : :class:`ipie.trial_wavefunction.X` object
             Trial wavefunction class.
-        walker_batch : :class:`UHFThermalWalkers' object
+        walker_batch : :class:`UHFThermalWalkers` object
             Walkers class.
         """
         # Compute all estimators

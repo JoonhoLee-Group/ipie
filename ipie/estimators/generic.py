@@ -594,6 +594,20 @@ def exx_kernel_complex_rchol_ghf(A, B, Gaa, Gbb, Gab, Gba):
 
 @plum.dispatch
 def cholesky_jk_ghf(hamiltonian: GenericRealChol, G):
+    """Coulomb and exchange energies of a GHF Green's function (real Cholesky).
+
+    Parameters
+    ----------
+    hamiltonian : :class:`ipie.hamiltonians.generic.GenericRealChol`
+        Hamiltonian with real Cholesky vectors.
+    G : :class:`numpy.ndarray`
+        Spin-orbital (2*nbasis x 2*nbasis) Green's function.
+
+    Returns
+    -------
+    ecoul, exx : float
+        Coulomb (J) and exchange (K) energies.
+    """
     nbasis = G.shape[0] // 2
     Gaa = G[:nbasis, :nbasis].copy()
     Gbb = G[nbasis:, nbasis:].copy()
@@ -607,6 +621,10 @@ def cholesky_jk_ghf(hamiltonian: GenericRealChol, G):
 
 @plum.dispatch
 def cholesky_jk_ghf(hamiltonian: GenericComplexChol, G):
+    """Coulomb and exchange energies of a GHF Green's function (complex Cholesky).
+
+    See the real-Cholesky overload for the argument description.
+    """
     nbasis = G.shape[0] // 2
     Gaa = G[:nbasis, :nbasis].copy()
     Gbb = G[nbasis:, nbasis:].copy()

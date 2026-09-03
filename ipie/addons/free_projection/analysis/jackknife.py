@@ -26,7 +26,7 @@ def jackknife_ratios(num: numpy.ndarray, denom: numpy.ndarray):
 
     Parameters
     ----------
-    num : :class:`np.ndarray
+    num : :class:`np.ndarray`
         Numerator samples.
     denom : :class:`np.ndarray`
         Denominator samples.

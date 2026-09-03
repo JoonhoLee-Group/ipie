@@ -26,6 +26,7 @@ def one_rdm_from_G(G):
     .. math::
         rho_{ij} = \langle c_{i}^{\dagger} c_{j} \rangle \\
                  = 1 - G_{ji}
+
     Parameters
     ----------
     G : :class:`numpy.ndarray`

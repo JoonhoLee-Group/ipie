@@ -149,12 +149,18 @@ class PopController:
 
 
 def get_buffer(walkers, iw):
-    """Get iw-th walker buffer for MPI communication
+    """Get iw-th walker buffer for MPI communication.
+
+    Parameters
+    ----------
+    walkers : walker batch object
+        Walkers whose ``buff_names`` attributes are packed into the buffer.
     iw : int
-        the walker index of interest
+        The walker index of interest.
+
     Returns
     -------
-    buff : dict
+    buff : :class:`numpy.ndarray`
         Relevant walker information for population control.
     """
     s = 0
