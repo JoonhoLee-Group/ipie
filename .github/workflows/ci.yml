@@ -19,6 +19,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r dev/dev.txt
+      - name: extras
+        run: |
+          # Every extra advertised in README.rst / docs must exist in setup.py and be non-empty (nothing is installed).
+          python -m pip install --dry-run --no-deps --quiet --report - -e . | python dev/check_extras.py
       - name: pylint
         run: |
           python dev/run_tests.py --pylint

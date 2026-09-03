@@ -67,7 +67,7 @@ Package               Purpose
 Optional extras
 ---------------
 
-Three extras are defined in ``setup.py`` (``extras_require``). They can be
+Four extras are defined in ``setup.py`` (``extras_require``). They can be
 combined, e.g. ``pip install -e ".[mpi,torch]"``.
 
 ``mpi``
@@ -102,6 +102,21 @@ The automatic-differentiation AFQMC add-on (``ipie.addons.adafqmc``, see
 
    pip install -e ".[torch]"
 
+``gpu``
+~~~~~~~
+
+The cuTensorNet/cuQuantum backend used by the k-point and ISDF code paths
+(``ipie.utils.cuquantum_backend``; ``dev/gpu.txt``:
+``cuquantum-python-cu12 >= 26.1.0``). The wheel is specific to CUDA 12, needs
+Python >= 3.11 and pulls in ``cupy-cuda12x``:
+
+.. code-block:: bash
+
+   pip install -e ".[gpu]"
+
+For CUDA 13 install ``cuquantum-python-cu13`` by hand instead. The extra is
+deliberately not part of ``dev`` because the CI runners have no CUDA toolkit.
+
 ``dev``
 ~~~~~~~
 
@@ -116,14 +131,15 @@ Developer tooling used by the CI (``dev/dev.txt``): ``pylint``, ``black``,
 GPU support
 -----------
 
-GPU acceleration is provided through `CuPy <https://cupy.dev/>`_. There is no
-``gpu`` extra in ``setup.py`` (``pip install "ipie[gpu]"`` only prints a
-warning and installs nothing extra); install a CuPy wheel matching your CUDA
-toolkit by hand, for example
+GPU acceleration is provided through `CuPy <https://cupy.dev/>`_. Install a
+CuPy wheel matching your CUDA toolkit by hand, for example
 
 .. code-block:: bash
 
    pip install cupy-cuda12x       # pick the wheel for your CUDA version
+
+or use the ``gpu`` extra described above, which brings in ``cupy-cuda12x``
+together with the cuQuantum backend.
 
 Multi-GPU runs communicate through MPI and require a *CUDA-aware* MPI build;
 the ``openmpi`` packages on ``conda-forge`` are a convenient source.

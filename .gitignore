@@ -105,6 +105,7 @@ ipie/qmc/tests/reference_data/**/*.h5
 *.bin
 *.e
 *.txt
+!dev/*.txt
 *wheels*
 *FCIDUMP*
 *out*

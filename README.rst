@@ -83,11 +83,13 @@ Refer to the `mpi4py` `documentation <https://mpi4py.readthedocs.io/en/stable/in
 
 For GPU support, `cupy` is required and can be installed as outlined on the `Cupy website <https://cupy.dev/>`_. For CUDA-aware MPI, consider `conda-forge`.
 
-For GPU cuTensorNet/cuQuantum support, additionally install `cuquantum-python <https://docs.nvidia.com/cuda/cuquantum/latest/python/index.html>`_ (there is no ``[gpu]`` extra):
+For GPU cuTensorNet/cuQuantum support (used by the k-point and ISDF code paths), install the GPU extra, which pulls in `cuquantum-python-cu12 <https://docs.nvidia.com/cuda/cuquantum/latest/python/index.html>`_ (CUDA 12, Python >= 3.11) together with ``cupy``:
 
 ::
 
-    $ pip install cuquantum-python
+    $ pip install -e .[gpu]
+
+For CUDA 13, install ``cuquantum-python-cu13`` manually instead of the extra.
 
 Running the Test Suite
 ----------------------
