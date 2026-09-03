@@ -132,7 +132,7 @@ class PhaselessISDF(PhaselessBase):
         hamiltonian : :class:`~ipie.hamiltonians.isdf.GenericRealISDF` or :class:`~ipie.hamiltonians.isdf.GenericComplexISDF`
             ISDF-factorised Hamiltonian.
         xshifted : :class:`numpy.ndarray`
-            Force-bias shifted auxiliary fields, shape ``(nwalkers, nfields)``.
+            Force-bias shifted auxiliary fields, shape ``(nfields, nwalkers)``.
 
         Returns
         -------

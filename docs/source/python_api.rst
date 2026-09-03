@@ -634,7 +634,7 @@ expansion. The walkers must be
    num_walkers = 100
    trial = ParticleHole(
        wavefunction, nelec, ham.nbasis,
-       num_dets_for_props=len(wavefunction[0]),   # dets used for trial energy / 1-RDM
+       num_dets_for_props=len(wavefunction[0]),   # dets used for the trial 1-RDM (mean-field shift)
        verbose=True,
    )
    trial.compute_trial_energy = True
@@ -660,8 +660,10 @@ The most important knobs are:
    (default) keeps all of them.
 
 ``num_dets_for_props``
-   How many determinants to use when evaluating properties of the trial
-   itself, such as its variational energy. Defaults to 100.
+   How many determinants to use when building the trial one-body density
+   matrix (the mean-field shift). The variational energy, force bias and
+   local energy use all ``num_dets_for_trial`` determinants. Defaults to 100,
+   capped at the number of determinants kept.
 
 ``num_det_chunks``
    The Wick's-theorem local-energy code processes the determinant list in
@@ -831,9 +833,12 @@ Points to keep in mind:
   you ``mpi4py.MPI`` when it is installed and a serial replacement otherwise.
 * When the integrals are read with :func:`~ipie.hamiltonians.utils.get_hamiltonian`
   (as ``build_from_hdf5`` and ``get_driver`` do), the Cholesky vectors are
-  placed in MPI shared memory so that ranks on the same node do not hold
-  separate copies. When you construct the Hamiltonian from arrays yourself,
-  each rank holds its own copy.
+  placed in MPI shared memory that is shared by the ranks of an
+  ``MPIHandler`` ``nmembers`` group, not by a whole node. ``build_from_hdf5``
+  always uses ``nmembers=1`` and ``get_driver`` reads ``nmembers`` from the
+  ``qmc`` section (default 1), so by default every rank holds its own copy.
+  When you construct the Hamiltonian from arrays yourself, each rank holds
+  its own copy as well.
 * For Hamiltonians too large to fit on one rank or GPU, the Cholesky vectors
   can be split across the ``nmembers`` ranks of an ``MPIHandler(nmembers=...)``
   group using :class:`ipie.hamiltonians.generic_chunked.GenericRealCholChunked`.
@@ -855,8 +860,9 @@ imported, because the array library (NumPy or CuPy) is chosen at import time:
    ...
 
 Equivalently, set the environment variable ``IPIE_USE_GPU=1`` when launching
-the script (``IPIE_USE_MIXED_PRECISION=1`` additionally enables mixed
-precision). When GPU mode is active, ``run()`` assigns each MPI rank the
+the script. (``IPIE_USE_MIXED_PRECISION`` is parsed into ``config`` as well,
+but nothing outside ``ipie.legacy`` reads it, so it has no effect; see
+:doc:`installation`.) When GPU mode is active, ``run()`` assigns each MPI rank the
 device ``rank % number_of_gpus`` and copies the propagator, Hamiltonian, trial
 and walkers to it, so the natural configuration is one MPI task per GPU. See
 ``examples/06-gpu/`` for complete scripts.

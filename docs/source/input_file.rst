@@ -217,7 +217,9 @@ Read in :func:`ipie.qmc.calc.get_driver` and passed to
      - ``pack_chol``, ``pack_cholesky``
      - When ``true`` and shared memory is available, the packed
        upper-triangle Cholesky vectors (``L[i<=k, n]``) are built once per
-       node and placed in a node-shared array. ``false`` disables the shared
+       ``nmembers`` group and placed in an array shared by that group (with
+       the default ``nmembers = 1`` every rank builds its own). ``false``
+       disables the shared
        packed array; each rank then builds its own packed copy inside
        :class:`~ipie.hamiltonians.generic.GenericRealChol`. The full
        ``nbasis*nbasis`` vectors are kept in either case, so ``false`` never
@@ -403,10 +405,10 @@ passed to :func:`ipie.trial_wavefunction.utils.get_trial_wavefunction`.
      - int
      - ``1``
      - ``num_dets_props``
-     - Particle-hole trials only: number of determinants used when
-       evaluating the force bias and the mixed estimators (the local energy
-       still uses all ``ndets``). ``-1`` means ``ndets``; larger values are
-       capped at ``ndets``.
+     - Particle-hole trials only: number of determinants used to build the
+       trial one-body density matrix, which sets the mean-field shift. The
+       force bias and the local energy always use all ``ndets``. ``-1`` means
+       ``ndets``; larger values are capped at ``ndets``.
    * - ``ndet_chunks``
      - int
      - ``1``

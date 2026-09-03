@@ -539,8 +539,11 @@ gas. The local ``ueg.py`` module (a copy of
 :func:`ipie.addons.thermal.qmc.calc.build_thermal_afqmc_driver` from an options
 dictionary specifying a ``"one_body"`` trial density matrix
 (:class:`ipie.addons.thermal.trial.one_body.OneBody`), chemical potential
-``mu=0.133579``, inverse temperature ``beta=10``, ``timestep=0.5``,
-``stack_size=10`` and 20 blocks. After ``afqmc.run()`` both the energy and the
+``mu=0.133579``, inverse temperature ``beta=10``, ``timestep=0.5`` and 20
+blocks in the ``"qmc"`` section, and ``stack_size=10`` in the ``"walkers"``
+section (the thermal driver reads ``stack_size`` and ``lowrank`` from
+``"walkers"``; a ``stack_size`` under ``"qmc"`` is silently ignored). After
+``afqmc.run()`` both the energy and the
 average particle number (``"nav"``, from
 :class:`ipie.addons.thermal.estimators.particle_number.ThermalNumberEstimator`)
 are extracted and reblocked. No PySCF is needed; run with
