@@ -45,10 +45,21 @@ def eri_diag(isometry, eri, tol=1e-13):
 
 
 def mat_decomp(A, tol=None):
-    """
-    For real symmetric A, returns C (possibly complex) such that:
-        A ≈ C.T @ C
-    If truncate_zeros=True, drops (near-)zero eigenvalues/columns.
+    """Factorise a real symmetric matrix as ``A ≈ C.T @ C``.
+
+    Parameters
+    ----------
+    A : array_like
+        Real symmetric matrix.
+    tol : float, optional
+        Eigenvalues with ``abs(w) <= tol`` (and the corresponding columns) are
+        dropped. Defaults to ``1e-12 * max(abs(w))``.
+
+    Returns
+    -------
+    C : :class:`numpy.ndarray`
+        Factor (possibly complex, since negative eigenvalues give imaginary
+        square roots) such that ``A ≈ C.T @ C``.
     """
     A = np.asarray(A)
     w, Q = np.linalg.eigh(A)

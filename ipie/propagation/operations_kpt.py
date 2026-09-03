@@ -25,7 +25,8 @@ def propagate_one_body_kpt(phi, bt2):
     r"""
     Propagate by the kinetic term by direct matrix multiplication for k-point calculations.
     Only one spin component. Assuming phi is a batch.
-    For use with the continuus algorithm and free propagation.
+    For use with the continuous algorithm and free propagation.
+
     Parameters
     ----------
     phi : xp.ndarray

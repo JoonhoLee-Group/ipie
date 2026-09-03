@@ -115,13 +115,30 @@ class PhaselessISDF(PhaselessBase):
 
     @plum.dispatch.abstract
     def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
+        """Abstract fallback for ``construct_VHS``.
+
+        Dispatched to when no specialised overload matches the Hamiltonian type.
+        """
         print("JOONHO here abstract function for construct VHS")
-        "abstract function for construct VHS"
 
     @plum.dispatch
     def construct_VHS(
         self, hamiltonian: Union[GenericRealISDF, GenericComplexISDF], xshifted: xp.ndarray
     ) -> xp.ndarray:
+        """Construct the Hubbard-Stratonovich operator ``V_HS`` from ISDF factors.
+
+        Parameters
+        ----------
+        hamiltonian : :class:`~ipie.hamiltonians.isdf.GenericRealISDF` or :class:`~ipie.hamiltonians.isdf.GenericComplexISDF`
+            ISDF-factorised Hamiltonian.
+        xshifted : :class:`numpy.ndarray`
+            Force-bias shifted auxiliary fields, shape ``(nwalkers, nfields)``.
+
+        Returns
+        -------
+        VHS : :class:`numpy.ndarray`
+            One-body operators, one per walker.
+        """
         if isinstance(hamiltonian, GenericRealISDF):
             Lx_real = hamiltonian.cholM @ xshifted.real
             Lx_imag = hamiltonian.cholM @ xshifted.imag
@@ -271,13 +288,34 @@ class PhaselessISDFChunked(PhaselessBase):
 
     @plum.dispatch.abstract
     def construct_VHS(self, hamiltonian: GenericBase, xshifted: xp.ndarray) -> xp.ndarray:
+        """Abstract fallback for ``construct_VHS``.
+
+        Dispatched to when no specialised overload matches the Hamiltonian type.
+        """
         print("JOONHO here abstract function for construct VHS")
-        "abstract function for construct VHS"
 
     @plum.dispatch
     def construct_VHS(
         self, hamiltonian: GenericRealISDFChunked, xshifted: xp.ndarray
     ) -> xp.ndarray:
+        """Construct ``V_HS`` from ISDF factors distributed over MPI ranks.
+
+        Each rank holds a chunk of the Cholesky/ISDF factors; partial products are
+        passed around the shared communicator in a ring until every rank has
+        accumulated the full one-body operator for its walkers.
+
+        Parameters
+        ----------
+        hamiltonian : :class:`~ipie.hamiltonians.chunked_isdf.GenericRealISDFChunked`
+            Chunked ISDF Hamiltonian.
+        xshifted : :class:`numpy.ndarray`
+            Force-bias shifted auxiliary fields, shape ``(nfields, nwalkers)``.
+
+        Returns
+        -------
+        VHS : :class:`numpy.ndarray`
+            One-body operators, one per walker.
+        """
         if isinstance(hamiltonian, GenericRealISDFChunked):
             xshifted_send = xshifted.copy()
             xshifted_recv = xp.zeros_like(xshifted)

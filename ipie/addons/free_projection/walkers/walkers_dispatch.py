@@ -36,6 +36,29 @@ def UHFWalkersTrialFP(
     mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
+    """Build free-projection walkers for a single-determinant trial.
+
+    Parameters
+    ----------
+    trial : :class:`ipie.trial_wavefunction.single_det.SingleDet`
+        Trial wave function; selects the walker type.
+    initial_walker : :class:`numpy.ndarray`
+        Initial Slater determinant used for every walker.
+    nup, ndown : int
+        Number of alpha and beta electrons.
+    nbasis : int
+        Number of basis functions.
+    nwalkers : int
+        Number of walkers per MPI rank.
+    mpi_handler : :class:`ipie.utils.mpi.MPIHandler`
+        MPI handler.
+    verbose : bool
+        Print additional information.
+
+    Returns
+    -------
+    walkers : :class:`ipie.addons.free_projection.walkers.uhf_walkers.UHFWalkersFP`
+    """
     return UHFWalkersFP(initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose)
 
 
@@ -50,6 +73,11 @@ def UHFWalkersTrialFP(
     mpi_handler: MPIHandler,
     verbose: bool = False,
 ):
+    """Build free-projection walkers for a particle-hole (multi-determinant) trial.
+
+    See the :class:`~ipie.trial_wavefunction.single_det.SingleDet` overload for the
+    argument description.
+    """
     return UHFWalkersParticleHoleFP(
         initial_walker, nup, ndown, nbasis, nwalkers, mpi_handler, verbose
     )

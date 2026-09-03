@@ -1,4 +1,4 @@
-.. image:: https://github.com/linusjoonho/ipie/blob/main/logo.png
+.. image:: https://raw.githubusercontent.com/JoonhoLee-Group/ipie/main/logo.png
     :width: 200
 
 ipie stands for **I**\ntelligent **P**\ython-based **I**\maginary-time **E**\volution with a focus on simplicity and speed.
@@ -8,11 +8,11 @@ ipie inherits a lot of QMC features from pauxy.
 .. image:: https://github.com/JoonhoLee-Group/ipie/actions/workflows/ci.yml/badge.svg
     :target: https://github.com/JoonhoLee-Group/ipie/actions/workflows/ci.yml
 
-.. image:: http://readthedocs.org/projects/ipie/badge/?version=latest
-    :target: http://ipie.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/ipie/badge/?version=latest
+    :target: https://ipie.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/License-Apache%20v2-blue.svg
-    :target: http://github.com/linusjoonho/ipie/blob/master/LICENSE
+    :target: https://github.com/JoonhoLee-Group/ipie/blob/main/LICENSE
 
 .. .. image:: https://codecov.io/gh/linusjoonho/ipie/branch/develop/graph/badge.svg
 ..     :target: https://codecov.io/gh/linusjoonho/ipie
@@ -28,24 +28,24 @@ Copyright by Joonho Lee (joonholee@g.harvard.edu)
 ipie is a Python-based auxiliary-field quantum Monte Carlo (AFQMC) package, designed for simplicity and computational efficiency. The package has seen substantial improvements in modularity, functionality, and compatibility since its first release.
 
 Key features include:
---------
+----------------------------------
 
 - **Ground State Energy Estimation**: Calculate ground state energies of ab-initio systems with phaseless AFQMC.
 - **Distributed Hamiltonian Simulations**: Run large-scale simulations distributed across multiple CPUs or GPUs, enabling calculations on systems too large for a single node or GPU card.
 - **GPU Acceleration**: Support both CPU and GPU calculations, with GPU acceleration provided by CuPy/CUDA and CUDA-aware MPI.
-- **Extended AFQMC Algorithms**: Includes free projection AFQMC, finite temperature AFQMC, AFQMC for electron-phonon systems, and automatic differentiation for property calculation.
+- **Extended AFQMC Algorithms**: Includes free projection AFQMC, finite temperature AFQMC, automatic differentiation for property calculation, and (in the legacy code) AFQMC for electron-phonon systems.
 - **Simple Data Analysis**
 - **Other legacy features from pauxy**
 
 For technical details, see our latest release papers:
 
-- [J. Chem. Theory Comput., 2023, 19(1): 109-121](https://pubs.acs.org/doi/10.1021/acs.jctc.2c00934)
-- [J. Chem. Phys. 161, 162502 (2024)](https://doi.org/10.1063/5.0225596)
+- `J. Chem. Theory Comput. 19, 109-121 (2023) <https://pubs.acs.org/doi/10.1021/acs.jctc.2c00934>`_
+- `J. Chem. Phys. 161, 162502 (2024) <https://doi.org/10.1063/5.0225596>`_
 
 Installation
 ------------
 
-Linux and Mac OS wheels are available for installation via pip:
+A pure-Python wheel is available on PyPI and installs on Linux and Mac OS:
 
 ::
 
@@ -83,11 +83,11 @@ Refer to the `mpi4py` `documentation <https://mpi4py.readthedocs.io/en/stable/in
 
 For GPU support, `cupy` is required and can be installed as outlined on the `Cupy website <https://cupy.dev/>`_. For CUDA-aware MPI, consider `conda-forge`.
 
-For GPU cuTensorNet/cuQuantum support, install the GPU extra:
+For GPU cuTensorNet/cuQuantum support, additionally install `cuquantum-python <https://docs.nvidia.com/cuda/cuquantum/latest/python/index.html>`_ (there is no ``[gpu]`` extra):
 
 ::
 
-    $ pip install -e .[gpu]
+    $ pip install cuquantum-python
 
 Running the Test Suite
 ----------------------
@@ -116,4 +116,4 @@ ipie also provides optimized implementations for certain functions involving mul
 Documentation
 -------------
 
-Documentation and tutorials are available at `ReadTheDocs <https://ipie.readthedocs.org>`_.
+Documentation and tutorials are available at `Read the Docs <https://ipie.readthedocs.io/en/latest/>`_.
