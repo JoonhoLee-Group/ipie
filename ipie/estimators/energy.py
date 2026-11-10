@@ -118,7 +118,7 @@ def local_energy(
     n_ab = xp.diagonal(Gab, axis1=2, axis2=3)
     n_ba = xp.diagonal(Gba, axis1=2, axis2=3)
     eU_k = hamiltonian.U * xp.sum(nia * nib - n_ab * n_ba, axis=2)  # (K, w)
-    wts = trial.coeffs.conj()[:, None] * O                          # (K, w)
+    wts = trial.coeffs.conj()[:, None] * O  # (K, w)
     e2b = xp.sum(wts * eU_k, axis=0) / S
     etot = e1b + e2b
     return xp.stack([etot, e1b, e2b], axis=1)

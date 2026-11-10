@@ -17,7 +17,6 @@
 
 import cupy
 
-
 _HUBBARD_SINGLE_SITE_KERNELS = None
 
 
@@ -389,8 +388,6 @@ def get_hubbard_single_site_kernels():
         "site_update": cupy.RawKernel(code, "hubbard_site_update_kernel"),
         "site_update_parallel": cupy.RawKernel(code, "hubbard_site_update_parallel_kernel"),
         "sherman_morrison": cupy.RawKernel(code, "sherman_morrison_update_kernel"),
-        "sherman_morrison_apply_large": cupy.RawKernel(
-            code, "sherman_morrison_apply_large_kernel"
-        ),
+        "sherman_morrison_apply_large": cupy.RawKernel(code, "sherman_morrison_apply_large_kernel"),
     }
     return _HUBBARD_SINGLE_SITE_KERNELS

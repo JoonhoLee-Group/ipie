@@ -430,9 +430,7 @@ class AFQMC(AFQMCBase):
             _, initial_walker = get_initial_walker(trial_wavefunction)
             # TODO this is a factory method not a class
             walker_factory = (
-                GHFWalkersTrial
-                if isinstance(trial_wavefunction, SingleDetGHF)
-                else UHFWalkersTrial
+                GHFWalkersTrial if isinstance(trial_wavefunction, SingleDetGHF) else UHFWalkersTrial
             )
             walkers = walker_factory(
                 trial_wavefunction,

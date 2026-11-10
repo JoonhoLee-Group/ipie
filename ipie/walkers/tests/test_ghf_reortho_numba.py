@@ -45,7 +45,9 @@ def test_ghf_reortho_cpu_matches_qr():
     for iw in range(walkers.nwalkers):
         q, r = numpy.linalg.qr(phi[iw])
         phase = numpy.diag(r) / numpy.abs(numpy.diag(r))
-        detR_ref = numpy.exp(numpy.sum(numpy.log(numpy.abs(numpy.diag(r)))) - walkers.detR_shift[iw])
+        detR_ref = numpy.exp(
+            numpy.sum(numpy.log(numpy.abs(numpy.diag(r)))) - walkers.detR_shift[iw]
+        )
         numpy.testing.assert_allclose(walkers.phi[iw], q * phase[None, :], rtol=1e-10, atol=1e-12)
         numpy.testing.assert_allclose(detR[iw], detR_ref, rtol=1e-10)
         numpy.testing.assert_allclose(walkers.detR[iw], detR_ref, rtol=1e-10)
@@ -59,7 +61,9 @@ def test_ghf_reortho_cpu_keeps_overlap_consistent():
     walkers.reortho()
     numpy.testing.assert_allclose(
         numpy.einsum("wmi,wmj->wij", walkers.phi.conj(), walkers.phi),
-        numpy.broadcast_to(numpy.eye(walkers.phi.shape[2]), (walkers.nwalkers,) + (walkers.phi.shape[2],) * 2),
+        numpy.broadcast_to(
+            numpy.eye(walkers.phi.shape[2]), (walkers.nwalkers,) + (walkers.phi.shape[2],) * 2
+        ),
         atol=1e-12,
     )
     numpy.testing.assert_allclose(walkers.ovlp, trial.calc_overlap(walkers), rtol=1e-10, atol=1e-12)

@@ -21,6 +21,7 @@ A one-determinant NOCIGHF must reproduce SingleDetGHF (overlap, Green's function
 local energy, and a full two-body step) bit-for-bit, and the multi-determinant
 trial energy must agree with an independent NOCI evaluation.
 """
+
 import numpy
 import pytest
 
@@ -125,8 +126,9 @@ def test_noci_ghf_multidet_energy(setup):
             Gaa, Gbb = G[:nb, :nb], G[nb:, nb:]
             Gab, Gba = G[:nb, nb:], G[nb:, :nb]
             e1 = numpy.einsum("ij,ji", T, Gaa) + numpy.einsum("ij,ji", T, Gbb)
-            eU = U * numpy.sum(numpy.diag(Gaa) * numpy.diag(Gbb)
-                               - numpy.diag(Gab) * numpy.diag(Gba))
+            eU = U * numpy.sum(
+                numpy.diag(Gaa) * numpy.diag(Gbb) - numpy.diag(Gab) * numpy.diag(Gba)
+            )
             w = numpy.conj(coeffs[k]) * coeffs[l] * O
             num += w * (e1 + eU)
             den += w

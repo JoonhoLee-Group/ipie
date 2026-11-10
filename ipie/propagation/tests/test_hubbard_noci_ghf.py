@@ -136,4 +136,6 @@ def test_noci_full_propagation_smoke():
     # dead walkers keep their pre-death overlap by construction
     alive = numpy.abs(walkers.weight) > 0.0
     assert numpy.any(alive)
-    numpy.testing.assert_allclose(walkers.ovlp[alive], trial.calc_overlap(walkers)[alive], atol=1e-8)
+    numpy.testing.assert_allclose(
+        walkers.ovlp[alive], trial.calc_overlap(walkers)[alive], atol=1e-8
+    )

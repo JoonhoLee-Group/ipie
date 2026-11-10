@@ -166,7 +166,9 @@ def test_spin_orbital_block_diagonal_matches_hubbard():
     trial.calc_greens_function(walkers, build_full=True)
     system = Generic(NELEC)
     numpy.testing.assert_allclose(
-        local_energy(system, ham_so, walkers, trial), local_energy(system, ham, walkers, trial), atol=1e-11
+        local_energy(system, ham_so, walkers, trial),
+        local_energy(system, ham, walkers, trial),
+        atol=1e-11,
     )
     trial.calculate_energy(system, ham)
     e_ref = trial.energy

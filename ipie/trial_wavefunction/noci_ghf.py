@@ -96,7 +96,7 @@ class NOCIGHF(SingleDetGHF):
             O[k] = sign * numpy.exp(logdet - walkers.log_shift)
             inv = numpy.linalg.inv(ovlp_mat)
             ghalf = numpy.einsum("wij,wjk->wik", inv, phiT, optimize=True)  # (w,nocc,2nb)
-            G[k] = numpy.einsum("pj,wjk->wpk", dkc, ghalf, optimize=True)   # (w,2nb,2nb)
+            G[k] = numpy.einsum("pj,wjk->wpk", dkc, ghalf, optimize=True)  # (w,2nb,2nb)
         return O, G
 
     def _per_det_overlaps(self, walkers):
@@ -117,9 +117,9 @@ class NOCIGHF(SingleDetGHF):
 
     def _mixed(self, walkers):
         O, G = self._per_det(walkers)
-        cstar = self.coeffs.conj()[:, None]            # (K,1)
-        wts = cstar * O                                # (K, w)
-        S = numpy.sum(wts, axis=0)                     # (w,)
+        cstar = self.coeffs.conj()[:, None]  # (K,1)
+        wts = cstar * O  # (K, w)
+        S = numpy.sum(wts, axis=0)  # (w,)
         Gmix = numpy.einsum("kw,kwpq->wpq", wts, G, optimize=True) / S[:, None, None]
         return S, Gmix, O, G
 
@@ -161,8 +161,9 @@ class NOCIGHF(SingleDetGHF):
                 Gaa, Gbb = G[:nb, :nb], G[nb:, nb:]
                 Gab, Gba = G[:nb, nb:], G[nb:, :nb]
                 e1 = numpy.einsum("ij,ji", T[0], Gaa) + numpy.einsum("ij,ji", T[1], Gbb)
-                eU = U * numpy.sum(numpy.diag(Gaa) * numpy.diag(Gbb)
-                                   - numpy.diag(Gab) * numpy.diag(Gba))
+                eU = U * numpy.sum(
+                    numpy.diag(Gaa) * numpy.diag(Gbb) - numpy.diag(Gab) * numpy.diag(Gba)
+                )
                 num += w * (e1 + eU)
         self.energy = num / den
         self.e1b = None

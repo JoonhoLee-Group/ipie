@@ -153,9 +153,7 @@ def get_driver(options: dict, comm: MPI.COMM_WORLD) -> AFQMC:
             trial.e2b = comm.bcast(trial.e2b, root=0)
         comm.barrier()
         _, initial_walker = get_initial_walker(trial)
-        walker_factory = (
-            GHFWalkersTrial if isinstance(trial, SingleDetGHF) else UHFWalkersTrial
-        )
+        walker_factory = GHFWalkersTrial if isinstance(trial, SingleDetGHF) else UHFWalkersTrial
         walkers = walker_factory(
             trial,
             initial_walker,

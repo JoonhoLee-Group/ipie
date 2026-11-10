@@ -70,10 +70,9 @@ def test_ghf_hubbard_overlap_ratio_matches_direct_determinant():
     for field in (0, 1):
         delta_up = prop.delta[field, 0]
         delta_down = prop.delta[field, 1]
-        ratio = (
-            (1.0 + delta_up * guu) * (1.0 + delta_down * gdd)
-            - delta_up * delta_down * gud * gdu
-        )
+        ratio = (1.0 + delta_up * guu) * (
+            1.0 + delta_down * gdd
+        ) - delta_up * delta_down * gud * gdu
 
         phi_new = walkers.phi.copy()
         phi_new[:, up, :] *= prop.auxf[field, 0]
@@ -212,12 +211,8 @@ def test_ghf_from_uhf_calculation_matches_uhf_with_same_fields():
         numpy.testing.assert_allclose(walkers_uhf.ovlp, walkers_ghf.ovlp, atol=1e-10)
         numpy.testing.assert_allclose(e_uhf, e_ghf, atol=1e-10)
 
-        numpy.testing.assert_allclose(
-            walkers_ghf.phi[:, :nbasis, nelec[0] :], 0.0, atol=1e-12
-        )
-        numpy.testing.assert_allclose(
-            walkers_ghf.phi[:, nbasis:, : nelec[0]], 0.0, atol=1e-12
-        )
+        numpy.testing.assert_allclose(walkers_ghf.phi[:, :nbasis, nelec[0] :], 0.0, atol=1e-12)
+        numpy.testing.assert_allclose(walkers_ghf.phi[:, nbasis:, : nelec[0]], 0.0, atol=1e-12)
         numpy.testing.assert_allclose(
             walkers_uhf.phia, walkers_ghf.phi[:, :nbasis, : nelec[0]], atol=1e-10
         )

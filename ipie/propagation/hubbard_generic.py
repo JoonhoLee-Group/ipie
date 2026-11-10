@@ -122,9 +122,7 @@ def hubbard_two_body_uhf_cpu(
                 scale_down = 1.0 + delta_down
                 for j in range(ndown):
                     phib[iw, site, j] *= scale_down
-                sherman_morrison_from_q_cpu(
-                    invb[iw], psi0b_conj[site], q_down, delta_down, gdown
-                )
+                sherman_morrison_from_q_cpu(invb[iw], psi0b_conj[site], q_down, delta_down, gdown)
 
 
 @njit(parallel=True, cache=True)
@@ -186,12 +184,12 @@ def hubbard_two_body_ghf_cpu(
                     gud += u[0, c] * psi0_conj[down, c]
                     gdu += u[1, c] * psi0_conj[up, c]
                     gdd += u[1, c] * psi0_conj[down, c]
-                r0 = (1.0 + delta[0, 0] * guu) * (1.0 + delta[0, 1] * gdd) - delta[
-                    0, 0
-                ] * delta[0, 1] * gud * gdu
-                r1 = (1.0 + delta[1, 0] * guu) * (1.0 + delta[1, 1] * gdd) - delta[
-                    1, 0
-                ] * delta[1, 1] * gud * gdu
+                r0 = (1.0 + delta[0, 0] * guu) * (1.0 + delta[0, 1] * gdd) - delta[0, 0] * delta[
+                    0, 1
+                ] * gud * gdu
+                r1 = (1.0 + delta[1, 0] * guu) * (1.0 + delta[1, 1] * gdd) - delta[1, 0] * delta[
+                    1, 1
+                ] * gud * gdu
                 pr0 = max((0.5 * r0 * aux_wfac[0]).real, 0.0)
                 pr1 = max((0.5 * r1 * aux_wfac[1]).real, 0.0)
                 norm = pr0 + pr1
@@ -292,12 +290,12 @@ def hubbard_two_body_noci_ghf_cpu(
                 gud[k] = g_ud
                 gdu[k] = g_du
                 gdd[k] = g_dd
-                r0 = (1.0 + delta[0, 0] * g_uu) * (1.0 + delta[0, 1] * g_dd) - delta[
-                    0, 0
-                ] * delta[0, 1] * g_ud * g_du
-                r1 = (1.0 + delta[1, 0] * g_uu) * (1.0 + delta[1, 1] * g_dd) - delta[
-                    1, 0
-                ] * delta[1, 1] * g_ud * g_du
+                r0 = (1.0 + delta[0, 0] * g_uu) * (1.0 + delta[0, 1] * g_dd) - delta[0, 0] * delta[
+                    0, 1
+                ] * g_ud * g_du
+                r1 = (1.0 + delta[1, 0] * g_uu) * (1.0 + delta[1, 1] * g_dd) - delta[1, 0] * delta[
+                    1, 1
+                ] * g_ud * g_du
                 pk = cstar[k] * rel_ovlp[k, iw]
                 psum += pk
                 num0 += pk * r0
@@ -513,12 +511,8 @@ class HubbardSingleSite(HirschBase):
             walkers.inv_ovlp_b,
             walkers.weight,
             walkers.ovlp,
-            numpy.ascontiguousarray(
-                numpy.conjugate(trial.psi0a), dtype=numpy.complex128
-            ),
-            numpy.ascontiguousarray(
-                numpy.conjugate(trial.psi0b), dtype=numpy.complex128
-            ),
+            numpy.ascontiguousarray(numpy.conjugate(trial.psi0a), dtype=numpy.complex128),
+            numpy.ascontiguousarray(numpy.conjugate(trial.psi0b), dtype=numpy.complex128),
             numpy.asarray(self.delta, dtype=numpy.complex128),
             numpy.asarray(self.aux_wfac, dtype=numpy.complex128),
             numpy.asarray(random_fields, dtype=numpy.float64),
@@ -573,14 +567,12 @@ class HubbardSingleSite(HirschBase):
         for i in range(hamiltonian.nbasis):
             guu, gud, gdu, gdd = self._ghf_site_greens_block(walkers, trial, i)
 
-            r1 = (
-                (1.0 + self.delta[0, 0] * guu) * (1.0 + self.delta[0, 1] * gdd)
-                - self.delta[0, 0] * self.delta[0, 1] * gud * gdu
-            )
-            r2 = (
-                (1.0 + self.delta[1, 0] * guu) * (1.0 + self.delta[1, 1] * gdd)
-                - self.delta[1, 0] * self.delta[1, 1] * gud * gdu
-            )
+            r1 = (1.0 + self.delta[0, 0] * guu) * (1.0 + self.delta[0, 1] * gdd) - self.delta[
+                0, 0
+            ] * self.delta[0, 1] * gud * gdu
+            r2 = (1.0 + self.delta[1, 0] * guu) * (1.0 + self.delta[1, 1] * gdd) - self.delta[
+                1, 0
+            ] * self.delta[1, 1] * gud * gdu
             ratios = xp.stack([r1, r2], axis=1)
             probs = 0.5 * ratios * self.aux_wfac[None, :]
             phaseless_ratio = xp.maximum(probs.real, 0.0)
@@ -677,9 +669,7 @@ class HubbardSingleSite(HirschBase):
             psi_up = detsc[:, up, :]  # (K, nocc)
             psi_down = detsc[:, down, :]
             ghalf_up = xp.einsum("wi,kwij->kwj", walkers.phi[:, up, :], inv_ovlp, optimize=True)
-            ghalf_down = xp.einsum(
-                "wi,kwij->kwj", walkers.phi[:, down, :], inv_ovlp, optimize=True
-            )
+            ghalf_down = xp.einsum("wi,kwij->kwj", walkers.phi[:, down, :], inv_ovlp, optimize=True)
             guu = xp.einsum("kwj,kj->kw", ghalf_up, psi_up, optimize=True)
             gud = xp.einsum("kwj,kj->kw", ghalf_up, psi_down, optimize=True)
             gdu = xp.einsum("kwj,kj->kw", ghalf_down, psi_up, optimize=True)
@@ -746,12 +736,8 @@ class HubbardSingleSite(HirschBase):
         cached = getattr(self, "_trial_buffer_key", None)
         if cached is None or cached[0] is not trial.psi0a or cached[1] is not trial.psi0b:
             self._trial_buffer_key = (trial.psi0a, trial.psi0b)
-            self._psi0a_complex = xp.ascontiguousarray(
-                xp.asarray(trial.psi0a, dtype=xp.complex128)
-            )
-            self._psi0b_complex = xp.ascontiguousarray(
-                xp.asarray(trial.psi0b, dtype=xp.complex128)
-            )
+            self._psi0a_complex = xp.ascontiguousarray(xp.asarray(trial.psi0a, dtype=xp.complex128))
+            self._psi0b_complex = xp.ascontiguousarray(xp.asarray(trial.psi0b, dtype=xp.complex128))
         return self._psi0a_complex, self._psi0b_complex
 
     def _ensure_cuda_arrays_contiguous(self, walkers):
@@ -787,7 +773,9 @@ class HubbardSingleSite(HirschBase):
         shared_mem = (2 * nocc + 1) * numpy.dtype(numpy.complex128).itemsize
         kernel((nwalkers,), (threads,), (inv, psi_site, vt, nwalkers, nocc), shared_mem=shared_mem)
 
-    def _launch_sherman_morrison_cublas_large(self, apply_kernel, inv, psi_site, vt, nwalkers, nocc):
+    def _launch_sherman_morrison_cublas_large(
+        self, apply_kernel, inv, psi_site, vt, nwalkers, nocc
+    ):
         u = xp.conj(psi_site)
         self._large_sm_au[:, :nocc] = xp.matmul(inv, u)
         self._large_sm_vta[:, :nocc] = xp.matmul(vt[:, None, :], inv)[:, 0, :]
@@ -806,11 +794,15 @@ class HubbardSingleSite(HirschBase):
     def _launch_sherman_morrison_auto(self, kernels, inv, psi_site, vt, nwalkers, nocc):
         shared_mem = (2 * nocc + 1) * numpy.dtype(numpy.complex128).itemsize
         if shared_mem <= 48 * 1024:
-            self._launch_sherman_morrison(kernels["sherman_morrison"], inv, psi_site, vt, nwalkers, nocc)
+            self._launch_sherman_morrison(
+                kernels["sherman_morrison"], inv, psi_site, vt, nwalkers, nocc
+            )
         else:
             apply_kernel, apply_shared_mem = self._large_apply_kernel(kernels)
             self._large_apply_shared_mem = apply_shared_mem
-            self._launch_sherman_morrison_cublas_large(apply_kernel, inv, psi_site, vt, nwalkers, nocc)
+            self._launch_sherman_morrison_cublas_large(
+                apply_kernel, inv, psi_site, vt, nwalkers, nocc
+            )
 
     def _cuda_two_body(self, walkers, hamiltonian, trial, random_fields):
         from ipie.propagation.kernels.gpu.hubbard import get_hubbard_single_site_kernels
@@ -827,10 +819,27 @@ class HubbardSingleSite(HirschBase):
 
         for i in range(hamiltonian.nbasis):
             site_args = (
-                walkers.phia, walkers.phib, walkers.inv_ovlp_a, walkers.inv_ovlp_b,
-                psi0a, psi0b, self.delta, self.aux_wfac, random_fields[i], walkers.weight,
-                walkers.ovlp, self._vtup, self._vtdown, self._xi, self._live, i,
-                walkers.nwalkers, hamiltonian.nbasis, walkers.nup, walkers.ndown, int(walkers.rhf),
+                walkers.phia,
+                walkers.phib,
+                walkers.inv_ovlp_a,
+                walkers.inv_ovlp_b,
+                psi0a,
+                psi0b,
+                self.delta,
+                self.aux_wfac,
+                random_fields[i],
+                walkers.weight,
+                walkers.ovlp,
+                self._vtup,
+                self._vtdown,
+                self._xi,
+                self._live,
+                i,
+                walkers.nwalkers,
+                hamiltonian.nbasis,
+                walkers.nup,
+                walkers.ndown,
+                int(walkers.rhf),
             )
             if use_parallel_site:
                 site_kernel_parallel(
@@ -841,8 +850,17 @@ class HubbardSingleSite(HirschBase):
                 )
             else:
                 site_kernel(blocks, (threads,), site_args)
-            self._launch_sherman_morrison_auto(kernels, walkers.inv_ovlp_a, psi0a[i, :], self._vtup, walkers.nwalkers, walkers.nup)
-            self._launch_sherman_morrison_auto(kernels, walkers.inv_ovlp_b, psi0b[i, :], self._vtdown, walkers.nwalkers, walkers.ndown)
+            self._launch_sherman_morrison_auto(
+                kernels, walkers.inv_ovlp_a, psi0a[i, :], self._vtup, walkers.nwalkers, walkers.nup
+            )
+            self._launch_sherman_morrison_auto(
+                kernels,
+                walkers.inv_ovlp_b,
+                psi0b[i, :],
+                self._vtdown,
+                walkers.nwalkers,
+                walkers.ndown,
+            )
 
     def _is_nvidia_gpu(self):
         if not hasattr(xp, "RawKernel"):
@@ -942,7 +960,9 @@ class HubbardSingleSite(HirschBase):
         if not hasattr(xp, "RawKernel"):
             random_fields = numpy.random.random((hamiltonian.nbasis, walkers.nwalkers))
         else:
-            random_fields = xp.random.random((hamiltonian.nbasis, walkers.nwalkers), dtype=xp.float64)
+            random_fields = xp.random.random(
+                (hamiltonian.nbasis, walkers.nwalkers), dtype=xp.float64
+            )
 
         if path == "cpu_numba":
             self._cpu_numba_two_body(walkers, hamiltonian, trial, random_fields)
