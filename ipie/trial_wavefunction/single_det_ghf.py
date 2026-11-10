@@ -9,7 +9,7 @@ from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.wavefunction_base import TrialWavefunctionBase
 from ipie.walkers.ghf_walkers import GHFWalkers
-from ipie.hamiltonians.hubbard import Hubbard
+from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
 from ipie.estimators.generic import cholesky_jk_ghf
 from ipie.estimators.greens_function_single_det import greens_function_single_det_ghf
@@ -135,6 +135,30 @@ class SingleDetGHF(TrialWavefunctionBase):
         nib = numpy.diagonal(Gbb)
         n_ab = numpy.diagonal(Gab)
         n_ba = numpy.diagonal(Gba)
+        self.ej = hamiltonian.U * numpy.sum(nia * nib)
+        self.ek = hamiltonian.U * numpy.sum(n_ab * n_ba)
+        self.e2b = self.ej - self.ek
+        self.energy = self.e1b + self.e2b
+
+        if self.verbose:
+            print(
+                f"# (E, E1B, E2B): ({self.energy.real:13.8e}, {self.e1b.real:13.8e},"
+                f"{self.e2b.real:13.8e})"
+            )
+            print(f"# Time to evaluate trial energy: {time.time() - start}")
+
+    @plum.dispatch
+    def calculate_energy(self, system: Generic, hamiltonian: HubbardSpinOrbital) -> None:
+        if self.verbose:
+            print("# Computing trial wavefunction energy.")
+        start = time.time()
+        nbasis = hamiltonian.nbasis
+        # G[i, j] = <c^dag_i c_j> over the spin orbitals; the one-body matrix may couple spins.
+        self.e1b = numpy.einsum("ij,ij", hamiltonian.H1, self.G, optimize=True) + hamiltonian.ecore
+        nia = numpy.diagonal(self.G[:nbasis, :nbasis])
+        nib = numpy.diagonal(self.G[nbasis:, nbasis:])
+        n_ab = numpy.diagonal(self.G[:nbasis, nbasis:])
+        n_ba = numpy.diagonal(self.G[nbasis:, :nbasis])
         self.ej = hamiltonian.U * numpy.sum(nia * nib)
         self.ek = hamiltonian.U * numpy.sum(n_ab * n_ba)
         self.e2b = self.ej - self.ek

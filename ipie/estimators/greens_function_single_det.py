@@ -1,5 +1,22 @@
+import numpy
+from numba import njit, prange
+
+from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
+
+
+@njit(parallel=True, cache=True)
+def greens_function_single_det_ghf_cpu(phi, psi0_h, log_shift, G, det):
+    """Walker-parallel GHF Green's function: G[w] = (phi A^{-1} psi0^dag)^T, A = psi0^dag phi[w].
+
+    One walker per numba thread; the BLAS/LAPACK calls inside must run single threaded.
+    """
+    for iw in prange(phi.shape[0]):
+        a = numpy.dot(psi0_h, phi[iw])
+        sign, logdet = numpy.linalg.slogdet(a)
+        det[iw] = sign * numpy.exp(logdet - log_shift[iw])
+        G[iw] = numpy.dot(phi[iw], numpy.dot(numpy.linalg.inv(a), psi0_h)).T
 
 
 def gab_mod_ovlp(A, B):
@@ -42,6 +59,16 @@ def gab_mod_ovlp(A, B):
 
 
 def greens_function_single_det_ghf(walkers, trial):
+    if not config.get_option("use_gpu"):
+        walkers.phi = numpy.ascontiguousarray(walkers.phi, dtype=numpy.complex128)
+        walkers.G = numpy.ascontiguousarray(walkers.G, dtype=numpy.complex128)
+        det = numpy.empty(walkers.nwalkers, dtype=numpy.complex128)
+        psi0_h = numpy.ascontiguousarray(trial.psi0.conj().T, dtype=numpy.complex128)
+        log_shift = numpy.asarray(walkers.log_shift, dtype=numpy.float64)
+        greens_function_single_det_ghf_cpu(walkers.phi, psi0_h, log_shift, walkers.G, det)
+        walkers.Ga = walkers.G[:, : trial.nbasis, : trial.nbasis]
+        walkers.Gb = walkers.G[:, trial.nbasis :, trial.nbasis :]
+        return det
     det = []
     for iw in range(walkers.nwalkers):
         ovlp = xp.dot(walkers.phi[iw].T, trial.psi0.conj())

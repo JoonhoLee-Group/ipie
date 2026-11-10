@@ -3,6 +3,7 @@ import time
 from types import SimpleNamespace
 
 import numpy
+import scipy.linalg
 
 from ipie.propagation.hirsch_base import HirschBase
 from ipie.utils.backend import arraylib as xp
@@ -10,12 +11,13 @@ from ipie.utils.backend import synchronize, to_host
 from ipie.walkers.ghf_walkers import GHFWalkers
 
 try:
-    from numba import njit
+    from numba import njit, prange
 except ImportError:  # pragma: no cover - optional acceleration
     njit = None
 
 
 _NUMBA_CPU_KERNEL = None
+_NUMBA_GHF_KERNELS = None
 _HUBBARD_GPU_MEMORY_FRACTION = 0.70
 
 
@@ -133,8 +135,181 @@ def _numba_cpu_kernel():
     return _NUMBA_CPU_KERNEL
 
 
+def _make_numba_ghf_kernels():
+    """Walker-parallel CPU kernels for GHF walkers with a single-determinant GHF trial.
+
+    One thread owns one walker for a whole kinetic step or site sweep, so the walker's inverse
+    overlap matrix stays in cache across sites. The parallelism is over walkers (NUMBA_NUM_THREADS);
+    the small BLAS/LAPACK calls inside must run single threaded (e.g. OPENBLAS_NUM_THREADS=1).
+    """
+    if njit is None:
+        return None
+
+    @njit(parallel=True, cache=True)
+    def kinetic(phi, inv_ovlp, ovlp, weight, log_shift, exp_h1, psi0_h):
+        """phi <- exp_h1 phi; rebuild inv_ovlp and the overlap; constrained weight factor."""
+        for iw in prange(phi.shape[0]):
+            p = numpy.dot(exp_h1, phi[iw])
+            phi[iw] = p
+            a = numpy.dot(psi0_h, p)
+            sign, logdet = numpy.linalg.slogdet(a)
+            inv_ovlp[iw] = numpy.linalg.inv(a)
+            ovlp_new = sign * numpy.exp(logdet + log_shift[iw])
+            ratio = ovlp_new / ovlp[iw]
+            weight_factor = ratio.real if ratio.real > 0.0 else 0.0
+            weight[iw] *= weight_factor
+            if weight_factor > 0.0:
+                ovlp[iw] = ovlp_new
+
+    @njit(parallel=True, cache=True, fastmath=True)
+    def two_body(
+        phi, inv_ovlp, weight, ovlp, psi0_conj, psi0_conj_pairs, delta, aux_wfac, random_fields
+    ):
+        """Discrete Hirsch sweep over all sites.
+
+        Site s acts on the spin orbitals up = s and down = s + nbasis. With the 2 x nocc rows
+        u = phi[(up, down)] inv_ovlp, the 2 x 2 block g = u psi0_conj[(up, down)].T gives the
+        overlap ratio r_x = det(1 + D_x g), D_x = diag(delta[x]). The field x is sampled from
+        max(Re(r_x aux_wfac[x] / 2), 0), the weight gets the normalization, the overlap gets r_x,
+        and inv_ovlp the rank-2 Woodbury update
+        inv_ovlp -= (inv_ovlp psi0_conj_pairs[s]) (1 + D_x g)^{-1} D_x u.
+        """
+        nbasis = phi.shape[1] // 2
+        nocc = phi.shape[2]
+        for iw in prange(phi.shape[0]):
+            if weight[iw] != 0.0:
+                pw = phi[iw]
+                aw = inv_ovlp[iw]
+                rows = numpy.empty((2, nocc), dtype=numpy.complex128)
+                y0 = numpy.empty(nocc, dtype=numpy.complex128)
+                y1 = numpy.empty(nocc, dtype=numpy.complex128)
+                for site in range(nbasis):
+                    up = site
+                    down = site + nbasis
+                    rows[0] = pw[up]
+                    rows[1] = pw[down]
+                    u = numpy.dot(rows, aw)
+                    v = numpy.dot(aw, psi0_conj_pairs[site])
+                    guu = 0j
+                    gud = 0j
+                    gdu = 0j
+                    gdd = 0j
+                    for c in range(nocc):
+                        guu += u[0, c] * psi0_conj[up, c]
+                        gud += u[0, c] * psi0_conj[down, c]
+                        gdu += u[1, c] * psi0_conj[up, c]
+                        gdd += u[1, c] * psi0_conj[down, c]
+                    r0 = (1.0 + delta[0, 0] * guu) * (1.0 + delta[0, 1] * gdd) - delta[
+                        0, 0
+                    ] * delta[0, 1] * gud * gdu
+                    r1 = (1.0 + delta[1, 0] * guu) * (1.0 + delta[1, 1] * gdd) - delta[
+                        1, 0
+                    ] * delta[1, 1] * gud * gdu
+                    pr0 = max((0.5 * r0 * aux_wfac[0]).real, 0.0)
+                    pr1 = max((0.5 * r1 * aux_wfac[1]).real, 0.0)
+                    norm = pr0 + pr1
+                    if norm <= 0.0:
+                        weight[iw] = 0.0
+                        break
+                    xi = 0 if random_fields[site, iw] < pr0 / norm else 1
+                    weight[iw] *= norm
+                    ovlp[iw] *= r0 if xi == 0 else r1
+                    du = delta[xi, 0]
+                    dd = delta[xi, 1]
+                    c00 = 1.0 + du * guu
+                    c01 = du * gud
+                    c10 = dd * gdu
+                    c11 = 1.0 + dd * gdd
+                    det = c00 * c11 - c01 * c10
+                    for c in range(nocc):
+                        a0 = du * u[0, c]
+                        a1 = dd * u[1, c]
+                        y0[c] = (c11 * a0 - c01 * a1) / det
+                        y1[c] = (c00 * a1 - c10 * a0) / det
+                    for a in range(nocc):
+                        va0 = v[a, 0]
+                        va1 = v[a, 1]
+                        for c in range(nocc):
+                            aw[a, c] -= va0 * y0[c] + va1 * y1[c]
+                    for c in range(nocc):
+                        pw[up, c] *= 1.0 + du
+                        pw[down, c] *= 1.0 + dd
+
+    return kinetic, two_body
+
+
+def _numba_ghf_kernels():
+    global _NUMBA_GHF_KERNELS
+    if _NUMBA_GHF_KERNELS is None:
+        _NUMBA_GHF_KERNELS = _make_numba_ghf_kernels()
+    return _NUMBA_GHF_KERNELS
+
+
 class HubbardSingleSite(HirschBase):
     """Discrete Hubbard propagator with adaptive CPU, einsum, and CUDA paths."""
+
+    def _use_numba_ghf(self, walkers, trial):
+        from ipie.trial_wavefunction.noci_ghf import NOCIGHF
+
+        return (
+            isinstance(walkers, GHFWalkers)
+            and not isinstance(trial, NOCIGHF)
+            and not hasattr(xp, "RawKernel")
+            and _numba_ghf_kernels() is not None
+        )
+
+    def _ghf_numba_arrays(self, walkers, trial):
+        """Contiguous complex trial and one-body arrays for the GHF numba kernels (cached)."""
+        key = (id(trial.psi0), trial.psi0.shape, id(self.expH1))
+        if getattr(self, "_ghf_numba_key", None) == key:
+            return
+        nbasis = walkers.nbasis
+        psi0_conj = numpy.ascontiguousarray(numpy.conjugate(trial.psi0), dtype=numpy.complex128)
+        self._ghf_psi0_conj = psi0_conj
+        self._ghf_psi0_h = numpy.ascontiguousarray(psi0_conj.T)
+        self._ghf_psi0_conj_pairs = numpy.ascontiguousarray(
+            numpy.stack([psi0_conj[[s, s + nbasis]].T for s in range(nbasis)])
+        )
+        exp_h1 = self.expH1
+        if exp_h1.ndim == 3:
+            exp_h1 = scipy.linalg.block_diag(exp_h1[0], exp_h1[1])
+        self._ghf_exp_h1 = numpy.ascontiguousarray(exp_h1, dtype=numpy.complex128)
+        self._ghf_numba_key = key
+
+    def _contiguous_ghf_walkers(self, walkers):
+        walkers.phi = numpy.ascontiguousarray(walkers.phi, dtype=numpy.complex128)
+        walkers.inv_ovlp = numpy.ascontiguousarray(walkers.inv_ovlp, dtype=numpy.complex128)
+        walkers.ovlp = numpy.ascontiguousarray(walkers.ovlp, dtype=numpy.complex128)
+
+    def _numba_ghf_kinetic(self, walkers, trial):
+        kinetic, _ = _numba_ghf_kernels()
+        self._ghf_numba_arrays(walkers, trial)
+        self._contiguous_ghf_walkers(walkers)
+        kinetic(
+            walkers.phi,
+            walkers.inv_ovlp,
+            walkers.ovlp,
+            walkers.weight,
+            numpy.asarray(walkers.log_shift, dtype=numpy.float64),
+            self._ghf_exp_h1,
+            self._ghf_psi0_h,
+        )
+
+    def _numba_ghf_two_body(self, walkers, hamiltonian, trial, random_fields):
+        _, two_body = _numba_ghf_kernels()
+        self._ghf_numba_arrays(walkers, trial)
+        self._contiguous_ghf_walkers(walkers)
+        two_body(
+            walkers.phi,
+            walkers.inv_ovlp,
+            walkers.weight,
+            walkers.ovlp,
+            self._ghf_psi0_conj,
+            self._ghf_psi0_conj_pairs,
+            numpy.asarray(self.delta, dtype=numpy.complex128),
+            numpy.asarray(self.aux_wfac, dtype=numpy.complex128),
+            numpy.asarray(random_fields, dtype=numpy.float64),
+        )
 
     def kinetic_importance_sampling(self, walkers, trial):
         # For a multi-determinant (NOCI) GHF trial the constraint overlap ratio
@@ -142,6 +317,11 @@ class HubbardSingleSite(HirschBase):
         # overlap that _calc_overlap_from_inverse would give.
         from ipie.trial_wavefunction.noci_ghf import NOCIGHF
 
+        if self._use_numba_ghf(walkers, trial):
+            start_time = time.time()
+            self._numba_ghf_kinetic(walkers, trial)
+            self.timer.tovlp += time.time() - start_time
+            return
         if not isinstance(trial, NOCIGHF):
             return super().kinetic_importance_sampling(walkers, trial)
         start_time = time.time()
@@ -312,7 +492,8 @@ class HubbardSingleSite(HirschBase):
                 (1.0 + self.delta[1, 0] * guu) * (1.0 + self.delta[1, 1] * gdd)
                 - self.delta[1, 0] * self.delta[1, 1] * gud * gdu
             )
-            probs = 0.5 * xp.stack([r1, r2], axis=1) * self.aux_wfac[None, :]
+            ratios = xp.stack([r1, r2], axis=1)
+            probs = 0.5 * ratios * self.aux_wfac[None, :]
             phaseless_ratio = xp.maximum(probs.real, 0.0)
             norm = xp.sum(phaseless_ratio, axis=1)
             live = (norm > 0.0) & (xp.abs(walkers.weight) > 0.0)
@@ -320,10 +501,12 @@ class HubbardSingleSite(HirschBase):
             norm_safe = xp.where(live, norm, 1.0)
             p0 = xp.where(live, phaseless_ratio[:, 0] / norm_safe, 1.0)
             xi = (random_fields[i] >= p0).astype(numpy.int32)
-            selected = probs[xp.arange(walkers.nwalkers), xi]
+            # The overlap changes by the determinant ratio only; the HS constant aux_wfac belongs
+            # to the sampling weight (it is 1 for the spin decoupling, not for the charge one).
+            selected = ratios[xp.arange(walkers.nwalkers), xi]
 
             walkers.weight *= xp.where(live, norm, 0.0)
-            walkers.ovlp[...] = xp.where(live, 2.0 * walkers.ovlp * selected, walkers.ovlp)
+            walkers.ovlp[...] = xp.where(live, walkers.ovlp * selected, walkers.ovlp)
 
             up = i
             down = i + walkers.nbasis
@@ -588,6 +771,8 @@ class HubbardSingleSite(HirschBase):
 
     def _choose_path(self, walkers, hamiltonian):
         if isinstance(walkers, GHFWalkers):
+            if not hasattr(xp, "RawKernel") and _numba_ghf_kernels() is not None:
+                return "ghf_numba"
             return "ghf_einsum"
         if not hasattr(xp, "RawKernel"):
             return "cpu_numba"
@@ -654,6 +839,8 @@ class HubbardSingleSite(HirschBase):
                 self._run_gpu_path_chunked("einsum", walkers, hamiltonian, trial, random_fields)
             elif path == "ghf_einsum":
                 self._ghf_two_body(walkers, hamiltonian, trial, random_fields)
+            elif path == "ghf_numba":
+                self._numba_ghf_two_body(walkers, hamiltonian, trial, random_fields)
             elif path == "noci_ghf":
                 self._noci_ghf_two_body(walkers, hamiltonian, trial, random_fields)
             else:

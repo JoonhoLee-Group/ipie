@@ -95,3 +95,41 @@ class Hubbard(GenericBase):
         if i == j == k == l:
             return self.U
         return 0.0
+
+
+class HubbardSpinOrbital(Hubbard):
+    """Hubbard interaction ``U sum_i n_{i up} n_{i down}`` with a spin-orbital one-body matrix.
+
+    The one-body matrix acts on the ``2 * nbasis`` spin orbitals (all up orbitals first, then all
+    down orbitals) and may couple the two spins, e.g. through a spin-flip field. Such a term conserves
+    only the total particle number, so this Hamiltonian is for GHF trials and walkers.
+
+    Parameters
+    ----------
+    h1e : numpy.ndarray
+        Hermitian one-body matrix with shape ``(2 * nbasis, 2 * nbasis)``.
+    U : float
+        Uniform on-site interaction. ``U < 0`` is propagated with the real charge-channel Hirsch
+        decoupling.
+    ecore : float, optional
+        Constant energy shift.
+    verbose : bool, optional
+        Print basic setup information.
+    """
+
+    def __init__(self, h1e, U, ecore=0.0, verbose=False):
+        assert h1e.ndim == 2 and h1e.shape[0] == h1e.shape[1] and h1e.shape[0] % 2 == 0
+        assert numpy.allclose(h1e, h1e.conj().T)
+        GenericBase.__init__(self, h1e, ecore=ecore, verbose=verbose)
+        self.nbasis = h1e.shape[0] // 2
+
+        self.mixed_precision = False
+        self.chunked = False
+
+        self.U = U
+        self.nfields = self.nbasis
+
+        if verbose:
+            print(f"# Number of orbitals: {self.nbasis} (spin-orbital one-body matrix)")
+            print(f"# Number of fields: {self.nfields}")
+            print("# Finished setting up HubbardSpinOrbital object.")

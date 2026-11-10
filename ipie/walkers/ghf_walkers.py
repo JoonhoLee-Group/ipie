@@ -18,12 +18,31 @@
 
 import numpy
 import plum
+from numba import njit, prange
 
 from ipie.config import config
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, qr, qr_mode, synchronize
 from ipie.walkers.base_walkers import BaseWalkers
 from ipie.walkers.uhf_walkers import UHFWalkers, invert_batched_overlap_cpu
+
+
+@njit(parallel=True, cache=True)
+def reortho_ghf_cpu(phi, log_det):
+    """Walker-parallel QR: phi[w] <- Q diag(phase R_ii), log_det[w] = sum_i log|R_ii|.
+
+    One walker per numba thread; the LAPACK calls inside must run single threaded.
+    """
+    for iw in prange(phi.shape[0]):
+        q, r = numpy.linalg.qr(phi[iw])
+        ld = 0.0
+        for j in range(r.shape[0]):
+            a = abs(r[j, j])
+            s = r[j, j] / a if a > 0.0 else 0.0
+            for i in range(q.shape[0]):
+                phi[iw, i, j] = q[i, j] * s
+            ld += numpy.log(a)
+        log_det[iw] = ld
 
 
 class GHFWalkers(BaseWalkers):
@@ -157,29 +176,15 @@ class GHFWalkers(BaseWalkers):
         """reorthogonalise walkers."""
         if config.get_option("use_gpu"):
             return self.reortho_batched()
-        detR = []
-        for iw in range(self.nwalkers):
-            self.phi[iw], R = qr(self.phi[iw], mode=qr_mode)
-            # TODO: FDM This isn't really necessary, the absolute value of the
-            # weight is used for population control so this shouldn't matter.
-            # I think this is a legacy thing.
-            # Wanted detR factors to remain positive, dump the sign in orbitals.
-            R_diag = xp.diag(R)
-            signs = xp.sign(R_diag)
-            self.phi[iw] = xp.dot(self.phi[iw], xp.diag(signs))
-
-            # include overlap factor
-            # det(R) = \prod_ii R_ii
-            # det(R) = exp(log(det(R))) = exp((sum_i log R_ii) - C)
-            # C factor included to avoid over/underflow
-            log_det = xp.sum(xp.log(xp.abs(R_diag)))
-
-            detR += [xp.exp(log_det - self.detR_shift[iw])]
-            self.log_detR[iw] += xp.log(detR[iw])
-            self.detR[iw] = detR[iw]
-            self.ovlp[iw] = self.ovlp[iw] / detR[iw]
-
-        synchronize()
+        # The phase of each R_ii goes into the orbitals so that det(R) stays real and positive;
+        # det(R) = exp(sum_i log|R_ii| - detR_shift) avoids over/underflow.
+        self.phi = numpy.ascontiguousarray(self.phi, dtype=numpy.complex128)
+        log_det = numpy.zeros(self.nwalkers)
+        reortho_ghf_cpu(self.phi, log_det)
+        detR = numpy.exp(log_det - self.detR_shift)
+        self.log_detR += numpy.log(detR)
+        self.detR[:] = detR
+        self.ovlp[:] = self.ovlp / detR
         return detR
 
     def reortho_batched(self):

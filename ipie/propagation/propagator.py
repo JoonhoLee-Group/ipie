@@ -1,5 +1,5 @@
 from ipie.hamiltonians.generic import GenericRealChol, GenericComplexChol
-from ipie.hamiltonians.hubbard import Hubbard
+from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.kpt_hamiltonian import KptComplexChol, KptComplexCholSymm
 from ipie.hamiltonians.kpt_isdf_hamiltonian import KptISDF
@@ -24,6 +24,7 @@ from ipie.propagation.phaseless_kpt import (
 # Propagator = {GenericRealChol: PhaselessGeneric, GenericComplexChol: PhaselessGeneric}
 Propagator = {
     Hubbard: HubbardSingleSite,
+    HubbardSpinOrbital: HubbardSingleSite,
     GenericRealChol: PhaselessGeneric,
     GenericComplexChol: PhaselessGeneric,
     GenericRealCholChunked: PhaselessGenericChunked,

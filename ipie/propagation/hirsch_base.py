@@ -8,7 +8,7 @@ import plum
 import scipy.linalg
 import math
 
-from ipie.hamiltonians.hubbard import Hubbard
+from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.propagation.continuous_base import ContinuousBase
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
@@ -25,6 +25,12 @@ def construct_one_body_propagator(hamiltonian: Hubbard, dt: float):
             scipy.linalg.expm(-0.5 * dt * hamiltonian.T[1]),
         ]
     )
+
+
+@plum.dispatch
+def construct_one_body_propagator(hamiltonian: HubbardSpinOrbital, dt: float):
+    """Half-step one-body propagator on the spin orbitals, shape (2 nbasis, 2 nbasis)."""
+    return xp.array(scipy.linalg.expm(-0.5 * dt * hamiltonian.H1))
 
 
 def construct_hirsch_auxiliaries(hamiltonian, dt, spin_decomp=True):
@@ -65,9 +71,11 @@ class HirschBase(ContinuousBase):
         time_step,
         ene_bound_const=2.0,
         fb_bound=1.0,
-        spin_decomp=True,
+        spin_decomp=None,
         verbose=False,
     ):
+        # spin_decomp=None picks the real decoupling at build: spin channel for U >= 0, charge
+        # channel for U < 0.
         super().__init__(time_step, verbose=verbose)
         self.spin_decomp = spin_decomp
         self.ene_bound_const = ene_bound_const
@@ -91,6 +99,8 @@ class HirschBase(ContinuousBase):
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         self.mpi_handler = mpi_handler
         self.expH1 = construct_one_body_propagator(hamiltonian, self.dt)
+        if self.spin_decomp is None:
+            self.spin_decomp = bool(numpy.real(hamiltonian.U) >= 0.0)
         self.gamma, self.auxf, self.aux_wfac, self.delta = construct_hirsch_auxiliaries(
             hamiltonian, self.dt, spin_decomp=self.spin_decomp
         )
@@ -116,7 +126,9 @@ class HirschBase(ContinuousBase):
 
     def propagate_walkers_one_body(self, walkers):
         start_time = time.time()
-        if isinstance(walkers, GHFWalkers):
+        if isinstance(walkers, GHFWalkers) and self.expH1.ndim == 2:
+            walkers.phi = propagate_one_body(walkers.phi, self.expH1)
+        elif isinstance(walkers, GHFWalkers):
             nbasis = walkers.nbasis
             walkers.phi[:, :nbasis, :] = propagate_one_body(
                 walkers.phi[:, :nbasis, :], self.expH1[0]

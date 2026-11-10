@@ -44,7 +44,7 @@ from ipie.estimators.local_energy_kpt_sd import local_energy_kpt_single_det_uhf
 from ipie.estimators.local_energy_kpt_sd_isdf import local_energy_kpt_single_det_uhf_isdf_gpu
 from ipie.estimators.local_energy_kpt_sd_chunked import local_energy_kpt_single_det_uhf_chunked
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
-from ipie.hamiltonians.hubbard import Hubbard
+from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.chunked_isdf import GenericRealISDFChunked
@@ -151,6 +151,25 @@ def local_energy(
     nib = xp.diagonal(gbb, axis1=1, axis2=2)
     n_ab = xp.diagonal(gab, axis1=1, axis2=2)
     n_ba = xp.diagonal(gba, axis1=1, axis2=2)
+    e2b = hamiltonian.U * xp.sum(nia * nib - n_ab * n_ba, axis=1)
+    etot = e1b + e2b
+    return xp.stack([etot, e1b, e2b], axis=1)
+
+
+@plum.dispatch
+def local_energy(
+    system: Generic,
+    hamiltonian: HubbardSpinOrbital,
+    walkers: GHFWalkers,
+    trial: SingleDetGHF,
+):
+    # G[i, j] = <c^dag_i c_j> over the 2 nbasis spin orbitals; the one-body matrix may couple spins.
+    nbasis = hamiltonian.nbasis
+    e1b = xp.einsum("ij,wij->w", hamiltonian.H1, walkers.G, optimize=True) + hamiltonian.ecore
+    nia = xp.diagonal(walkers.G[:, :nbasis, :nbasis], axis1=1, axis2=2)
+    nib = xp.diagonal(walkers.G[:, nbasis:, nbasis:], axis1=1, axis2=2)
+    n_ab = xp.diagonal(walkers.G[:, :nbasis, nbasis:], axis1=1, axis2=2)
+    n_ba = xp.diagonal(walkers.G[:, nbasis:, :nbasis], axis1=1, axis2=2)
     e2b = hamiltonian.U * xp.sum(nia * nib - n_ab * n_ba, axis=1)
     etot = e1b + e2b
     return xp.stack([etot, e1b, e2b], axis=1)
