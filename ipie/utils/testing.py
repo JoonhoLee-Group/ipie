@@ -377,12 +377,14 @@ def _nontrivial_Sset_kpts():
 
 
 def expand_chol_symm_to_full(chol_packed, kpts, Sset, Qplus, ikpq_mat, imq_vec):
-    """
-    Expand packed chol (nchol, nk, nbasis, unique_nk, nbasis) into full chol
-    (nchol, nk, nbasis, nk, nbasis) using:
+    """Expand a packed k-point Cholesky tensor to its full form.
+
+    Expand packed chol ``(nchol, nk, nbasis, unique_nk, nbasis)`` into full chol
+    ``(nchol, nk, nbasis, nk, nbasis)`` using::
+
         L(k, q) = L(k+q, -q)^*  with (p,r) transpose in orbital indices.
 
-    Here the packed q-axis is ordered as [Sset..., Qplus...].
+    Here the packed q-axis is ordered as ``[Sset..., Qplus...]``.
     """
     nchol, nk, nbasis, _, _ = chol_packed.shape
     chol_full = numpy.zeros((nchol, nk, nbasis, nk, nbasis), dtype=numpy.complex128)

@@ -1,5 +1,4 @@
-sphinx
-sphinx_rtd_theme
-mock
-matplotlib
-urllib3>=1.24.2,<3.0.0
+# Documentation build requirements; ipie itself is installed by .readthedocs.yaml.
+sphinx>=7.0,<10
+sphinx-rtd-theme>=2.0
+myst-parser>=2.0

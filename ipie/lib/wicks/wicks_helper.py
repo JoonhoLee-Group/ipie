@@ -24,8 +24,10 @@ from numpy.ctypeslib import ndpointer
 _path = os.path.dirname(__file__)
 try:
     _wicks_helper = np.ctypeslib.load_library("libwicks_helper", _path)
-except OSError:
-    raise ImportError
+except OSError as exc:
+    raise ImportError(
+        "libwicks_helper shared library not found; build it with cmake in ipie/lib/wicks"
+    ) from exc
 DET_LEN = 4
 
 

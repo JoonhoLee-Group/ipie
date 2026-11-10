@@ -35,7 +35,10 @@ else:
 
 
 def load_requirements(fname):
-    reqs = parse_requirements(fname, session="test")
+    # Materialise the generator first: probing `ir.req` below consumes its first element
+    # on modern pip (which only has `ir.requirement`), so the fallback would silently drop
+    # the first requirement of every file and return [] for single-line files.
+    reqs = list(parse_requirements(fname, session="test"))
     try:
         return [str(ir.req) for ir in reqs]
     except AttributeError:
@@ -79,6 +82,7 @@ def main() -> None:
         extras_require={
             "mpi": load_requirements("dev/mpi.txt"),
             "dev": load_requirements("dev/dev.txt"),
+            "gpu": load_requirements("dev/gpu.txt"),
             "torch": load_requirements("dev/torch.txt"),
         },
         long_description=open("README.rst").read(),

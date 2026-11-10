@@ -47,7 +47,7 @@ class EstimatorHandler(object):
         MPI Communicator
     system : :class:`ipie.hubbard.Hubbard` / system object in general.
         Container for model input options.
-    trial : :class:`ipie.trial_wavefunction.X' object
+    trial : :class:`ipie.trial_wavefunction.X` object
         Trial wavefunction class.
     verbose : bool
         If true we print out additional setup information.

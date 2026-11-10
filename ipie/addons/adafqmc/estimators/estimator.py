@@ -10,7 +10,8 @@ def get_local_energy(rh1, Ghalf, rchol, nuc):
 
     Returns
     -------
-    local_e : 1d array with size (nwalkers)
+    local_e : :class:`torch.Tensor`
+        Local energies, shape ``(nwalkers,)``.
     """
     local_e1 = 2 * (
         torch.einsum("ij, aji->a", rh1, Ghalf.real)
@@ -31,7 +32,8 @@ def get_trial_energy(rh1, G, rchol, nuc):
 
     Returns
     -------
-    local_e : 1d array with size (nwalkers)
+    local_e : :class:`torch.Tensor`
+        Trial energy (scalar tensor).
     """
     local_e1 = 2 * torch.einsum("ij, ji->", rh1, G)
     local_e2 = 0.5 * (get_coulomb_trial(rchol, G) - get_exchange_trial(rchol, G))

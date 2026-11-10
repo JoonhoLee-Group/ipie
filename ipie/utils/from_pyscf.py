@@ -605,7 +605,7 @@ def get_ortho_ao(S, LINDEP_CUTOFF=0):
     LINDEP_CUTOFF : float
         Linear dependency cutoff. Basis functions whose eigenvalues lie below
         this value are removed from the basis set. Should be set in accordance
-        with value in pyscf (pyscf.scf.addons.remove_linear_dep_).
+        with value in pyscf (``pyscf.scf.addons.remove_linear_dep_``).
 
     Returns
     -------

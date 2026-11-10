@@ -2,6 +2,8 @@ include requirements.txt
 include ipie/_version.py
 include dev/mpi.txt
 include dev/dev.txt
+include dev/torch.txt
+include dev/gpu.txt
 include setup.py
 include NOTICE
 include README.rst

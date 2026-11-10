@@ -4,3 +4,4 @@ pytest-xdist
 flynt
 -r mpi.txt
 -r torch.txt
+# gpu.txt is intentionally not included here: CI installs dev.txt on CPU-only runners.
