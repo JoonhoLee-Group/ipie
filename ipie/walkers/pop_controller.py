@@ -1,10 +1,10 @@
+import time
 import h5py
 import numpy
-import os
-import time
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
 
 
 class PopControllerTimer:
@@ -79,25 +79,12 @@ class PopController:
             print(f"# total weight is {self.total_weight}")
 
         self.timer = PopControllerTimer()
-        self.debug_pop = os.environ.get("IPIE_DEBUG_POP", "0") == "1"
-        self.debug_walker = int(os.environ.get("IPIE_DEBUG_POP_WALKER", "0"))
 
     def pop_control(self, walkers, comm):
         self.timer.start_time()
         if self.ntot_walkers == 1:
             return
         weights = numpy.abs(xp.array(walkers.weight))
-        if self.debug_pop:
-            iw = self.debug_walker
-            host_weights = weights.get() if hasattr(weights, "get") else weights
-            print(
-                "[new:pop_pre] "
-                f"iw={iw} "
-                f"weight={walkers.weight[iw]} "
-                f"unscaled={walkers.unscaled_weight[iw]} "
-                f"ovlp={walkers.ovlp[iw]} "
-                f"all_weights={host_weights}"
-            )
         global_weights = numpy.empty(len(weights) * comm.size)
         self.timer.add_non_communication()
         self.timer.start_time()
@@ -127,17 +114,6 @@ class PopController:
         # Todo: Just standardise information we want to send between routines.
         walkers.unscaled_weight = walkers.weight
         walkers.weight = walkers.weight / scale
-        if self.debug_pop:
-            iw = self.debug_walker
-            print(
-                "[new:pop_scale] "
-                f"total_weight={total_weight} "
-                f"target_weight={self.target_weight} "
-                f"scale={scale} "
-                f"iw={iw} "
-                f"rescaled_weight={walkers.weight[iw]} "
-                f"unscaled={walkers.unscaled_weight[iw]}"
-            )
         self.total_weight = self.target_weight
         if self.method == "comb":
             global_weights = global_weights / scale
@@ -203,6 +179,7 @@ def get_buffer(walkers, iw):
         else:
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
+    synchronize()
     return buff
 
 
@@ -247,6 +224,7 @@ def set_buffer(walkers, iw, buff):
             else:
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
+    synchronize()
 
 
 def minimize_communication(new_idx):
@@ -379,8 +357,6 @@ def comb(walkers, comm, weights, target_weight, timer=PopControllerTimer()):
 
 
 def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer()):
-    debug_pop = os.environ.get("IPIE_DEBUG_POP", "0") == "1"
-    debug_walker = int(os.environ.get("IPIE_DEBUG_POP_WALKER", "0"))
     timer.start_time()
     walker_info_0 = xp.array(xp.abs(walkers.weight))
     timer.add_non_communication()
@@ -468,16 +444,6 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
                 break
         nw = walkers.nwalkers
         glob_inf = glob_inf[isort].reshape((comm.size, nw, 4))
-        if debug_pop:
-            info = glob_inf[0, debug_walker]
-            print(
-                "[new:pair_branch_root] "
-                f"iw={debug_walker} "
-                f"weight={info[0]} "
-                f"status={info[1]} "
-                f"src={info[2]} "
-                f"dest={info[3]}"
-            )
     else:
         data = None
         glob_inf = None
@@ -516,15 +482,6 @@ def pair_branch(walkers, comm, max_weight, min_weight, timer=PopControllerTimer(
     for r in reqs:
         r.wait()
     timer.add_communication()
-    if debug_pop:
-        iw = debug_walker
-        print(
-            "[new:pop_post] "
-            f"iw={iw} "
-            f"weight={walkers.weight[iw]} "
-            f"unscaled={walkers.unscaled_weight[iw]} "
-            f"ovlp={walkers.ovlp[iw]}"
-        )
 
 
 def stochastic_reconfiguration(

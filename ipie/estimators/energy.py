@@ -17,8 +17,6 @@
 
 from typing import Union
 
-import os
-
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
@@ -65,7 +63,6 @@ from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.trial_wavefunction.noci_ghf import NOCIGHF
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import to_host
 from ipie.walkers.ghf_walkers import GHFWalkers
 
 
@@ -316,45 +313,20 @@ class EnergyEstimator(EstimatorBase):
         self._data_index = {k: i for i, k in enumerate(list(self._data.keys()))}
         self.print_to_stdout = True
         self.ascii_filename = filename
-        self.debug_estimator = os.environ.get("IPIE_DEBUG_ESTIMATOR", "0") == "1"
-        self.debug_walker = int(os.environ.get("IPIE_DEBUG_ESTIMATOR_WALKER", "0"))
-        self.debug_max_walkers = int(os.environ.get("IPIE_DEBUG_ESTIMATOR_MAX_WALKERS", "1"))
 
     def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
-        trial.calc_greens_function(walkers)
+        if isinstance(hamiltonian, Hubbard):
+            # The Hubbard local energy reads the full Green's function, which a half-rotated
+            # trial does not build by default.
+            trial.calc_greens_function(walkers, build_full=True)
+        else:
+            trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
         energy = local_energy(system, hamiltonian, walkers, trial)
-        if self.debug_estimator:
-            max_walkers = min(self.debug_max_walkers, walkers.nwalkers)
-            for iw in range(max_walkers):
-                if iw != self.debug_walker:
-                    continue
-                contrib = walkers.weight[iw] * energy[iw, 0].real
-                print(
-                    "[new:estimator] "
-                    f"iw={iw} "
-                    f"weight={to_host(walkers.weight[iw])} "
-                    f"ovlp={to_host(walkers.ovlp[iw])} "
-                    f"hybrid={to_host(walkers.hybrid_energy[iw])} "
-                    f"eloc={to_host(energy[iw, 0])} "
-                    f"e1b={to_host(energy[iw, 1])} "
-                    f"e2b={to_host(energy[iw, 2])} "
-                    f"numer_contrib={to_host(contrib)} "
-                    f"denom_contrib={to_host(walkers.weight[iw])}"
-                )
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
         self._data["E2Body"] = xp.sum(walkers.weight * energy[:, 2].real)
-
-        if self.debug_estimator:
-            print(
-                "[new:estimator_block] "
-                f"enumer={to_host(self._data['ENumer'])} "
-                f"edenom={to_host(self._data['EDenom'])} "
-                f"e1b={to_host(self._data['E1Body'])} "
-                f"e2b={to_host(self._data['E2Body'])}"
-            )
 
         return self.data
 

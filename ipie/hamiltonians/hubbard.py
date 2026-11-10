@@ -3,7 +3,6 @@
 import numpy
 
 from ipie.hamiltonians.generic_base import GenericBase
-from ipie.utils.backend import arraylib as xp
 from ipie.utils.io import fcidump_header
 
 

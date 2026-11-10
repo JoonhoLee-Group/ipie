@@ -1,4 +1,3 @@
-import os
 import time
 
 from abc import abstractmethod
@@ -12,7 +11,7 @@ from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.propagation.continuous_base import ContinuousBase
 from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
-from ipie.utils.backend import cast_to_device, synchronize, to_host
+from ipie.utils.backend import cast_to_device, synchronize
 from ipie.walkers.ghf_walkers import GHFWalkers
 
 
@@ -86,15 +85,6 @@ class HirschBase(ContinuousBase):
         self.auxf = None
         self.aux_wfac = None
         self.delta = None
-        self.debug_hubbard = os.environ.get("IPIE_DEBUG_HUBBARD", "0") == "1"
-        self.debug_iw = int(os.environ.get("IPIE_DEBUG_WALKER", "0"))
-        self.debug_max_sites = int(os.environ.get("IPIE_DEBUG_MAX_SITES", "8"))
-
-    def _debug(self, tag, **kwargs):
-        if not self.debug_hubbard:
-            return
-        details = " ".join(f"{key}={value}" for key, value in kwargs.items())
-        print(f"[new:{tag}] {details}")
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
         self.mpi_handler = mpi_handler
@@ -150,17 +140,6 @@ class HirschBase(ContinuousBase):
         ovlp_new = self._calc_overlap_from_inverse(walkers)
         ratio = ovlp_new / walkers.ovlp
         phase = xp.angle(ratio)
-        if self.debug_hubbard and self.debug_iw < walkers.nwalkers:
-            iw = self.debug_iw
-            self._debug(
-                "kinetic",
-                iw=iw,
-                weight=to_host(walkers.weight[iw]),
-                ot_old=to_host(walkers.ovlp[iw]),
-                ot_new=to_host(ovlp_new[iw]),
-                ratio=to_host(ratio[iw]),
-                phase=to_host(phase[iw]),
-            )
         weight_factor = xp.where(xp.abs(phase) < 0.5 * math.pi, ratio.real, 0.0)
         walkers.weight *= weight_factor
         walkers.ovlp = xp.where(weight_factor > 0.0, ovlp_new, walkers.ovlp)

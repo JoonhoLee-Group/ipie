@@ -3,7 +3,6 @@ import copy
 import json
 import sys
 import time
-import os
 import uuid
 import warnings
 from math import exp
@@ -296,11 +295,6 @@ class AFQMC(object):
         # Print out zeroth step for convenience.
         if verbose:
             self.estimators.estimators["mixed"].print_step(comm, comm.size, 0, 1)
-        # Keep the visible zeroth-line diagnostic, but start block 1 from a
-        # clean estimator buffer so the initial distribution does not
-        # contaminate the first propagated block average.
-        self.estimators.estimators["mixed"].zero()
-        debug_step = os.environ.get("IPIE_DEBUG_STEP", "0") == "1"
 
         for step in range(1, self.qmc.total_steps + 1):
             start_step = time.time()
@@ -310,21 +304,13 @@ class AFQMC(object):
                 self.tortho += time.time() - start
             start = time.time()
 
-            for iw, w in enumerate(self.psi.walkers):
-                if hasattr(self.propagators, "_current_debug_walker"):
-                    self.propagators._current_debug_walker = iw
+            for w in self.psi.walkers:
                 # if abs(w.weight) > 1e-8:
                 self.propagators.propagate_walker(
                     w, self.system, self.hamiltonian, self.trial, eshift
                 )
                 if (abs(w.weight) > w.total_weight * 0.10) and step > 1:
                     w.weight = w.total_weight * 0.10
-            if debug_step:
-                weights = [w.weight for w in self.psi.walkers]
-                total_weights = [w.total_weight for w in self.psi.walkers]
-                print(
-                    f"[legacy:step_prop] step={step} weights={weights} total_weights={total_weights}"
-                )
             self.tprop += time.time() - start
             if step % self.qmc.npop_control == 0:
                 start = time.time()

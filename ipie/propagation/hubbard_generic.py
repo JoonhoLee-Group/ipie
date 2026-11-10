@@ -538,7 +538,6 @@ class HubbardSingleSite(HirschBase):
         """
         nb = walkers.nbasis
         nw = walkers.nwalkers
-        K = trial._num_dets
         detsc = xp.asarray(trial.dets_conj)                     # (K, 2nb, nocc)
         cstar = xp.asarray(trial.coeffs).conj()                 # (K,)
 

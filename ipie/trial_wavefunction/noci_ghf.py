@@ -29,7 +29,6 @@ and the multi-determinant mixed quantities are the overlap-weighted averages
 import numpy
 
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
-from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import synchronize
 
 
@@ -37,7 +36,7 @@ class NOCIGHF(SingleDetGHF):
     def __init__(self, dets, coeffs, num_elec, num_basis, verbose: bool = False):
         dets = numpy.asarray(dets, dtype=numpy.complex128)
         assert dets.ndim == 3, "dets must have shape (ndet, 2*nbasis, nocc)"
-        ndet, nrows, nocc = dets.shape
+        ndet, nrows, _ = dets.shape
         assert nrows == 2 * num_basis
         # initialize the SingleDetGHF machinery from the reference determinant
         super().__init__(dets[0].copy(), num_elec, num_basis, verbose=verbose)
@@ -73,7 +72,6 @@ class NOCIGHF(SingleDetGHF):
         O = numpy.empty((K, nw), dtype=numpy.complex128)
         G = numpy.empty((K, nw, 2 * self.nbasis, 2 * self.nbasis), dtype=numpy.complex128)
         for k in range(K):
-            dk = self.dets[k]
             dkc = self.dets_conj[k]
             # ovlp_mat[w] = phi_w^T Phi_k^* , shape (w, nocc, nocc)
             ovlp_mat = numpy.einsum("wij,jk->wik", phiT, dkc, optimize=True)

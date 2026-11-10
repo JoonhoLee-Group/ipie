@@ -21,7 +21,6 @@
 
 import abc
 import json
-import os
 import time
 import uuid
 import math
@@ -633,7 +632,6 @@ class AFQMC(AFQMCBase):
         )
 
         self.get_env_info()
-        debug_step = os.environ.get("IPIE_DEBUG_STEP", "0") == "1"
         # self.distribute_hamiltonian()
         self.copy_to_gpu()
         self.setup_estimators(estimator_filename, additional_estimators=additional_estimators)
@@ -645,6 +643,8 @@ class AFQMC(AFQMCBase):
         num_eqlb_steps = self.params.num_eq_blocks * self.params.eq_num_steps_per_block
 
         total_steps = self.params.num_steps_per_block * self.params.num_blocks + num_eqlb_steps
+        # The discrete Hubbard propagators keep a floor of 100 on the per-walker weight bound.
+        wbound_floor = 100.0 if isinstance(self.propagator, HirschBase) else 0.0
 
         synchronize()
         comm = self.mpi_handler.comm
@@ -689,26 +689,20 @@ class AFQMC(AFQMCBase):
                 self.tprop_gf = self.propagator.timer.tgf
                 self.tprop_vhs = self.propagator.timer.tvhs
                 self.tprop_gemm = self.propagator.timer.tgemm
-            if debug_step and step > num_eqlb_steps:
-                weights = self.walkers.weight.get() if hasattr(self.walkers.weight, "get") else self.walkers.weight
-                print(f"[new:step_prop] step={step} weights={weights}")
 
             start_clip = time.time()
             if step > 1 and step <= num_eqlb_steps:
-                wbound = max(100.0, self.pcontrol_eq.total_weight * 0.10)
+                wbound = max(wbound_floor, self.pcontrol_eq.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
             elif step > num_eqlb_steps and step > 1:
-                wbound = max(100.0, self.pcontrol.total_weight * 0.10)
+                wbound = max(wbound_floor, self.pcontrol.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
-                if debug_step:
-                    weights = self.walkers.weight.get() if hasattr(self.walkers.weight, "get") else self.walkers.weight
-                    print(f"[new:step_clip] step={step} wbound={wbound} weights={weights}")
 
             synchronize()
             self.tprop_clip += time.time() - start_clip
