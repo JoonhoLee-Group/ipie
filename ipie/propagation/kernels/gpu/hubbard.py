@@ -1,3 +1,20 @@
+# Copyright 2026 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+
 import cupy
 
 
@@ -103,13 +120,13 @@ def get_hubbard_single_site_kernels():
         const bool live = (norm > 0.0) && (abs_weight > 0.0);
         const double p0 = live ? p0_real / norm : 1.0;
         const int xi = (random_values[iw] >= p0) ? 1 : 0;
-        const cuDoubleComplex selected = (xi == 0) ? prob0 : prob1;
+        const cuDoubleComplex selected = (xi == 0) ? cuCmul(r1a, r1b) : cuCmul(r2a, r2b);
 
         xi_out[iw] = xi;
         live_out[iw] = live ? 1 : 0;
         weight[iw] = live ? weight[iw] * norm : 0.0;
         if (live) {
-            ovlp[iw] = cuCmul(c_scale(ovlp[iw], 2.0), selected);
+            ovlp[iw] = cuCmul(ovlp[iw], selected);
         }
 
         const cuDoubleComplex delta_up = delta[2 * xi];
@@ -238,13 +255,13 @@ def get_hubbard_single_site_kernels():
             const bool live = (norm > 0.0) && (abs_weight > 0.0);
             const double p0 = live ? p0_real / norm : 1.0;
             const int xi = (random_values[iw] >= p0) ? 1 : 0;
-            const cuDoubleComplex selected = (xi == 0) ? prob0 : prob1;
+            const cuDoubleComplex selected = (xi == 0) ? cuCmul(r1a, r1b) : cuCmul(r2a, r2b);
 
             xi_out[iw] = xi;
             live_out[iw] = live ? 1 : 0;
             weight[iw] = live ? weight[iw] * norm : 0.0;
             if (live) {
-                ovlp[iw] = cuCmul(c_scale(ovlp[iw], 2.0), selected);
+                ovlp[iw] = cuCmul(ovlp[iw], selected);
             }
         }
         __syncthreads();

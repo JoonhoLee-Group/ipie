@@ -1,3 +1,20 @@
+# Copyright 2026 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+
 import numpy
 import pytest
 import scipy.linalg
@@ -5,14 +22,12 @@ import scipy.linalg
 from ipie.estimators.energy import local_energy
 from ipie.hamiltonians.hubbard import Hubbard, HubbardSpinOrbital
 from ipie.propagation.hirsch_base import HirschBase, construct_one_body_propagator
-from ipie.propagation.hubbard_generic import HubbardSingleSite, _numba_ghf_kernels
+from ipie.propagation.hubbard_generic import HubbardSingleSite
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.ghf_walkers import GHFWalkers
-
-pytestmark = pytest.mark.skipif(_numba_ghf_kernels() is None, reason="numba not available")
 
 NBASIS = 6
 NELEC = (3, 2)

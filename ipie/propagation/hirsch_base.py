@@ -1,3 +1,20 @@
+# Copyright 2026 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+
 import time
 
 from abc import abstractmethod
@@ -87,6 +104,9 @@ class HirschBase(ContinuousBase):
         self.delta = None
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
+        if isinstance(hamiltonian, HubbardSpinOrbital) and walkers is not None:
+            if not isinstance(walkers, GHFWalkers):
+                raise TypeError("HubbardSpinOrbital couples the spins and needs GHF walkers.")
         self.mpi_handler = mpi_handler
         self.expH1 = construct_one_body_propagator(hamiltonian, self.dt)
         if self.spin_decomp is None:
@@ -101,9 +121,11 @@ class HirschBase(ContinuousBase):
         return ainv - (ainv @ xp.outer(u, vt) @ ainv) / (1.0 + vt @ ainv @ u)
 
     def _calc_overlap_from_inverse(self, walkers):
+        # det(A^{-1}) exp(log_shift) = 1 / (det(A) exp(-log_shift)), the convention of
+        # greens_function_single_det.
         if isinstance(walkers, GHFWalkers):
             sign, logdet = xp.linalg.slogdet(walkers.inv_ovlp)
-            det = sign * xp.exp(logdet - walkers.log_shift)
+            det = sign * xp.exp(logdet + walkers.log_shift)
             return 1.0 / det
 
         sign_a, logdet_a = xp.linalg.slogdet(walkers.inv_ovlp_a)
@@ -111,7 +133,7 @@ class HirschBase(ContinuousBase):
         logdet_b = xp.zeros(walkers.nwalkers, dtype=xp.float64)
         if walkers.ndown > 0:
             sign_b, logdet_b = xp.linalg.slogdet(walkers.inv_ovlp_b)
-        det = sign_a * sign_b * xp.exp(logdet_a + logdet_b - walkers.log_shift)
+        det = sign_a * sign_b * xp.exp(logdet_a + logdet_b + walkers.log_shift)
         return 1.0 / det
 
     def propagate_walkers_one_body(self, walkers):
@@ -145,36 +167,6 @@ class HirschBase(ContinuousBase):
         walkers.ovlp = xp.where(weight_factor > 0.0, ovlp_new, walkers.ovlp)
         synchronize()
         self.timer.tovlp += time.time() - start_time
-
-    def _calculate_overlap_ratio(self, walkers, i):
-        gup = walkers.Ga[:, i, i]
-        gdown = walkers.Gb[:, i, i]
-        r1 = (1.0 + self.delta[0, 0] * gup) * (1.0 + self.delta[0, 1] * gdown)
-        r2 = (1.0 + self.delta[1, 0] * gup) * (1.0 + self.delta[1, 1] * gdown)
-        probs = 0.5 * xp.stack([r1, r2], axis=1)
-        probs *= self.aux_wfac[None, :]
-        return probs
-
-    def _sample_fields_single_site(self, probs):
-        phaseless_ratio = xp.maximum(probs.real, 0.0)
-        norm = xp.sum(phaseless_ratio, axis=1)
-        chosen = xp.zeros(norm.shape[0], dtype=numpy.int32)
-        live = norm > 0.0
-        if xp.any(live):
-            rnd = xp.random.random(int(xp.sum(live)))
-            probs0 = phaseless_ratio[live, 0] / norm[live]
-            chosen_live = (rnd >= probs0).astype(numpy.int32)
-            chosen[live] = chosen_live
-        return chosen, norm, live
-
-    def _apply_single_site_update(self, walkers, i, chosen, live):
-        if not xp.any(live):
-            return
-        factors_up = self.auxf[chosen[live], 0]
-        walkers.phia[live, i, :] *= factors_up[:, None]
-        if walkers.ndown > 0 and not walkers.rhf:
-            factors_dn = self.auxf[chosen[live], 1]
-            walkers.phib[live, i, :] *= factors_dn[:, None]
 
     @abstractmethod
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):

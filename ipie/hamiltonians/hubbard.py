@@ -1,19 +1,26 @@
+# Copyright 2026 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+
 """Hubbard Hamiltonian with a generic one-body hopping matrix and uniform U."""
 
 import numpy
 
 from ipie.hamiltonians.generic_base import GenericBase
 from ipie.utils.io import fcidump_header
-
-
-def construct_h1e_mod(h1e, U, h1e_mod, symmetric=False):
-    """Build the shifted one-body Hamiltonian used in propagation."""
-    if symmetric:
-        h1e_mod[:] = h1e
-    else:
-        v0 = 0.5 * U * numpy.eye(h1e.shape[-1], dtype=h1e.dtype)
-        h1e_mod[0] = h1e[0] - v0
-        h1e_mod[1] = h1e[1] - v0
 
 
 class Hubbard(GenericBase):
@@ -27,8 +34,6 @@ class Hubbard(GenericBase):
         Uniform on-site interaction strength.
     mu : float, optional
         Chemical potential retained for interface compatibility.
-    symmetric : bool, optional
-        If ``True``, keep the symmetric Hubbard form without the one-body shift.
     ecore : float, optional
         Constant energy shift.
     verbose : bool, optional
@@ -54,7 +59,8 @@ class Hubbard(GenericBase):
             print("# Finished setting up Hubbard object.")
 
     def fcidump(self, nup, ndown, to_string=False):
-        """Dump one- and two-electron integrals in FCIDUMP format."""
+        """Dump one- and two-electron integrals in FCIDUMP format (spin-independent hopping)."""
+        assert numpy.allclose(self.T[0], self.T[1]), "FCIDUMP needs spin-independent hopping."
         header = fcidump_header(nup + ndown, self.nbasis, nup - ndown)
         is_complex = numpy.iscomplexobj(self.T)
 
@@ -66,8 +72,9 @@ class Hubbard(GenericBase):
                 fmt = "{: 10.8e} {:>3d} {:>3d} {:>3d} {:>3d}\n"
                 header += fmt.format(self.U, i, i, i, i)
 
+        # Upper triangle including the diagonal (on-site energies); the reader fills h_ji = h_ij^*.
         for i in range(self.nbasis):
-            for j in range(i + 1, self.nbasis):
+            for j in range(i, self.nbasis):
                 integral = self.T[0, i, j]
                 if abs(integral) > 1e-8:
                     if is_complex:

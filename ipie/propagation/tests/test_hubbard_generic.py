@@ -1,10 +1,27 @@
+# Copyright 2026 The ipie Developers. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
+#
+
 from types import SimpleNamespace
 
 import numpy
 import pytest
 
 from ipie.hamiltonians.hubbard import Hubbard
-from ipie.propagation.hubbard_generic import HubbardSingleSite
+from ipie.propagation.hubbard_generic import HubbardFB, HubbardSingleSite
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
@@ -32,7 +49,7 @@ def _copy_walkers(walkers):
     )
 
 
-def _build_case(rhf):
+def _build_case(rhf=False, U=4.0, spin_decomp=None, propagator=HubbardSingleSite):
     rng = numpy.random.default_rng(7)
     nbasis = 12
     nup = 5
@@ -41,7 +58,7 @@ def _build_case(rhf):
 
     h1 = rng.normal(size=(2, nbasis, nbasis))
     h1 = 0.5 * (h1 + h1.transpose(0, 2, 1))
-    hamiltonian = Hubbard(h1, U=4.0)
+    hamiltonian = Hubbard(h1, U=U)
 
     psi0a = _random_orthonormal(nbasis, nup, rng)
     psi0b = _random_orthonormal(nbasis, ndown, rng)
@@ -54,16 +71,19 @@ def _build_case(rhf):
     walkers.build(trial)
     walkers.rhf = rhf
 
-    prop = HubbardSingleSite(0.005)
+    prop = propagator(0.005, spin_decomp=spin_decomp)
     prop.build(hamiltonian, trial, walkers, handler)
     random_fields = rng.random((nbasis, nwalkers))
     return prop, hamiltonian, trial, walkers, random_fields
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("rhf", [False, True])
-def test_hubbard_single_site_cpu_numba_matches_legacy(rhf):
-    prop, hamiltonian, trial, walkers, random_fields = _build_case(rhf)
+@pytest.mark.parametrize(
+    "rhf, U, spin_decomp",
+    [(False, 4.0, None), (False, -4.0, None), (True, 4.0, False)],
+)
+def test_hubbard_single_site_cpu_numba_matches_legacy(rhf, U, spin_decomp):
+    prop, hamiltonian, trial, walkers, random_fields = _build_case(rhf, U, spin_decomp)
     ref = _copy_walkers(walkers)
     opt = _copy_walkers(walkers)
 
@@ -76,3 +96,45 @@ def test_hubbard_single_site_cpu_numba_matches_legacy(rhf):
     numpy.testing.assert_allclose(opt.phib, ref.phib, rtol=1.0e-10, atol=1.0e-10)
     numpy.testing.assert_allclose(opt.inv_ovlp_a, ref.inv_ovlp_a, rtol=1.0e-10, atol=1.0e-10)
     numpy.testing.assert_allclose(opt.inv_ovlp_b, ref.inv_ovlp_b, rtol=1.0e-10, atol=1.0e-10)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("path", ["_legacy_two_body", "_cpu_numba_two_body", "_einsum_two_body"])
+def test_hubbard_two_body_tracks_overlap_charge_decoupling(path):
+    # U < 0 selects the charge decoupling, whose Hirsch constant aux_wfac is field dependent;
+    # it must enter the weight, not the tracked overlap <psi_T|phi>.
+    prop, hamiltonian, trial, walkers, random_fields = _build_case(U=-4.0)
+    assert not prop.spin_decomp
+    assert not numpy.allclose(prop.aux_wfac, 1.0)
+    getattr(prop, path)(walkers, hamiltonian, trial, random_fields)
+    alive = numpy.abs(walkers.weight) > 0.0
+    assert numpy.any(alive)
+    numpy.testing.assert_allclose(
+        walkers.ovlp[alive], trial.calc_overlap(walkers)[alive], rtol=1.0e-9
+    )
+    ovlp_a = numpy.einsum("mi,wmj->wij", trial.psi0a.conj(), walkers.phia)
+    numpy.testing.assert_allclose(
+        walkers.inv_ovlp_a[alive], numpy.linalg.inv(ovlp_a)[alive], atol=1.0e-9
+    )
+
+
+@pytest.mark.unit
+def test_hubbard_rhf_walkers_reject_spin_decoupling():
+    prop, hamiltonian, trial, walkers, _ = _build_case(rhf=True, U=4.0)
+    with pytest.raises(ValueError):
+        prop.propagate_walkers_two_body(walkers, hamiltonian, trial)
+
+
+@pytest.mark.unit
+def test_hubbard_force_bias_propagation_smoke():
+    numpy.random.seed(11)
+    prop, hamiltonian, trial, walkers, _ = _build_case(propagator=HubbardFB)
+    for _ in range(3):
+        prop.propagate_walkers(walkers, hamiltonian, trial, eshift=0.0)
+    assert numpy.all(numpy.isfinite(walkers.weight))
+    assert numpy.all(numpy.isfinite(walkers.phia))
+    alive = numpy.abs(walkers.weight) > 0.0
+    assert numpy.any(alive)
+    numpy.testing.assert_allclose(
+        walkers.ovlp[alive], trial.calc_overlap(walkers)[alive], rtol=1.0e-9
+    )
