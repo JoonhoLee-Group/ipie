@@ -223,6 +223,120 @@ def hubbard_two_body_ghf_cpu(
                     pw[down, c] *= 1.0 + dd
 
 
+@njit(parallel=True, cache=True)
+def hubbard_two_body_noci_ghf_cpu(
+    phi, inv, rel_ovlp, cstar, weight, ovlp, detsc, delta, aux_wfac, random_fields
+):
+    """Discrete Hirsch sweep over all sites for GHF walkers and a NOCI-GHF trial.
+
+    phi (w, 2nb, m), inv (K, w, m, m) per-determinant inverse overlaps, rel_ovlp (K, w)
+    determinant overlaps relative to a per-walker reference, detsc (K, 2nb, m) conjugated
+    determinants. The site ratio is the overlap-weighted average
+    r(x) = sum_k c_k^* O_k R_k(x) / sum_k c_k^* O_k of the single-determinant ratios
+    R_k(x) = det(1 + D_x g_k). Each determinant's inverse overlap gets the rank-2 Woodbury
+    update for the up and down rows of the site; its 2 x 2 capacitance matrix is 1 + D_x g_k.
+    One walker per numba thread.
+    """
+    nwalkers = phi.shape[0]
+    nbasis = phi.shape[1] // 2
+    nocc = phi.shape[2]
+    ndet = inv.shape[0]
+    for iw in prange(nwalkers):
+        if abs(weight[iw]) == 0.0:
+            continue
+        qup = numpy.empty((ndet, nocc), dtype=numpy.complex128)
+        qdn = numpy.empty((ndet, nocc), dtype=numpy.complex128)
+        auu = numpy.empty((ndet, nocc), dtype=numpy.complex128)
+        aud = numpy.empty((ndet, nocc), dtype=numpy.complex128)
+        guu = numpy.empty(ndet, dtype=numpy.complex128)
+        gud = numpy.empty(ndet, dtype=numpy.complex128)
+        gdu = numpy.empty(ndet, dtype=numpy.complex128)
+        gdd = numpy.empty(ndet, dtype=numpy.complex128)
+        for site in range(nbasis):
+            up = site
+            dn = site + nbasis
+            num0 = 0.0 + 0.0j
+            num1 = 0.0 + 0.0j
+            psum = 0.0 + 0.0j
+            for k in range(ndet):
+                # One pass over inv[k, iw]: the row projections q = phi_row inv and the
+                # field-independent columns a = inv u (u = conjugated determinant rows).
+                for j in range(nocc):
+                    qup[k, j] = 0.0 + 0.0j
+                    qdn[k, j] = 0.0 + 0.0j
+                for i in range(nocc):
+                    pu = phi[iw, up, i]
+                    pd = phi[iw, dn, i]
+                    su = 0.0 + 0.0j
+                    sd = 0.0 + 0.0j
+                    for j in range(nocc):
+                        a = inv[k, iw, i, j]
+                        qup[k, j] += pu * a
+                        qdn[k, j] += pd * a
+                        su += a * detsc[k, up, j]
+                        sd += a * detsc[k, dn, j]
+                    auu[k, i] = su
+                    aud[k, i] = sd
+                g_uu = 0.0 + 0.0j
+                g_ud = 0.0 + 0.0j
+                g_du = 0.0 + 0.0j
+                g_dd = 0.0 + 0.0j
+                for j in range(nocc):
+                    tu = detsc[k, up, j]
+                    td = detsc[k, dn, j]
+                    g_uu += qup[k, j] * tu
+                    g_ud += qup[k, j] * td
+                    g_du += qdn[k, j] * tu
+                    g_dd += qdn[k, j] * td
+                guu[k] = g_uu
+                gud[k] = g_ud
+                gdu[k] = g_du
+                gdd[k] = g_dd
+                r0 = (1.0 + delta[0, 0] * g_uu) * (1.0 + delta[0, 1] * g_dd) - delta[
+                    0, 0
+                ] * delta[0, 1] * g_ud * g_du
+                r1 = (1.0 + delta[1, 0] * g_uu) * (1.0 + delta[1, 1] * g_dd) - delta[
+                    1, 0
+                ] * delta[1, 1] * g_ud * g_du
+                pk = cstar[k] * rel_ovlp[k, iw]
+                psum += pk
+                num0 += pk * r0
+                num1 += pk * r1
+            ratio0 = num0 / psum
+            ratio1 = num1 / psum
+            p0_real = max((0.5 * ratio0 * aux_wfac[0]).real, 0.0)
+            p1_real = max((0.5 * ratio1 * aux_wfac[1]).real, 0.0)
+            norm = p0_real + p1_real
+            if norm <= 0.0:
+                weight[iw] = 0.0
+                break
+            xi = 0 if random_fields[site, iw] < p0_real / norm else 1
+            weight[iw] *= norm
+            ovlp[iw] *= ratio0 if xi == 0 else ratio1
+
+            d0 = delta[xi, 0]
+            d1 = delta[xi, 1]
+            for k in range(ndet):
+                b00 = 1.0 + d0 * guu[k]
+                b01 = d0 * gud[k]
+                b10 = d1 * gdu[k]
+                b11 = 1.0 + d1 * gdd[k]
+                rk = b00 * b11 - b01 * b10
+                rel_ovlp[k, iw] = rel_ovlp[k, iw] * rk
+                ib00 = b11 / rk
+                ib01 = -b01 / rk
+                ib10 = -b10 / rk
+                ib11 = b00 / rk
+                for i in range(nocc):
+                    e0 = (auu[k, i] * ib00 + aud[k, i] * ib10) * d0
+                    e1 = (auu[k, i] * ib01 + aud[k, i] * ib11) * d1
+                    for j in range(nocc):
+                        inv[k, iw, i, j] -= e0 * qup[k, j] + e1 * qdn[k, j]
+            for j in range(nocc):
+                phi[iw, up, j] *= 1.0 + d0
+                phi[iw, dn, j] *= 1.0 + d1
+
+
 class HubbardSingleSite(HirschBase):
     """Discrete Hubbard propagator with adaptive CPU, einsum, and CUDA paths."""
 
@@ -521,12 +635,30 @@ class HubbardSingleSite(HirschBase):
         ratio becomes the overlap-weighted average over determinants
             ratio(xi) = sum_k P_k R_k(xi),   P_k = c_k^* O_k / sum_k c_k^* O_k,
         where R_k(xi) is the usual single-determinant GHF site ratio for Phi_k.
-        With K=1 this reduces exactly to ``_ghf_two_body``.
+        With K=1 this reduces exactly to ``_ghf_two_body``. On CPU the sweep runs in
+        ``hubbard_two_body_noci_ghf_cpu``; on GPU in the batched einsum version.
         """
-        self._noci_ghf_two_body_einsum(walkers, hamiltonian, trial, random_fields)
+        if hasattr(xp, "RawKernel"):
+            self._noci_ghf_two_body_einsum(walkers, hamiltonian, trial, random_fields)
+            return
+        detsc, cstar, inv_ovlp, rel_ovlp = self._noci_ghf_transients(walkers, trial)
+        walkers.phi = numpy.ascontiguousarray(walkers.phi, dtype=numpy.complex128)
+        walkers.ovlp = numpy.ascontiguousarray(walkers.ovlp, dtype=numpy.complex128)
+        hubbard_two_body_noci_ghf_cpu(
+            walkers.phi,
+            numpy.ascontiguousarray(inv_ovlp),
+            numpy.ascontiguousarray(rel_ovlp),
+            numpy.ascontiguousarray(cstar),
+            walkers.weight,
+            walkers.ovlp,
+            numpy.ascontiguousarray(detsc),
+            numpy.asarray(self.delta, dtype=numpy.complex128),
+            numpy.asarray(self.aux_wfac, dtype=numpy.complex128),
+            numpy.asarray(random_fields, dtype=numpy.float64),
+        )
 
     def _noci_ghf_two_body_einsum(self, walkers, hamiltonian, trial, random_fields):
-        """Batched-einsum site sweep for ``_noci_ghf_two_body``."""
+        """Batched-einsum version of ``_noci_ghf_two_body`` (used on GPU)."""
         nb = walkers.nbasis
         nw = walkers.nwalkers
         detsc, cstar, inv_ovlp, rel_ovlp = self._noci_ghf_transients(walkers, trial)

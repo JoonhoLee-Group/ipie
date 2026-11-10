@@ -99,6 +99,22 @@ class NOCIGHF(SingleDetGHF):
             G[k] = numpy.einsum("pj,wjk->wpk", dkc, ghalf, optimize=True)   # (w,2nb,2nb)
         return O, G
 
+    def _per_det_overlaps(self, walkers):
+        """Overlaps O[k, w] only, without inverses or Green's functions.
+
+        The propagator calls calc_overlap twice per time step; building the (w, 2nb, 2nb)
+        Green's functions there (as _per_det does) dominates the step cost on large lattices.
+        """
+        nw = walkers.nwalkers
+        K = self._num_dets
+        phiT = numpy.transpose(walkers.phi, (0, 2, 1))  # (w, nocc, 2nb)
+        O = numpy.empty((K, nw), dtype=numpy.complex128)
+        for k in range(K):
+            ovlp_mat = phiT @ self.dets_conj[k]  # (w, nocc, nocc)
+            sign, logdet = numpy.linalg.slogdet(ovlp_mat)
+            O[k] = sign * numpy.exp(logdet - walkers.log_shift)
+        return O
+
     def _mixed(self, walkers):
         O, G = self._per_det(walkers)
         cstar = self.coeffs.conj()[:, None]            # (K,1)
@@ -108,7 +124,7 @@ class NOCIGHF(SingleDetGHF):
         return S, Gmix, O, G
 
     def calc_overlap(self, walkers) -> numpy.ndarray:
-        O, _ = self._per_det(walkers)
+        O = self._per_det_overlaps(walkers)
         return numpy.sum(self.coeffs.conj()[:, None] * O, axis=0)
 
     def calc_greens_function(self, walkers, build_full: bool = False) -> numpy.ndarray:
