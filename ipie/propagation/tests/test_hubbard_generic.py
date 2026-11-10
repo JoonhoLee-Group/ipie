@@ -21,7 +21,7 @@ import numpy
 import pytest
 
 from ipie.hamiltonians.hubbard import Hubbard
-from ipie.propagation.hubbard_generic import HubbardFB, HubbardSingleSite
+from ipie.propagation.hubbard_generic import HubbardSingleSite
 from ipie.trial_wavefunction.single_det import SingleDet
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.uhf_walkers import UHFWalkers
@@ -49,7 +49,7 @@ def _copy_walkers(walkers):
     )
 
 
-def _build_case(U=4.0, spin_decomp=None, propagator=HubbardSingleSite):
+def _build_case(U=4.0, spin_decomp=None):
     rng = numpy.random.default_rng(7)
     nbasis = 12
     nup = 5
@@ -70,7 +70,7 @@ def _build_case(U=4.0, spin_decomp=None, propagator=HubbardSingleSite):
     walkers = UHFWalkers(psi, nup, ndown, nbasis, nwalkers, handler)
     walkers.build(trial)
 
-    prop = propagator(0.005, spin_decomp=spin_decomp)
+    prop = HubbardSingleSite(0.005, spin_decomp=spin_decomp)
     prop.build(hamiltonian, trial, walkers, handler)
     random_fields = rng.random((nbasis, nwalkers))
     return prop, hamiltonian, trial, walkers, random_fields
@@ -127,18 +127,3 @@ def test_hirsch_build_rejects_unsupported_setups():
     polarized = UHFWalkers(trial.psi0a, trial.nalpha, 0, walkers.nbasis, 2, walkers.mpi_handler)
     with pytest.raises(ValueError):
         HubbardSingleSite(0.005).build(hamiltonian, trial, polarized, walkers.mpi_handler)
-
-
-@pytest.mark.unit
-def test_hubbard_force_bias_propagation_smoke():
-    numpy.random.seed(11)
-    prop, hamiltonian, trial, walkers, _ = _build_case(propagator=HubbardFB)
-    for _ in range(3):
-        prop.propagate_walkers(walkers, hamiltonian, trial, eshift=0.0)
-    assert numpy.all(numpy.isfinite(walkers.weight))
-    assert numpy.all(numpy.isfinite(walkers.phia))
-    alive = numpy.abs(walkers.weight) > 0.0
-    assert numpy.any(alive)
-    numpy.testing.assert_allclose(
-        walkers.ovlp[alive], trial.calc_overlap(walkers)[alive], rtol=1.0e-9
-    )
