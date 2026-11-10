@@ -49,11 +49,11 @@ def _copy_walkers(walkers):
     )
 
 
-def _build_case(rhf=False, U=4.0, spin_decomp=None, propagator=HubbardSingleSite):
+def _build_case(U=4.0, spin_decomp=None, propagator=HubbardSingleSite):
     rng = numpy.random.default_rng(7)
     nbasis = 12
     nup = 5
-    ndown = 5 if rhf else 4
+    ndown = 4
     nwalkers = 3
 
     h1 = rng.normal(size=(2, nbasis, nbasis))
@@ -69,7 +69,6 @@ def _build_case(rhf=False, U=4.0, spin_decomp=None, propagator=HubbardSingleSite
     trial.half_rotate(hamiltonian, handler.scomm)
     walkers = UHFWalkers(psi, nup, ndown, nbasis, nwalkers, handler)
     walkers.build(trial)
-    walkers.rhf = rhf
 
     prop = propagator(0.005, spin_decomp=spin_decomp)
     prop.build(hamiltonian, trial, walkers, handler)
@@ -78,12 +77,9 @@ def _build_case(rhf=False, U=4.0, spin_decomp=None, propagator=HubbardSingleSite
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "rhf, U, spin_decomp",
-    [(False, 4.0, None), (False, -4.0, None), (True, 4.0, False)],
-)
-def test_hubbard_single_site_cpu_numba_matches_legacy(rhf, U, spin_decomp):
-    prop, hamiltonian, trial, walkers, random_fields = _build_case(rhf, U, spin_decomp)
+@pytest.mark.parametrize("U, spin_decomp", [(4.0, None), (-4.0, None), (4.0, False)])
+def test_hubbard_single_site_cpu_numba_matches_legacy(U, spin_decomp):
+    prop, hamiltonian, trial, walkers, random_fields = _build_case(U, spin_decomp)
     ref = _copy_walkers(walkers)
     opt = _copy_walkers(walkers)
 
@@ -119,10 +115,18 @@ def test_hubbard_two_body_tracks_overlap_charge_decoupling(path):
 
 
 @pytest.mark.unit
-def test_hubbard_rhf_walkers_reject_spin_decoupling():
-    prop, hamiltonian, trial, walkers, _ = _build_case(rhf=True, U=4.0)
+def test_hirsch_build_rejects_unsupported_setups():
+    prop, hamiltonian, trial, walkers, _ = _build_case()
+    walkers.rhf = True
     with pytest.raises(ValueError):
-        prop.propagate_walkers_two_body(walkers, hamiltonian, trial)
+        HubbardSingleSite(0.005).build(hamiltonian, trial, walkers, walkers.mpi_handler)
+
+    with pytest.raises(ValueError):
+        _build_case(U=-4.0, spin_decomp=True)
+
+    polarized = UHFWalkers(trial.psi0a, trial.nalpha, 0, walkers.nbasis, 2, walkers.mpi_handler)
+    with pytest.raises(ValueError):
+        HubbardSingleSite(0.005).build(hamiltonian, trial, polarized, walkers.mpi_handler)
 
 
 @pytest.mark.unit

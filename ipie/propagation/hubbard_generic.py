@@ -145,7 +145,7 @@ def hubbard_kinetic_ghf_cpu(phi, inv_ovlp, ovlp, weight, log_shift, exp_h1, psi0
             ovlp[iw] = ovlp_new
 
 
-@njit(parallel=True, cache=True, fastmath=True)
+@njit(parallel=True, cache=True, fastmath={"reassoc", "contract"})
 def hubbard_two_body_ghf_cpu(
     phi, inv_ovlp, weight, ovlp, psi0_conj, psi0_conj_pairs, delta, aux_wfac, random_fields
 ):
@@ -627,12 +627,12 @@ class HubbardSingleSite(HirschBase):
         ratio becomes the overlap-weighted average over determinants
             ratio(xi) = sum_k P_k R_k(xi),   P_k = c_k^* O_k / sum_k c_k^* O_k,
         where R_k(xi) is the usual single-determinant GHF site ratio for Phi_k.
-        With K=1 this reduces exactly to ``_ghf_two_body``. On CPU the sweep runs in
-        ``hubbard_two_body_noci_ghf_cpu``; on GPU in the batched einsum version.
+        With K=1 this reduces exactly to ``_ghf_two_body``. The sweep runs in
+        ``hubbard_two_body_noci_ghf_cpu``; NOCIGHF overlaps are computed with numpy, so this
+        trial is CPU only.
         """
         if hasattr(xp, "RawKernel"):
-            self._noci_ghf_two_body_einsum(walkers, hamiltonian, trial, random_fields)
-            return
+            raise NotImplementedError("NOCIGHF trials are only supported on CPU.")
         detsc, cstar, inv_ovlp, rel_ovlp = self._noci_ghf_transients(walkers, trial)
         walkers.phi = numpy.ascontiguousarray(walkers.phi, dtype=numpy.complex128)
         walkers.ovlp = numpy.ascontiguousarray(walkers.ovlp, dtype=numpy.complex128)
@@ -650,7 +650,7 @@ class HubbardSingleSite(HirschBase):
         )
 
     def _noci_ghf_two_body_einsum(self, walkers, hamiltonian, trial, random_fields):
-        """Batched-einsum version of ``_noci_ghf_two_body`` (used on GPU)."""
+        """Batched-einsum reference implementation of the NOCI-GHF site sweep."""
         nb = walkers.nbasis
         nw = walkers.nwalkers
         detsc, cstar, inv_ovlp, rel_ovlp = self._noci_ghf_transients(walkers, trial)
@@ -726,10 +726,6 @@ class HubbardSingleSite(HirschBase):
         self._vtdown = xp.empty((walkers.nwalkers, walkers.ndown), dtype=xp.complex128)
         self._xi = xp.empty(walkers.nwalkers, dtype=numpy.int32)
         self._live = xp.empty(walkers.nwalkers, dtype=numpy.int8)
-        max_occ = max(walkers.nup, walkers.ndown)
-        self._large_sm_au = xp.empty((walkers.nwalkers, max_occ), dtype=xp.complex128)
-        self._large_sm_vta = xp.empty((walkers.nwalkers, max_occ), dtype=xp.complex128)
-        self._large_sm_denom = xp.empty(walkers.nwalkers, dtype=xp.complex128)
 
     def _complex_trial_orbitals(self, trial):
         # Hold the source arrays so the identity check cannot match a recycled object.
@@ -776,18 +772,18 @@ class HubbardSingleSite(HirschBase):
     def _launch_sherman_morrison_cublas_large(
         self, apply_kernel, inv, psi_site, vt, nwalkers, nocc
     ):
+        # The apply kernel indexes au, vta as (nwalkers, nocc) with row stride nocc, so they are
+        # built per spin rather than as slices of a max(nup, ndown)-wide buffer.
         u = xp.conj(psi_site)
-        self._large_sm_au[:, :nocc] = xp.matmul(inv, u)
-        self._large_sm_vta[:, :nocc] = xp.matmul(vt[:, None, :], inv)[:, 0, :]
-        self._large_sm_denom[:nwalkers] = 1.0 + xp.einsum(
-            "wi,i->w", self._large_sm_vta[:, :nocc], u, optimize=True
-        )
+        au = xp.ascontiguousarray(xp.matmul(inv, u))
+        vta = xp.ascontiguousarray(xp.matmul(vt[:, None, :], inv)[:, 0, :])
+        denom = xp.ascontiguousarray(1.0 + xp.einsum("wi,i->w", vta, u, optimize=True))
         block = (16, 16)
         grid = ((nocc + block[0] - 1) // block[0], (nocc + block[1] - 1) // block[1], nwalkers)
         apply_kernel(
             grid,
             block,
-            (inv, self._large_sm_au, self._large_sm_vta, self._large_sm_denom, nwalkers, nocc),
+            (inv, au, vta, denom, nwalkers, nocc),
             shared_mem=getattr(self, "_large_apply_shared_mem", 0),
         )
 
@@ -951,9 +947,6 @@ class HubbardSingleSite(HirschBase):
         start_time = time.time()
         from ipie.trial_wavefunction.noci_ghf import NOCIGHF
 
-        if walkers.rhf and self.spin_decomp:
-            # RHF walkers share one set of orbitals, which the spin decoupling would split.
-            raise ValueError("RHF walkers require the charge decoupling (spin_decomp=False).")
         path = self._choose_path(walkers, hamiltonian)
         if isinstance(trial, NOCIGHF):
             path = "noci_ghf"
@@ -984,7 +977,12 @@ class HubbardSingleSite(HirschBase):
 
 
 class HubbardFB(HirschBase):
-    """Discrete Hubbard propagator using an all-site dynamical force bias update."""
+    """Discrete Hubbard propagator using an all-site dynamical force bias update.
+
+    Each field is drawn from P(x) proportional to exp(x b) with the real bias b = Re(gamma f),
+    f = <n_up - n_down> (spin) or <n_up + n_down - 1> (charge) from the mixed Green's function.
+    The importance weight (1/2) / P(x) = norm exp(-x b) keeps the sampling unbiased for any b.
+    """
 
     def propagate_walkers_two_body(self, walkers, hamiltonian, trial):
         start_time = time.time()
@@ -997,9 +995,10 @@ class HubbardFB(HirschBase):
             fb_term = nia - nib
         else:
             fb_term = nia + nib - 1.0
+        bias = (self.gamma * fb_term).real
 
-        pp = 0.5 * xp.exp(self.gamma * fb_term).real
-        pm = 0.5 * xp.exp(-self.gamma * fb_term).real
+        pp = 0.5 * xp.exp(bias)
+        pm = 0.5 * xp.exp(-bias)
         norm = pp + pm
 
         fields = xp.zeros_like(pp, dtype=numpy.int32)
@@ -1014,8 +1013,8 @@ class HubbardFB(HirschBase):
 
         for i in range(walkers.nbasis):
             xi = fields[:, i]
-            contrib0 = 0.5 * norm[:, i] * xp.exp(-self.gamma * fb_term[:, i]).real
-            contrib1 = 0.5 * norm[:, i] * xp.exp(self.gamma * fb_term[:, i]).real
+            contrib0 = norm[:, i] * xp.exp(-bias[:, i])
+            contrib1 = norm[:, i] * xp.exp(bias[:, i])
             fb_fac *= xp.where(xi == 0, contrib0, contrib1)
             wfac *= self.aux_wfac[xi]
             walkers.phia[:, i, :] *= self.auxf[xi, 0][:, None]

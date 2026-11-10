@@ -192,6 +192,9 @@ class GHFWalkers(BaseWalkers):
         assert config.get_option("use_gpu")
         self.phi, Rup = qr(self.phi, mode=qr_mode)
         Rup_diag = xp.einsum("wii->wi", Rup)
+        # Move the phase of R_ii into the orbitals so that det(R) is real and positive and
+        # ovlp / detR stays <psi_T|phi> (the Hubbard propagators carry the overlap forward).
+        self.phi *= (Rup_diag / abs(Rup_diag))[:, None, :]
         log_det = xp.einsum("wi->w", xp.log(abs(Rup_diag)))
         self.detR = xp.exp(log_det - self.detR_shift)
         self.ovlp = self.ovlp / self.detR

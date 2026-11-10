@@ -30,6 +30,7 @@ from ipie.propagation.operations import propagate_one_body
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import cast_to_device, synchronize
 from ipie.walkers.ghf_walkers import GHFWalkers
+from ipie.walkers.uhf_walkers import UHFWalkers
 
 
 @plum.dispatch
@@ -104,13 +105,19 @@ class HirschBase(ContinuousBase):
         self.delta = None
 
     def build(self, hamiltonian, trial=None, walkers=None, mpi_handler=None, verbose=False):
-        if isinstance(hamiltonian, HubbardSpinOrbital) and walkers is not None:
-            if not isinstance(walkers, GHFWalkers):
+        if walkers is not None:
+            if isinstance(hamiltonian, HubbardSpinOrbital) and not isinstance(walkers, GHFWalkers):
                 raise TypeError("HubbardSpinOrbital couples the spins and needs GHF walkers.")
+            if walkers.rhf:
+                raise ValueError("The Hirsch propagators do not support RHF walkers.")
+            if isinstance(walkers, UHFWalkers) and walkers.ndown == 0:
+                raise ValueError("The Hirsch propagators need ndown > 0 for UHF walkers.")
         self.mpi_handler = mpi_handler
         self.expH1 = construct_one_body_propagator(hamiltonian, self.dt)
         if self.spin_decomp is None:
             self.spin_decomp = bool(numpy.real(hamiltonian.U) >= 0.0)
+        if self.spin_decomp and numpy.real(hamiltonian.U) < 0.0:
+            raise ValueError("The spin decoupling needs U >= 0; use spin_decomp=False for U < 0.")
         self.gamma, self.auxf, self.aux_wfac, self.delta = construct_hirsch_auxiliaries(
             hamiltonian, self.dt, spin_decomp=self.spin_decomp
         )

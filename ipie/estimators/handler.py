@@ -61,6 +61,10 @@ class EstimatorHandler(object):
         Dictionary of estimator objects.
     """
 
+    # Class default so subclasses that do not call this __init__ (e.g. the thermal handler) keep
+    # the hybrid-energy shift.
+    shift_source = "HybridEnergy"
+
     def __init__(
         self,
         comm,
