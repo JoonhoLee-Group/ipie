@@ -605,9 +605,11 @@ and ``torch``; install the latter with ``pip install -e .[torch]``.
 
 `Source <https://github.com/JoonhoLee-Group/ipie/tree/develop/examples/19-hubbard>`__
 
-The modern code has no dedicated Hubbard class (one exists only in
-``ipie.legacy``), but any model whose two-body term can be written as a sum of
-squares fits :class:`ipie.hamiltonians.generic.GenericRealChol`. The script
+This example uses the generic route rather than the dedicated
+:class:`ipie.hamiltonians.hubbard.Hubbard` class and its discrete Hirsch
+propagator, which are described in the advanced guide. Any model whose two-body
+term can be written as a sum of squares fits
+:class:`ipie.hamiltonians.generic.GenericRealChol`. The script
 builds a two-site periodic Hubbard model with :math:`t = 1`, :math:`U = 4`:
 the hopping matrix and the on-site ``eri`` tensor are handed to a PySCF
 ``UHF`` object via ``get_hcore``, ``get_ovlp`` and ``_eri`` overrides (with a

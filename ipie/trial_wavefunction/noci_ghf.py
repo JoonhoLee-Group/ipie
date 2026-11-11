@@ -15,15 +15,19 @@
 # Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
-"""Multi-determinant (NOCI) GHF trial wavefunction.
+r"""Multi-determinant (NOCI) GHF trial wavefunction.
 
 The trial is a linear combination of generalized (spinor) Slater determinants
 
-    |Psi_T> = sum_k c_k |Phi_k>,    Phi_k : (2*nbasis, nocc) complex,
+.. math::
 
-which is exactly the form produced by spin-symmetry projection of a single GHF
-determinant: |Psi_T> = P |Phi> = sum_g w_g R_g |Phi>, with R_g a spin rotation
-on the grid g and w_g the quadrature weight (S_z or singlet projector).
+    |\Psi_T\rangle = \sum_k c_k |\Phi_k\rangle,
+
+where each :math:`\Phi_k` is a complex ``(2 * nbasis, nocc)`` matrix. This is exactly
+the form produced by spin-symmetry projection of a single GHF determinant,
+:math:`|\Psi_T\rangle = P|\Phi\rangle = \sum_g w_g R_g |\Phi\rangle`, with :math:`R_g` a
+spin rotation on the grid point :math:`g` and :math:`w_g` its quadrature weight
+(:math:`S_z` or singlet projector).
 
 It subclasses :class:`SingleDetGHF` so that the GHF walker, the Hubbard
 discrete-Hirsch propagator, and the GHF energy estimator are all selected by the
@@ -32,13 +36,13 @@ existing ``isinstance`` / dispatch machinery; the reference determinant
 first determinant in the expansion.
 
 Overlaps and Green's functions follow the ipie GHF convention
-(:func:`greens_function_single_det_ghf`): for a walker phi and determinant Phi_k,
+(``greens_function_single_det_ghf``). For a walker ``phi`` and determinant ``Phi_k``::
 
     O_k        = det(phi^T Phi_k^*) = <Phi_k|phi>      (up to the walker log_shift)
     Ghalf_k    = (phi^T Phi_k^*)^{-1} phi^T
     G_k[p, q]  = (Phi_k^* Ghalf_k)[p, q] = <c_p^dag c_q>_k
 
-and the multi-determinant mixed quantities are the overlap-weighted averages
+and the multi-determinant mixed quantities are the overlap-weighted averages::
 
     S = sum_k c_k^* O_k,   G_mixed = sum_k c_k^* O_k G_k / S .
 """
