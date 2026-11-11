@@ -268,7 +268,7 @@ def write_json_input_file(
     num_blocks: float = 100,
     estimates_filename: str = "estimates.0.h5",
     # pylint: disable=dangerous-default-value
-    options: dict = {},
+    options: Optional[dict] = None,
 ):
     na, nb = nelec
     basic = {
@@ -286,7 +286,7 @@ def write_json_input_file(
         "trial": {"filename": wfn_filename},
         "estimators": {"filename": estimates_filename},
     }
-    full = merge_dicts(basic, options)
+    full = merge_dicts(basic, {} if options is None else options)
     with open(input_filename, "w") as f:
         f.write(json.dumps(full, indent=4, separators=(",", ": ")))
 
