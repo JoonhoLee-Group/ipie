@@ -15,7 +15,7 @@
 # Authors: Jinghong Zhang <jinghongzhang@fas.harvard.edu>
 #
 
-import cupy
+import cupy  # pylint: disable=import-error
 
 _HUBBARD_SINGLE_SITE_KERNELS = None
 

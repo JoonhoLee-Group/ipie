@@ -173,7 +173,7 @@ class SingleDetGHF(TrialWavefunctionBase):
 
     @plum.dispatch
     def half_rotate(self, hamiltonian: Hubbard, comm):
-        # Hubbard local energies are evaluated directly from the Green's function.
+        """Hubbard local energies use the full Green's function; nothing to rotate."""
         self.half_rotated = True
 
     @plum.dispatch
