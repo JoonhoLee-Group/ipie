@@ -9,6 +9,14 @@ ipie.propagation.kernels.gpu package
 Submodules
 ----------
 
+ipie.propagation.kernels.gpu.hubbard module
+-------------------------------------------
+
+.. automodule:: ipie.propagation.kernels.gpu.hubbard
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 ipie.propagation.kernels.gpu.vhs module
 ---------------------------------------
 

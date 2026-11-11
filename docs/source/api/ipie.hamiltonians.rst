@@ -41,6 +41,14 @@ ipie.hamiltonians.generic\_chunked module
    :show-inheritance:
    :undoc-members:
 
+ipie.hamiltonians.hubbard module
+--------------------------------
+
+.. automodule:: ipie.hamiltonians.hubbard
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 ipie.hamiltonians.isdf module
 -----------------------------
 

@@ -31,11 +31,13 @@ from ipie.config import config
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.handler import EstimatorHandler
 from ipie.hamiltonians.utils import get_hamiltonian
+from ipie.propagation.hirsch_base import HirschBase
 from ipie.propagation.propagator import Propagator
 from ipie.qmc.options import QMCParams
 from ipie.qmc.utils import set_rng_seed
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.utils import get_trial_wavefunction
+from ipie.trial_wavefunction.single_det_ghf import SingleDetGHF
 from ipie.utils.backend import arraylib as xp
 from ipie.utils.backend import get_host_memory, synchronize
 from ipie.utils.io import to_json
@@ -43,7 +45,7 @@ from ipie.utils.misc import get_git_info, print_env_info
 from ipie.utils.mpi import MPIHandler
 from ipie.walkers.base_walkers import WalkerAccumulator
 from ipie.walkers.pop_controller import PopController
-from ipie.walkers.walkers_dispatch import get_initial_walker, UHFWalkersTrial
+from ipie.walkers.walkers_dispatch import get_initial_walker, GHFWalkersTrial, UHFWalkersTrial
 from ipie.trial_wavefunction.particle_hole import ParticleHole
 
 
@@ -427,7 +429,10 @@ class AFQMC(AFQMCBase):
         if walkers is None:
             _, initial_walker = get_initial_walker(trial_wavefunction)
             # TODO this is a factory method not a class
-            walkers = UHFWalkersTrial(
+            walker_factory = (
+                GHFWalkersTrial if isinstance(trial_wavefunction, SingleDetGHF) else UHFWalkersTrial
+            )
+            walkers = walker_factory(
                 trial_wavefunction,
                 initial_walker,
                 system.nup,
@@ -561,6 +566,7 @@ class AFQMC(AFQMCBase):
             walker_state=self.accumulators,
             verbose=(comm.rank == 0 and self.verbose),
             filename=filename,
+            shift_source="ETotal" if isinstance(self.propagator, HirschBase) else "HybridEnergy",
         )
         if additional_estimators is not None:
             for k, v in additional_estimators.items():
@@ -635,6 +641,8 @@ class AFQMC(AFQMCBase):
         num_eqlb_steps = self.params.num_eq_blocks * self.params.eq_num_steps_per_block
 
         total_steps = self.params.num_steps_per_block * self.params.num_blocks + num_eqlb_steps
+        # The discrete Hubbard propagators keep a floor of 100 on the per-walker weight bound.
+        wbound_floor = 100.0 if isinstance(self.propagator, HirschBase) else 0.0
 
         synchronize()
         comm = self.mpi_handler.comm
@@ -682,13 +690,13 @@ class AFQMC(AFQMCBase):
 
             start_clip = time.time()
             if step > 1 and step <= num_eqlb_steps:
-                wbound = self.pcontrol_eq.total_weight * 0.10
+                wbound = max(wbound_floor, self.pcontrol_eq.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight
                 )  # in-place clipping
             elif step > num_eqlb_steps and step > 1:
-                wbound = self.pcontrol.total_weight * 0.10
+                wbound = max(wbound_floor, self.pcontrol.total_weight * 0.10)
                 xp.nan_to_num(self.walkers.weight, copy=False)
                 xp.clip(
                     self.walkers.weight, a_min=-wbound, a_max=wbound, out=self.walkers.weight

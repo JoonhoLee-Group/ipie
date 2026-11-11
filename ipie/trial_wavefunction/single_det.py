@@ -13,6 +13,7 @@ from ipie.estimators.greens_function_single_det import (
 )
 from ipie.estimators.utils import gab_spin
 from ipie.hamiltonians.generic import GenericComplexChol, GenericRealChol
+from ipie.hamiltonians.hubbard import Hubbard
 from ipie.hamiltonians.isdf import GenericRealISDF
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked
 from ipie.hamiltonians.chunked_isdf import GenericRealISDFChunked
@@ -79,13 +80,23 @@ class SingleDet(TrialWavefunctionBase):
         if self.verbose:
             print("# Computing trial wavefunction energy.")
         start = time.time()
-        self.e1b = (
-            numpy.sum(self.Ghalf[0] * self._rH1a)
-            + numpy.sum(self.Ghalf[1] * self._rH1b)
-            + hamiltonian.ecore
-        )
-        self.ej, self.ek = half_rotated_cholesky_jk_uhf(self, hamiltonian, self.Ghalf)
-        self.e2b = self.ej - self.ek
+        if isinstance(hamiltonian, Hubbard):
+            self.e1b = (
+                numpy.sum(hamiltonian.T[0] * self.G[0])
+                + numpy.sum(hamiltonian.T[1] * self.G[1])
+                + hamiltonian.ecore
+            )
+            self.ej = numpy.dot(self.G[0].diagonal(), self.G[1].diagonal()) * hamiltonian.U
+            self.ek = 0.0
+            self.e2b = self.ej
+        else:
+            self.e1b = (
+                numpy.sum(self.Ghalf[0] * self._rH1a)
+                + numpy.sum(self.Ghalf[1] * self._rH1b)
+                + hamiltonian.ecore
+            )
+            self.ej, self.ek = half_rotated_cholesky_jk_uhf(self, hamiltonian, self.Ghalf)
+            self.e2b = self.ej - self.ek
         self.energy = self.e1b + self.e2b
 
         if self.verbose:
@@ -94,6 +105,17 @@ class SingleDet(TrialWavefunctionBase):
                 % (self.energy.real, self.e1b.real, self.e2b.real)
             )
             print(f"# Time to evaluate trial energy: {time.time() - start} s")
+
+    @plum.dispatch
+    def half_rotate(
+        self: "SingleDet",
+        hamiltonian: Hubbard,
+        comm: Optional[CommType] = MPIHandler().scomm,
+    ):
+        # Hubbard local energies are evaluated directly from the Green's function.
+        self._rH1a = hamiltonian.T[0]
+        self._rH1b = hamiltonian.T[1]
+        self.half_rotated = True
 
     @plum.dispatch
     def half_rotate(

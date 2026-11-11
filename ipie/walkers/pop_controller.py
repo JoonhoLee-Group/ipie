@@ -4,6 +4,7 @@ import numpy
 
 from ipie.config import MPI
 from ipie.utils.backend import arraylib as xp
+from ipie.utils.backend import synchronize
 
 
 class PopControllerTimer:
@@ -184,6 +185,7 @@ def get_buffer(walkers, iw):
         else:
             buff[s : s + 1] = xp.array(data[iw])
             s += 1
+    synchronize()
     return buff
 
 
@@ -228,6 +230,7 @@ def set_buffer(walkers, iw, buff):
             else:
                 walkers.__dict__[d][iw] = buff[s]
             s += 1
+    synchronize()
 
 
 def minimize_communication(new_idx):

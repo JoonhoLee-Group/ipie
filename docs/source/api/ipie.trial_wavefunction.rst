@@ -25,6 +25,14 @@ ipie.trial\_wavefunction.noci module
    :show-inheritance:
    :undoc-members:
 
+ipie.trial\_wavefunction.noci\_ghf module
+-----------------------------------------
+
+.. automodule:: ipie.trial_wavefunction.noci_ghf
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 ipie.trial\_wavefunction.particle\_hole module
 ----------------------------------------------
 

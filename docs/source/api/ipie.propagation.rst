@@ -41,6 +41,22 @@ ipie.propagation.force\_bias\_isdf module
    :show-inheritance:
    :undoc-members:
 
+ipie.propagation.hirsch\_base module
+------------------------------------
+
+.. automodule:: ipie.propagation.hirsch_base
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ipie.propagation.hubbard\_generic module
+----------------------------------------
+
+.. automodule:: ipie.propagation.hubbard_generic
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 ipie.propagation.operations module
 ----------------------------------
 

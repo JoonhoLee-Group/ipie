@@ -656,15 +656,53 @@ restart scripts.
 Model Hamiltonians: the Hubbard model
 -------------------------------------
 
-Dedicated ``Hubbard`` Hamiltonian, propagator and trial classes exist only in
-``ipie.legacy`` (``ipie/legacy/hamiltonians/hubbard.py`` and related modules),
-which is not exercised by the modern driver. In the current code, lattice
-models are handled by the generic machinery: any Hamiltonian whose two-body
-term is expressed as a sum of squares can be passed to
-:class:`ipie.hamiltonians.generic.GenericRealChol` (or the complex variant). For
-the on-site Hubbard interaction the "Cholesky" vectors are trivial to construct
-by hand, and ``examples/19-hubbard`` does exactly this for a two-site periodic
-chain:
+:class:`ipie.hamiltonians.hubbard.Hubbard` holds a spin-resolved one-body matrix
+of shape ``(2, n, n)`` and a uniform on-site :math:`U`. The hopping may be
+complex, for example with a Peierls phase.
+:class:`ipie.hamiltonians.hubbard.HubbardSpinOrbital` instead takes a
+``(2n, 2n)`` spin-orbital one-body matrix that may couple the two spins, such as
+a spin-flip or pairing field, and requires GHF walkers.
+
+Both Hamiltonians are propagated by
+:class:`ipie.propagation.hubbard_generic.HubbardSingleSite`, a constrained-path
+propagator built on the discrete Hirsch transformation. It uses the spin channel
+for :math:`U \ge 0` and the charge channel for :math:`U < 0`. Each step consists
+of:
+
+#. a kinetic half step with the phase constraint;
+#. a sweep that samples one auxiliary field per site and updates the walkers'
+   inverse overlaps;
+#. a second kinetic half step.
+
+Three walker and trial combinations are supported:
+
+* UHF walkers with a :class:`~ipie.trial_wavefunction.single_det.SingleDet`
+  trial;
+* GHF walkers with a
+  :class:`~ipie.trial_wavefunction.single_det_ghf.SingleDetGHF` trial;
+* GHF walkers with a multi-determinant
+  :class:`~ipie.trial_wavefunction.noci_ghf.NOCIGHF` trial, CPU only.
+
+:meth:`~ipie.qmc.afqmc.AFQMC.build` picks this propagator from the Hamiltonian
+type:
+
+.. code-block:: python
+
+   from ipie.hamiltonians.hubbard import Hubbard
+   from ipie.qmc.afqmc import AFQMC
+   from ipie.trial_wavefunction.single_det import SingleDet
+
+   ham = Hubbard(numpy.array([t, t]), U=4.0)   # t: (n, n) hopping matrix
+   trial = SingleDet(numpy.hstack([psia, psib]), (nup, ndown), n)
+   trial.half_rotate(ham)
+   afqmc = AFQMC.build((nup, ndown), ham, trial, num_walkers=100, timestep=0.005)
+   afqmc.run()
+
+Alternatively, any Hamiltonian whose two-body term is a sum of squares can be
+passed to :class:`ipie.hamiltonians.generic.GenericRealChol` (or the complex
+variant). For the on-site Hubbard interaction the "Cholesky" vectors are trivial
+to construct by hand, and ``examples/19-hubbard`` does exactly this for a
+two-site periodic chain:
 
 .. code-block:: python
 
@@ -678,6 +716,4 @@ chain:
 The trial (a UHF determinant from PySCF with a spin-density-wave initial guess)
 and the driver are then the standard :class:`~ipie.trial_wavefunction.single_det.SingleDet`
 and :meth:`~ipie.qmc.afqmc.AFQMC.build`. This route uses the continuous
-(Gaussian) Hubbard-Stratonovich transformation; the discrete
-spin-decomposition propagators of the legacy code are not available in the
-modern driver.
+(Gaussian) Hubbard-Stratonovich transformation instead of the discrete one.
