@@ -70,9 +70,9 @@ jobs:
     - name: mpi test
       timeout-minutes: 10
       run: |
-        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
-        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python ipie/estimators/tests/test_generic_chunked.py
-        mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
+        mpiexec --mca btl_tcp_if_include lo -n 2 python -m pytest ipie/legacy/walkers/tests/test_handler.py
+        mpiexec --mca btl_tcp_if_include lo -n 6 python ipie/estimators/tests/test_generic_chunked.py
+        mpiexec --mca btl_tcp_if_include lo -n 6 python -m pytest ipie/propagation/tests/test_generic_chunked.py
   pytest-no_mpi:
     runs-on: ubuntu-latest
     steps:
@@ -124,7 +124,7 @@ jobs:
       - name: Test Integration
         timeout-minutes: 10
         run: |
-          mpiexec --mca btl_tcp_if_include lo --mca oob_tcp_if_include lo -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
+          mpiexec --mca btl_tcp_if_include lo -np 4 python -u ipie/qmc/tests/test_mpi_integration.py
   examples:
     runs-on: ubuntu-latest
     steps:
